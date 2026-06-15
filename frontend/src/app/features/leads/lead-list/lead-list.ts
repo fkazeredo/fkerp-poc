@@ -1,7 +1,7 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TableModule, TableLazyLoadEvent } from 'primeng/table';
@@ -39,6 +39,7 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'dan
   imports: [
     DatePipe,
     FormsModule,
+    RouterLink,
     TableModule,
     ButtonModule,
     InputTextModule,

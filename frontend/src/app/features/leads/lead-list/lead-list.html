@@ -121,7 +121,9 @@
   </ng-template>
   <ng-template pTemplate="body" let-lead>
     <tr>
-      <td>{{ lead.name }}</td>
+      <td>
+        <a [routerLink]="['/leads', lead.id]" class="lead-link">{{ lead.name }}</a>
+      </td>
       <td>{{ lead.mainContact ?? '—' }}</td>
       <td>{{ lead.origin }}</td>
       <td><p-tag [value]="statusLabel(lead.status)" [severity]="statusSeverity(lead.status)" /></td>
