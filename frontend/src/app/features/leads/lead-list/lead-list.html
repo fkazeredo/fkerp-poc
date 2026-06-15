@@ -1,0 +1,152 @@
+<header class="head">
+  <h1>Leads</h1>
+  <p-button label="Novo lead" icon="pi pi-user-plus" size="small" (onClick)="goNew()" />
+</header>
+
+<div class="filters">
+  <div class="filter grow">
+    <label for="q">Buscar</label>
+    <input
+      pInputText
+      id="q"
+      [(ngModel)]="search"
+      (ngModelChange)="onSearchInput()"
+      placeholder="Nome ou contato"
+      class="w-full"
+    />
+  </div>
+  <div class="filter">
+    <label>Status</label>
+    <p-multiSelect
+      [options]="statusOptions"
+      optionLabel="label"
+      optionValue="value"
+      [(ngModel)]="status"
+      (ngModelChange)="applyFilters()"
+      placeholder="Exceto perdidos"
+      [showClear]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Origem</label>
+    <p-select
+      [options]="origins()"
+      optionLabel="label"
+      optionValue="id"
+      [(ngModel)]="originId"
+      (ngModelChange)="applyFilters()"
+      placeholder="Todas"
+      [showClear]="true"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Responsável</label>
+    <p-select
+      [options]="responsibleOptions()"
+      optionLabel="name"
+      optionValue="id"
+      [(ngModel)]="responsible"
+      (ngModelChange)="applyFilters()"
+      placeholder="Todos"
+      [showClear]="true"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Criado de</label>
+    <p-datepicker
+      [(ngModel)]="createdFrom"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>até</label>
+    <p-datepicker
+      [(ngModel)]="createdTo"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <p-button
+    label="Limpar"
+    icon="pi pi-filter-slash"
+    severity="secondary"
+    [text]="true"
+    size="small"
+    (onClick)="clearFilters()"
+  />
+</div>
+
+@if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+}
+
+<p-table
+  [value]="items()"
+  [lazy]="true"
+  (onLazyLoad)="onLazyLoad($event)"
+  [paginator]="true"
+  [rows]="rows"
+  [totalRecords]="total()"
+  [first]="firstRow"
+  [loading]="loading()"
+  styleClass="p-datatable-sm"
+  [tableStyle]="{ 'min-width': '64rem' }"
+>
+  <ng-template pTemplate="header">
+    <tr>
+      <th>Nome</th>
+      <th>Contato</th>
+      <th>Origem</th>
+      <th>Status</th>
+      <th>Responsável</th>
+      <th>Criado em</th>
+      <th>Última interação</th>
+      <th>Próximo contato</th>
+    </tr>
+  </ng-template>
+  <ng-template pTemplate="body" let-lead>
+    <tr>
+      <td>{{ lead.name }}</td>
+      <td>{{ lead.mainContact ?? '—' }}</td>
+      <td>{{ lead.origin }}</td>
+      <td><p-tag [value]="statusLabel(lead.status)" [severity]="statusSeverity(lead.status)" /></td>
+      <td>
+        @if (lead.unassigned) {
+          <span class="unassigned">Sem responsável</span>
+        } @else {
+          {{ lead.responsibleName ?? '—' }}
+        }
+      </td>
+      <td>{{ lead.createdAt | date: 'short' }}</td>
+      <td>
+        @if (lead.lastInteractionAt) {
+          {{ lead.lastInteractionAt | date: 'short' }}
+          <span class="muted">({{ lead.lastInteractionType }})</span>
+        } @else {
+          —
+        }
+      </td>
+      <td>{{ lead.nextContactAt ? (lead.nextContactAt | date: 'short') : '—' }}</td>
+    </tr>
+  </ng-template>
+  <ng-template pTemplate="emptymessage">
+    <tr>
+      <td colspan="8" class="muted empty">Nenhum lead encontrado.</td>
+    </tr>
+  </ng-template>
+</p-table>

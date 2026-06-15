@@ -4,10 +4,23 @@
 </header>
 
 <div class="home-grid">
+  <p-card header="Leads">
+    <p class="muted">Veja, busque e filtre os leads que você pode trabalhar.</p>
+    <ng-template pTemplate="footer">
+      <p-button label="Ver leads" icon="pi pi-list" (onClick)="go('/leads')" />
+    </ng-template>
+  </p-card>
+
   <p-card header="Novo Lead">
     <p class="muted">Registre um novo interessado e a primeira anotação.</p>
     <ng-template pTemplate="footer">
-      <p-button label="Criar lead" icon="pi pi-user-plus" (onClick)="go('/leads/new')" />
+      <p-button
+        label="Criar lead"
+        icon="pi pi-user-plus"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="go('/leads/new')"
+      />
     </ng-template>
   </p-card>
 

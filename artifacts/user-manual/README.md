@@ -18,7 +18,8 @@ an opportunity, or a sale.
 This release lets you:
 
 - Sign in securely.
-- Register a new lead (with an optional first note).
+- Register a new lead (with an optional first note and an optional responsible person).
+- See, search and filter the leads you are allowed to work with.
 - Manage the supporting reference lists (*cadastros*): **Origins**, **Loss reasons**,
   **Interaction types**, and **Interaction results**.
 
@@ -59,6 +60,7 @@ FKERP is designed to be driven **from the keyboard**, so you rarely need the mou
 |--------|----------|
 | Open the **command palette** (search any action) | `Ctrl` + `K` (or `Cmd` + `K` on macOS) |
 | New lead | `n` |
+| Go to the **lead list** | `g` then `l` |
 | Go to **Origins** | `g` then `o` |
 | Go to **Home** | `g` then `i` |
 | Move between fields | `Tab` / `Shift` + `Tab` |
@@ -100,6 +102,7 @@ Open **Novo Lead** (top menu, the `n` shortcut, or the command palette).
 | **Telefone** (Phone) | — | Digits only. |
 | **WhatsApp** | — | Digits only. |
 | **E-mail** | — | Must be a valid e-mail address. |
+| **Responsável** (Responsible) | — | The user who will work this lead. Leave empty to create it unassigned. |
 | **Anotação inicial** (Initial note) | — | A first note; it becomes the first entry in the lead's history. |
 
 **Contact rule:** a lead must have **at least one** way to be reached — phone, WhatsApp,
@@ -118,7 +121,35 @@ or e-mail. If none is provided, the system rejects the lead with the message
 
 ---
 
-## 6. Managing reference data (*cadastros*)
+## 6. Finding leads — the list, search & filters
+
+Open **Leads** from the top menu (press `g` then `l`, or use the command palette). The list shows
+the leads you are allowed to work with — the ones where you are the responsible, plus the unassigned
+ones. Managers see every lead.
+
+### What the list shows
+
+Each row shows the lead's **name**, **main contact**, **origin**, **status**, **responsible** (or
+*Sem responsável* when unassigned), **creation date**, the **latest interaction** (date and type,
+when there is one) and the **next contact date** (when set).
+
+### Searching and filtering
+
+Use the filter bar above the table:
+
+- **Buscar** (Search) — type part of a name or contact; results update as you type.
+- **Status** — pick one or more statuses. By default **lost leads are hidden**; they appear only
+  when you add **Perdido** (Lost) to the status filter.
+- **Origem** (Origin) — restrict to a single origin.
+- **Responsável** (Responsible) — restrict to one person, or pick **Sem responsável** to see only
+  unassigned leads.
+- **Criado de / até** (Created from / to) — restrict to a creation-date range.
+- **Limpar** (Clear) — reset every filter.
+
+The list is paginated — use the pager at the bottom to move between pages. You can only ever see the
+leads you are allowed to work with; searching and filtering never reveal anyone else's leads.
+
+## 7. Managing reference data (*cadastros*)
 
 Reference data are the lists that feed the lead form and future workflows. There are
 four, all managed the same way:
@@ -132,27 +163,27 @@ four, all managed the same way:
 
 Open them from **Cadastros** in the top menu or via the command palette.
 
-### 6.1 The list
+### 7.1 The list
 
 Each row shows the **code**, the **label** (what users see), the **order**, and whether
 it is **Active** or **Inactive**. By default only active records are shown; use
 **Mostrar inativos / Ocultar inativos** (Show / Hide inactive) to toggle.
 
-### 6.2 Creating a record
+### 7.2 Creating a record
 
 1. Click **Novo** (New).
 2. Fill in **Código** (a stable internal code), **Rótulo** (the display label), and
    **Ordem** (sort order, a number ≥ 0).
 3. Click **Salvar** (Save). Codes must be unique — reusing one is rejected.
 
-### 6.3 Editing a record
+### 7.3 Editing a record
 
 1. Click the **pencil** icon on the row.
 2. You can change the **label**, the **order**, and the **Active** switch. The **code**
    cannot be changed (it is the stable identifier).
 3. Click **Salvar**.
 
-### 6.4 Activating / deactivating
+### 7.4 Activating / deactivating
 
 - Click the **ban** icon to **deactivate** a record (soft delete). Inactive values stay
   for historical accuracy but **cannot be used on new leads**.
@@ -160,7 +191,7 @@ it is **Active** or **Inactive**. By default only active records are shown; use
 
 ---
 
-## 7. Messages and validation
+## 8. Messages and validation
 
 FKERP validates your input and shows clear, Portuguese-language messages:
 
@@ -171,14 +202,14 @@ FKERP validates your input and shows clear, Portuguese-language messages:
 
 ---
 
-## 8. Signing out
+## 9. Signing out
 
 Click **Sair** (Sign out) in the top-right of the menu bar. You are returned to the login
 screen and your session is closed.
 
 ---
 
-## 9. What's next
+## 10. What's next
 
 This edition covers lead **creation** and reference-data management. Upcoming releases
 will add lead **follow-up** (status changes such as Contacted / Qualified / Lost),
