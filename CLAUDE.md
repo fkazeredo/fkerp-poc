@@ -402,7 +402,10 @@ the goal - high coverage with weak assertions is not quality.
   focused and reviewable - tests, migrations, screenshots for UI, API impacts. Commit/push only
   when the owner asks; if on the default branch, branch first; never force-push. When delivering an
   implementation report, commit the work on the working branch first - the commit is mandatory
-  before presenting the report.
+  before presenting the report. **Standing authorization (this project, until revoked):** the owner
+  works solo and has authorized, without asking each time, pushing the working branch, merging it
+  into `develop` and `main`, and pushing both. Gitflow branches/merges are kept for record and for
+  when the team grows.
 - **Generated files:** never hand-edited - modify the generation source (OpenAPI contract,
   schema, generator config). A hook blocks edits under generated paths.
 - **CI/CD:** the pipeline runs build, unit + integration tests, frontend tests/build,
