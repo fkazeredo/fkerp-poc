@@ -1,0 +1,32 @@
+<header class="home-head">
+  <h1>Comercial / CRM</h1>
+  <p class="muted">Cadastre e organize os leads da equipe comercial.</p>
+</header>
+
+<div class="home-grid">
+  <p-card header="Novo Lead">
+    <p class="muted">Registre um novo interessado e a primeira anotação.</p>
+    <ng-template pTemplate="footer">
+      <p-button label="Criar lead" icon="pi pi-user-plus" (onClick)="go('/leads/new')" />
+    </ng-template>
+  </p-card>
+
+  <p-card header="Cadastros">
+    <p class="muted">Gerencie origens, motivos de perda e tipos de interação.</p>
+    <ng-template pTemplate="footer">
+      <p-button
+        label="Origens"
+        icon="pi pi-database"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="go('/cadastros/origens')"
+      />
+    </ng-template>
+  </p-card>
+</div>
+
+<p class="muted home-hint">
+  Dica: pressione <span class="kbd">Ctrl</span> <span class="kbd">K</span> para abrir os comandos,
+  <span class="kbd">n</span> para um novo lead ou <span class="kbd">g</span> depois
+  <span class="kbd">o</span> para as origens.
+</p>

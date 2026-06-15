@@ -1,0 +1,58 @@
+<p-toast />
+
+<p-menubar [model]="menu">
+  <ng-template pTemplate="start">
+    <span class="brand">FKERP</span>
+  </ng-template>
+  <ng-template pTemplate="end">
+    <div class="menu-end">
+      <p-button
+        label="Comandos"
+        icon="pi pi-search"
+        size="small"
+        [text]="true"
+        (onClick)="openPalette()"
+      />
+      <span class="kbd">Ctrl K</span>
+      <p-button
+        label="Sair"
+        icon="pi pi-sign-out"
+        size="small"
+        severity="secondary"
+        [text]="true"
+        (onClick)="logout()"
+      />
+    </div>
+  </ng-template>
+</p-menubar>
+
+<main class="page">
+  <router-outlet />
+</main>
+
+<p-dialog
+  header="Comandos"
+  [(visible)]="paletteOpen"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '34rem' }"
+>
+  <p-listbox
+    [options]="commands"
+    optionLabel="label"
+    [filter]="true"
+    filterPlaceholder="Buscar comando…"
+    [style]="{ width: '100%' }"
+    (onChange)="runCommand($event.value)"
+  >
+    <ng-template let-command pTemplate="item">
+      <span><i [class]="command.icon"></i>&nbsp;&nbsp;{{ command.label }}</span>
+    </ng-template>
+  </p-listbox>
+  <p class="muted palette-hint">
+    Atalhos: <span class="kbd">n</span> novo lead &middot; <span class="kbd">g</span> depois
+    <span class="kbd">o</span> origens &middot; <span class="kbd">g</span>
+    <span class="kbd">i</span>
+    início
+  </p>
+</p-dialog>
