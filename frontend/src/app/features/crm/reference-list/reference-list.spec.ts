@@ -1,0 +1,82 @@
+import { TestBed } from '@angular/core/testing';
+import { ActivatedRoute } from '@angular/router';
+import { MessageService } from 'primeng/api';
+import { providePrimeNG } from 'primeng/config';
+import { of } from 'rxjs';
+import { ReferenceList } from './reference-list';
+import { ReferenceService } from '../../../core/api/reference.service';
+
+(globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
+describe('ReferenceList', () => {
+  const api = { list: vi.fn(), create: vi.fn(), update: vi.fn(), deactivate: vi.fn() };
+  const messages = { add: vi.fn() };
+
+  const item = (over: Partial<Record<string, unknown>> = {}) => ({
+    id: 'i1',
+    code: 'WEBSITE',
+    label: 'Website',
+    active: true,
+    sortOrder: 1,
+    ...over,
+  });
+
+  function build() {
+    TestBed.configureTestingModule({
+      imports: [ReferenceList],
+      providers: [
+        providePrimeNG(),
+        { provide: ReferenceService, useValue: api },
+        { provide: MessageService, useValue: messages },
+        { provide: ActivatedRoute, useValue: { data: of({ title: 'Origens', path: 'origins' }) } },
+      ],
+    });
+    return TestBed.createComponent(ReferenceList).componentInstance;
+  }
+
+  beforeEach(() => {
+    Object.values(api).forEach((fn) => fn.mockReset());
+    messages.add.mockReset();
+    api.list.mockReturnValue(of([item()]));
+    api.create.mockReturnValue(of(item({ id: 'i2', code: 'TIKTOK', label: 'TikTok' })));
+    api.update.mockReturnValue(of(item()));
+    api.deactivate.mockReturnValue(of(undefined));
+  });
+
+  it('reads the route data and lists the cadastro', () => {
+    const comp = build();
+    expect(comp['title']()).toBe('Origens');
+    expect(api.list).toHaveBeenCalledWith('origins', false);
+    expect(comp['items']()).toHaveLength(1);
+  });
+
+  it('creates a new record with the form payload then reloads', () => {
+    const comp = build();
+    comp['openCreate']();
+    comp['form'].patchValue({ code: 'TIKTOK', label: 'TikTok', sortOrder: 5 });
+
+    comp['save']();
+
+    expect(api.create).toHaveBeenCalledWith('origins', { code: 'TIKTOK', label: 'TikTok', sortOrder: 5 });
+    expect(api.list).toHaveBeenCalledTimes(2); // initial + reload
+    expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
+  });
+
+  it('deactivates a record and reloads', () => {
+    const comp = build();
+    comp['deactivate'](item());
+    expect(api.deactivate).toHaveBeenCalledWith('origins', 'i1');
+    expect(api.list).toHaveBeenCalledTimes(2);
+  });
+
+  it('toggles inactive visibility and re-queries with the flag', () => {
+    const comp = build();
+    comp['toggleInactive']();
+    expect(comp['includeInactive']()).toBe(true);
+    expect(api.list).toHaveBeenLastCalledWith('origins', true);
+  });
+});
