@@ -9,6 +9,7 @@ import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
+import { DatePickerModule } from 'primeng/datepicker';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { Observable } from 'rxjs';
@@ -37,6 +38,7 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'dan
     DialogModule,
     SelectModule,
     TextareaModule,
+    DatePickerModule,
     MessageModule,
   ],
   templateUrl: './lead-detail.html',
@@ -57,15 +59,27 @@ export class LeadDetailPage implements OnInit {
   protected readonly qualifyOpen = signal(false);
   protected readonly loseOpen = signal(false);
   protected readonly reassignOpen = signal(false);
+  protected readonly interactionOpen = signal(false);
   protected readonly acting = signal(false);
 
   protected readonly lossReasons = signal<ReferenceItem[]>([]);
   protected readonly responsibleOptions = signal<Responsible[]>([]);
+  protected readonly interactionTypes = signal<ReferenceItem[]>([]);
+  protected readonly interactionResults = signal<ReferenceItem[]>([]);
 
   protected qualifyNote = '';
   protected lossReasonId: string | null = null;
   protected lossNote = '';
   protected reassignTo: string | null = null;
+
+  protected interactionTypeId: string | null = null;
+  protected interactionResultId: string | null = null;
+  protected interactionDescription = '';
+  protected interactionOccurredAt: Date = new Date();
+  protected interactionNextContactAt: Date | null = null;
+
+  /** Upper bound for the interaction date picker — an interaction cannot have happened in the future. */
+  protected readonly now = new Date();
 
   private leadId = '';
 
@@ -181,6 +195,47 @@ export class LeadDetailPage implements OnInit {
       return;
     }
     this.act(this.leads.reassign(this.leadId, me), 'Lead atribuído a você');
+  }
+
+  protected openInteraction(): void {
+    this.interactionTypeId = null;
+    this.interactionResultId = null;
+    this.interactionDescription = '';
+    this.interactionOccurredAt = new Date();
+    this.interactionNextContactAt = null;
+    if (this.interactionTypes().length === 0) {
+      this.references.list('interaction-types').subscribe({ next: (list) => this.interactionTypes.set(list) });
+    }
+    if (this.interactionResults().length === 0) {
+      this.references.list('interaction-results').subscribe({ next: (list) => this.interactionResults.set(list) });
+    }
+    this.interactionOpen.set(true);
+  }
+
+  protected canSaveInteraction(): boolean {
+    return (
+      !!this.interactionTypeId &&
+      !!this.interactionResultId &&
+      this.interactionDescription.trim().length > 0 &&
+      !!this.interactionOccurredAt
+    );
+  }
+
+  protected confirmInteraction(): void {
+    if (!this.canSaveInteraction()) {
+      return;
+    }
+    this.act(
+      this.leads.recordInteraction(this.leadId, {
+        typeId: this.interactionTypeId!,
+        resultId: this.interactionResultId!,
+        description: this.interactionDescription.trim(),
+        occurredAt: this.interactionOccurredAt.toISOString(),
+        nextContactAt: this.interactionNextContactAt ? this.interactionNextContactAt.toISOString() : null,
+      }),
+      'Interação registrada',
+      this.interactionOpen,
+    );
   }
 
   private load(): void {

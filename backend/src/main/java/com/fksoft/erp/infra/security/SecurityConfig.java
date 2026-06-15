@@ -79,7 +79,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/leads")
                         .hasAuthority("SCOPE_crm:lead:create")
                         .requestMatchers(
-                                HttpMethod.POST, "/api/leads/*/qualify", "/api/leads/*/lose", "/api/leads/*/reassign")
+                                HttpMethod.POST,
+                                "/api/leads/*/qualify",
+                                "/api/leads/*/lose",
+                                "/api/leads/*/reassign",
+                                "/api/leads/*/interactions")
                         .hasAuthority("SCOPE_crm:lead:update")
                         .requestMatchers(HttpMethod.GET, "/api/leads", "/api/leads/**")
                         .hasAuthority("SCOPE_crm:lead:read")

@@ -42,6 +42,9 @@ class LeadServiceTest {
     private InteractionTypeRepository interactionTypes;
 
     @Mock
+    private InteractionResultRepository interactionResults;
+
+    @Mock
     private LossReasonRepository lossReasons;
 
     @Mock
@@ -204,5 +207,78 @@ class LeadServiceTest {
 
         assertThatThrownBy(() -> service.reassign(id, UUID.randomUUID(), UUID.randomUUID(), false, false))
                 .isInstanceOf(LeadAssignmentNotAllowedException.class);
+    }
+
+    @Test
+    void recordInteractionRejectsAnUnknownOrInactiveType() {
+        UUID id = UUID.randomUUID();
+        when(leads.findById(id)).thenReturn(Optional.of(visibleLead()));
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(true);
+        UUID typeId = UUID.randomUUID();
+        when(interactionTypes.findById(typeId)).thenReturn(Optional.empty());
+        RecordInteractionCommand cmd =
+                new RecordInteractionCommand(typeId, UUID.randomUUID(), "desc", Instant.now(), null);
+
+        assertThatThrownBy(() -> service.recordInteraction(id, cmd, UUID.randomUUID(), false))
+                .isInstanceOf(InteractionTypeNotAvailableException.class);
+    }
+
+    @Test
+    void recordInteractionRejectsAnUnknownOrInactiveResult() {
+        UUID id = UUID.randomUUID();
+        when(leads.findById(id)).thenReturn(Optional.of(visibleLead()));
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(true);
+        UUID typeId = UUID.randomUUID();
+        UUID resultId = UUID.randomUUID();
+        when(interactionTypes.findById(typeId))
+                .thenReturn(Optional.of(InteractionType.create("PHONE_CALL", "Ligação", 1)));
+        when(interactionResults.findById(resultId)).thenReturn(Optional.empty());
+        RecordInteractionCommand cmd = new RecordInteractionCommand(typeId, resultId, "desc", Instant.now(), null);
+
+        assertThatThrownBy(() -> service.recordInteraction(id, cmd, UUID.randomUUID(), false))
+                .isInstanceOf(InteractionResultNotAvailableException.class);
+    }
+
+    @Test
+    void recordInteractionDeniedWhenLeadNotVisible() {
+        UUID id = UUID.randomUUID();
+        when(leads.findById(id)).thenReturn(Optional.of(visibleLead()));
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(false);
+        RecordInteractionCommand cmd =
+                new RecordInteractionCommand(UUID.randomUUID(), UUID.randomUUID(), "desc", Instant.now(), null);
+
+        assertThatThrownBy(() -> service.recordInteraction(id, cmd, UUID.randomUUID(), false))
+                .isInstanceOf(LeadAccessDeniedException.class);
+    }
+
+    @Test
+    void recordInteractionWithEffectiveContactReturnsContactedDetail() {
+        UUID id = UUID.randomUUID();
+        when(leads.findById(id)).thenReturn(Optional.of(visibleLead()));
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(true);
+        UUID typeId = UUID.randomUUID();
+        UUID resultId = UUID.randomUUID();
+        when(interactionTypes.findById(typeId))
+                .thenReturn(Optional.of(InteractionType.create("PHONE_CALL", "Ligação", 1)));
+        when(interactionResults.findById(resultId))
+                .thenReturn(Optional.of(InteractionResult.create("CONTACT_MADE", "Contato realizado", 1)));
+        when(leads.saveAndFlush(any(Lead.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(users.findAllById(any())).thenReturn(List.of());
+        RecordInteractionCommand cmd =
+                new RecordInteractionCommand(typeId, resultId, "Conversamos", Instant.now(), null);
+
+        LeadDetailView view = service.recordInteraction(id, cmd, UUID.randomUUID(), false);
+
+        assertThat(view.status()).isEqualTo(LeadStatus.CONTACTED);
+        assertThat(view.interactions()).hasSize(1);
+        assertThat(view.interactions().get(0).typeLabel()).isEqualTo("Ligação");
+        assertThat(view.interactions().get(0).resultLabel()).isEqualTo("Contato realizado");
+    }
+
+    private static Lead visibleLead() {
+        return Lead.register(
+                new RegisterLeadCommand("Maria", "11999999999", null, null, UUID.randomUUID(), null, null),
+                Origin.create("WEBSITE", "Website", 1),
+                UUID.randomUUID());
     }
 }

@@ -62,10 +62,22 @@ public record LeadDetailResponse(
 
     /** A single interaction in the lead history. */
     public record InteractionItem(
-            UUID id, String type, String result, String content, Instant occurredAt, String registeredBy) {
+            UUID id,
+            String type,
+            String result,
+            String content,
+            Instant occurredAt,
+            Instant nextContactAt,
+            String registeredBy) {
         static InteractionItem from(InteractionView i) {
             return new InteractionItem(
-                    i.id(), i.typeLabel(), i.resultLabel(), i.content(), i.occurredAt(), i.registeredByName());
+                    i.id(),
+                    i.typeLabel(),
+                    i.resultLabel(),
+                    i.content(),
+                    i.occurredAt(),
+                    i.nextContactAt(),
+                    i.registeredByName());
         }
     }
 

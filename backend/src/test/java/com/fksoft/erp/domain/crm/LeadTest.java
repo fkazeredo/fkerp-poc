@@ -3,6 +3,8 @@ package com.fksoft.erp.domain.crm;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -12,6 +14,11 @@ class LeadTest {
 
     private final Origin origin = Origin.create("WEBSITE", "Website", 1);
     private final InteractionType noteType = InteractionType.create("INTERNAL_NOTE", "Nota interna", 5);
+    private final InteractionType callType = InteractionType.create("PHONE_CALL", "Ligação", 1);
+
+    private static InteractionResult result(String code) {
+        return InteractionResult.create(code, code, 1);
+    }
 
     private RegisterLeadCommand command(String phone, String whatsapp, String email, UUID responsible) {
         return new RegisterLeadCommand("Maria Silva", phone, whatsapp, email, UUID.randomUUID(), responsible, null);
@@ -116,5 +123,75 @@ class LeadTest {
         lead.reassign(responsible, CREATOR);
 
         assertThat(lead.assignments()).hasSize(1);
+    }
+
+    @Test
+    void effectiveContactMovesANewLeadToContacted() {
+        Lead lead = Lead.register(command("11999999999", null, null, null), origin, CREATOR);
+        UUID author = UUID.randomUUID();
+
+        lead.recordInteraction(callType, result("CONTACT_MADE"), "Conversamos", Instant.now(), null, author);
+
+        assertThat(lead.status()).isEqualTo(LeadStatus.CONTACTED);
+        assertThat(lead.interactions()).hasSize(1);
+        assertThat(lead.interactions().get(0).result().code()).isEqualTo("CONTACT_MADE");
+        assertThat(lead.updatedBy()).isEqualTo(author);
+    }
+
+    @Test
+    void aFailedAttemptKeepsTheLeadNewButKeepsTheHistory() {
+        Lead lead = Lead.register(command("11999999999", null, null, null), origin, CREATOR);
+
+        lead.recordInteraction(callType, result("NO_ANSWER"), "Não atendeu", Instant.now(), null, CREATOR);
+        assertThat(lead.status()).isEqualTo(LeadStatus.NEW);
+
+        lead.recordInteraction(callType, result("INVALID_CONTACT"), "Número errado", Instant.now(), null, CREATOR);
+        assertThat(lead.status()).isEqualTo(LeadStatus.NEW);
+        assertThat(lead.interactions()).hasSize(2);
+    }
+
+    @Test
+    void needsFollowUpAndOtherAlsoCountAsEffectiveContact() {
+        Lead a = Lead.register(command("11999999999", null, null, null), origin, CREATOR);
+        a.recordInteraction(callType, result("NEEDS_FOLLOW_UP"), "Retornar", Instant.now(), null, CREATOR);
+        assertThat(a.status()).isEqualTo(LeadStatus.CONTACTED);
+
+        Lead b = Lead.register(command("11999999999", null, null, null), origin, CREATOR);
+        b.recordInteraction(callType, result("OTHER"), "Outro", Instant.now(), null, CREATOR);
+        assertThat(b.status()).isEqualTo(LeadStatus.CONTACTED);
+    }
+
+    @Test
+    void recordingAnInteractionSchedulesTheNextContact() {
+        Lead lead = Lead.register(command("11999999999", null, null, null), origin, CREATOR);
+        Instant next = Instant.now().plus(Duration.ofDays(2));
+
+        lead.recordInteraction(callType, result("INTERESTED"), "Quer proposta", Instant.now(), next, CREATOR);
+
+        assertThat(lead.nextContactAt()).isEqualTo(next);
+        assertThat(lead.interactions().get(0).nextContactAt()).isEqualTo(next);
+    }
+
+    @Test
+    void recordingAnInteractionNeverRevertsAQualifiedLead() {
+        Lead lead = Lead.register(command("11999999999", null, null, null), origin, CREATOR);
+        lead.qualify(CREATOR, null);
+
+        lead.recordInteraction(callType, result("CONTACT_MADE"), "follow-up", Instant.now(), null, CREATOR);
+
+        assertThat(lead.status()).isEqualTo(LeadStatus.QUALIFIED);
+        assertThat(lead.interactions()).hasSize(1);
+    }
+
+    @Test
+    void effectiveContactClassifiesEveryResultExceptNoAnswerAndInvalidContact() {
+        assertThat(result("CONTACT_MADE").isEffectiveContact()).isTrue();
+        assertThat(result("ASKED_FOR_RETURN").isEffectiveContact()).isTrue();
+        assertThat(result("INTERESTED").isEffectiveContact()).isTrue();
+        assertThat(result("NOT_INTERESTED").isEffectiveContact()).isTrue();
+        assertThat(result("NEEDS_FOLLOW_UP").isEffectiveContact()).isTrue();
+        assertThat(result("OTHER").isEffectiveContact()).isTrue();
+        assertThat(result("NO_ANSWER").isEffectiveContact()).isFalse();
+        assertThat(result("INVALID_CONTACT").isEffectiveContact()).isFalse();
     }
 }

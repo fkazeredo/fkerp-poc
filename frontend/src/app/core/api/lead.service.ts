@@ -72,7 +72,17 @@ export interface InteractionItem {
   result: string | null;
   content: string | null;
   occurredAt: string;
+  nextContactAt: string | null;
   registeredBy: string | null;
+}
+
+/** Payload to register a Lead interaction. Dates are ISO-8601 instants. */
+export interface RegisterInteraction {
+  typeId: string;
+  resultId: string;
+  description: string;
+  occurredAt: string;
+  nextContactAt: string | null;
 }
 
 export interface AssignmentItem {
@@ -169,5 +179,9 @@ export class LeadService {
 
   reassign(id: string, responsiblePersonId: string | null): Observable<LeadDetail> {
     return this.http.post<LeadDetail>(`/api/leads/${id}/reassign`, { responsiblePersonId });
+  }
+
+  recordInteraction(id: string, interaction: RegisterInteraction): Observable<LeadDetail> {
+    return this.http.post<LeadDetail>(`/api/leads/${id}/interactions`, interaction);
   }
 }

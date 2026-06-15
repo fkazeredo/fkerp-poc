@@ -7,11 +7,13 @@ import com.fksoft.erp.application.api.dto.LeadResponse;
 import com.fksoft.erp.application.api.dto.LoseRequest;
 import com.fksoft.erp.application.api.dto.QualifyRequest;
 import com.fksoft.erp.application.api.dto.ReassignRequest;
+import com.fksoft.erp.application.api.dto.RegisterInteractionRequest;
 import com.fksoft.erp.domain.crm.LeadDetailView;
 import com.fksoft.erp.domain.crm.LeadListView;
 import com.fksoft.erp.domain.crm.LeadSearchCriteria;
 import com.fksoft.erp.domain.crm.LeadService;
 import com.fksoft.erp.domain.crm.LeadStatus;
+import com.fksoft.erp.domain.crm.RecordInteractionCommand;
 import com.fksoft.erp.domain.crm.RegisterLeadCommand;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
@@ -169,6 +171,27 @@ public class LeadController {
                 userContext.currentUserId(),
                 canSeeAll(),
                 userContext.hasScope("crm:lead:assign"));
+        return LeadDetailResponse.from(view);
+    }
+
+    /**
+     * Registers an interaction (contact, attempt or note) for a Lead and returns the refreshed detail.
+     * An effective contact moves a NEW Lead to CONTACTED.
+     *
+     * @param id the lead id
+     * @param request the interaction data
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/interactions")
+    public LeadDetailResponse registerInteraction(
+            @PathVariable UUID id, @Valid @RequestBody RegisterInteractionRequest request) {
+        RecordInteractionCommand command = new RecordInteractionCommand(
+                request.typeId(),
+                request.resultId(),
+                request.description(),
+                request.occurredAt(),
+                request.nextContactAt());
+        LeadDetailView view = leadService.recordInteraction(id, command, userContext.currentUserId(), canSeeAll());
         return LeadDetailResponse.from(view);
     }
 
