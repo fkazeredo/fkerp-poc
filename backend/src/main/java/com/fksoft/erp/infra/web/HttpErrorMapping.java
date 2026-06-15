@@ -4,6 +4,7 @@ import static java.util.Map.entry;
 
 import com.fksoft.erp.domain.crm.DuplicateReferenceCodeException;
 import com.fksoft.erp.domain.crm.LeadAccessDeniedException;
+import com.fksoft.erp.domain.crm.LeadAssignmentNotAllowedException;
 import com.fksoft.erp.domain.crm.LeadCannotBeMarkedLostException;
 import com.fksoft.erp.domain.crm.LeadCannotBeQualifiedException;
 import com.fksoft.erp.domain.crm.LeadContactRequiredException;
@@ -33,6 +34,7 @@ public class HttpErrorMapping {
             entry(ResponsiblePersonNotFoundException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(LeadNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(LeadAccessDeniedException.class, HttpStatus.FORBIDDEN),
+            entry(LeadAssignmentNotAllowedException.class, HttpStatus.FORBIDDEN),
             entry(LeadCannotBeQualifiedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(LeadCannotBeMarkedLostException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(LossReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
