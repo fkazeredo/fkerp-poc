@@ -1,8 +1,13 @@
 package com.fksoft.erp.application.api;
 
 import com.fksoft.erp.application.api.dto.LeadCreateRequest;
+import com.fksoft.erp.application.api.dto.LeadDetailResponse;
 import com.fksoft.erp.application.api.dto.LeadListItemResponse;
 import com.fksoft.erp.application.api.dto.LeadResponse;
+import com.fksoft.erp.application.api.dto.LoseRequest;
+import com.fksoft.erp.application.api.dto.QualifyRequest;
+import com.fksoft.erp.application.api.dto.ReassignRequest;
+import com.fksoft.erp.domain.crm.LeadDetailView;
 import com.fksoft.erp.domain.crm.LeadListView;
 import com.fksoft.erp.domain.crm.LeadSearchCriteria;
 import com.fksoft.erp.domain.crm.LeadService;
@@ -24,6 +29,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,9 +37,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Commercial / CRM lead endpoints. Creating a Lead requires {@code crm:lead:create}; listing
- * requires {@code crm:lead:read} (a regular user sees own + unassigned; {@code crm:lead:read:all}
- * sees every Lead).
+ * Commercial / CRM lead endpoints. Creating a Lead requires {@code crm:lead:create}; reading
+ * (list + detail) requires {@code crm:lead:read} (a regular user sees own + unassigned;
+ * {@code crm:lead:read:all} sees every Lead); the transitions (qualify / lose / reassign) require
+ * {@code crm:lead:update} and the caller must be allowed to see the Lead.
  */
 @RestController
 @RequestMapping("/api/leads")
@@ -104,5 +111,64 @@ public class LeadController {
         Page<LeadListView> page = leadService.list(
                 criteria, pageable, userContext.currentUserId(), userContext.hasScope("crm:lead:read:all"));
         return PageResponse.from(page, LeadListItemResponse::from);
+    }
+
+    /**
+     * Full detail of a Lead the caller is allowed to see (404 if absent, 403 if not visible).
+     *
+     * @param id the lead id
+     * @return the lead detail
+     */
+    @GetMapping("/{id}")
+    public LeadDetailResponse detail(@PathVariable UUID id) {
+        LeadDetailView view = leadService.detail(id, userContext.currentUserId(), canSeeAll());
+        return LeadDetailResponse.from(view);
+    }
+
+    /**
+     * Qualifies a Lead and returns the refreshed detail.
+     *
+     * @param id the lead id
+     * @param request optional qualification note
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/qualify")
+    public LeadDetailResponse qualify(
+            @PathVariable UUID id, @Valid @RequestBody(required = false) QualifyRequest request) {
+        String note = request != null ? request.note() : null;
+        LeadDetailView view = leadService.qualify(id, note, userContext.currentUserId(), canSeeAll());
+        return LeadDetailResponse.from(view);
+    }
+
+    /**
+     * Marks a Lead as lost with a reason and returns the refreshed detail.
+     *
+     * @param id the lead id
+     * @param request the loss reason and optional note
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/lose")
+    public LeadDetailResponse lose(@PathVariable UUID id, @Valid @RequestBody LoseRequest request) {
+        LeadDetailView view = leadService.markLost(
+                id, request.lossReasonId(), request.note(), userContext.currentUserId(), canSeeAll());
+        return LeadDetailResponse.from(view);
+    }
+
+    /**
+     * Reassigns a Lead's responsible person and returns the refreshed detail.
+     *
+     * @param id the lead id
+     * @param request the new responsible (or null to unassign)
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/reassign")
+    public LeadDetailResponse reassign(@PathVariable UUID id, @Valid @RequestBody ReassignRequest request) {
+        LeadDetailView view =
+                leadService.reassign(id, request.responsiblePersonId(), userContext.currentUserId(), canSeeAll());
+        return LeadDetailResponse.from(view);
+    }
+
+    private boolean canSeeAll() {
+        return userContext.hasScope("crm:lead:read:all");
     }
 }

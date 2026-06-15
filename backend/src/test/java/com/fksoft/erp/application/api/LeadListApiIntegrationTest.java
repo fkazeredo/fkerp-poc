@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fksoft.erp.AbstractIntegrationTest;
 import com.fksoft.erp.domain.crm.LeadRepository;
 import com.fksoft.erp.domain.crm.LeadStatus;
+import com.fksoft.erp.domain.crm.LossReasonRepository;
 import com.fksoft.erp.domain.crm.OriginRepository;
 import com.fksoft.erp.domain.identity.AuthenticatedUser;
 import com.fksoft.erp.infra.security.TokenService;
@@ -42,6 +43,9 @@ class LeadListApiIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private OriginRepository origins;
+
+    @Autowired
+    private LossReasonRepository lossReasons;
 
     @Autowired
     private TokenService tokens;
@@ -202,12 +206,17 @@ class LeadListApiIntegrationTest extends AbstractIntegrationTest {
 
     private void insertLead(
             String name, LeadStatus status, UUID responsibleId, String phone, String email, Instant at) {
+        // A lost lead must carry a loss reason (DB CHECK chk_leads_lost_has_reason).
+        String lossReasonId = status == LeadStatus.LOST
+                ? lossReasons.findByActiveTrueOrderBySortOrderAsc().get(0).id().toString()
+                : null;
         jdbc.update(
                 """
                 INSERT INTO leads (id, name, phone, whatsapp, email, origin_id, status,
-                                   responsible_person_id, created_at, updated_at, created_by, updated_by)
-                VALUES (cast(? as uuid), ?, ?, NULL, ?, cast(? as uuid), ?, cast(? as uuid), ?, ?,
-                        cast(? as uuid), cast(? as uuid))
+                                   responsible_person_id, loss_reason_id, created_at, updated_at,
+                                   created_by, updated_by)
+                VALUES (cast(? as uuid), ?, ?, NULL, ?, cast(? as uuid), ?, cast(? as uuid),
+                        cast(? as uuid), ?, ?, cast(? as uuid), cast(? as uuid))
                 """,
                 UUID.randomUUID().toString(),
                 name,
@@ -216,6 +225,7 @@ class LeadListApiIntegrationTest extends AbstractIntegrationTest {
                 websiteOriginId.toString(),
                 status.name(),
                 responsibleId == null ? null : responsibleId.toString(),
+                lossReasonId,
                 Timestamp.from(at),
                 Timestamp.from(at),
                 SEED_USER.toString(),

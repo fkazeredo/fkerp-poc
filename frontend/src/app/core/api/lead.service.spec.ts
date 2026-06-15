@@ -81,4 +81,35 @@ describe('LeadService', () => {
       last: true,
     });
   });
+
+  it('gets the lead detail', () => {
+    service.detail('l1').subscribe();
+    const req = http.expectOne('/api/leads/l1');
+    expect(req.request.method).toBe('GET');
+    req.flush({});
+  });
+
+  it('posts qualify with the note', () => {
+    service.qualify('l1', 'bom perfil').subscribe();
+    const req = http.expectOne('/api/leads/l1/qualify');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ note: 'bom perfil' });
+    req.flush({});
+  });
+
+  it('posts lose with the reason and note', () => {
+    service.lose('l1', 'r1', null).subscribe();
+    const req = http.expectOne('/api/leads/l1/lose');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ lossReasonId: 'r1', note: null });
+    req.flush({});
+  });
+
+  it('posts reassign with the responsible id', () => {
+    service.reassign('l1', 'u1').subscribe();
+    const req = http.expectOne('/api/leads/l1/reassign');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ responsiblePersonId: 'u1' });
+    req.flush({});
+  });
 });

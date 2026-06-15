@@ -11,6 +11,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -20,6 +21,7 @@ import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -30,7 +32,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 /**
  * A commercial Lead: an initial interested person or company in the funnel. A Lead is NOT a Customer,
  * Opportunity, Sale, Sales Order, Booking, Passenger, Payer or Customer Care ticket. Aggregate root
- * of the Commercial / CRM module.
+ * of the Commercial / CRM module; it owns its interaction and assignment history and the
+ * qualification / loss outcome.
  */
 @Entity
 @Table(name = "leads")
@@ -40,6 +43,10 @@ public class Lead {
 
     @Id
     private UUID id;
+
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     @NotBlank
     @Size(max = 200)
@@ -76,10 +83,41 @@ public class Lead {
     @Column(name = "next_contact_at")
     private Instant nextContactAt;
 
+    // Qualification outcome (set when the lead is qualified; kept for history).
+    @Column(name = "qualified_at")
+    private Instant qualifiedAt;
+
+    @Column(name = "qualified_by")
+    private UUID qualifiedBy;
+
+    @Size(max = 2000)
+    @Column(name = "qualification_note")
+    private String qualificationNote;
+
+    // Loss outcome (set when the lead is marked lost; kept for history).
+    @Column(name = "lost_at")
+    private Instant lostAt;
+
+    @Column(name = "lost_by")
+    private UUID lostBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "loss_reason_id")
+    private LossReason lossReason;
+
+    @Size(max = 2000)
+    @Column(name = "loss_note")
+    private String lossNote;
+
     @Valid
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "lead_id", nullable = false)
     private List<LeadInteraction> interactions = new ArrayList<>();
+
+    @Valid
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "lead_id", nullable = false)
+    private List<LeadAssignment> assignments = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -97,7 +135,8 @@ public class Lead {
 
     /**
      * Registers a new Lead in status {@link LeadStatus#NEW}. Requires at least one contact method;
-     * the responsible person is optional (the lead is then a pending assignment).
+     * the responsible person is optional (the lead is then a pending assignment). When a responsible
+     * is set, the first assignment-history entry is recorded.
      *
      * @param command the lead data
      * @param origin the (active) origin cadastro value
@@ -120,6 +159,9 @@ public class Lead {
         lead.responsiblePersonId = command.responsiblePersonId();
         lead.createdBy = createdBy;
         lead.updatedBy = createdBy;
+        if (lead.responsiblePersonId != null) {
+            lead.assignments.add(LeadAssignment.of(null, lead.responsiblePersonId, createdBy));
+        }
         return lead;
     }
 
@@ -132,6 +174,62 @@ public class Lead {
      */
     public void addInitialNote(InteractionType noteType, String content, UUID registeredBy) {
         interactions.add(LeadInteraction.note(noteType, content, registeredBy));
+    }
+
+    /**
+     * Qualifies the lead. Allowed only from {@link LeadStatus#NEW} or {@link LeadStatus#CONTACTED};
+     * the qualification (who/when/note) is kept for history.
+     *
+     * @param byUser id of the user qualifying the lead
+     * @param note optional qualification note
+     * @throws LeadCannotBeQualifiedException if the lead is already qualified or lost
+     */
+    public void qualify(UUID byUser, String note) {
+        if (status != LeadStatus.NEW && status != LeadStatus.CONTACTED) {
+            throw new LeadCannotBeQualifiedException();
+        }
+        status = LeadStatus.QUALIFIED;
+        qualifiedAt = Instant.now();
+        qualifiedBy = byUser;
+        qualificationNote = emptyToNull(note);
+        updatedBy = byUser;
+    }
+
+    /**
+     * Marks the lead as lost with a reason. Allowed from any non-lost status; the loss
+     * (reason/who/when/note) is kept for history.
+     *
+     * @param reason the (active) loss reason
+     * @param byUser id of the user marking the lead lost
+     * @param note optional loss note
+     * @throws LeadCannotBeMarkedLostException if the lead is already lost
+     */
+    public void markLost(LossReason reason, UUID byUser, String note) {
+        if (status == LeadStatus.LOST) {
+            throw new LeadCannotBeMarkedLostException();
+        }
+        status = LeadStatus.LOST;
+        lossReason = reason;
+        lostAt = Instant.now();
+        lostBy = byUser;
+        lossNote = emptyToNull(note);
+        updatedBy = byUser;
+    }
+
+    /**
+     * Reassigns the responsible person, recording an assignment-history entry. A no-op when the
+     * responsible does not actually change.
+     *
+     * @param toResponsibleId the new responsible (or {@code null} to unassign)
+     * @param byUser id of the user performing the reassignment
+     */
+    public void reassign(UUID toResponsibleId, UUID byUser) {
+        if (Objects.equals(responsiblePersonId, toResponsibleId)) {
+            return;
+        }
+        assignments.add(LeadAssignment.of(responsiblePersonId, toResponsibleId, byUser));
+        responsiblePersonId = toResponsibleId;
+        updatedBy = byUser;
     }
 
     public boolean hasResponsible() {
