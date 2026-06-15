@@ -22,8 +22,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 /** End-to-end (MockMvc): login (seed user) then create Leads through the secured API. */
 class LeadApiIntegrationTest extends AbstractIntegrationTest {
 
-    @Autowired
-    private ObjectMapper json;
+    // Boot 4 defaults to Jackson 3 (tools.jackson), so the Jackson 2 ObjectMapper is not a bean;
+    // the test only needs it to build request JSON, so construct one directly.
+    private final ObjectMapper json = new ObjectMapper();
 
     @Autowired
     private LeadRepository leads;
