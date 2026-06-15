@@ -7,6 +7,7 @@ import { of, throwError } from 'rxjs';
 import { LeadDetailPage } from './lead-detail';
 import { LeadService } from '../../../core/api/lead.service';
 import { ReferenceService } from '../../../core/api/reference.service';
+import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
   observe() {}
@@ -25,6 +26,7 @@ describe('LeadDetailPage', () => {
   const references = { list: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
+  const auth = { hasScope: vi.fn(), userId: vi.fn() };
 
   const sample = (over: Record<string, unknown> = {}) => ({
     id: 'l1',
@@ -56,6 +58,7 @@ describe('LeadDetailPage', () => {
         { provide: ReferenceService, useValue: references },
         { provide: Router, useValue: router },
         { provide: MessageService, useValue: messages },
+        { provide: AuthService, useValue: auth },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'l1' } } } },
       ],
     });
@@ -72,12 +75,16 @@ describe('LeadDetailPage', () => {
       references.list,
       router.navigateByUrl,
       messages.add,
+      auth.hasScope,
+      auth.userId,
     ].forEach((fn) => fn.mockReset());
     leads.detail.mockReturnValue(of(sample()));
     leads.responsibles.mockReturnValue(of([{ id: 'u1', name: 'comercial' }]));
     references.list.mockReturnValue(
       of([{ id: 'r1', code: 'NO_RESPONSE', label: 'Sem resposta', active: true, sortOrder: 1 }]),
     );
+    auth.hasScope.mockReturnValue(false);
+    auth.userId.mockReturnValue('rep-1');
   });
 
   it('loads the detail on init', () => {
@@ -159,5 +166,64 @@ describe('LeadDetailPage', () => {
 
     expect(leads.reassign).toHaveBeenCalledWith('l1', 'u1');
     expect(comp['lead']()?.unassigned).toBe(false);
+  });
+
+  it('offers Reatribuir (not Assumir) to a manager with crm:lead:assign', () => {
+    auth.hasScope.mockImplementation((s: string) => s === 'crm:lead:assign');
+    const comp = build();
+    comp.ngOnInit();
+
+    expect(comp['canAssign']()).toBe(true);
+    expect(comp['canClaim']()).toBe(false);
+  });
+
+  it('offers Assumir (not Reatribuir) to a rep on an unassigned lead', () => {
+    const comp = build(); // hasScope=false by default, lead is unassigned/NEW
+    comp.ngOnInit();
+
+    expect(comp['canAssign']()).toBe(false);
+    expect(comp['canClaim']()).toBe(true);
+  });
+
+  it('does not offer Assumir to a rep on an already-assigned lead', () => {
+    leads.detail.mockReturnValue(
+      of(sample({ responsibleId: 'u9', responsibleName: 'outro', unassigned: false })),
+    );
+    const comp = build();
+    comp.ngOnInit();
+
+    expect(comp['canClaim']()).toBe(false);
+  });
+
+  it('does not offer Assumir to a rep on a lost lead', () => {
+    leads.detail.mockReturnValue(of(sample({ status: 'LOST' })));
+    const comp = build();
+    comp.ngOnInit();
+
+    expect(comp['canClaim']()).toBe(false);
+  });
+
+  it('claims the lead for the current user (self-assign) and toasts', () => {
+    leads.reassign.mockReturnValue(
+      of(sample({ responsibleId: 'rep-1', responsibleName: 'vendedor', unassigned: false })),
+    );
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['claim']();
+
+    expect(leads.reassign).toHaveBeenCalledWith('l1', 'rep-1');
+    expect(comp['lead']()?.unassigned).toBe(false);
+    expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
+  });
+
+  it('does not claim when the current user id is unavailable', () => {
+    auth.userId.mockReturnValue(null);
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['claim']();
+
+    expect(leads.reassign).not.toHaveBeenCalled();
   });
 });

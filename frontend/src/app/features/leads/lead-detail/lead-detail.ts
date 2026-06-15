@@ -14,6 +14,7 @@ import { MessageService } from 'primeng/api';
 import { Observable } from 'rxjs';
 import { LeadDetail, LeadService, LeadStatus, Responsible } from '../../../core/api/lead.service';
 import { ReferenceItem, ReferenceService } from '../../../core/api/reference.service';
+import { AuthService } from '../../../core/auth/auth.service';
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
   NEW: 'Novo',
@@ -47,6 +48,7 @@ export class LeadDetailPage implements OnInit {
   private readonly leads = inject(LeadService);
   private readonly references = inject(ReferenceService);
   private readonly messages = inject(MessageService);
+  private readonly auth = inject(AuthService);
 
   protected readonly lead = signal<LeadDetail | null>(null);
   protected readonly loading = signal(true);
@@ -106,6 +108,17 @@ export class LeadDetailPage implements OnInit {
     return !!status && status !== 'LOST';
   }
 
+  /** Full assignment authority (managers/admins): may reassign to anyone. */
+  protected canAssign(): boolean {
+    return this.auth.hasScope('crm:lead:assign');
+  }
+
+  /** A non-manager may claim (self-assign) an unassigned, non-lost lead they are viewing. */
+  protected canClaim(): boolean {
+    const lead = this.lead();
+    return !this.canAssign() && !!lead && lead.unassigned && lead.status !== 'LOST';
+  }
+
   protected back(): void {
     this.router.navigateByUrl('/leads');
   }
@@ -161,6 +174,15 @@ export class LeadDetailPage implements OnInit {
     );
   }
 
+  /** Self-claim: a non-manager assigns the lead to themselves (no dialog). */
+  protected claim(): void {
+    const me = this.auth.userId();
+    if (!me) {
+      return;
+    }
+    this.act(this.leads.reassign(this.leadId, me), 'Lead atribuído a você');
+  }
+
   private load(): void {
     this.loading.set(true);
     this.error.set(null);
@@ -185,14 +207,14 @@ export class LeadDetailPage implements OnInit {
   private act(
     action: Observable<LeadDetail>,
     successSummary: string,
-    dialog: { set: (v: boolean) => void },
+    dialog?: { set: (v: boolean) => void },
   ): void {
     this.acting.set(true);
     action.subscribe({
       next: (detail) => {
         this.lead.set(detail);
         this.acting.set(false);
-        dialog.set(false);
+        dialog?.set(false);
         this.messages.add({ severity: 'success', summary: successSummary });
       },
       error: (err: HttpErrorResponse) => {

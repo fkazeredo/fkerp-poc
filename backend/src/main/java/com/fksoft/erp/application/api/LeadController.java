@@ -163,8 +163,12 @@ public class LeadController {
      */
     @PostMapping("/{id}/reassign")
     public LeadDetailResponse reassign(@PathVariable UUID id, @Valid @RequestBody ReassignRequest request) {
-        LeadDetailView view =
-                leadService.reassign(id, request.responsiblePersonId(), userContext.currentUserId(), canSeeAll());
+        LeadDetailView view = leadService.reassign(
+                id,
+                request.responsiblePersonId(),
+                userContext.currentUserId(),
+                canSeeAll(),
+                userContext.hasScope("crm:lead:assign"));
         return LeadDetailResponse.from(view);
     }
 
