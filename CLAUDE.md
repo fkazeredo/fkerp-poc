@@ -170,8 +170,11 @@ omitting a layer needs a recorded reason (§2 exceptions), never silence:
    transitions. The entity MUST be valid on its own, independent of controller/service validation.
    (Do not Bean-Validate framework-managed audit fields like `@CreationTimestamp` - rely on the
    DB column constraint there to avoid pre-persist ordering traps.)
-5. **Persistence (Database):** the schema is the last guard - `NOT NULL`, `UNIQUE`, `CHECK`, FKs,
-   indexes (Flyway). DB violations surface as clear domain/API errors, never raw exceptions.
+5. **Persistence (Database):** the schema is the last guard and MUST mirror the domain /
+   Bean-Validation invariants - `NOT NULL`, `UNIQUE`, **`CHECK`** (enum value sets, non-negative
+   numbers, "at least one X", digits-only / format), FKs, indexes (Flyway). Add the matching
+   `CHECK` whenever a domain rule can be expressed in SQL; DB violations are translated by
+   `infra.web` into the standard error body (§5.6), never raw exceptions/500s.
 
 The backend is the authority: frontend validation MUST NOT be the only check, and the domain MUST
 NOT depend on delivery validation to stay valid. Validation messages are i18n keys (§5.6). Read
@@ -189,7 +192,12 @@ The presentation layer (`infra.web`) owns HTTP translation: a `@RestControllerAd
 `GlobalExceptionHandler` + an `HttpErrorMapping` registry (`Map<Class<? extends DomainException>,
 HttpStatus>`). The handler resolves the i18n message and maps `ErrorDetails -> fields`,
 `RateLimited -> Retry-After`. A build-time test fails if any `DomainException` subclass lacks a
-status. Every API MUST have a global handler and a predictable error body:
+status. The handler MUST also translate framework validation/persistence failures into the **same**
+body so they never leak as raw 500s (standard, not optional): `MethodArgumentNotValidException` and
+`jakarta.validation.ConstraintViolationException` (entity/last-resort Bean Validation) -> **400**
+with per-field details; `DataIntegrityViolationException` (DB `CHECK`/`UNIQUE`/FK) -> **409** with a
+safe generic message, logging the cause server-side but **never** exposing SQL, column or constraint
+names. Every API MUST have a global handler and a predictable error body:
 
 ```json
 { "code": "order.cannot-be-cancelled", "message": "...", "fields": [] }
