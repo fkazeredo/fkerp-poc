@@ -9,7 +9,8 @@ foi modelado. As regras de arquitetura e engenharia do projeto estão no [CLAUDE
 ```
 backend/      # Spring Boot 4 / Java 21 / Maven (pacote com.fksoft.erp); build via ./mvnw
 frontend/     # Angular (página inicial = welcome "FKERP")
-ops/          # configs de observability (Prometheus, Loki, Tempo, Alloy, Grafana)
+infra/        # configs de observability (Prometheus, Loki, Alloy, Grafana)
+artifacts/    # documentação orientada a humanos
 compose.yaml  # orquestra tudo
 ```
 

@@ -80,7 +80,8 @@ a library for a trivial problem; significant dependencies are raised with the ow
 - **Frontend:** Angular (standalone components + signals, no NgModules, no NgRx by default),
   a component library + Tailwind for layout, runtime i18n. Test/lint: the framework defaults.
 - **Runtime:** single deployable per environment unless scale-out is justified. Monorepo:
-  `backend/ frontend/ ops/ compose.yaml README.md`.
+  `backend/ frontend/ infra/ artifacts/ compose.yaml README.md` (`artifacts/` holds human-oriented
+  documentation, as opposed to this agent-facing contract).
 
 ## 5. Backend architecture
 
