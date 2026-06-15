@@ -411,12 +411,28 @@ the goal - high coverage with weak assertions is not quality.
   weakened to make code pass.
 - **Regression:** every bug fix MUST add a test that fails before the fix and passes after,
   whenever technically possible; if impossible, explain why.
+- **Assert the contract, not just the status.** For APIs, assert the full error body
+  (`{code, message, fields}`, the i18n `code`, the offending field) and the success shape - not
+  only the HTTP status. Every validation-layer rejection (§5.5) MUST have a test proving it
+  rejects with the right status and body (auth → 401, missing scope → 403, validation → 400,
+  business rule → 4xx, duplicate → 409). Coverage with weak assertions is not quality.
 - **Frontend:** protect real behavior - feature/API/state services, guards, interceptors,
-  validators, form mappers, error handling, loading/empty/error states, critical journeys. E2E
-  for critical flows only.
+  validators, form mappers, error handling, loading/empty/error states, critical journeys. The
+  security infrastructure (auth interceptor's 401→refresh→replay, route guards) MUST be tested.
+  Component tests render the DOM and assert the visible state (jsdom; polyfill `ResizeObserver`
+  for the component library). E2E for critical flows only.
+- **E2E (Playwright):** the critical journey (login → create lead) runs in a real browser against
+  the running stack. Bring the stack up first (`docker compose up`), then `npm run e2e` from
+  `frontend/` (override the target with `E2E_BASE_URL`). E2E is the layer that catches
+  cross-cutting issues unit/integration miss (CORS origin, the same-origin proxy, port wiring).
 - Right level of realism: mocks/fakes for logic; Testcontainers for infrastructure behavior. Do
   not mock everything blindly or boot the whole stack for simple logic. Tests create their own
   data via builders/factories.
+- **Real infra, no excuses.** Integration tests run against a real Postgres via Testcontainers and
+  MUST actually execute (never silently skipped behind a "no Docker" assumption - if Docker tooling
+  fails, fix the infra). On recent Docker Engines the bundled docker-java negotiates an API version
+  the daemon rejects (HTTP 400 "Could not find a valid Docker environment"); the surefire
+  `api.version` system property in `backend/pom.xml` pins a supported version - do not remove it.
 
 ## 14. Delivery
 
