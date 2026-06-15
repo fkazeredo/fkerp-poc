@@ -11,6 +11,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,17 +41,29 @@ public class Lead {
     @Id
     private UUID id;
 
+    @NotBlank
+    @Size(max = 200)
     @Column(nullable = false)
     private String name;
 
+    @Pattern(regexp = "\\d*")
+    @Size(max = 30)
     private String phone;
+
+    @Pattern(regexp = "\\d*")
+    @Size(max = 30)
     private String whatsapp;
+
+    @Email
+    @Size(max = 255)
     private String email;
 
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "origin_id", nullable = false)
     private Origin origin;
 
+    @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private LeadStatus status;
@@ -53,6 +71,7 @@ public class Lead {
     @Column(name = "responsible_person_id")
     private UUID responsiblePersonId;
 
+    @Valid
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "lead_id", nullable = false)
     private List<LeadInteraction> interactions = new ArrayList<>();

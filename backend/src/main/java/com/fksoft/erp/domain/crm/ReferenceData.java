@@ -3,6 +3,9 @@ package com.fksoft.erp.domain.crm;
 import jakarta.persistence.Column;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -24,15 +27,20 @@ public abstract class ReferenceData {
     @Id
     private UUID id;
 
+    @NotBlank
+    @Size(max = 50)
     @Column(nullable = false, unique = true, updatable = false)
     private String code;
 
+    @NotBlank
+    @Size(max = 120)
     @Column(nullable = false)
     private String label;
 
     @Column(nullable = false)
     private boolean active;
 
+    @PositiveOrZero
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
