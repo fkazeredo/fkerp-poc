@@ -191,6 +191,27 @@ Which of the two buttons you see depends on your **assignment authority**:
   **Assumir** button instead — they cannot hand a lead to another person or unassign it. The system
   enforces this on the server, so the rule holds even outside the screen.
 
+### Registering an interaction
+
+Every contact, contact attempt or internal note is recorded in the lead's history. Click **Registrar
+interação** (Register interaction) at the top of the detail and fill in:
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| **Tipo** (Type) | Yes | Phone call, WhatsApp, Email, In-person, Internal note, or Other. |
+| **Resultado** (Result) | Yes | The outcome of the interaction (see below). |
+| **Data** (Date) | Yes | When it happened. Defaults to now; you can backdate it, but it cannot be in the future. |
+| **Descrição** (Description) | Yes | What happened — this becomes the history entry. |
+| **Próximo contato** (Next contact) | — | Optionally schedule the next contact; it then shows on the lead and on the list. |
+
+The interaction is added to the **history** (which is never deleted); the author and the moment are
+recorded automatically.
+
+**New → Contacted.** Registering an **effective contact** moves a lead in status **Novo** (New) to
+**Em contato** (Contacted). A contact is effective for every result **except** *Não atendeu* (No
+answer) and *Contato inválido* (Invalid contact) — those are failed attempts, so the lead stays
+**Novo** while still keeping the attempt in its history. Leads already past New keep their status.
+
 ## 8. Managing reference data (*cadastros*)
 
 Reference data are the lists that feed the lead form and future workflows. There are

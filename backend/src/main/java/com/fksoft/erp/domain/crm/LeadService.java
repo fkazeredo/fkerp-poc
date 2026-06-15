@@ -33,6 +33,7 @@ public class LeadService {
     private final LeadRepository leads;
     private final OriginRepository origins;
     private final InteractionTypeRepository interactionTypes;
+    private final InteractionResultRepository interactionResults;
     private final LossReasonRepository lossReasons;
     private final UserRepository users;
     private final LeadAccessPolicy accessPolicy;
@@ -206,6 +207,34 @@ public class LeadService {
         return toDetailView(leads.saveAndFlush(lead));
     }
 
+    /**
+     * Registers a new interaction in a Lead the caller is allowed to operate and returns the refreshed
+     * detail. An effective contact moves a NEW lead to CONTACTED; a non-effective attempt only adds to
+     * the history (§ {@link Lead#recordInteraction}).
+     *
+     * @param id the lead id
+     * @param cmd the interaction data (already validated at the boundary)
+     * @param userId the acting user (becomes the interaction author)
+     * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @return the updated detail
+     * @throws InteractionTypeNotAvailableException if the type is unknown or inactive
+     * @throws InteractionResultNotAvailableException if the result is unknown or inactive
+     */
+    @Transactional
+    public LeadDetailView recordInteraction(UUID id, RecordInteractionCommand cmd, UUID userId, boolean canSeeAll) {
+        Lead lead = loadVisible(id, userId, canSeeAll);
+        InteractionType type = interactionTypes
+                .findById(cmd.typeId())
+                .filter(ReferenceData::active)
+                .orElseThrow(InteractionTypeNotAvailableException::new);
+        InteractionResult result = interactionResults
+                .findById(cmd.resultId())
+                .filter(ReferenceData::active)
+                .orElseThrow(InteractionResultNotAvailableException::new);
+        lead.recordInteraction(type, result, cmd.description(), cmd.occurredAt(), cmd.nextContactAt(), userId);
+        return toDetailView(leads.saveAndFlush(lead));
+    }
+
     private Lead loadVisible(UUID id, UUID userId, boolean canSeeAll) {
         Lead lead = leads.findById(id).orElseThrow(LeadNotFoundException::new);
         if (!accessPolicy.canSee(lead, userId, canSeeAll)) {
@@ -237,6 +266,7 @@ public class LeadService {
                         i.result() != null ? i.result().label() : null,
                         i.content(),
                         i.occurredAt(),
+                        i.nextContactAt(),
                         names.get(i.registeredBy())))
                 .toList();
         List<AssignmentView> assignments = lead.assignments().stream()

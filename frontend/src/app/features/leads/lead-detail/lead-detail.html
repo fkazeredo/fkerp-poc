@@ -19,6 +19,12 @@
       <p-tag [value]="statusLabel(l.status)" [severity]="statusSeverity(l.status)" />
     </div>
     <div class="head-actions">
+      <p-button
+        label="Registrar interação"
+        icon="pi pi-comment"
+        size="small"
+        (onClick)="openInteraction()"
+      />
       @if (canQualify()) {
         <p-button
           label="Qualificar"
@@ -126,6 +132,9 @@
             </span>
             @if (i.content) {
               <span class="note">{{ i.content }}</span>
+            }
+            @if (i.nextContactAt) {
+              <span class="muted">Próximo contato: {{ i.nextContactAt | date: 'short' }}</span>
             }
             <span class="who muted">{{ i.registeredBy ?? '' }}</span>
           </li>
@@ -253,6 +262,88 @@
         severity="secondary"
         [text]="true"
         (onClick)="reassignOpen.set(false)"
+      />
+    </div>
+  </p-dialog>
+
+  <p-dialog
+    header="Registrar interação"
+    [(visible)]="interactionOpen"
+    [modal]="true"
+    [style]="{ width: '32rem' }"
+  >
+    <div class="field">
+      <label for="itype">Tipo <span class="req">*</span></label>
+      <p-select
+        inputId="itype"
+        [options]="interactionTypes()"
+        optionLabel="label"
+        optionValue="id"
+        [(ngModel)]="interactionTypeId"
+        placeholder="Selecione o tipo"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="iresult">Resultado <span class="req">*</span></label>
+      <p-select
+        inputId="iresult"
+        [options]="interactionResults()"
+        optionLabel="label"
+        optionValue="id"
+        [(ngModel)]="interactionResultId"
+        placeholder="Selecione o resultado"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="iwhen">Data <span class="req">*</span></label>
+      <p-datepicker
+        inputId="iwhen"
+        [(ngModel)]="interactionOccurredAt"
+        [showTime]="true"
+        [maxDate]="now"
+        dateFormat="dd/mm/yy"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="idesc">Descrição <span class="req">*</span></label>
+      <textarea
+        pTextarea
+        id="idesc"
+        [(ngModel)]="interactionDescription"
+        rows="3"
+        class="w-full"
+      ></textarea>
+    </div>
+    <div class="field">
+      <label for="inext">Próximo contato (opcional)</label>
+      <p-datepicker
+        inputId="inext"
+        [(ngModel)]="interactionNextContactAt"
+        [showTime]="true"
+        dateFormat="dd/mm/yy"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="actions">
+      <p-button
+        label="Registrar"
+        icon="pi pi-check"
+        [disabled]="!canSaveInteraction()"
+        [loading]="acting()"
+        (onClick)="confirmInteraction()"
+      />
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="interactionOpen.set(false)"
       />
     </div>
   </p-dialog>

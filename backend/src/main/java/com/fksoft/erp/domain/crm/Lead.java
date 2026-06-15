@@ -177,6 +177,37 @@ public class Lead {
     }
 
     /**
+     * Registers a new interaction (contact, attempt or note) in the lead history. The history is
+     * append-only. An <em>effective</em> contact (see {@link InteractionResult#isEffectiveContact()})
+     * moves a {@link LeadStatus#NEW} lead to {@link LeadStatus#CONTACTED}; a non-effective attempt
+     * preserves the history but leaves the status untouched, and no other status ever changes here.
+     * When the interaction schedules a next contact, it becomes the lead's current next-contact date.
+     *
+     * @param type the interaction type (active)
+     * @param result the interaction result (active)
+     * @param content the description (required)
+     * @param occurredAt when the interaction happened (past or present)
+     * @param nextContactAt the scheduled next contact, or {@code null}
+     * @param registeredBy id of the user recording the interaction
+     */
+    public void recordInteraction(
+            InteractionType type,
+            InteractionResult result,
+            String content,
+            Instant occurredAt,
+            Instant nextContactAt,
+            UUID registeredBy) {
+        interactions.add(LeadInteraction.record(type, result, content, occurredAt, nextContactAt, registeredBy));
+        if (status == LeadStatus.NEW && result.isEffectiveContact()) {
+            status = LeadStatus.CONTACTED;
+        }
+        if (nextContactAt != null) {
+            this.nextContactAt = nextContactAt;
+        }
+        updatedBy = registeredBy;
+    }
+
+    /**
      * Qualifies the lead. Allowed only from {@link LeadStatus#NEW} or {@link LeadStatus#CONTACTED};
      * the qualification (who/when/note) is kept for history.
      *
