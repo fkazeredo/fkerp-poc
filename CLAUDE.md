@@ -211,22 +211,28 @@ ports; any non-obvious logic (validation, concurrency, date/time, security). NOT
 trivial records/DTOs, simple accessors, delegating controllers, test code. Comments explain
 intent, contract, constraints, side effects - never restate the name.
 
-## 6. Modules & boundaries
+## 6. Domain access & boundaries
 
-Modules are defined by business domain - own language, rules, workflows, state transitions,
-lifecycle, data ownership and reasons to change. Do not create a module just because a folder
-seems organized. Declare each module with a `package-info.java` carrying `@ApplicationModule`
-(Spring Modulith, `detection-strategy=explicitly-annotated`); the module name is its package
-path (`domain.<module>`).
+The `domain` package is organized by business area (`domain.<area>`) but is **internally open**:
+any class under `domain` MAY use any other class under `domain` directly, including across areas
+(e.g. `domain.crm` may call `domain.identity` repositories/types). There is **no Facade pattern**
+for intra-domain collaboration and **no enforced inter-area boundary inside `domain`**. Spring
+Modulith is therefore not used to police intra-domain boundaries.
 
-- Synchronous collaboration through a public module facade/API only.
-- A module MUST NOT depend on another module's repositories, internal entities, persistence
-  details or implementation classes.
-- Asynchronous reactions through domain events.
-- A module exposes a port for each technical adapter; the impl lives in `infra.<concern>`
-  (infra -> domain allowed; domain -> infra forbidden). The infra layer MAY read/write a
-  module's own persistence to operate that module's technical adapter (e.g. outbox dispatch);
-  other business modules still MUST NOT touch it.
+The architectural invariants that MUST hold (all the OTHER rules in this file still apply):
+
+- **`domain` MUST NOT depend on `application` or `infra`** (ArchUnit-enforced). The domain stays
+  pure of delivery and technical concerns - this is the boundary that matters.
+- **`application` and `infra` MAY depend on `domain`** - preferably through a **port** (interface)
+  defined in the domain and implemented by an **adapter** in `infra.<concern>` (ports & adapters /
+  hexagonal). Preferred but flexible; do NOT introduce Facades for this.
+- Technical concerns (security, email, storage, …) are domain **ports** implemented by infra
+  **adapters** (`infra -> domain` allowed; `domain -> infra` forbidden).
+- Asynchronous reactions use domain events.
+- The `application` (delivery) layer is organized by **mechanism, NOT by business area**:
+  controllers live flat in `application.api`, request/response DTOs in `application.api.dto`,
+  realtime/socket in `application.realtime` (+ `application.realtime.dto`), queue consumers in
+  `application.queue`. Do NOT create `application.api.<area>` sub-packages.
 - In a monolith a shared database is acceptable - do not pretend to be distributed. Extract a
   microservice only with a clear bounded context plus a concrete reason (independent
   deploy/scale, separate ownership, fault/security isolation). Microservices do not fix bad
@@ -396,7 +402,10 @@ the goal - high coverage with weak assertions is not quality.
   focused and reviewable - tests, migrations, screenshots for UI, API impacts. Commit/push only
   when the owner asks; if on the default branch, branch first; never force-push. When delivering an
   implementation report, commit the work on the working branch first - the commit is mandatory
-  before presenting the report.
+  before presenting the report. **Standing authorization (this project, until revoked):** the owner
+  works solo and has authorized, without asking each time, pushing the working branch, merging it
+  into `develop` and `main`, and pushing both. Gitflow branches/merges are kept for record and for
+  when the team grows.
 - **Generated files:** never hand-edited - modify the generation source (OpenAPI contract,
   schema, generator config). A hook blocks edits under generated paths.
 - **CI/CD:** the pipeline runs build, unit + integration tests, frontend tests/build,
@@ -432,8 +441,9 @@ JUnit over the ArchUnit core API):
 - `noImplSuffix` - no class name ends in `Impl`.
 - `noFieldInjection` - no field `@Autowired` (constructor injection only).
 - `exceptionsLiveWithTheirDomain` - `*Exception` resides in `domain..`, not `..api..`/`..infra..`.
-- Per-module persistence isolation: nothing outside a module depends on its `@Entity`/`*Repository`
-  (the infra layer is exempt for modules whose technical adapters operate their own tables).
+- No per-area persistence isolation inside `domain`: the domain package is internally open - any
+  domain class MAY use another domain area's `@Entity`/`*Repository` directly (see §6). The only
+  enforced boundary is `domain` ↛ `application`/`infra`.
 
 **Spring Modulith:** `ModularityTests.verifiesModularStructure()` verifies inter-module
 boundaries. A presentation-completeness test fails if any `DomainException` subclass has no HTTP

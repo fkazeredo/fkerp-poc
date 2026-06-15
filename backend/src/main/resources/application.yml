@@ -13,9 +13,21 @@ spring:
     enabled: true
   modulith:
     detection-strategy: explicitly-annotated
+  web:
+    locale: pt_BR
+    locale-resolver: fixed
 
 app:
   name: FKERP
+  security:
+    jwt:
+      secret: ${APP_JWT_SECRET:dev-insecure-secret-change-me-please-0123456789-abcdef}
+      access-token-ttl: PT15M
+      refresh-token-ttl: P14D
+    allowed-origin: ${APP_CORS_ORIGIN:http://localhost:4200}
+    refresh-cookie:
+      name: refresh_token
+      secure: ${APP_COOKIE_SECURE:false}
 
 management:
   endpoints:
