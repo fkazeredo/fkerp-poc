@@ -1,0 +1,29 @@
+# Environment (segredos / config local) — versionamos apenas o .env.example
+.env
+
+# Claude — config local/sensível (o restante de .claude/ é versionado)
+.claude/settings.local.json
+
+# Java / Maven
+backend/target/
+*.class
+
+# Node / Angular
+node_modules/
+frontend/dist/
+frontend/.angular/
+npm-debug.log*
+yarn-error.log*
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
