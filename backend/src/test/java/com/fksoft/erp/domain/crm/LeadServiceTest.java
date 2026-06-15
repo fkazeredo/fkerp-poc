@@ -51,6 +51,9 @@ class LeadServiceTest {
     private LeadAccessPolicy accessPolicy;
 
     @Mock
+    private LeadAssignmentPolicy assignmentPolicy;
+
+    @Mock
     private ApplicationEventPublisher events;
 
     @InjectMocks
@@ -186,5 +189,20 @@ class LeadServiceTest {
 
         assertThatThrownBy(() -> service.detail(id, UUID.randomUUID(), false))
                 .isInstanceOf(LeadAccessDeniedException.class);
+    }
+
+    @Test
+    void reassignRejectsWhenAssignmentNotAllowed() {
+        UUID id = UUID.randomUUID();
+        Lead lead = Lead.register(
+                new RegisterLeadCommand("Maria", "11999999999", null, null, UUID.randomUUID(), null, null),
+                Origin.create("WEBSITE", "Website", 1),
+                UUID.randomUUID());
+        when(leads.findById(id)).thenReturn(Optional.of(lead));
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(true);
+        when(assignmentPolicy.canAssign(any(), any(), anyBoolean())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.reassign(id, UUID.randomUUID(), UUID.randomUUID(), false, false))
+                .isInstanceOf(LeadAssignmentNotAllowedException.class);
     }
 }

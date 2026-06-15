@@ -56,4 +56,35 @@ describe('AuthService', () => {
     expect(req.request.method).toBe('POST');
     req.flush(null);
   });
+
+  it('decodes scopes and subject from the access-token JWT', () => {
+    service.accessToken.set(
+      jwt({ sub: '00000000-0000-0000-0000-000000000002', scope: 'crm:lead:read crm:lead:update' }),
+    );
+
+    expect(service.scopes()).toEqual(['crm:lead:read', 'crm:lead:update']);
+    expect(service.userId()).toBe('00000000-0000-0000-0000-000000000002');
+    expect(service.hasScope('crm:lead:update')).toBe(true);
+    expect(service.hasScope('crm:lead:assign')).toBe(false);
+  });
+
+  it('exposes no scopes and a null subject when there is no token', () => {
+    expect(service.scopes()).toEqual([]);
+    expect(service.userId()).toBeNull();
+    expect(service.hasScope('crm:lead:assign')).toBe(false);
+  });
+
+  it('degrades gracefully on a malformed token', () => {
+    service.accessToken.set('not-a-jwt');
+
+    expect(service.scopes()).toEqual([]);
+    expect(service.userId()).toBeNull();
+  });
 });
+
+/** Builds a syntactically valid (unsigned) JWT carrying the given claims for decode tests. */
+function jwt(claims: Record<string, unknown>): string {
+  const b64url = (obj: Record<string, unknown>) =>
+    btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${b64url({ alg: 'HS256', typ: 'JWT' })}.${b64url(claims)}.sig`;
+}

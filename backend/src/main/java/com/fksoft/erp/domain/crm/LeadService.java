@@ -36,6 +36,7 @@ public class LeadService {
     private final LossReasonRepository lossReasons;
     private final UserRepository users;
     private final LeadAccessPolicy accessPolicy;
+    private final LeadAssignmentPolicy assignmentPolicy;
     private final ApplicationEventPublisher events;
 
     /**
@@ -185,12 +186,18 @@ public class LeadService {
      * @param toResponsibleId the new responsible, or {@code null} to unassign
      * @param userId the acting user
      * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @param canAssign whether the caller holds full assignment authority ({@code crm:lead:assign})
      * @return the updated detail
+     * @throws LeadAssignmentNotAllowedException if a user without assignment authority targets
+     *     anyone other than themselves
      * @throws ResponsiblePersonNotFoundException if the target user is unknown or inactive
      */
     @Transactional
-    public LeadDetailView reassign(UUID id, UUID toResponsibleId, UUID userId, boolean canSeeAll) {
+    public LeadDetailView reassign(UUID id, UUID toResponsibleId, UUID userId, boolean canSeeAll, boolean canAssign) {
         Lead lead = loadVisible(id, userId, canSeeAll);
+        if (!assignmentPolicy.canAssign(userId, toResponsibleId, canAssign)) {
+            throw new LeadAssignmentNotAllowedException();
+        }
         if (toResponsibleId != null
                 && users.findById(toResponsibleId).filter(User::active).isEmpty()) {
             throw new ResponsiblePersonNotFoundException();

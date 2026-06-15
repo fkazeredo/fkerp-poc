@@ -37,7 +37,7 @@
           (onClick)="openLose()"
         />
       }
-      @if (canReassign()) {
+      @if (canAssign() && canReassign()) {
         <p-button
           label="Reatribuir"
           icon="pi pi-user-edit"
@@ -45,6 +45,15 @@
           [outlined]="true"
           size="small"
           (onClick)="openReassign()"
+        />
+      }
+      @if (canClaim()) {
+        <p-button
+          label="Assumir"
+          icon="pi pi-user-plus"
+          size="small"
+          [loading]="acting()"
+          (onClick)="claim()"
         />
       }
     </div>
