@@ -30,6 +30,7 @@ export class Shell {
 
   protected readonly menu: MenuItem[] = [
     { label: 'Início', icon: 'pi pi-home', command: () => this.go('/') },
+    { label: 'Leads', icon: 'pi pi-list', command: () => this.go('/leads') },
     { label: 'Novo Lead', icon: 'pi pi-user-plus', command: () => this.go('/leads/new') },
     {
       label: 'Cadastros',
@@ -47,6 +48,7 @@ export class Shell {
   ];
 
   protected readonly commands: Command[] = [
+    { label: 'Leads', icon: 'pi pi-list', run: () => this.go('/leads') },
     { label: 'Novo Lead', icon: 'pi pi-user-plus', run: () => this.go('/leads/new') },
     { label: 'Início', icon: 'pi pi-home', run: () => this.go('/') },
     {
@@ -111,6 +113,7 @@ export class Shell {
     if (this.goPending) {
       this.goPending = false;
       if (event.key === 'i') this.go('/');
+      else if (event.key === 'l') this.go('/leads');
       else if (event.key === 'n') this.go('/leads/new');
       else if (event.key === 'o') this.go('/cadastros/origens');
       return;

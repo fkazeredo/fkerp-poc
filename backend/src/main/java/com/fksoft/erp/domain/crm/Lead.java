@@ -71,6 +71,11 @@ public class Lead {
     @Column(name = "responsible_person_id")
     private UUID responsiblePersonId;
 
+    // Scheduled date for the next contact. Read-only in this slice (shown when present); a later
+    // follow-up slice will set it.
+    @Column(name = "next_contact_at")
+    private Instant nextContactAt;
+
     @Valid
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "lead_id", nullable = false)

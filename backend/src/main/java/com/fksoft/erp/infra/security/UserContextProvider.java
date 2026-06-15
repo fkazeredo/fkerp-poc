@@ -26,4 +26,21 @@ public class UserContextProvider {
         }
         throw new IllegalStateException("No authenticated user in security context");
     }
+
+    /**
+     * Tells whether the current user was granted the given OAuth-style scope (e.g. a manager-only
+     * read scope). Lets the delivery layer make authorization decisions without Application Services
+     * touching the security context.
+     *
+     * @param scope the scope name (without the {@code SCOPE_} authority prefix)
+     * @return {@code true} if the current authentication holds the scope
+     */
+    public boolean hasScope(String scope) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return false;
+        }
+        String authority = "SCOPE_" + scope;
+        return auth.getAuthorities().stream().anyMatch(granted -> authority.equals(granted.getAuthority()));
+    }
 }

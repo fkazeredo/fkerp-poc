@@ -3,10 +3,17 @@ package com.fksoft.erp.domain.crm;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -16,6 +23,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 class LeadServiceTest {
@@ -31,6 +43,9 @@ class LeadServiceTest {
 
     @Mock
     private UserRepository users;
+
+    @Mock
+    private LeadAccessPolicy accessPolicy;
 
     @Mock
     private ApplicationEventPublisher events;
@@ -81,5 +96,50 @@ class LeadServiceTest {
 
         assertThatThrownBy(() -> service.register(command, UUID.randomUUID()))
                 .isInstanceOf(ResponsiblePersonNotFoundException.class);
+    }
+
+    @Test
+    void listBuildsViewsWithMainContactResponsibleAndLatestInteraction() {
+        UUID responsibleA = UUID.randomUUID();
+        Origin origin = Origin.create("WEBSITE", "Website", 1);
+        Lead withPhone = Lead.register(
+                new RegisterLeadCommand("Maria", "11999999999", null, null, UUID.randomUUID(), responsibleA, null),
+                origin,
+                UUID.randomUUID());
+        Lead unassignedEmail = Lead.register(
+                new RegisterLeadCommand("Joao", null, null, "joao@example.com", UUID.randomUUID(), null, null),
+                origin,
+                UUID.randomUUID());
+        Pageable pageable = PageRequest.of(0, 20);
+
+        when(accessPolicy.visibleTo(any(), anyBoolean())).thenReturn((root, query, cb) -> null);
+        when(leads.findAll(any(Specification.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(withPhone, unassignedEmail), pageable, 2));
+        LatestInteractionRow row = mock(LatestInteractionRow.class);
+        when(row.getLeadId()).thenReturn(withPhone.id());
+        when(row.getOccurredAt()).thenReturn(Instant.parse("2026-06-15T10:00:00Z"));
+        when(row.getTypeLabel()).thenReturn("Ligação");
+        when(leads.findLatestInteractions(anyList())).thenReturn(List.of(row));
+        User responsible = mock(User.class);
+        when(responsible.id()).thenReturn(responsibleA);
+        when(responsible.username()).thenReturn("ana");
+        when(users.findAllById(any())).thenReturn(List.of(responsible));
+
+        Page<LeadListView> page = service.list(
+                new LeadSearchCriteria(null, null, null, false, null, null, null), pageable, UUID.randomUUID(), false);
+
+        LeadListView assigned = page.getContent().get(0);
+        assertThat(assigned.name()).isEqualTo("Maria");
+        assertThat(assigned.mainContact()).isEqualTo("11999999999");
+        assertThat(assigned.responsibleName()).isEqualTo("ana");
+        assertThat(assigned.unassigned()).isFalse();
+        assertThat(assigned.lastInteractionType()).isEqualTo("Ligação");
+        assertThat(assigned.lastInteractionAt()).isEqualTo(Instant.parse("2026-06-15T10:00:00Z"));
+
+        LeadListView unassigned = page.getContent().get(1);
+        assertThat(unassigned.mainContact()).isEqualTo("joao@example.com");
+        assertThat(unassigned.responsibleName()).isNull();
+        assertThat(unassigned.unassigned()).isTrue();
+        assertThat(unassigned.lastInteractionAt()).isNull();
     }
 }
