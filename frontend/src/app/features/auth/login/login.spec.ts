@@ -46,7 +46,9 @@ describe('Login', () => {
   });
 
   it('navigates home on a successful login', () => {
-    auth.login.mockReturnValue(of({ accessToken: 't', tokenType: 'Bearer', expiresInSeconds: 900 }));
+    auth.login.mockReturnValue(
+      of({ accessToken: 't', tokenType: 'Bearer', expiresInSeconds: 900 }),
+    );
     const fixture = TestBed.createComponent(Login);
     const comp = fixture.componentInstance;
     comp['form'].setValue({ username: 'comercial', password: 'comercial123' });
