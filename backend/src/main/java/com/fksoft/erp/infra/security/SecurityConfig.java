@@ -78,6 +78,9 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/leads")
                         .hasAuthority("SCOPE_crm:lead:create")
+                        .requestMatchers(
+                                HttpMethod.POST, "/api/leads/*/qualify", "/api/leads/*/lose", "/api/leads/*/reassign")
+                        .hasAuthority("SCOPE_crm:lead:update")
                         .requestMatchers(HttpMethod.GET, "/api/leads", "/api/leads/**")
                         .hasAuthority("SCOPE_crm:lead:read")
                         .requestMatchers(HttpMethod.GET, "/api/crm/responsibles")

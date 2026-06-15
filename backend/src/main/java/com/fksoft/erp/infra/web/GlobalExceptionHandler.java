@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -104,6 +105,22 @@ public class GlobalExceptionHandler {
                 messages.getMessage("data.integrity-violation", null, "Violação de integridade dos dados", locale);
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiErrorResponse("data.integrity-violation", message, List.of()));
+    }
+
+    /**
+     * Maps a concurrent-update conflict (optimistic lock) to HTTP 409, so two users transitioning
+     * the same Lead at once get a clear, retryable error instead of a 500.
+     *
+     * @param ex the optimistic locking failure
+     * @param locale the request locale
+     * @return 409 response with the standard error body
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiErrorResponse> handleOptimisticLock(OptimisticLockingFailureException ex, Locale locale) {
+        log.warn("Optimistic locking conflict", ex);
+        String message = messages.getMessage("lead.conflict", null, "Conflito de concorrência", locale);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse("lead.conflict", message, List.of()));
     }
 
     private static String leafField(String propertyPath) {

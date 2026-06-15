@@ -27,4 +27,19 @@ public class LeadAccessPolicy {
         return (root, query, cb) ->
                 cb.or(cb.equal(root.get("responsiblePersonId"), userId), cb.isNull(root.get("responsiblePersonId")));
     }
+
+    /**
+     * Tells whether a user may see (and act on) a single Lead: they are its responsible, it is
+     * unassigned, or they are a manager.
+     *
+     * @param lead the lead
+     * @param userId the current user id
+     * @param canSeeAll whether the user holds the manager read-all scope
+     * @return {@code true} if the lead is visible to the user
+     */
+    public boolean canSee(Lead lead, UUID userId, boolean canSeeAll) {
+        return canSeeAll
+                || lead.responsiblePersonId() == null
+                || lead.responsiblePersonId().equals(userId);
+    }
 }
