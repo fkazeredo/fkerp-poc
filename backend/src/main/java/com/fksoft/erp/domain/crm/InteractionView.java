@@ -5,4 +5,10 @@ import java.util.UUID;
 
 /** Read view of a single interaction in a Lead's history. */
 public record InteractionView(
-        UUID id, String typeLabel, String resultLabel, String content, Instant occurredAt, String registeredByName) {}
+        UUID id,
+        String typeLabel,
+        String resultLabel,
+        String content,
+        Instant occurredAt,
+        Instant nextContactAt,
+        String registeredByName) {}

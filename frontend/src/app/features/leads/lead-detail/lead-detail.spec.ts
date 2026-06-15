@@ -21,6 +21,7 @@ describe('LeadDetailPage', () => {
     qualify: vi.fn(),
     lose: vi.fn(),
     reassign: vi.fn(),
+    recordInteraction: vi.fn(),
     responsibles: vi.fn(),
   };
   const references = { list: vi.fn() };
@@ -71,6 +72,7 @@ describe('LeadDetailPage', () => {
       leads.qualify,
       leads.lose,
       leads.reassign,
+      leads.recordInteraction,
       leads.responsibles,
       references.list,
       router.navigateByUrl,
@@ -80,9 +82,15 @@ describe('LeadDetailPage', () => {
     ].forEach((fn) => fn.mockReset());
     leads.detail.mockReturnValue(of(sample()));
     leads.responsibles.mockReturnValue(of([{ id: 'u1', name: 'comercial' }]));
-    references.list.mockReturnValue(
-      of([{ id: 'r1', code: 'NO_RESPONSE', label: 'Sem resposta', active: true, sortOrder: 1 }]),
-    );
+    references.list.mockImplementation((path: string) => {
+      if (path === 'interaction-types') {
+        return of([{ id: 't1', code: 'PHONE_CALL', label: 'Ligação', active: true, sortOrder: 1 }]);
+      }
+      if (path === 'interaction-results') {
+        return of([{ id: 'r1', code: 'CONTACT_MADE', label: 'Contato realizado', active: true, sortOrder: 1 }]);
+      }
+      return of([{ id: 'lr1', code: 'NO_RESPONSE', label: 'Sem resposta', active: true, sortOrder: 1 }]);
+    });
     auth.hasScope.mockReturnValue(false);
     auth.userId.mockReturnValue('rep-1');
   });
@@ -225,5 +233,60 @@ describe('LeadDetailPage', () => {
     comp['claim']();
 
     expect(leads.reassign).not.toHaveBeenCalled();
+  });
+
+  it('loads interaction types and results when opening the dialog', () => {
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['openInteraction']();
+
+    expect(comp['interactionOpen']()).toBe(true);
+    expect(references.list).toHaveBeenCalledWith('interaction-types');
+    expect(references.list).toHaveBeenCalledWith('interaction-results');
+    expect(comp['interactionTypes']().length).toBe(1);
+    expect(comp['interactionResults']().length).toBe(1);
+  });
+
+  it('does not register an interaction until type, result and description are filled', () => {
+    const comp = build();
+    comp.ngOnInit();
+    comp['openInteraction']();
+    comp['interactionTypeId'] = 't1';
+    comp['interactionResultId'] = 'r1';
+    comp['interactionDescription'] = '   ';
+
+    expect(comp['canSaveInteraction']()).toBe(false);
+    comp['confirmInteraction']();
+
+    expect(leads.recordInteraction).not.toHaveBeenCalled();
+  });
+
+  it('registers an interaction and refreshes to the resulting status', () => {
+    leads.recordInteraction.mockReturnValue(of(sample({ status: 'CONTACTED' })));
+    const comp = build();
+    comp.ngOnInit();
+    comp['openInteraction']();
+    comp['interactionTypeId'] = 't1';
+    comp['interactionResultId'] = 'r1';
+    comp['interactionDescription'] = 'Conversamos';
+    comp['interactionOccurredAt'] = new Date('2026-06-15T13:00:00Z');
+    comp['interactionNextContactAt'] = null;
+
+    comp['confirmInteraction']();
+
+    expect(leads.recordInteraction).toHaveBeenCalledWith(
+      'l1',
+      expect.objectContaining({
+        typeId: 't1',
+        resultId: 'r1',
+        description: 'Conversamos',
+        occurredAt: '2026-06-15T13:00:00.000Z',
+        nextContactAt: null,
+      }),
+    );
+    expect(comp['lead']()?.status).toBe('CONTACTED');
+    expect(comp['interactionOpen']()).toBe(false);
+    expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
   });
 });

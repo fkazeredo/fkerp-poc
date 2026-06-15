@@ -3,6 +3,8 @@ package com.fksoft.erp.infra.web;
 import static java.util.Map.entry;
 
 import com.fksoft.erp.domain.crm.DuplicateReferenceCodeException;
+import com.fksoft.erp.domain.crm.InteractionResultNotAvailableException;
+import com.fksoft.erp.domain.crm.InteractionTypeNotAvailableException;
 import com.fksoft.erp.domain.crm.LeadAccessDeniedException;
 import com.fksoft.erp.domain.crm.LeadAssignmentNotAllowedException;
 import com.fksoft.erp.domain.crm.LeadCannotBeMarkedLostException;
@@ -38,6 +40,8 @@ public class HttpErrorMapping {
             entry(LeadCannotBeQualifiedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(LeadCannotBeMarkedLostException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(LossReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(InteractionTypeNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(InteractionResultNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(InvalidCredentialsException.class, HttpStatus.UNAUTHORIZED),
             entry(DuplicateReferenceCodeException.class, HttpStatus.CONFLICT),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));

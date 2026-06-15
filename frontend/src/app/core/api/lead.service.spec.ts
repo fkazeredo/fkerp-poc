@@ -112,4 +112,19 @@ describe('LeadService', () => {
     expect(req.request.body).toEqual({ responsiblePersonId: 'u1' });
     req.flush({});
   });
+
+  it('posts a registered interaction with type, result, description and dates', () => {
+    const body = {
+      typeId: 't1',
+      resultId: 'r1',
+      description: 'Conversamos',
+      occurredAt: '2026-06-15T13:00:00.000Z',
+      nextContactAt: '2026-06-18T13:00:00.000Z',
+    };
+    service.recordInteraction('l1', body).subscribe();
+    const req = http.expectOne('/api/leads/l1/interactions');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(body);
+    req.flush({});
+  });
 });
