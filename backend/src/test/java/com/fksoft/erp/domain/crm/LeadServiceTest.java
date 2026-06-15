@@ -42,6 +42,9 @@ class LeadServiceTest {
     private InteractionTypeRepository interactionTypes;
 
     @Mock
+    private LossReasonRepository lossReasons;
+
+    @Mock
     private UserRepository users;
 
     @Mock
@@ -141,5 +144,47 @@ class LeadServiceTest {
         assertThat(unassigned.responsibleName()).isNull();
         assertThat(unassigned.unassigned()).isTrue();
         assertThat(unassigned.lastInteractionAt()).isNull();
+    }
+
+    @Test
+    void detailReturnsViewForAVisibleLead() {
+        UUID id = UUID.randomUUID();
+        Lead lead = Lead.register(
+                new RegisterLeadCommand("Maria", "11999999999", null, null, UUID.randomUUID(), null, null),
+                Origin.create("WEBSITE", "Website", 1),
+                UUID.randomUUID());
+        when(leads.findById(id)).thenReturn(Optional.of(lead));
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(true);
+
+        LeadDetailView view = service.detail(id, UUID.randomUUID(), false);
+
+        assertThat(view.name()).isEqualTo("Maria");
+        assertThat(view.status()).isEqualTo(LeadStatus.NEW);
+        assertThat(view.interactions()).isEmpty();
+        assertThat(view.qualification()).isNull();
+        assertThat(view.loss()).isNull();
+    }
+
+    @Test
+    void detailThrowsNotFoundWhenAbsent() {
+        UUID id = UUID.randomUUID();
+        when(leads.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.detail(id, UUID.randomUUID(), false))
+                .isInstanceOf(LeadNotFoundException.class);
+    }
+
+    @Test
+    void detailThrowsAccessDeniedWhenNotVisible() {
+        UUID id = UUID.randomUUID();
+        Lead lead = Lead.register(
+                new RegisterLeadCommand("Maria", "11999999999", null, null, UUID.randomUUID(), UUID.randomUUID(), null),
+                Origin.create("WEBSITE", "Website", 1),
+                UUID.randomUUID());
+        when(leads.findById(id)).thenReturn(Optional.of(lead));
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.detail(id, UUID.randomUUID(), false))
+                .isInstanceOf(LeadAccessDeniedException.class);
     }
 }

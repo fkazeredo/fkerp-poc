@@ -1,7 +1,14 @@
 package com.fksoft.erp.infra.web;
 
+import static java.util.Map.entry;
+
 import com.fksoft.erp.domain.crm.DuplicateReferenceCodeException;
+import com.fksoft.erp.domain.crm.LeadAccessDeniedException;
+import com.fksoft.erp.domain.crm.LeadCannotBeMarkedLostException;
+import com.fksoft.erp.domain.crm.LeadCannotBeQualifiedException;
 import com.fksoft.erp.domain.crm.LeadContactRequiredException;
+import com.fksoft.erp.domain.crm.LeadNotFoundException;
+import com.fksoft.erp.domain.crm.LossReasonNotAvailableException;
 import com.fksoft.erp.domain.crm.OriginNotAvailableException;
 import com.fksoft.erp.domain.crm.ReferenceNotFoundException;
 import com.fksoft.erp.domain.crm.ResponsiblePersonNotFoundException;
@@ -20,13 +27,18 @@ import org.springframework.stereotype.Component;
 @Component
 public class HttpErrorMapping {
 
-    private final Map<Class<? extends DomainException>, HttpStatus> mappings = Map.of(
-            LeadContactRequiredException.class, HttpStatus.UNPROCESSABLE_ENTITY,
-            OriginNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY,
-            InvalidCredentialsException.class, HttpStatus.UNAUTHORIZED,
-            DuplicateReferenceCodeException.class, HttpStatus.CONFLICT,
-            ReferenceNotFoundException.class, HttpStatus.NOT_FOUND,
-            ResponsiblePersonNotFoundException.class, HttpStatus.UNPROCESSABLE_ENTITY);
+    private final Map<Class<? extends DomainException>, HttpStatus> mappings = Map.ofEntries(
+            entry(LeadContactRequiredException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(OriginNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ResponsiblePersonNotFoundException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(LeadNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(LeadAccessDeniedException.class, HttpStatus.FORBIDDEN),
+            entry(LeadCannotBeQualifiedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(LeadCannotBeMarkedLostException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(LossReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(InvalidCredentialsException.class, HttpStatus.UNAUTHORIZED),
+            entry(DuplicateReferenceCodeException.class, HttpStatus.CONFLICT),
+            entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {
         return mappings.getOrDefault(ex.getClass(), HttpStatus.UNPROCESSABLE_ENTITY);

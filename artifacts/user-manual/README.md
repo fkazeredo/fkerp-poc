@@ -20,6 +20,7 @@ This release lets you:
 - Sign in securely.
 - Register a new lead (with an optional first note and an optional responsible person).
 - See, search and filter the leads you are allowed to work with.
+- Open a lead's detail and qualify it, mark it lost (with a reason), or reassign it.
 - Manage the supporting reference lists (*cadastros*): **Origins**, **Loss reasons**,
   **Interaction types**, and **Interaction results**.
 
@@ -149,7 +150,35 @@ Use the filter bar above the table:
 The list is paginated — use the pager at the bottom to move between pages. You can only ever see the
 leads you are allowed to work with; searching and filtering never reveal anyone else's leads.
 
-## 7. Managing reference data (*cadastros*)
+## 7. Opening a lead — detail & actions
+
+Click a lead's **name** in the list to open its detail page (you can only open leads you are
+allowed to see; others return a permission message).
+
+### What the detail shows
+
+- **Main data & contacts:** name, status, phone, WhatsApp, e-mail, origin, responsible, the
+  creation and last-update dates, and the next-contact date when set.
+- **Interaction history:** the lead's notes/contacts over time, when there are any.
+- **Assignment history:** who assigned the lead to whom, and when.
+- **Qualification:** shown once the lead has been qualified (when, by whom, note).
+- **Loss:** shown once the lead has been marked lost (reason, when, by whom, note).
+
+### Acting on a lead
+
+Buttons appear at the top when the action applies to the current status:
+
+- **Qualificar** (Qualify) — marks a new/contacted lead as **Qualified**, with an optional note.
+- **Marcar como perdido** (Mark as Lost) — sets the lead to **Lost**; you must choose a **loss
+  reason** and may add a note. Lost is final.
+- **Reatribuir** (Reassign) — changes the responsible person (or clears it to unassigned). Every
+  change is recorded in the assignment history.
+
+After an action, the detail refreshes and a confirmation appears. The history and the
+qualification/loss sections are always **preserved** — a lost or qualified lead keeps showing that
+information.
+
+## 8. Managing reference data (*cadastros*)
 
 Reference data are the lists that feed the lead form and future workflows. There are
 four, all managed the same way:
@@ -163,27 +192,27 @@ four, all managed the same way:
 
 Open them from **Cadastros** in the top menu or via the command palette.
 
-### 7.1 The list
+### 8.1 The list
 
 Each row shows the **code**, the **label** (what users see), the **order**, and whether
 it is **Active** or **Inactive**. By default only active records are shown; use
 **Mostrar inativos / Ocultar inativos** (Show / Hide inactive) to toggle.
 
-### 7.2 Creating a record
+### 8.2 Creating a record
 
 1. Click **Novo** (New).
 2. Fill in **Código** (a stable internal code), **Rótulo** (the display label), and
    **Ordem** (sort order, a number ≥ 0).
 3. Click **Salvar** (Save). Codes must be unique — reusing one is rejected.
 
-### 7.3 Editing a record
+### 8.3 Editing a record
 
 1. Click the **pencil** icon on the row.
 2. You can change the **label**, the **order**, and the **Active** switch. The **code**
    cannot be changed (it is the stable identifier).
 3. Click **Salvar**.
 
-### 7.4 Activating / deactivating
+### 8.4 Activating / deactivating
 
 - Click the **ban** icon to **deactivate** a record (soft delete). Inactive values stay
   for historical accuracy but **cannot be used on new leads**.
@@ -191,7 +220,7 @@ it is **Active** or **Inactive**. By default only active records are shown; use
 
 ---
 
-## 8. Messages and validation
+## 9. Messages and validation
 
 FKERP validates your input and shows clear, Portuguese-language messages:
 
@@ -202,14 +231,14 @@ FKERP validates your input and shows clear, Portuguese-language messages:
 
 ---
 
-## 9. Signing out
+## 10. Signing out
 
 Click **Sair** (Sign out) in the top-right of the menu bar. You are returned to the login
 screen and your session is closed.
 
 ---
 
-## 10. What's next
+## 11. What's next
 
 This edition covers lead **creation** and reference-data management. Upcoming releases
 will add lead **follow-up** (status changes such as Contacted / Qualified / Lost),

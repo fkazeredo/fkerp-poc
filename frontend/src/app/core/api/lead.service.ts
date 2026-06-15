@@ -66,6 +66,55 @@ export interface LeadFilters {
   q?: string | null;
 }
 
+export interface InteractionItem {
+  id: string;
+  type: string;
+  result: string | null;
+  content: string | null;
+  occurredAt: string;
+  registeredBy: string | null;
+}
+
+export interface AssignmentItem {
+  from: string | null;
+  to: string | null;
+  by: string | null;
+  at: string;
+}
+
+export interface QualificationInfo {
+  qualifiedAt: string;
+  qualifiedBy: string | null;
+  note: string | null;
+}
+
+export interface LossInfo {
+  reason: string | null;
+  lostAt: string;
+  lostBy: string | null;
+  note: string | null;
+}
+
+export interface LeadDetail {
+  id: string;
+  name: string;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  origin: string;
+  status: LeadStatus;
+  responsibleId: string | null;
+  responsibleName: string | null;
+  unassigned: boolean;
+  createdAt: string;
+  updatedAt: string;
+  nextContactAt: string | null;
+  interactions: InteractionItem[];
+  assignments: AssignmentItem[];
+  qualification: QualificationInfo | null;
+  loss: LossInfo | null;
+}
+
 /** API client for the Commercial / CRM lead endpoints. */
 @Injectable({ providedIn: 'root' })
 export class LeadService {
@@ -104,5 +153,21 @@ export class LeadService {
       params = params.set('q', filters.q.trim());
     }
     return this.http.get<PageResponse<LeadListItem>>('/api/leads', { params });
+  }
+
+  detail(id: string): Observable<LeadDetail> {
+    return this.http.get<LeadDetail>(`/api/leads/${id}`);
+  }
+
+  qualify(id: string, note: string | null): Observable<LeadDetail> {
+    return this.http.post<LeadDetail>(`/api/leads/${id}/qualify`, { note });
+  }
+
+  lose(id: string, lossReasonId: string, note: string | null): Observable<LeadDetail> {
+    return this.http.post<LeadDetail>(`/api/leads/${id}/lose`, { lossReasonId, note });
+  }
+
+  reassign(id: string, responsiblePersonId: string | null): Observable<LeadDetail> {
+    return this.http.post<LeadDetail>(`/api/leads/${id}/reassign`, { responsiblePersonId });
   }
 }

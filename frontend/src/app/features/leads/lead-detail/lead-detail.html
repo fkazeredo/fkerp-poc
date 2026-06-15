@@ -1,0 +1,250 @@
+@if (loading()) {
+  <p class="muted">Carregando…</p>
+} @else if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+  <div class="back">
+    <p-button label="Voltar aos leads" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
+  </div>
+} @else if (lead(); as l) {
+  <header class="head">
+    <div class="head-main">
+      <p-button
+        icon="pi pi-arrow-left"
+        [text]="true"
+        severity="secondary"
+        size="small"
+        (onClick)="back()"
+      />
+      <h1>{{ l.name }}</h1>
+      <p-tag [value]="statusLabel(l.status)" [severity]="statusSeverity(l.status)" />
+    </div>
+    <div class="head-actions">
+      @if (canQualify()) {
+        <p-button
+          label="Qualificar"
+          icon="pi pi-check-circle"
+          size="small"
+          (onClick)="openQualify()"
+        />
+      }
+      @if (canLose()) {
+        <p-button
+          label="Marcar como perdido"
+          icon="pi pi-times-circle"
+          severity="danger"
+          [outlined]="true"
+          size="small"
+          (onClick)="openLose()"
+        />
+      }
+      @if (canReassign()) {
+        <p-button
+          label="Reatribuir"
+          icon="pi pi-user-edit"
+          severity="secondary"
+          [outlined]="true"
+          size="small"
+          (onClick)="openReassign()"
+        />
+      }
+    </div>
+  </header>
+
+  <div class="grid">
+    <p-card header="Dados">
+      <dl class="data">
+        <dt>Telefone</dt>
+        <dd>{{ l.phone ?? '—' }}</dd>
+        <dt>WhatsApp</dt>
+        <dd>{{ l.whatsapp ?? '—' }}</dd>
+        <dt>E-mail</dt>
+        <dd>{{ l.email ?? '—' }}</dd>
+        <dt>Origem</dt>
+        <dd>{{ l.origin }}</dd>
+        <dt>Responsável</dt>
+        <dd>{{ l.unassigned ? 'Sem responsável' : (l.responsibleName ?? '—') }}</dd>
+        <dt>Criado em</dt>
+        <dd>{{ l.createdAt | date: 'short' }}</dd>
+        <dt>Atualizado em</dt>
+        <dd>{{ l.updatedAt | date: 'short' }}</dd>
+        <dt>Próximo contato</dt>
+        <dd>{{ l.nextContactAt ? (l.nextContactAt | date: 'short') : '—' }}</dd>
+      </dl>
+    </p-card>
+
+    @if (l.qualification; as q) {
+      <p-card header="Qualificação">
+        <dl class="data">
+          <dt>Quando</dt>
+          <dd>{{ q.qualifiedAt | date: 'short' }}</dd>
+          <dt>Por</dt>
+          <dd>{{ q.qualifiedBy ?? '—' }}</dd>
+          <dt>Anotação</dt>
+          <dd>{{ q.note ?? '—' }}</dd>
+        </dl>
+      </p-card>
+    }
+
+    @if (l.loss; as loss) {
+      <p-card header="Perda">
+        <dl class="data">
+          <dt>Motivo</dt>
+          <dd>{{ loss.reason ?? '—' }}</dd>
+          <dt>Quando</dt>
+          <dd>{{ loss.lostAt | date: 'short' }}</dd>
+          <dt>Por</dt>
+          <dd>{{ loss.lostBy ?? '—' }}</dd>
+          <dt>Anotação</dt>
+          <dd>{{ loss.note ?? '—' }}</dd>
+        </dl>
+      </p-card>
+    }
+  </div>
+
+  <p-card header="Histórico de interações" styleClass="section">
+    @if (l.interactions.length === 0) {
+      <p class="muted">Sem interações.</p>
+    } @else {
+      <ul class="history">
+        @for (i of l.interactions; track i.id) {
+          <li>
+            <span class="when">{{ i.occurredAt | date: 'short' }}</span>
+            <span class="what">
+              <strong>{{ i.type }}</strong>
+              @if (i.result) {
+                <span class="muted"> · {{ i.result }}</span>
+              }
+            </span>
+            @if (i.content) {
+              <span class="note">{{ i.content }}</span>
+            }
+            <span class="who muted">{{ i.registeredBy ?? '' }}</span>
+          </li>
+        }
+      </ul>
+    }
+  </p-card>
+
+  <p-card header="Histórico de atribuições" styleClass="section">
+    @if (l.assignments.length === 0) {
+      <p class="muted">Sem atribuições.</p>
+    } @else {
+      <ul class="history">
+        @for (a of l.assignments; track a.at) {
+          <li>
+            <span class="when">{{ a.at | date: 'short' }}</span>
+            <span class="what"
+              >{{ a.from ?? 'Sem responsável' }} → {{ a.to ?? 'Sem responsável' }}</span
+            >
+            <span class="who muted">{{ a.by ?? '' }}</span>
+          </li>
+        }
+      </ul>
+    }
+  </p-card>
+
+  <p-dialog
+    header="Qualificar lead"
+    [(visible)]="qualifyOpen"
+    [modal]="true"
+    [style]="{ width: '28rem' }"
+  >
+    <div class="field">
+      <label for="qnote">Anotação (opcional)</label>
+      <textarea pTextarea id="qnote" [(ngModel)]="qualifyNote" rows="3" class="w-full"></textarea>
+    </div>
+    <div class="actions">
+      <p-button
+        label="Qualificar"
+        icon="pi pi-check"
+        [loading]="acting()"
+        (onClick)="confirmQualify()"
+      />
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="qualifyOpen.set(false)"
+      />
+    </div>
+  </p-dialog>
+
+  <p-dialog
+    header="Marcar como perdido"
+    [(visible)]="loseOpen"
+    [modal]="true"
+    [style]="{ width: '28rem' }"
+  >
+    <div class="field">
+      <label for="reason">Motivo da perda <span class="req">*</span></label>
+      <p-select
+        inputId="reason"
+        [options]="lossReasons()"
+        optionLabel="label"
+        optionValue="id"
+        [(ngModel)]="lossReasonId"
+        placeholder="Selecione"
+        [filter]="true"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="lnote">Anotação (opcional)</label>
+      <textarea pTextarea id="lnote" [(ngModel)]="lossNote" rows="3" class="w-full"></textarea>
+    </div>
+    <div class="actions">
+      <p-button
+        label="Marcar como perdido"
+        icon="pi pi-times-circle"
+        severity="danger"
+        [disabled]="!lossReasonId"
+        [loading]="acting()"
+        (onClick)="confirmLose()"
+      />
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="loseOpen.set(false)"
+      />
+    </div>
+  </p-dialog>
+
+  <p-dialog
+    header="Reatribuir responsável"
+    [(visible)]="reassignOpen"
+    [modal]="true"
+    [style]="{ width: '28rem' }"
+  >
+    <div class="field">
+      <label for="resp">Responsável</label>
+      <p-select
+        inputId="resp"
+        [options]="responsibleOptions()"
+        optionLabel="name"
+        optionValue="id"
+        [(ngModel)]="reassignTo"
+        placeholder="Sem responsável"
+        [showClear]="true"
+        [filter]="true"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="actions">
+      <p-button
+        label="Salvar"
+        icon="pi pi-check"
+        [loading]="acting()"
+        (onClick)="confirmReassign()"
+      />
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="reassignOpen.set(false)"
+      />
+    </div>
+  </p-dialog>
+}

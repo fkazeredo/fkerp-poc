@@ -22,6 +22,11 @@ export const routes: Routes = [
           import('./features/leads/lead-create/lead-create').then((m) => m.LeadCreate),
       },
       {
+        path: 'leads/:id',
+        loadComponent: () =>
+          import('./features/leads/lead-detail/lead-detail').then((m) => m.LeadDetailPage),
+      },
+      {
         path: 'cadastros/origens',
         data: { title: 'Origens', path: 'origins' },
         loadComponent: () =>

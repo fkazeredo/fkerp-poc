@@ -3,6 +3,9 @@ package com.fksoft.erp.domain.crm;
 import com.fksoft.erp.domain.identity.ResponsibleView;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -18,10 +21,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Application Service of the Commercial / CRM module: registers commercial Leads and serves the
- * operational Lead list. Registering a Lead never creates Customer, Opportunity, Sale, Sales Order,
- * Booking or Financial data. Validates the responsible person directly against Identity
- * (intra-domain collaboration).
+ * Application Service of the Commercial / CRM module: registers Leads, serves the operational list,
+ * and serves the Lead detail with its commercial history plus the transitions that produce it
+ * (qualify, mark lost, reassign). Never creates Customer, Opportunity, Sale, Sales Order, Booking or
+ * Financial data. Collaborates with Identity (responsible/actor resolution) directly.
  */
 @Service
 @RequiredArgsConstructor
@@ -30,6 +33,7 @@ public class LeadService {
     private final LeadRepository leads;
     private final OriginRepository origins;
     private final InteractionTypeRepository interactionTypes;
+    private final LossReasonRepository lossReasons;
     private final UserRepository users;
     private final LeadAccessPolicy accessPolicy;
     private final ApplicationEventPublisher events;
@@ -101,7 +105,7 @@ public class LeadService {
         return page.map(lead -> {
             UUID responsibleId = lead.responsiblePersonId();
             String responsibleName = responsibleId == null ? null : namesById.get(responsibleId);
-            return toView(lead, latestByLead.get(lead.id()), responsibleName);
+            return toListView(lead, latestByLead.get(lead.id()), responsibleName);
         });
     }
 
@@ -118,7 +122,155 @@ public class LeadService {
                 .toList();
     }
 
-    private static LeadListView toView(Lead lead, LatestInteractionRow latest, String responsibleName) {
+    /**
+     * Full detail of a Lead the caller is allowed to see, including its commercial history.
+     *
+     * @param id the lead id
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @return the lead detail view
+     * @throws LeadNotFoundException if no lead has the given id
+     * @throws LeadAccessDeniedException if the lead exists but is not visible to the caller
+     */
+    @Transactional(readOnly = true)
+    public LeadDetailView detail(UUID id, UUID userId, boolean canSeeAll) {
+        return toDetailView(loadVisible(id, userId, canSeeAll));
+    }
+
+    /**
+     * Qualifies a Lead and returns the refreshed detail.
+     *
+     * @param id the lead id
+     * @param note optional qualification note
+     * @param userId the acting user
+     * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @return the updated detail
+     * @throws LeadCannotBeQualifiedException if the lead is already qualified or lost
+     */
+    @Transactional
+    public LeadDetailView qualify(UUID id, String note, UUID userId, boolean canSeeAll) {
+        Lead lead = loadVisible(id, userId, canSeeAll);
+        lead.qualify(userId, note);
+        return toDetailView(leads.saveAndFlush(lead));
+    }
+
+    /**
+     * Marks a Lead as lost with a reason and returns the refreshed detail.
+     *
+     * @param id the lead id
+     * @param lossReasonId the (active) loss reason id
+     * @param note optional loss note
+     * @param userId the acting user
+     * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @return the updated detail
+     * @throws LossReasonNotAvailableException if the loss reason is unknown or inactive
+     * @throws LeadCannotBeMarkedLostException if the lead is already lost
+     */
+    @Transactional
+    public LeadDetailView markLost(UUID id, UUID lossReasonId, String note, UUID userId, boolean canSeeAll) {
+        Lead lead = loadVisible(id, userId, canSeeAll);
+        LossReason reason = lossReasons
+                .findById(lossReasonId)
+                .filter(ReferenceData::active)
+                .orElseThrow(LossReasonNotAvailableException::new);
+        lead.markLost(reason, userId, note);
+        return toDetailView(leads.saveAndFlush(lead));
+    }
+
+    /**
+     * Reassigns the responsible person of a Lead (recording assignment history) and returns the
+     * refreshed detail. A {@code null} target unassigns the lead.
+     *
+     * @param id the lead id
+     * @param toResponsibleId the new responsible, or {@code null} to unassign
+     * @param userId the acting user
+     * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @return the updated detail
+     * @throws ResponsiblePersonNotFoundException if the target user is unknown or inactive
+     */
+    @Transactional
+    public LeadDetailView reassign(UUID id, UUID toResponsibleId, UUID userId, boolean canSeeAll) {
+        Lead lead = loadVisible(id, userId, canSeeAll);
+        if (toResponsibleId != null
+                && users.findById(toResponsibleId).filter(User::active).isEmpty()) {
+            throw new ResponsiblePersonNotFoundException();
+        }
+        lead.reassign(toResponsibleId, userId);
+        return toDetailView(leads.saveAndFlush(lead));
+    }
+
+    private Lead loadVisible(UUID id, UUID userId, boolean canSeeAll) {
+        Lead lead = leads.findById(id).orElseThrow(LeadNotFoundException::new);
+        if (!accessPolicy.canSee(lead, userId, canSeeAll)) {
+            throw new LeadAccessDeniedException();
+        }
+        return lead;
+    }
+
+    private LeadDetailView toDetailView(Lead lead) {
+        Set<UUID> userIds = new HashSet<>();
+        addIfPresent(userIds, lead.responsiblePersonId());
+        addIfPresent(userIds, lead.qualifiedBy());
+        addIfPresent(userIds, lead.lostBy());
+        lead.interactions().forEach(i -> addIfPresent(userIds, i.registeredBy()));
+        lead.assignments().forEach(a -> {
+            addIfPresent(userIds, a.assignedBy());
+            addIfPresent(userIds, a.fromResponsibleId());
+            addIfPresent(userIds, a.toResponsibleId());
+        });
+        Map<UUID, String> names = userIds.isEmpty()
+                ? new HashMap<>()
+                : users.findAllById(userIds).stream().collect(Collectors.toMap(User::id, User::username));
+
+        List<InteractionView> interactions = lead.interactions().stream()
+                .sorted(Comparator.comparing(LeadInteraction::occurredAt).reversed())
+                .map(i -> new InteractionView(
+                        i.id(),
+                        i.type().label(),
+                        i.result() != null ? i.result().label() : null,
+                        i.content(),
+                        i.occurredAt(),
+                        names.get(i.registeredBy())))
+                .toList();
+        List<AssignmentView> assignments = lead.assignments().stream()
+                .sorted(Comparator.comparing(LeadAssignment::assignedAt).reversed())
+                .map(a -> new AssignmentView(
+                        nameOf(names, a.fromResponsibleId()),
+                        nameOf(names, a.toResponsibleId()),
+                        names.get(a.assignedBy()),
+                        a.assignedAt()))
+                .toList();
+        QualificationView qualification = lead.qualifiedAt() == null
+                ? null
+                : new QualificationView(lead.qualifiedAt(), names.get(lead.qualifiedBy()), lead.qualificationNote());
+        LossView loss = lead.lostAt() == null
+                ? null
+                : new LossView(
+                        lead.lossReason() != null ? lead.lossReason().label() : null,
+                        lead.lostAt(),
+                        names.get(lead.lostBy()),
+                        lead.lossNote());
+
+        return new LeadDetailView(
+                lead.id(),
+                lead.name(),
+                lead.phone(),
+                lead.whatsapp(),
+                lead.email(),
+                lead.origin().label(),
+                lead.status(),
+                lead.responsiblePersonId(),
+                nameOf(names, lead.responsiblePersonId()),
+                lead.createdAt(),
+                lead.updatedAt(),
+                lead.nextContactAt(),
+                interactions,
+                assignments,
+                qualification,
+                loss);
+    }
+
+    private static LeadListView toListView(Lead lead, LatestInteractionRow latest, String responsibleName) {
         return new LeadListView(
                 lead.id(),
                 lead.name(),
@@ -131,6 +283,16 @@ public class LeadService {
                 latest != null ? latest.getOccurredAt() : null,
                 latest != null ? latest.getTypeLabel() : null,
                 lead.nextContactAt());
+    }
+
+    private static String nameOf(Map<UUID, String> names, UUID id) {
+        return id == null ? null : names.get(id);
+    }
+
+    private static void addIfPresent(Set<UUID> ids, UUID id) {
+        if (id != null) {
+            ids.add(id);
+        }
     }
 
     private static String mainContact(Lead lead) {
