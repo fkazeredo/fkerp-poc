@@ -65,9 +65,7 @@ describe('LeadCreate', () => {
     expect(payload).toMatchObject({ name: 'Maria', originId: 'o1', phone: '11999999999' });
     expect(payload.email).toBeNull();
     expect(payload.whatsapp).toBeNull();
-    expect(messages.add).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'success' }),
-    );
+    expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
     expect(router.navigateByUrl).toHaveBeenCalledWith('/');
   });
 
@@ -77,7 +75,11 @@ describe('LeadCreate', () => {
         () =>
           new HttpErrorResponse({
             status: 400,
-            error: { code: 'validation.failed', message: 'Falha', fields: { name: 'Nome é obrigatório' } },
+            error: {
+              code: 'validation.failed',
+              message: 'Falha',
+              fields: { name: 'Nome é obrigatório' },
+            },
           }),
       ),
     );
@@ -89,5 +91,18 @@ describe('LeadCreate', () => {
     expect(comp['fieldError']('name')).toBe('Nome é obrigatório');
     expect(comp['formError']()).toBe('Falha');
     expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  // Regression: "Cancelar" must leave the form (navigate home), not silently reset — clicking it
+  // on an empty form used to do nothing visible, so it looked broken.
+  it('navigates home on cancel and does not create', () => {
+    leads.create.mockReturnValue(of({ id: 'l1', name: 'Maria', status: 'NEW' }));
+    const comp = build();
+    comp['form'].patchValue({ name: 'Maria', originId: 'o1', phone: '11999999999' });
+
+    comp['cancel']();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/');
+    expect(leads.create).not.toHaveBeenCalled();
   });
 });

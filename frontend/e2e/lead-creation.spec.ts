@@ -37,3 +37,19 @@ test('rejects login with wrong credentials', async ({ page }) => {
 
   await expect(page.getByText('Usuário ou senha inválidos.')).toBeVisible();
 });
+
+// Regression: Cancel on the lead form must take the user back to the home screen.
+test('cancel on the lead form returns to home', async ({ page }) => {
+  await page.goto('/login');
+  await page.locator('#username').fill('comercial');
+  await page.locator('#password').fill('comercial123');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(page.getByRole('heading', { name: 'Comercial / CRM' })).toBeVisible();
+
+  await page.goto('/leads/new');
+  await page.locator('#name').fill('Para descartar');
+  await page.getByRole('button', { name: 'Cancelar' }).click();
+
+  await expect(page).not.toHaveURL(/leads\/new/);
+  await expect(page.getByRole('heading', { name: 'Comercial / CRM' })).toBeVisible();
+});

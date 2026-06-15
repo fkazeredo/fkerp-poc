@@ -113,7 +113,8 @@ or e-mail. If none is provided, the system rejects the lead with the message
   screen.
 - The new lead starts in status **NEW** (Novo).
 - If something is invalid, the message appears **next to the field** in question, so you
-  can fix it and resubmit. Use **Cancelar** (Cancel) to clear the form.
+  can fix it and resubmit. Use **Cancelar** (Cancel) to discard the entry and return to the
+  home screen.
 
 ---
 
