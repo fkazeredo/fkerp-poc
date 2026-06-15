@@ -1,0 +1,132 @@
+<header class="head">
+  <h1>{{ title() }}</h1>
+  <div class="head-actions">
+    <p-button
+      [label]="includeInactive() ? 'Ocultar inativos' : 'Mostrar inativos'"
+      [icon]="includeInactive() ? 'pi pi-eye-slash' : 'pi pi-eye'"
+      severity="secondary"
+      [text]="true"
+      size="small"
+      (onClick)="toggleInactive()"
+    />
+    <p-button label="Novo" icon="pi pi-plus" size="small" (onClick)="openCreate()" />
+  </div>
+</header>
+
+<p-table
+  [value]="items()"
+  [loading]="loading()"
+  [paginator]="items().length > 10"
+  [rows]="10"
+  styleClass="p-datatable-sm"
+  [tableStyle]="{ 'min-width': '40rem' }"
+>
+  <ng-template pTemplate="header">
+    <tr>
+      <th style="width: 8rem">Código</th>
+      <th>Rótulo</th>
+      <th style="width: 7rem">Ordem</th>
+      <th style="width: 7rem">Situação</th>
+      <th style="width: 9rem"></th>
+    </tr>
+  </ng-template>
+  <ng-template pTemplate="body" let-item>
+    <tr [class.inactive-row]="!item.active">
+      <td>
+        <code>{{ item.code }}</code>
+      </td>
+      <td>{{ item.label }}</td>
+      <td>{{ item.sortOrder }}</td>
+      <td>
+        <p-tag
+          [value]="item.active ? 'Ativo' : 'Inativo'"
+          [severity]="item.active ? 'success' : 'secondary'"
+        />
+      </td>
+      <td class="row-actions">
+        <p-button
+          icon="pi pi-pencil"
+          severity="secondary"
+          [text]="true"
+          size="small"
+          pTooltip="Editar"
+          (onClick)="openEdit(item)"
+        />
+        @if (item.active) {
+          <p-button
+            icon="pi pi-ban"
+            severity="danger"
+            [text]="true"
+            size="small"
+            pTooltip="Inativar"
+            (onClick)="deactivate(item)"
+          />
+        } @else {
+          <p-button
+            icon="pi pi-check"
+            severity="success"
+            [text]="true"
+            size="small"
+            pTooltip="Reativar"
+            (onClick)="activate(item)"
+          />
+        }
+      </td>
+    </tr>
+  </ng-template>
+  <ng-template pTemplate="emptymessage">
+    <tr>
+      <td colspan="5" class="muted empty">Nenhum registro.</td>
+    </tr>
+  </ng-template>
+</p-table>
+
+<p-dialog
+  [header]="dialogTitle()"
+  [(visible)]="dialogOpen"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '28rem' }"
+>
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="field">
+      <label for="code">Código</label>
+      <input pInputText id="code" formControlName="code" class="w-full" />
+      @if (form.controls.code.touched && form.controls.code.hasError('required')) {
+        <small class="error">Código é obrigatório.</small>
+      }
+    </div>
+    <div class="field">
+      <label for="label">Rótulo</label>
+      <input pInputText id="label" formControlName="label" class="w-full" />
+      @if (form.controls.label.touched && form.controls.label.hasError('required')) {
+        <small class="error">Rótulo é obrigatório.</small>
+      }
+    </div>
+    <div class="field">
+      <label for="sortOrder">Ordem</label>
+      <p-inputnumber
+        inputId="sortOrder"
+        formControlName="sortOrder"
+        [min]="0"
+        styleClass="w-full"
+      />
+    </div>
+    @if (editing()) {
+      <div class="field-inline">
+        <p-toggleswitch inputId="active" formControlName="active" />
+        <label for="active">Ativo</label>
+      </div>
+    }
+    <div class="actions">
+      <p-button type="submit" label="Salvar" icon="pi pi-check" [loading]="saving()" />
+      <p-button
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="dialogOpen.set(false)"
+      />
+    </div>
+  </form>
+</p-dialog>

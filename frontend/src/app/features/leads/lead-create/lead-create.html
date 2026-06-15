@@ -1,0 +1,96 @@
+<header class="head">
+  <h1>Novo Lead</h1>
+  <p class="muted">Informe os dados do interessado. Ao menos um contato é obrigatório.</p>
+</header>
+
+@if (formError()) {
+  <p-message severity="error" [text]="formError()!" styleClass="w-full form-banner" />
+}
+
+<form [formGroup]="form" (ngSubmit)="submit()" class="lead-form">
+  <div class="field">
+    <label for="name">Nome <span class="req">*</span></label>
+    <input #nameInput pInputText id="name" formControlName="name" class="w-full" />
+    @if (fieldError('name')) {
+      <small class="error">{{ fieldError('name') }}</small>
+    }
+  </div>
+
+  <div class="field">
+    <label for="originId">Origem <span class="req">*</span></label>
+    <p-select
+      inputId="originId"
+      formControlName="originId"
+      [options]="origins()"
+      optionLabel="label"
+      optionValue="id"
+      placeholder="Selecione a origem"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+    @if (fieldError('originId')) {
+      <small class="error">{{ fieldError('originId') }}</small>
+    }
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label for="phone">Telefone</label>
+      <input pInputText id="phone" formControlName="phone" inputmode="numeric" class="w-full" />
+      @if (fieldError('phone')) {
+        <small class="error">{{ fieldError('phone') }}</small>
+      }
+    </div>
+    <div class="field">
+      <label for="whatsapp">WhatsApp</label>
+      <input
+        pInputText
+        id="whatsapp"
+        formControlName="whatsapp"
+        inputmode="numeric"
+        class="w-full"
+      />
+      @if (fieldError('whatsapp')) {
+        <small class="error">{{ fieldError('whatsapp') }}</small>
+      }
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="email">E-mail</label>
+    <input pInputText id="email" type="email" formControlName="email" class="w-full" />
+    @if (form.controls.email.touched && form.controls.email.hasError('email')) {
+      <small class="error">E-mail inválido.</small>
+    }
+    @if (fieldError('email')) {
+      <small class="error">{{ fieldError('email') }}</small>
+    }
+  </div>
+
+  <div class="field">
+    <label for="initialNote">Anotação inicial</label>
+    <textarea
+      pTextarea
+      id="initialNote"
+      formControlName="initialNote"
+      rows="3"
+      class="w-full"
+      [autoResize]="true"
+    ></textarea>
+    @if (fieldError('initialNote')) {
+      <small class="error">{{ fieldError('initialNote') }}</small>
+    }
+  </div>
+
+  <div class="actions">
+    <p-button type="submit" label="Salvar lead" icon="pi pi-check" [loading]="loading()" />
+    <p-button
+      type="button"
+      label="Cancelar"
+      severity="secondary"
+      [text]="true"
+      (onClick)="form.reset()"
+    />
+  </div>
+</form>

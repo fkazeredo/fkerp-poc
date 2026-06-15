@@ -1,0 +1,39 @@
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  gap: 1rem;
+}
+
+.head h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.head-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+.inactive-row {
+  opacity: 0.6;
+}
+
+.empty {
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.field-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
