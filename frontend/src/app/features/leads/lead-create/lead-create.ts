@@ -16,9 +16,9 @@ import { TextareaModule } from 'primeng/textarea';
 import { SelectModule } from 'primeng/select';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
-import { CreateLead, LeadService, Origin } from '../../../core/api/lead.service';
+import { CreateLead, LeadService, Origin, Responsible } from '../../../core/api/lead.service';
 
-/** Reactive form to register a new lead, including the optional first note. */
+/** Reactive form to register a new lead, including the optional first note and responsible person. */
 @Component({
   selector: 'app-lead-create',
   imports: [
@@ -41,6 +41,7 @@ export class LeadCreate implements OnInit, AfterViewInit {
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
 
   protected readonly origins = signal<Origin[]>([]);
+  protected readonly responsibles = signal<Responsible[]>([]);
   protected readonly loading = signal(false);
   protected readonly formError = signal<string | null>(null);
   protected readonly fieldErrors = signal<Record<string, string>>({});
@@ -51,6 +52,7 @@ export class LeadCreate implements OnInit, AfterViewInit {
     phone: [''],
     whatsapp: [''],
     email: ['', Validators.email],
+    responsibleId: [''],
     initialNote: [''],
   });
 
@@ -58,6 +60,9 @@ export class LeadCreate implements OnInit, AfterViewInit {
     this.leads.origins().subscribe({
       next: (list) => this.origins.set(list),
       error: () => this.formError.set('Não foi possível carregar as origens.'),
+    });
+    this.leads.responsibles().subscribe({
+      next: (list) => this.responsibles.set(list),
     });
   }
 
@@ -90,7 +95,7 @@ export class LeadCreate implements OnInit, AfterViewInit {
       whatsapp: emptyToNull(v.whatsapp),
       email: emptyToNull(v.email),
       originId: v.originId,
-      responsiblePersonId: null,
+      responsiblePersonId: emptyToNull(v.responsibleId),
       initialNote: emptyToNull(v.initialNote),
     };
 

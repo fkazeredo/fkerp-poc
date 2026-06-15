@@ -14,7 +14,7 @@ import { LeadService } from '../../../core/api/lead.service';
 };
 
 describe('LeadCreate', () => {
-  const leads = { origins: vi.fn(), create: vi.fn() };
+  const leads = { origins: vi.fn(), responsibles: vi.fn(), create: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
 
@@ -33,18 +33,37 @@ describe('LeadCreate', () => {
 
   beforeEach(() => {
     leads.origins.mockReset();
+    leads.responsibles.mockReset();
     leads.create.mockReset();
     router.navigateByUrl.mockReset();
     messages.add.mockReset();
     leads.origins.mockReturnValue(of([{ id: 'o1', code: 'WEBSITE', label: 'Website' }]));
+    leads.responsibles.mockReturnValue(of([{ id: 'u1', name: 'comercial' }]));
   });
 
-  it('loads the origins for the dropdown on init', () => {
+  it('loads the origins and responsibles for the dropdowns on init', () => {
     const comp = build();
     comp.ngOnInit();
     expect(leads.origins).toHaveBeenCalled();
+    expect(leads.responsibles).toHaveBeenCalled();
     expect(comp['origins']()).toHaveLength(1);
     expect(comp['origins']()[0].label).toBe('Website');
+    expect(comp['responsibles']()).toHaveLength(1);
+  });
+
+  it('sends the selected responsible person id in the payload', () => {
+    leads.create.mockReturnValue(of({ id: 'l1', name: 'Maria', status: 'NEW' }));
+    const comp = build();
+    comp['form'].patchValue({
+      name: 'Maria',
+      originId: 'o1',
+      phone: '11999999999',
+      responsibleId: 'u1',
+    });
+
+    comp['submit']();
+
+    expect(leads.create.mock.calls[0][0].responsiblePersonId).toBe('u1');
   });
 
   it('does not submit when required fields are missing', () => {

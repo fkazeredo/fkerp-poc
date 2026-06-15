@@ -13,6 +13,10 @@ export const routes: Routes = [
     children: [
       { path: '', loadComponent: () => import('./features/home/home').then((m) => m.Home) },
       {
+        path: 'leads',
+        loadComponent: () => import('./features/leads/lead-list/lead-list').then((m) => m.LeadList),
+      },
+      {
         path: 'leads/new',
         loadComponent: () =>
           import('./features/leads/lead-create/lead-create').then((m) => m.LeadCreate),

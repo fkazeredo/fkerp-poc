@@ -69,6 +69,25 @@
   </div>
 
   <div class="field">
+    <label for="responsibleId">Responsável</label>
+    <p-select
+      inputId="responsibleId"
+      formControlName="responsibleId"
+      [options]="responsibles()"
+      optionLabel="name"
+      optionValue="id"
+      placeholder="Sem responsável"
+      [showClear]="true"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+    @if (fieldError('responsiblePersonId')) {
+      <small class="error">{{ fieldError('responsiblePersonId') }}</small>
+    }
+  </div>
+
+  <div class="field">
     <label for="initialNote">Anotação inicial</label>
     <textarea
       pTextarea
