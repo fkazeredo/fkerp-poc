@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: fkerp-backend
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/erp}
+    username: ${SPRING_DATASOURCE_USERNAME:erp}
+    password: ${SPRING_DATASOURCE_PASSWORD:erp}
+  jpa:
+    hibernate:
+      ddl-auto: validate   # Flyway é dono do schema
+    open-in-view: false
+  flyway:
+    enabled: true
+  modulith:
+    detection-strategy: explicitly-annotated
+
+app:
+  name: FKERP
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true   # liveness/readiness em /actuator/health/{liveness,readiness}
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  structured:
+    format:
+      console: logstash   # logs JSON (coletados pelo Alloy -> Loki)
