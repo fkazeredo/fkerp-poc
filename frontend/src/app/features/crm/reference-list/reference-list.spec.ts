@@ -61,7 +61,11 @@ describe('ReferenceList', () => {
 
     comp['save']();
 
-    expect(api.create).toHaveBeenCalledWith('origins', { code: 'TIKTOK', label: 'TikTok', sortOrder: 5 });
+    expect(api.create).toHaveBeenCalledWith('origins', {
+      code: 'TIKTOK',
+      label: 'TikTok',
+      sortOrder: 5,
+    });
     expect(api.list).toHaveBeenCalledTimes(2); // initial + reload
     expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
   });
@@ -78,5 +82,17 @@ describe('ReferenceList', () => {
     comp['toggleInactive']();
     expect(comp['includeInactive']()).toBe(true);
     expect(api.list).toHaveBeenLastCalledWith('origins', true);
+  });
+
+  // Regression: the dialog "Cancelar" must close the dialog without saving.
+  it('closes the dialog on cancel without saving', () => {
+    const comp = build();
+    comp['openCreate']();
+    expect(comp['dialogOpen']()).toBe(true);
+
+    comp['closeDialog']();
+
+    expect(comp['dialogOpen']()).toBe(false);
+    expect(api.create).not.toHaveBeenCalled();
   });
 });

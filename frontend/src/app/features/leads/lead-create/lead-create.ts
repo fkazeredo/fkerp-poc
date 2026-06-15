@@ -69,6 +69,11 @@ export class LeadCreate implements OnInit, AfterViewInit {
     return this.fieldErrors()[name] ?? null;
   }
 
+  /** Discards the entry and returns to the home screen. */
+  protected cancel(): void {
+    this.router.navigateByUrl('/');
+  }
+
   protected submit(): void {
     if (this.form.invalid || this.loading()) {
       this.form.markAllAsTouched();

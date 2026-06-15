@@ -95,6 +95,11 @@ export class ReferenceList {
     this.dialogOpen.set(true);
   }
 
+  /** Closes the create/edit dialog without saving. */
+  protected closeDialog(): void {
+    this.dialogOpen.set(false);
+  }
+
   protected openEdit(item: ReferenceItem): void {
     this.editing.set(item);
     this.form.reset({
