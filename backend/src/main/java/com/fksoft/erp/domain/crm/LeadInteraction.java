@@ -7,6 +7,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -26,6 +27,7 @@ public class LeadInteraction {
     @Id
     private UUID id;
 
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "type_id", nullable = false)
     private InteractionType type;
@@ -37,9 +39,11 @@ public class LeadInteraction {
     @Column(columnDefinition = "text")
     private String content;
 
+    @NotNull
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
 
+    @NotNull
     @Column(name = "registered_by", nullable = false)
     private UUID registeredBy;
 

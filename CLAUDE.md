@@ -153,12 +153,29 @@ the same use case or the API shape differs from the use-case input. Prefer recor
 explicit factory methods close to the object (`OrderResponse.from(order)`); dedicated mapper
 classes are not the default (a mapping library MAY be used for repetitive many-field mappings).
 
-### 5.5 Validation
+### 5.5 Validation (defense in depth - protect every boundary)
 
-Validate at every relevant boundary: delivery (controllers, consumers, schedulers), application
-(preconditions, existence), domain (invariants, transitions), persistence (constraints, FKs,
-indexes), integration (incoming/outgoing data). The domain MUST NOT depend on controller
-validation to remain valid.
+Protecting boundaries is mandatory. Every action flow MUST validate at **every layer it crosses**;
+no layer trusts the previous one. For a write/command flow the full chain below is **required** -
+omitting a layer needs a recorded reason (§2 exceptions), never silence:
+
+1. **Frontend (Angular form):** Reactive Forms validators give immediate feedback (required,
+   formats, ranges) and disable submit while invalid. UX only - NEVER the security boundary.
+2. **Delivery (Controller):** Bean Validation on the request DTO (`@Valid` + `@NotBlank`/`@Email`/
+   `@Pattern`/`@Size`/`@NotNull`/custom constraints). Rejects malformed input before the use case.
+3. **Application (Service):** preconditions, existence and cross-entity/business checks the DTO
+   cannot express (referenced value exists and is active, "at least one contact", uniqueness).
+4. **Domain (Entity):** Bean Validation annotations (`@NotNull`, `@NotBlank`, `@Size`, `@Email`,
+   …) on business fields **plus** business methods that protect invariants and legal state
+   transitions. The entity MUST be valid on its own, independent of controller/service validation.
+   (Do not Bean-Validate framework-managed audit fields like `@CreationTimestamp` - rely on the
+   DB column constraint there to avoid pre-persist ordering traps.)
+5. **Persistence (Database):** the schema is the last guard - `NOT NULL`, `UNIQUE`, `CHECK`, FKs,
+   indexes (Flyway). DB violations surface as clear domain/API errors, never raw exceptions.
+
+The backend is the authority: frontend validation MUST NOT be the only check, and the domain MUST
+NOT depend on delivery validation to stay valid. Validation messages are i18n keys (§5.6). Read
+boundaries and integrations (incoming/outgoing data) validate too (constraints, types, ranges).
 
 ### 5.6 Errors & i18n
 
@@ -360,7 +377,8 @@ feature-specific code MUST stay inside the feature.
   services with signals for shared feature state. No NgRx unless real complexity justifies it.
 - **Components & forms:** standalone components; reusable components are presentation-oriented
   with inputs/outputs and minimal business coupling. Reactive Forms by default; large forms
-  extract builders, mappers, validators.
+  extract builders, mappers, validators. Form validation MUST mirror the backend constraints
+  (§5.5) for fast feedback, but is never the only guard - the backend always re-validates.
 - **HTTP & errors:** `core/http` owns base URL, auth headers, correlation ID, global error
   handling, interceptors. Each feature exposes domain-oriented API services - no raw `HttpClient`
   in components. Combine global normalization with feature-specific error presentation.
