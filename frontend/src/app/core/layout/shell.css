@@ -1,0 +1,16 @@
+.brand {
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin-right: 1rem;
+}
+
+.menu-end {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.palette-hint {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+}

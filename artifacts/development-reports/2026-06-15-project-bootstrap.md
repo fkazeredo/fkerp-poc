@@ -31,7 +31,7 @@
 ### Repositório / governança
 - **`CLAUDE.md`**: mantido o contrato do usuário; complementado (pacote base, regra "commitar antes do relatório", layout `infra/`+`artifacts/`).
 - **`.claude/`** versionado: `settings.json` (permission tiers + hooks), `hooks/` (`protect-generated`, `format-java`), `plans/`, `memory/`.
-- **`artifacts/`**: documentação orientada a humanos (este relatório vive em `artifacts/reports/`).
+- **`artifacts/`**: documentação orientada a humanos (este relatório vive em `artifacts/development-reports/`).
 - `.env.example` (commitado) + `.env` (gitignorado), `.gitignore`, `.gitattributes`.
 
 ## Como rodar

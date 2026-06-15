@@ -1,0 +1,17 @@
+.head h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+}
+
+.lead-form {
+  margin-top: 1.5rem;
+  max-width: 640px;
+}
+
+.form-banner {
+  margin-bottom: 1.25rem;
+}
+
+.req {
+  color: var(--p-red-500, #ef4444);
+}

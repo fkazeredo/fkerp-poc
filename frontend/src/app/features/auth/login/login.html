@@ -1,0 +1,43 @@
+<div class="login-wrap">
+  <form class="login-card" [formGroup]="form" (ngSubmit)="submit()">
+    <div class="login-brand">FKERP</div>
+    <p class="muted login-sub">Acesse para gerenciar leads</p>
+
+    @if (errorMessage()) {
+      <p-message severity="error" [text]="errorMessage()!" styleClass="w-full login-error" />
+    }
+
+    <div class="field">
+      <label for="username">Usuário</label>
+      <input
+        #usernameInput
+        pInputText
+        id="username"
+        formControlName="username"
+        autocomplete="username"
+        class="w-full"
+      />
+    </div>
+
+    <div class="field">
+      <label for="password">Senha</label>
+      <p-password
+        inputId="password"
+        formControlName="password"
+        [feedback]="false"
+        [toggleMask]="true"
+        styleClass="w-full"
+        inputStyleClass="w-full"
+        autocomplete="current-password"
+      />
+    </div>
+
+    <p-button
+      type="submit"
+      label="Entrar"
+      icon="pi pi-sign-in"
+      styleClass="w-full"
+      [loading]="loading()"
+    />
+  </form>
+</div>
