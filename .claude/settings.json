@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -fd:*)",
+      "Bash(rm -rf:*)",
+      "Bash(docker volume rm:*)",
+      "Bash(docker compose down -v:*)",
+      "Bash(mvn flyway:clean:*)",
+      "Bash(./mvnw flyway:clean:*)",
+      "Bash(dropdb:*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git rebase:*)",
+      "Bash(docker compose down:*)",
+      "Bash(rm -r:*)",
+      "Bash(mvn flyway:*)",
+      "Bash(./mvnw flyway:*)",
+      "Bash(psql:*)"
+    ],
+    "allow": [
+      "Bash(./mvnw test:*)",
+      "Bash(./mvnw verify:*)",
+      "Bash(./mvnw compile:*)",
+      "Bash(./mvnw spotless:apply:*)",
+      "Bash(./mvnw spotless:check:*)",
+      "Bash(./mvnw checkstyle:check:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run build:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/protect-generated.js" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/format-java.js" }
+        ]
+      }
+    ]
+  }
+}
