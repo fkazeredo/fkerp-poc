@@ -44,8 +44,9 @@ environment this is:
 3. On success you land on the home screen. If the credentials are wrong, a message
    reads *"Usuário ou senha inválidos."* (Invalid username or password.)
 
-> Development/demo credentials: **`comercial` / `comercial123`**. Your real account is
-> created by your administrator.
+> Development/demo credentials: **`comercial` / `comercial123`** (a manager who can assign leads to
+> anyone) and **`vendedor` / `vendedor123`** (a sales rep who can only take unassigned leads). Your
+> real account is created by your administrator.
 
 Your session is kept alive automatically and securely while you use the app. If you
 reload the page you stay signed in. Use **Sair** (Sign out) in the top bar to end the
@@ -173,10 +174,22 @@ Buttons appear at the top when the action applies to the current status:
   reason** and may add a note. Lost is final.
 - **Reatribuir** (Reassign) — changes the responsible person (or clears it to unassigned). Every
   change is recorded in the assignment history.
+- **Assumir** (Take it) — assigns the lead **to yourself**. It appears only on an unassigned lead
+  you can see and is the way a sales rep picks up new leads.
 
 After an action, the detail refreshes and a confirmation appears. The history and the
 qualification/loss sections are always **preserved** — a lost or qualified lead keeps showing that
 information.
+
+### Who can assign a lead
+
+Which of the two buttons you see depends on your **assignment authority**:
+
+- **Commercial managers and administrators** can assign or reassign a lead to **anyone** (and clear
+  it to unassigned). They see the **Reatribuir** button.
+- **Sales representatives** can only **take an unassigned lead for themselves**. They see the
+  **Assumir** button instead — they cannot hand a lead to another person or unassign it. The system
+  enforces this on the server, so the rule holds even outside the screen.
 
 ## 8. Managing reference data (*cadastros*)
 
