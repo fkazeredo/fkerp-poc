@@ -13,6 +13,8 @@ import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.LossReason;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityCreated;
+import com.fksoft.erp.domain.crm.model.OpportunityStage;
+import com.fksoft.erp.domain.crm.model.OpportunityStageChange;
 import com.fksoft.erp.domain.crm.model.ReferenceData;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.LossReasonRepository;
@@ -180,6 +182,30 @@ public class OpportunityService {
         return toDetail(opportunities.saveAndFlush(opportunity));
     }
 
+    /**
+     * Moves an Opportunity the caller is allowed to see to another active pipeline stage and returns the
+     * refreshed detail. Movement among the active stages is free; LOST is reached only through
+     * {@link #markLost} (it is terminal).
+     *
+     * @param id the opportunity id
+     * @param target the destination stage
+     * @param userId the acting user
+     * @param canSeeAll whether the caller may see every Opportunity
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws OpportunityNotFoundException if the Opportunity does not exist
+     * @throws OpportunityAccessDeniedException if the caller may not see it
+     * @throws com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException if the transition is
+     *     not allowed (from LOST, to LOST, or to the current stage)
+     */
+    @Transactional
+    public OpportunityDetail changeStage(
+            UUID id, OpportunityStage target, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Opportunity opportunity = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
+        opportunity.moveToStage(target, userId);
+        return toDetail(opportunities.saveAndFlush(opportunity));
+    }
+
     private Opportunity loadVisible(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Opportunity opportunity = opportunities.findById(id).orElseThrow(OpportunityNotFoundException::new);
         if (!accessPolicy.canSee(opportunity, userId, canSeeAll, canSeeUnassigned)) {
@@ -190,17 +216,15 @@ public class OpportunityService {
 
     private OpportunityDetail toDetail(Opportunity opportunity) {
         Lead lead = leads.findById(opportunity.leadId()).orElseThrow(LeadNotFoundException::new);
-        Set<UUID> actorIds = Stream.of(opportunity.responsiblePersonId(), opportunity.lostBy())
+        Set<UUID> actorIds = Stream.concat(
+                        Stream.of(opportunity.responsiblePersonId(), opportunity.lostBy()),
+                        opportunity.stageChanges().stream().map(OpportunityStageChange::changedBy))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<UUID, String> names = actorIds.isEmpty()
                 ? Map.of()
                 : users.findAllById(actorIds).stream().collect(Collectors.toMap(User::id, User::username));
-        return OpportunityDetail.from(
-                opportunity,
-                lead,
-                nameOf(names, opportunity.responsiblePersonId()),
-                nameOf(names, opportunity.lostBy()));
+        return OpportunityDetail.from(opportunity, lead, names);
     }
 
     private static String nameOf(Map<UUID, String> names, UUID id) {

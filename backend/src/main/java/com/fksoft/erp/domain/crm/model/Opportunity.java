@@ -2,7 +2,9 @@ package com.fksoft.erp.domain.crm.model;
 
 import com.fksoft.erp.domain.crm.exception.LeadNotQualifiedForOpportunityException;
 import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException;
+import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,6 +13,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotBlank;
@@ -20,6 +23,8 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -106,6 +111,11 @@ public class Opportunity {
     @Column(name = "loss_note")
     private String lossNote;
 
+    // Pipeline stage-movement history (part of the aggregate): every transition is kept for the record.
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "opportunity_id", nullable = false)
+    private List<OpportunityStageChange> stageChanges = new ArrayList<>();
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -167,12 +177,36 @@ public class Opportunity {
         if (stage == OpportunityStage.LOST) {
             throw new OpportunityCannotBeMarkedLostException();
         }
+        recordStageChange(stage, OpportunityStage.LOST, byUser);
         stage = OpportunityStage.LOST;
         lossReason = reason;
         lostAt = Instant.now();
         lostBy = byUser;
         lossNote = emptyToNull(note);
         updatedBy = byUser;
+    }
+
+    /**
+     * Moves the Opportunity to another active pipeline stage and records the movement. Movement among the
+     * active stages (New / Discovery / Product Fit / Ready for Proposal) is free; LOST is reached only
+     * through {@link #markLost} (it is terminal).
+     *
+     * @param target the destination stage (must be an active stage, different from the current one)
+     * @param byUser id of the user moving the Opportunity
+     * @throws OpportunityStageTransitionException if the Opportunity is LOST (terminal), the target is
+     *     LOST (use the lose action), or the target equals the current stage
+     */
+    public void moveToStage(OpportunityStage target, UUID byUser) {
+        if (stage == OpportunityStage.LOST || target == OpportunityStage.LOST || target == stage) {
+            throw new OpportunityStageTransitionException();
+        }
+        recordStageChange(stage, target, byUser);
+        stage = target;
+        updatedBy = byUser;
+    }
+
+    private void recordStageChange(OpportunityStage from, OpportunityStage to, UUID byUser) {
+        stageChanges.add(OpportunityStageChange.of(from, to, byUser));
     }
 
     private static String emptyToNull(String value) {

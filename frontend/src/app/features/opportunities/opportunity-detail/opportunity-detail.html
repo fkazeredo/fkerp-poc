@@ -24,6 +24,14 @@
       <p-tag [value]="stageLabel(o.stage)" [severity]="stageSeverity(o.stage)" />
     </div>
     <div class="head-actions">
+      @if (canChangeStage()) {
+        <p-button
+          label="Mudar estágio"
+          icon="pi pi-arrow-right-arrow-left"
+          size="small"
+          (onClick)="openStage()"
+        />
+      }
       @if (canLose()) {
         <p-button
           label="Marcar como perdida"
@@ -98,7 +106,19 @@
   </p-card>
 
   <p-card header="Movimentação de estágio" styleClass="section">
-    <p class="muted">Sem movimentações de estágio registradas ainda.</p>
+    @if (o.stageHistory.length === 0) {
+      <p class="muted">Sem movimentações de estágio registradas ainda.</p>
+    } @else {
+      <ul class="history">
+        @for (s of o.stageHistory; track s.at) {
+          <li>
+            <span class="when">{{ s.at | date: 'short' }}</span>
+            <span class="what">{{ stageLabel(s.from) }} → {{ stageLabel(s.to) }}</span>
+            <span class="who muted">{{ s.by ?? '' }}</span>
+          </li>
+        }
+      </ul>
+    }
   </p-card>
 
   <p-dialog
@@ -135,6 +155,32 @@
         (onClick)="confirmLose()"
       />
       <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="loseOpen.set(false)" />
+    </div>
+  </p-dialog>
+
+  <p-dialog header="Mudar estágio" [(visible)]="stageOpen" [modal]="true" [style]="{ width: '28rem' }">
+    <div class="field">
+      <label for="stage">Novo estágio <span class="req">*</span></label>
+      <p-select
+        inputId="stage"
+        [options]="stageOptions()"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="targetStage"
+        placeholder="Selecione"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="actions">
+      <p-button
+        label="Salvar"
+        icon="pi pi-check"
+        [disabled]="!targetStage"
+        [loading]="acting()"
+        (onClick)="confirmStage()"
+      />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="stageOpen.set(false)" />
     </div>
   </p-dialog>
 }

@@ -19,6 +19,7 @@ import com.fksoft.erp.domain.crm.exception.OpportunityAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAlreadyExistsForLeadException;
 import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException;
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
+import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.exception.OriginNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.ReferenceNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
@@ -58,6 +59,7 @@ public class HttpErrorMapping {
             entry(OpportunityNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(OpportunityAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(OpportunityCannotBeMarkedLostException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(OpportunityStageTransitionException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {
