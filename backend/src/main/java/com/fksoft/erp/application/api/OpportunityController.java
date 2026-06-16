@@ -4,6 +4,7 @@ import com.fksoft.erp.application.api.dto.LoseRequest;
 import com.fksoft.erp.application.api.dto.OpportunityCreateRequest;
 import com.fksoft.erp.application.api.dto.OpportunityListParams;
 import com.fksoft.erp.application.api.dto.OpportunityResponse;
+import com.fksoft.erp.application.api.dto.OpportunityStageChangeRequest;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.service.OpportunityService;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
@@ -37,8 +38,8 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code crm:opportunity:read} (own only), {@code crm:opportunity:read:unassigned} (also the unassigned
  * pool) or {@code crm:opportunity:read:all} (all) — the visibility tier being enforced by the policy at
  * the query/record level, so filters, search and detail can never expose Opportunities the caller may
- * not see. Marking an Opportunity as lost requires {@code crm:opportunity:update} and that the caller may
- * see it; the transition returns the refreshed detail.
+ * not see. The Opportunity transitions — marking it as lost and moving it through the pipeline stages —
+ * require {@code crm:opportunity:update} and that the caller may see it; each returns the refreshed detail.
  */
 @RestController
 @RequestMapping("/api/opportunities")
@@ -135,6 +136,25 @@ public class OpportunityController {
                 id,
                 request.lossReasonId(),
                 request.note(),
+                userContext.currentUserId(),
+                canSeeAllOpportunities(),
+                canSeeUnassignedOpportunities());
+    }
+
+    /**
+     * Moves an Opportunity to another active pipeline stage; returns the refreshed detail. Movement among
+     * the active stages is free; LOST is reached only through the lose action (it is terminal).
+     *
+     * @param id the opportunity id
+     * @param request the destination stage
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/stage")
+    public OpportunityDetail changeStage(
+            @PathVariable UUID id, @Valid @RequestBody OpportunityStageChangeRequest request) {
+        return opportunityService.changeStage(
+                id,
+                request.stage(),
                 userContext.currentUserId(),
                 canSeeAllOpportunities(),
                 canSeeUnassignedOpportunities());

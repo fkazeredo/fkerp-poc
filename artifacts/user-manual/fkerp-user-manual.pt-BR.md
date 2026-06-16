@@ -361,16 +361,26 @@ para entender a negociação antes da próxima ação comercial. O detalhe mostr
   de origem dos contatos e do histórico.
 - **Perda:** quando a Oportunidade está **Perdida**, o detalhe mostra o motivo, a data, quem registrou e
   a anotação.
+- **Movimentação de estágio:** o histórico das mudanças de estágio da Oportunidade (de qual estágio para
+  qual, quando e por quem), com a mais recente no topo.
+
+**Mudar estágio.** Cada Oportunidade tem um **estágio atual** no pipeline comercial — **Nova**,
+**Descoberta**, **Aderência**, **Pronta p/ proposta** ou **Perdida**. Se você tem permissão de operação,
+o detalhe oferece a ação **Mudar estágio** (atalho de teclado **`s`**): escolha o novo estágio entre os
+**ativos**. O movimento entre os estágios ativos é **livre** (pode avançar e voltar conforme a
+negociação), e cada mudança fica registrada na **movimentação de estágio**. *Pronta p/ proposta* é apenas
+um estágio — **não** gera uma proposta nesta versão. **Perdida** não é um estágio para o qual se "muda"
+por aqui: use **Marcar como perdida**.
 
 **Marcar como perdida.** Se você tem permissão de operação sobre Oportunidades, o detalhe oferece a ação
 **Marcar como perdida** (atalho de teclado **`p`**): escolha um **motivo da perda** e, opcionalmente, uma
-anotação. A Oportunidade passa ao estágio **Perdida** e a perda fica registrada no próprio detalhe. Essa
-ação **não altera** o Lead de origem. Quem só pode consultar não vê a ação, e ninguém pode encerrar uma
-Oportunidade que não tem permissão para ver.
+anotação. A Oportunidade passa ao estágio **Perdida** (que é **final** — não reabre) e a perda fica
+registrada no próprio detalhe. Essa ação **não altera** o Lead de origem. Quem só pode consultar não vê
+as ações, e ninguém pode operar uma Oportunidade que não tem permissão para ver.
 
 O detalhe mostra **apenas dados comerciais** — nunca proposta, venda, pedido, reserva, financeiro,
-comissão ou atendimento. As seções de **histórico de atividades comerciais** e **movimentação de
-estágio** já aparecem na tela e serão preenchidas em versões futuras.
+comissão ou atendimento. A seção de **histórico de atividades comerciais** já aparece na tela e será
+preenchida em versões futuras.
 
 ## 9. Gerenciando cadastros
 

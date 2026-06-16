@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException;
+import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.LossReason;
@@ -57,5 +58,57 @@ class OpportunityTest {
 
         assertThatThrownBy(() -> opportunity.markLost(reason, RESPONSIBLE, null))
                 .isInstanceOf(OpportunityCannotBeMarkedLostException.class);
+    }
+
+    @Test
+    void marksLostRecordingTheMovementToLost() {
+        Opportunity opportunity = newOpportunity();
+
+        opportunity.markLost(reason, RESPONSIBLE, null);
+
+        assertThat(opportunity.stageChanges()).hasSize(1);
+        assertThat(opportunity.stageChanges().get(0).fromStage()).isEqualTo(OpportunityStage.NEW_OPPORTUNITY);
+        assertThat(opportunity.stageChanges().get(0).toStage()).isEqualTo(OpportunityStage.LOST);
+        assertThat(opportunity.stageChanges().get(0).changedBy()).isEqualTo(RESPONSIBLE);
+    }
+
+    @Test
+    void movesFreelyBetweenActiveStagesRecordingEachMovement() {
+        Opportunity opportunity = newOpportunity();
+
+        opportunity.moveToStage(OpportunityStage.DISCOVERY, RESPONSIBLE);
+        assertThat(opportunity.stage()).isEqualTo(OpportunityStage.DISCOVERY);
+
+        // free movement back to an earlier stage
+        opportunity.moveToStage(OpportunityStage.NEW_OPPORTUNITY, RESPONSIBLE);
+        assertThat(opportunity.stage()).isEqualTo(OpportunityStage.NEW_OPPORTUNITY);
+        assertThat(opportunity.stageChanges()).hasSize(2);
+        assertThat(opportunity.stageChanges().get(0).toStage()).isEqualTo(OpportunityStage.DISCOVERY);
+        assertThat(opportunity.stageChanges().get(1).toStage()).isEqualTo(OpportunityStage.NEW_OPPORTUNITY);
+    }
+
+    @Test
+    void rejectsMovingToLostThroughTheStageTransition() {
+        Opportunity opportunity = newOpportunity();
+
+        assertThatThrownBy(() -> opportunity.moveToStage(OpportunityStage.LOST, RESPONSIBLE))
+                .isInstanceOf(OpportunityStageTransitionException.class);
+    }
+
+    @Test
+    void rejectsMovingAStageFromLost() {
+        Opportunity opportunity = newOpportunity();
+        opportunity.markLost(reason, RESPONSIBLE, null);
+
+        assertThatThrownBy(() -> opportunity.moveToStage(OpportunityStage.DISCOVERY, RESPONSIBLE))
+                .isInstanceOf(OpportunityStageTransitionException.class);
+    }
+
+    @Test
+    void rejectsMovingToTheSameStage() {
+        Opportunity opportunity = newOpportunity();
+
+        assertThatThrownBy(() -> opportunity.moveToStage(OpportunityStage.NEW_OPPORTUNITY, RESPONSIBLE))
+                .isInstanceOf(OpportunityStageTransitionException.class);
     }
 }

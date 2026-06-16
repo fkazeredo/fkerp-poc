@@ -11,6 +11,7 @@ import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
+import { Observable } from 'rxjs';
 import {
   OpportunityDetail,
   OpportunityService,
@@ -71,6 +72,16 @@ export class OpportunityDetailPage implements OnInit {
   protected lossReasonId: string | null = null;
   protected lossNote = '';
 
+  protected readonly stageOpen = signal(false);
+  protected targetStage: OpportunityStage | null = null;
+
+  private readonly activeStages: OpportunityStage[] = [
+    'NEW_OPPORTUNITY',
+    'DISCOVERY',
+    'PRODUCT_FIT',
+    'READY_FOR_PROPOSAL',
+  ];
+
   private opportunityId = '';
 
   ngOnInit(): void {
@@ -105,6 +116,20 @@ export class OpportunityDetailPage implements OnInit {
     return this.auth.canOperateOpportunity() && !!stage && stage !== 'LOST';
   }
 
+  /** Whether the user may move this Opportunity through the pipeline (has the update scope, not LOST). */
+  protected canChangeStage(): boolean {
+    const stage = this.opportunity()?.stage;
+    return this.auth.canOperateOpportunity() && !!stage && stage !== 'LOST';
+  }
+
+  /** The active stages the Opportunity can move to (excludes LOST and the current stage). */
+  protected stageOptions(): { value: OpportunityStage; label: string }[] {
+    const current = this.opportunity()?.stage;
+    return this.activeStages
+      .filter((s) => s !== current)
+      .map((value) => ({ value, label: STAGE_LABELS[value] }));
+  }
+
   protected back(): void {
     this.router.navigateByUrl('/oportunidades');
   }
@@ -124,37 +149,42 @@ export class OpportunityDetailPage implements OnInit {
     if (!this.lossReasonId) {
       return;
     }
-    this.acting.set(true);
-    this.opportunities.lose(this.opportunityId, this.lossReasonId, this.lossNote || null).subscribe({
-      next: (detail) => {
-        this.opportunity.set(detail);
-        this.acting.set(false);
-        this.loseOpen.set(false);
-        this.messages.add({ severity: 'success', summary: 'Oportunidade marcada como perdida' });
-      },
-      error: (err: HttpErrorResponse) => {
-        this.acting.set(false);
-        const body = err.error as { message?: string } | null;
-        this.messages.add({
-          severity: 'error',
-          summary: 'Erro',
-          detail: body?.message ?? 'Não foi possível concluir a ação.',
-        });
-      },
-    });
+    this.act(
+      this.opportunities.lose(this.opportunityId, this.lossReasonId, this.lossNote || null),
+      'Oportunidade marcada como perdida',
+      this.loseOpen,
+    );
   }
 
-  /** Contextual shortcuts on the detail screen: p lose, Esc back. */
+  protected openStage(): void {
+    this.targetStage = null;
+    this.stageOpen.set(true);
+  }
+
+  protected confirmStage(): void {
+    if (!this.targetStage) {
+      return;
+    }
+    this.act(
+      this.opportunities.changeStage(this.opportunityId, this.targetStage),
+      'Estágio atualizado',
+      this.stageOpen,
+    );
+  }
+
+  /** Contextual shortcuts on the detail screen: s change stage, p lose, Esc back. */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
     const target = event.target as HTMLElement | null;
     const typing =
       !!target &&
       (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
-    if (typing || event.ctrlKey || event.metaKey || event.altKey || this.loseOpen()) {
+    if (typing || event.ctrlKey || event.metaKey || event.altKey || this.loseOpen() || this.stageOpen()) {
       return;
     }
-    if (event.key === 'p' && this.canLose()) {
+    if (event.key === 's' && this.canChangeStage()) {
+      this.openStage();
+    } else if (event.key === 'p' && this.canLose()) {
       this.openLose();
     } else if (event.key === 'Escape') {
       this.back();
@@ -178,6 +208,31 @@ export class OpportunityDetailPage implements OnInit {
               ? 'Oportunidade não encontrada.'
               : 'Não foi possível carregar a oportunidade.',
         );
+      },
+    });
+  }
+
+  private act(
+    action: Observable<OpportunityDetail>,
+    successSummary: string,
+    dialog: { set: (v: boolean) => void },
+  ): void {
+    this.acting.set(true);
+    action.subscribe({
+      next: (detail) => {
+        this.opportunity.set(detail);
+        this.acting.set(false);
+        dialog.set(false);
+        this.messages.add({ severity: 'success', summary: successSummary });
+      },
+      error: (err: HttpErrorResponse) => {
+        this.acting.set(false);
+        const body = err.error as { message?: string } | null;
+        this.messages.add({
+          severity: 'error',
+          summary: 'Erro',
+          detail: body?.message ?? 'Não foi possível concluir a ação.',
+        });
       },
     });
   }

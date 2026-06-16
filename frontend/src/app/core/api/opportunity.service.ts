@@ -63,6 +63,14 @@ export interface OpportunityLoss {
   note: string | null;
 }
 
+/** A single pipeline stage-movement entry (newest first in the detail). */
+export interface OpportunityStageChange {
+  from: OpportunityStage;
+  to: OpportunityStage;
+  at: string;
+  by: string | null;
+}
+
 /**
  * Full Opportunity detail. {@code loss} is present only when LOST; {@code activities},
  * {@code stageHistory} and {@code nextActionDate} are reserved for future slices (empty/null for now).
@@ -85,8 +93,8 @@ export interface OpportunityDetail {
   updatedAt: string;
   sourceLead: OpportunitySourceLead;
   loss: OpportunityLoss | null;
+  stageHistory: OpportunityStageChange[];
   activities: unknown[];
-  stageHistory: unknown[];
   nextActionDate: string | null;
 }
 
@@ -130,6 +138,10 @@ export class OpportunityService {
 
   lose(id: string, lossReasonId: string, note: string | null): Observable<OpportunityDetail> {
     return this.http.post<OpportunityDetail>(`/api/opportunities/${id}/lose`, { lossReasonId, note });
+  }
+
+  changeStage(id: string, stage: OpportunityStage): Observable<OpportunityDetail> {
+    return this.http.post<OpportunityDetail>(`/api/opportunities/${id}/stage`, { stage });
   }
 
   list(

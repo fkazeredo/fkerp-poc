@@ -361,16 +361,27 @@ the negotiation before the next commercial action. The detail shows:
   record for contacts and history.
 - **Loss:** when the Opportunity is **Perdida** (Lost), the detail shows the reason, the date, who
   recorded it and the note.
+- **Stage movement:** the history of the Opportunity's stage changes (from which stage to which, when and
+  by whom), newest first.
+
+**Change stage.** Each Opportunity has a **current stage** in the commercial pipeline — **Nova** (New),
+**Descoberta** (Discovery), **Aderência** (Product Fit), **Pronta p/ proposta** (Ready for Proposal) or
+**Perdida** (Lost). If you have operation permission, the detail offers the **Mudar estágio** (Change
+stage) action (keyboard shortcut **`s`**): pick the new stage among the **active** ones. Movement between
+active stages is **free** (you can move forward and back as the negotiation evolves), and every change is
+recorded in the **stage movement** history. *Ready for Proposal* is just a stage — it does **not** create
+a proposal in this release. **Lost** is not a stage you "move" to here: use **Mark as lost**.
 
 **Mark as lost.** If you have operation permission over Opportunities, the detail offers the **Marcar
 como perdida** (Mark as lost) action (keyboard shortcut **`p`**): pick a **loss reason** and, optionally,
-a note. The Opportunity moves to the **Perdida** (Lost) stage and the loss is recorded on the detail
-itself. This action **does not change** the source lead. Consultation-only users do not see the action,
-and no one can close an Opportunity they are not allowed to see.
+a note. The Opportunity moves to the **Perdida** (Lost) stage (which is **final** — it does not reopen)
+and the loss is recorded on the detail itself. This action **does not change** the source lead.
+Consultation-only users do not see the actions, and no one can operate an Opportunity they are not allowed
+to see.
 
 The detail shows **commercial data only** — never proposal, sale, order, booking, financial, commission
-or customer care information. The **commercial activity history** and **stage movement** sections already
-appear on screen and will be populated in future releases.
+or customer care information. The **commercial activity history** section already appears on screen and
+will be populated in a future release.
 
 ## 9. Managing reference data (*cadastros*)
 

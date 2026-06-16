@@ -203,4 +203,24 @@ class OpportunityServiceTest {
                 .isInstanceOf(LossReasonNotAvailableException.class);
         verify(opportunities, never()).saveAndFlush(any());
     }
+
+    @Test
+    void changeStageThrowsWhenOpportunityIsMissing() {
+        UUID id = UUID.randomUUID();
+        when(opportunities.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.changeStage(id, OpportunityStage.DISCOVERY, ACTOR, true, false))
+                .isInstanceOf(OpportunityNotFoundException.class);
+    }
+
+    @Test
+    void changeStageThrowsWhenTheOpportunityIsNotVisible() {
+        UUID id = UUID.randomUUID();
+        when(opportunities.findById(id)).thenReturn(Optional.of(mock(Opportunity.class)));
+        when(accessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.changeStage(id, OpportunityStage.DISCOVERY, ACTOR, false, false))
+                .isInstanceOf(OpportunityAccessDeniedException.class);
+        verify(opportunities, never()).saveAndFlush(any());
+    }
 }
