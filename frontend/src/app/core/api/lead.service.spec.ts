@@ -89,11 +89,11 @@ describe('LeadService', () => {
     req.flush({});
   });
 
-  it('posts qualify with the note', () => {
-    service.qualify('l1', 'bom perfil').subscribe();
+  it('posts qualify with the main interest and note', () => {
+    service.qualify('l1', 'Pacote corporativo', 'bom perfil').subscribe();
     const req = http.expectOne('/api/leads/l1/qualify');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ note: 'bom perfil' });
+    expect(req.request.body).toEqual({ mainInterest: 'Pacote corporativo', note: 'bom perfil' });
     req.flush({});
   });
 

@@ -113,10 +113,20 @@ describe('LeadDetailPage', () => {
 
   it('enables actions only for the appropriate status', () => {
     const comp = build();
-    comp.ngOnInit(); // NEW
-    expect(comp['canQualify']()).toBe(true);
+    comp.ngOnInit(); // NEW + unassigned
+    expect(comp['canQualify']()).toBe(false); // qualify needs CONTACTED + responsible
     expect(comp['canLose']()).toBe(true);
     expect(comp['canReassign']()).toBe(true);
+
+    leads.detail.mockReturnValue(
+      of(sample({ status: 'CONTACTED', responsibleId: 'u1', responsibleName: 'comercial', unassigned: false })),
+    );
+    comp.ngOnInit();
+    expect(comp['canQualify']()).toBe(true);
+
+    leads.detail.mockReturnValue(of(sample({ status: 'CONTACTED' }))); // still unassigned
+    comp.ngOnInit();
+    expect(comp['canQualify']()).toBe(false);
 
     leads.detail.mockReturnValue(of(sample({ status: 'LOST' })));
     comp.ngOnInit();
@@ -125,18 +135,29 @@ describe('LeadDetailPage', () => {
     expect(comp['canReassign']()).toBe(false);
   });
 
-  it('qualifies, refreshes the lead and toasts', () => {
+  it('qualifies with the main interest, refreshes the lead and toasts', () => {
     leads.qualify.mockReturnValue(of(sample({ status: 'QUALIFIED' })));
     const comp = build();
     comp.ngOnInit();
+    comp['qualifyMainInterest'] = 'Pacote corporativo';
     comp['qualifyNote'] = 'bom perfil';
 
     comp['confirmQualify']();
 
-    expect(leads.qualify).toHaveBeenCalledWith('l1', 'bom perfil');
+    expect(leads.qualify).toHaveBeenCalledWith('l1', 'Pacote corporativo', 'bom perfil');
     expect(comp['lead']()?.status).toBe('QUALIFIED');
     expect(comp['qualifyOpen']()).toBe(false);
     expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
+  });
+
+  it('does not qualify without a main interest', () => {
+    const comp = build();
+    comp.ngOnInit();
+    comp['qualifyMainInterest'] = '   ';
+
+    comp['confirmQualify']();
+
+    expect(leads.qualify).not.toHaveBeenCalled();
   });
 
   it('does not mark lost without a reason', () => {

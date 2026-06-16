@@ -169,7 +169,10 @@ allowed to see; others return a permission message).
 
 Buttons appear at the top when the action applies to the current status:
 
-- **Qualificar** (Qualify) — marks a new/contacted lead as **Qualified**, with an optional note.
+- **Qualificar** (Qualify) — marks a lead as **Qualified**. It appears only once the lead is **Em
+  contato** (Contacted) and has a **responsible person**; you must enter the **main interest**
+  (*interesse principal*) and may add a commercial note. Qualifying does not create an Opportunity or
+  Customer — it prepares the lead for Sprint 2.
 - **Marcar como perdido** (Mark as Lost) — sets the lead to **Lost**; you must choose a **loss
   reason** and may add a note. Lost is final.
 - **Reatribuir** (Reassign) — changes the responsible person (or clears it to unassigned). Every

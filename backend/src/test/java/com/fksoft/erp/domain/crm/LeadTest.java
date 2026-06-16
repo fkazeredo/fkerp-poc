@@ -55,24 +55,47 @@ class LeadTest {
     }
 
     @Test
-    void qualifiesFromNewAndKeepsTheOutcome() {
-        Lead lead = Lead.register(command("11999999999", null, null, null), origin, CREATOR);
+    void qualifiesAContactedAssignedLeadAndKeepsTheOutcome() {
+        UUID responsible = UUID.randomUUID();
+        Lead lead = Lead.register(command("11999999999", null, null, responsible), origin, CREATOR);
+        lead.recordInteraction(callType, result("CONTACT_MADE"), "falamos", Instant.now(), null, CREATOR);
         UUID byUser = UUID.randomUUID();
 
-        lead.qualify(byUser, "bom perfil");
+        lead.qualify(byUser, "Pacote corporativo", "bom perfil");
 
         assertThat(lead.status()).isEqualTo(LeadStatus.QUALIFIED);
         assertThat(lead.qualifiedBy()).isEqualTo(byUser);
         assertThat(lead.qualifiedAt()).isNotNull();
+        assertThat(lead.mainInterest()).isEqualTo("Pacote corporativo");
         assertThat(lead.qualificationNote()).isEqualTo("bom perfil");
     }
 
     @Test
-    void cannotQualifyALostLead() {
+    void cannotQualifyANewLead() {
+        UUID responsible = UUID.randomUUID();
+        Lead lead = Lead.register(command("11999999999", null, null, responsible), origin, CREATOR);
+
+        assertThatThrownBy(() -> lead.qualify(CREATOR, "Pacote", null))
+                .isInstanceOf(LeadCannotBeQualifiedException.class);
+    }
+
+    @Test
+    void cannotQualifyALeadWithoutResponsible() {
         Lead lead = Lead.register(command("11999999999", null, null, null), origin, CREATOR);
+        lead.recordInteraction(callType, result("CONTACT_MADE"), "falamos", Instant.now(), null, CREATOR);
+
+        assertThatThrownBy(() -> lead.qualify(CREATOR, "Pacote", null))
+                .isInstanceOf(LeadQualificationRequiresResponsibleException.class);
+    }
+
+    @Test
+    void cannotQualifyALostLead() {
+        UUID responsible = UUID.randomUUID();
+        Lead lead = Lead.register(command("11999999999", null, null, responsible), origin, CREATOR);
         lead.markLost(LossReason.create("NO_RESPONSE", "Sem resposta", 1), CREATOR, null);
 
-        assertThatThrownBy(() -> lead.qualify(CREATOR, null)).isInstanceOf(LeadCannotBeQualifiedException.class);
+        assertThatThrownBy(() -> lead.qualify(CREATOR, "Pacote", null))
+                .isInstanceOf(LeadCannotBeQualifiedException.class);
     }
 
     @Test
@@ -174,13 +197,15 @@ class LeadTest {
 
     @Test
     void recordingAnInteractionNeverRevertsAQualifiedLead() {
-        Lead lead = Lead.register(command("11999999999", null, null, null), origin, CREATOR);
-        lead.qualify(CREATOR, null);
+        UUID responsible = UUID.randomUUID();
+        Lead lead = Lead.register(command("11999999999", null, null, responsible), origin, CREATOR);
+        lead.recordInteraction(callType, result("CONTACT_MADE"), "falamos", Instant.now(), null, CREATOR);
+        lead.qualify(CREATOR, "Pacote", null);
 
         lead.recordInteraction(callType, result("CONTACT_MADE"), "follow-up", Instant.now(), null, CREATOR);
 
         assertThat(lead.status()).isEqualTo(LeadStatus.QUALIFIED);
-        assertThat(lead.interactions()).hasSize(1);
+        assertThat(lead.interactions()).hasSize(2);
     }
 
     @Test
