@@ -7,6 +7,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { MessageModule } from 'primeng/message';
 import { AuthService } from '../../../core/auth/auth.service';
+import { VersionService } from '../../../core/api/version.service';
 
 /** Username/password login. Auto-focuses the username field and submits on Enter. */
 @Component({
@@ -19,6 +20,7 @@ export class Login implements AfterViewInit {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  protected readonly version = inject(VersionService);
 
   private readonly usernameInput = viewChild<ElementRef<HTMLInputElement>>('usernameInput');
 

@@ -40,5 +40,11 @@
       styleClass="w-full"
       [loading]="loading()"
     />
+
+    @if (version.version()) {
+      <p class="muted login-version" style="margin-top: 0.9rem; font-size: 0.75rem">
+        v{{ version.version() }}
+      </p>
+    }
   </form>
 </div>

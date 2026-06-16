@@ -51,6 +51,11 @@
       <button class="nav-item" (click)="logout()">
         <i class="pi pi-sign-out"></i><span>Sair</span>
       </button>
+      @if (version.version()) {
+        <span class="app-version muted" style="padding: 0.4rem 0.75rem; font-size: 0.72rem">
+          v{{ version.version() }}
+        </span>
+      }
     </div>
   </aside>
 
@@ -121,7 +126,11 @@
     <li><span class="kbd">?</span> Esta ajuda</li>
     <li class="sep">No detalhe de um lead:</li>
     <li><span class="kbd">i</span> Registrar interação</li>
-    <li><span class="kbd">q</span> Qualificar &middot; <span class="kbd">p</span> Marcar perdido</li>
-    <li><span class="kbd">r</span> Reatribuir / Assumir &middot; <span class="kbd">Esc</span> Voltar</li>
+    <li>
+      <span class="kbd">q</span> Qualificar &middot; <span class="kbd">p</span> Marcar perdido
+    </li>
+    <li>
+      <span class="kbd">r</span> Reatribuir / Assumir &middot; <span class="kbd">Esc</span> Voltar
+    </li>
   </ul>
 </p-dialog>

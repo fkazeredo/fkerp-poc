@@ -9,7 +9,8 @@ import org.springframework.validation.annotation.Validated;
  * property is missing or blank.
  *
  * @param name human-readable system name
+ * @param version running application version (SemVer {@code MAJOR.MINOR.PATCH}), from {@code APP_VERSION}
  */
 @Validated
 @ConfigurationProperties(prefix = "app")
-public record AppProperties(@NotBlank String name) {}
+public record AppProperties(@NotBlank String name, @NotBlank String version) {}

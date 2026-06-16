@@ -6,6 +6,7 @@ import { ListboxModule } from 'primeng/listbox';
 import { ToastModule } from 'primeng/toast';
 import { AuthService } from '../auth/auth.service';
 import { ThemeService } from '../theme/theme.service';
+import { VersionService } from '../api/version.service';
 
 interface Command {
   label: string;
@@ -42,6 +43,7 @@ export class Shell {
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
+  protected readonly version = inject(VersionService);
 
   protected readonly paletteOpen = signal(false);
   protected readonly helpOpen = signal(false);

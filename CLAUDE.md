@@ -455,6 +455,16 @@ the goal - high coverage with weak assertions is not quality.
 - **Build & versions:** Maven via the wrapper only (`./mvnw`), no system Maven; never migrate
   build tools without explicit instruction. Versions prioritize stability/LTS; no RC/snapshot in
   production. Add libraries conservatively; isolate risky dependencies.
+- **Versioning & releases (SemVer):** the application carries a **Semantic Version**
+  `MAJOR.MINOR.PATCH` - **MAJOR** = backward-incompatible change; **MINOR** = new backward-compatible
+  feature; **PATCH** = backward-compatible bug fix. The version lives in **`APP_VERSION`**
+  (`.env`/`.env.example`, wired through `compose.yaml`, bound to `app.version`), is served by the
+  public `GET /api/version` and **displayed in the UI** (login screen + sidebar footer). Bump it on
+  release; every release gets a note in **`artifacts/release-notes/`** (one file per version, derived
+  from the development reports).
+- **User manual (bilingual):** the end-user manual is maintained in **en-US and pt-BR**
+  (`artifacts/user-manual/fkerp-user-manual.en-US.md` and `...pt-BR.md`); keep both in sync whenever a
+  user-facing behavior changes.
 - **Git:** pragmatic Git Flow (`main`, `develop`, `feature/*`, `bugfix/*`, `release/*`,
   `hotfix/*`) and Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`). PRs are
   focused and reviewable - tests, migrations, screenshots for UI, API impacts. Commit/push only
