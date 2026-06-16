@@ -17,7 +17,7 @@ test('the indicators page shows the top-of-funnel after a lead is created', asyn
   await page.locator('#name').fill(name);
   await page.getByText('Selecione a origem').click();
   await page.getByRole('option').first().click();
-  await page.locator('#phone').fill('11999997777');
+  await page.locator('#phone').fill(`119${Date.now()}${Math.floor(Math.random() * 1000)}`);
   await page.getByRole('button', { name: 'Salvar lead' }).click();
   await expect(page.getByText('Lead criado')).toBeVisible();
 

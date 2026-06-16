@@ -63,6 +63,7 @@ public class LeadService {
                         .isEmpty()) {
             throw new ResponsiblePersonNotFoundException();
         }
+        rejectDuplicate(command);
         Lead lead = Lead.register(command, origin, createdBy);
         if (command.initialNote() != null && !command.initialNote().isBlank()) {
             InteractionType noteType = interactionTypes
@@ -73,6 +74,31 @@ public class LeadService {
         leads.save(lead);
         events.publishEvent(new LeadRegistered(lead.id(), origin.id(), createdBy, lead.responsiblePersonId()));
         return lead.id();
+    }
+
+    /**
+     * Rejects a new Lead that duplicates an OPEN (non-lost) Lead by phone/WhatsApp number or e-mail.
+     * Numbers are matched across both the phone and WhatsApp fields (the same number is often reused);
+     * the e-mail is matched case-insensitively. A Lost Lead never blocks (it may be recontacted). The
+     * existing Lead id is carried on the error so the caller can open it instead of recreating it.
+     *
+     * @param command the new lead data
+     * @throws DuplicateLeadException if an open Lead already shares the phone/WhatsApp or e-mail
+     */
+    private void rejectDuplicate(RegisterLeadCommand command) {
+        String phone = blankOrNull(command.phone());
+        String whatsapp = blankOrNull(command.whatsapp());
+        String email = blankOrNull(command.email());
+        String normalizedEmail = email == null ? null : email.toLowerCase(java.util.Locale.ROOT);
+        leads.findOpenDuplicates(phone, whatsapp, normalizedEmail).stream()
+                .findFirst()
+                .ifPresent(existing -> {
+                    throw new DuplicateLeadException(existing.id());
+                });
+    }
+
+    private static String blankOrNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     /**

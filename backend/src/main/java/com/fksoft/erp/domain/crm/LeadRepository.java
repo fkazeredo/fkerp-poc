@@ -33,4 +33,28 @@ public interface LeadRepository extends JpaRepository<Lead, UUID>, JpaSpecificat
                     """,
             nativeQuery = true)
     List<LatestInteractionRow> findLatestInteractions(@Param("leadIds") Collection<UUID> leadIds);
+
+    /**
+     * Open (non-lost) Leads that duplicate the given contact data, oldest first. A phone or WhatsApp
+     * number matches either contact field (the same number is often reused across both); the e-mail
+     * is matched case-insensitively (pass it already lower-cased). Lost Leads never match — they may
+     * be recontacted. Used to block duplicates at registration (the DB partial unique indexes are the
+     * last-resort guard).
+     *
+     * @param phone the new lead's phone (digits, or {@code null})
+     * @param whatsapp the new lead's WhatsApp (digits, or {@code null})
+     * @param email the new lead's e-mail, lower-cased (or {@code null})
+     * @return matching open Leads, oldest first (empty when none)
+     */
+    @Query(
+            """
+            SELECT l FROM Lead l
+            WHERE l.status <> com.fksoft.erp.domain.crm.LeadStatus.LOST
+              AND ( (:email IS NOT NULL AND LOWER(l.email) = :email)
+                 OR (:phone IS NOT NULL AND (l.phone = :phone OR l.whatsapp = :phone))
+                 OR (:whatsapp IS NOT NULL AND (l.phone = :whatsapp OR l.whatsapp = :whatsapp)) )
+            ORDER BY l.createdAt ASC
+            """)
+    List<Lead> findOpenDuplicates(
+            @Param("phone") String phone, @Param("whatsapp") String whatsapp, @Param("email") String email);
 }
