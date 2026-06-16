@@ -11,8 +11,8 @@ import java.util.UUID;
  * Operational Opportunity list item (read model). {@code unassigned} flags Opportunities with no
  * responsible so the UI can highlight them; {@code leadId} links to the source Lead. Exposes commercial
  * pipeline data only — never Proposal, Sale, Sales Order, Booking or Financial data.
- * {@code lastActivityAt} and {@code nextActionDate} are reserved for the future Opportunity-activities
- * slice and are {@code null} for now.
+ * {@code lastActivityAt} is the most recent activity's instant; {@code nextActionDate} is the planned
+ * next action — both {@code null} until an activity is registered.
  */
 public record OpportunityListItem(
         UUID id,
@@ -29,15 +29,15 @@ public record OpportunityListItem(
         LocalDate nextActionDate) {
 
     /**
-     * Maps an Opportunity entity (plus the responsible's resolved name) to the list item.
-     * {@code lastActivityAt}/{@code nextActionDate} stay {@code null} until the Opportunity-activities
-     * slice exists.
+     * Maps an Opportunity entity (plus the responsible's resolved name and the latest activity instant)
+     * to the list item.
      *
      * @param o the opportunity entity
      * @param responsibleName the responsible's display name, or {@code null} when unassigned/unknown
+     * @param lastActivityAt the most recent activity's instant, or {@code null} when none
      * @return the list item
      */
-    public static OpportunityListItem from(Opportunity o, String responsibleName) {
+    public static OpportunityListItem from(Opportunity o, String responsibleName, Instant lastActivityAt) {
         return new OpportunityListItem(
                 o.id(),
                 o.leadId(),
@@ -49,7 +49,7 @@ public record OpportunityListItem(
                 o.estimatedValue(),
                 o.expectedCloseDate(),
                 o.createdAt(),
-                null,
-                null);
+                lastActivityAt,
+                o.nextActionDate());
     }
 }

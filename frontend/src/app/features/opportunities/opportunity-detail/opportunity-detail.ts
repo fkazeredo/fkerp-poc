@@ -9,10 +9,13 @@ import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
+import { DatePickerModule } from 'primeng/datepicker';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { Observable } from 'rxjs';
 import {
+  OpportunityActivityResult,
+  OpportunityActivityType,
   OpportunityDetail,
   OpportunityService,
   OpportunityStage,
@@ -36,12 +39,42 @@ const NEXT_STAGE: Partial<Record<OpportunityStage, OpportunityStage>> = {
   PRODUCT_FIT: 'READY_FOR_PROPOSAL',
 };
 
+const ACTIVITY_TYPE_LABELS: Record<OpportunityActivityType, string> = {
+  PHONE_CALL: 'Ligação',
+  WHATSAPP: 'WhatsApp',
+  EMAIL: 'E-mail',
+  MEETING: 'Reunião',
+  INTERNAL_NOTE: 'Nota interna',
+  DOCUMENT_REQUEST: 'Solicitação de documento',
+  PRICE_DISCUSSION: 'Discussão de preço',
+  TRAVEL_REQUIREMENT_CLARIFICATION: 'Esclarecimento de requisito de viagem',
+  OTHER: 'Outro',
+};
+
+const ACTIVITY_RESULT_LABELS: Record<OpportunityActivityResult, string> = {
+  CLIENT_ENGAGED: 'Cliente engajado',
+  NEEDS_FOLLOW_UP: 'Precisa follow-up',
+  WAITING_FOR_CLIENT: 'Aguardando cliente',
+  WAITING_FOR_INTERNAL_INFO: 'Aguardando informação interna',
+  PRODUCT_FIT_IDENTIFIED: 'Aderência identificada',
+  READY_FOR_PROPOSAL: 'Pronta para proposta',
+  NOT_INTERESTED: 'Sem interesse',
+  OTHER: 'Outro',
+};
+
+const ACTIVITY_TYPE_OPTIONS = (Object.keys(ACTIVITY_TYPE_LABELS) as OpportunityActivityType[]).map(
+  (value) => ({ value, label: ACTIVITY_TYPE_LABELS[value] }),
+);
+const ACTIVITY_RESULT_OPTIONS = (Object.keys(ACTIVITY_RESULT_LABELS) as OpportunityActivityResult[]).map(
+  (value) => ({ value, label: ACTIVITY_RESULT_LABELS[value] }),
+);
+
 type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'danger';
 
 /**
- * Opportunity detail page (consultation): commercial summary, the traceable source Lead, and the loss
- * outcome when LOST. The only action is "mark as lost" (scope crm:opportunity:update). Activity and
- * stage-movement history are reserved for future slices (empty for now). The detail never shows
+ * Opportunity detail page: commercial summary, the traceable source Lead, the loss outcome when LOST,
+ * the pipeline stage-movement history and the commercial activity history. Operations (register
+ * activity, advance stage, mark as lost) require crm:opportunity:update. The detail never shows
  * Proposal, Sale, Booking, Financial or Commission data.
  */
 @Component({
@@ -57,6 +90,7 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'dan
     DialogModule,
     SelectModule,
     TextareaModule,
+    DatePickerModule,
     MessageModule,
   ],
   templateUrl: './opportunity-detail.html',
@@ -82,6 +116,18 @@ export class OpportunityDetailPage implements OnInit {
 
   protected readonly stageOpen = signal(false);
   protected targetStage: OpportunityStage | null = null;
+
+  protected readonly activityOpen = signal(false);
+  protected readonly activityTypeOptions = ACTIVITY_TYPE_OPTIONS;
+  protected readonly activityResultOptions = ACTIVITY_RESULT_OPTIONS;
+  protected activityType: OpportunityActivityType | null = null;
+  protected activityResult: OpportunityActivityResult | null = null;
+  protected activityDescription = '';
+  protected activityOccurredAt: Date = new Date();
+  protected activityNextActionDate: Date | null = null;
+
+  /** Upper bound for the activity date picker — an activity cannot have happened in the future. */
+  protected readonly now = new Date();
 
   private opportunityId = '';
 
@@ -134,6 +180,19 @@ export class OpportunityDetailPage implements OnInit {
     return next ? [{ value: next, label: STAGE_LABELS[next] }] : [];
   }
 
+  /** Whether the user may register a commercial activity (has the update scope; any stage). */
+  protected canRegisterActivity(): boolean {
+    return this.auth.canOperateOpportunity() && this.opportunity() !== null;
+  }
+
+  protected activityTypeLabel(type: OpportunityActivityType): string {
+    return ACTIVITY_TYPE_LABELS[type];
+  }
+
+  protected activityResultLabel(result: OpportunityActivityResult): string {
+    return ACTIVITY_RESULT_LABELS[result];
+  }
+
   protected back(): void {
     this.router.navigateByUrl('/oportunidades');
   }
@@ -176,17 +235,62 @@ export class OpportunityDetailPage implements OnInit {
     );
   }
 
-  /** Contextual shortcuts on the detail screen: s change stage, p lose, Esc back. */
+  protected openActivity(): void {
+    this.activityType = null;
+    this.activityResult = null;
+    this.activityDescription = '';
+    this.activityOccurredAt = new Date();
+    this.activityNextActionDate = null;
+    this.activityOpen.set(true);
+  }
+
+  protected canSaveActivity(): boolean {
+    return (
+      !!this.activityType &&
+      !!this.activityResult &&
+      this.activityDescription.trim().length > 0 &&
+      !!this.activityOccurredAt
+    );
+  }
+
+  protected confirmActivity(): void {
+    if (!this.canSaveActivity()) {
+      return;
+    }
+    this.act(
+      this.opportunities.registerActivity(this.opportunityId, {
+        type: this.activityType!,
+        result: this.activityResult!,
+        description: this.activityDescription.trim(),
+        occurredAt: this.activityOccurredAt.toISOString(),
+        nextActionDate: toIsoDate(this.activityNextActionDate),
+      }),
+      'Atividade registrada',
+      this.activityOpen,
+    );
+  }
+
+  /** Contextual shortcuts on the detail screen: a register activity, s change stage, p lose, Esc back. */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
     const target = event.target as HTMLElement | null;
     const typing =
       !!target &&
       (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
-    if (typing || event.ctrlKey || event.metaKey || event.altKey || this.loseOpen() || this.stageOpen()) {
+    if (
+      typing ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      this.loseOpen() ||
+      this.stageOpen() ||
+      this.activityOpen()
+    ) {
       return;
     }
-    if (event.key === 's' && this.canChangeStage()) {
+    if (event.key === 'a' && this.canRegisterActivity()) {
+      this.openActivity();
+    } else if (event.key === 's' && this.canChangeStage()) {
       this.openStage();
     } else if (event.key === 'p' && this.canLose()) {
       this.openLose();
@@ -240,4 +344,14 @@ export class OpportunityDetailPage implements OnInit {
       },
     });
   }
+}
+
+function toIsoDate(date: Date | null): string | null {
+  if (!date) {
+    return null;
+  }
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }

@@ -5,12 +5,14 @@ import com.fksoft.erp.application.api.dto.OpportunityCreateRequest;
 import com.fksoft.erp.application.api.dto.OpportunityListParams;
 import com.fksoft.erp.application.api.dto.OpportunityResponse;
 import com.fksoft.erp.application.api.dto.OpportunityStageChangeRequest;
+import com.fksoft.erp.application.api.dto.RegisterOpportunityActivityRequest;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.service.OpportunityService;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
 import com.fksoft.erp.domain.crm.service.data.OpportunityListItem;
 import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
+import com.fksoft.erp.domain.crm.service.data.RecordActivityCommand;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
@@ -38,8 +40,9 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code crm:opportunity:read} (own only), {@code crm:opportunity:read:unassigned} (also the unassigned
  * pool) or {@code crm:opportunity:read:all} (all) — the visibility tier being enforced by the policy at
  * the query/record level, so filters, search and detail can never expose Opportunities the caller may
- * not see. The Opportunity transitions — marking it as lost and moving it through the pipeline stages —
- * require {@code crm:opportunity:update} and that the caller may see it; each returns the refreshed detail.
+ * not see. The Opportunity operations — moving it through the pipeline stages, marking it as lost and
+ * registering commercial activities — require {@code crm:opportunity:update} and that the caller may see
+ * it; each returns the refreshed detail.
  */
 @RestController
 @RequestMapping("/api/opportunities")
@@ -158,6 +161,27 @@ public class OpportunityController {
                 userContext.currentUserId(),
                 canSeeAllOpportunities(),
                 canSeeUnassignedOpportunities());
+    }
+
+    /**
+     * Registers a commercial activity on an Opportunity; returns the refreshed detail. The activity is
+     * append-only history and never moves the stage.
+     *
+     * @param id the opportunity id
+     * @param request the activity data
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/activities")
+    public OpportunityDetail registerActivity(
+            @PathVariable UUID id, @Valid @RequestBody RegisterOpportunityActivityRequest request) {
+        RecordActivityCommand command = new RecordActivityCommand(
+                request.type(),
+                request.result(),
+                request.description(),
+                request.occurredAt(),
+                request.nextActionDate());
+        return opportunityService.recordActivity(
+                id, command, userContext.currentUserId(), canSeeAllOpportunities(), canSeeUnassignedOpportunities());
     }
 
     // The creation period is given as calendar dates; the column is an instant, so anchor at UTC midnight

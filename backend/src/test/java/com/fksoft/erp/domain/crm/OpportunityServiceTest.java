@@ -19,6 +19,8 @@ import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
+import com.fksoft.erp.domain.crm.model.OpportunityActivityResult;
+import com.fksoft.erp.domain.crm.model.OpportunityActivityType;
 import com.fksoft.erp.domain.crm.model.OpportunityCreated;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.model.Origin;
@@ -29,8 +31,10 @@ import com.fksoft.erp.domain.crm.service.LeadAccessPolicy;
 import com.fksoft.erp.domain.crm.service.OpportunityAccessPolicy;
 import com.fksoft.erp.domain.crm.service.OpportunityService;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
+import com.fksoft.erp.domain.crm.service.data.RecordActivityCommand;
 import com.fksoft.erp.domain.identity.UserRepository;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -222,5 +226,30 @@ class OpportunityServiceTest {
         assertThatThrownBy(() -> service.changeStage(id, OpportunityStage.DISCOVERY, ACTOR, false, false))
                 .isInstanceOf(OpportunityAccessDeniedException.class);
         verify(opportunities, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void recordActivityThrowsWhenOpportunityIsMissing() {
+        UUID id = UUID.randomUUID();
+        when(opportunities.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.recordActivity(id, activityCommand(), ACTOR, true, false))
+                .isInstanceOf(OpportunityNotFoundException.class);
+    }
+
+    @Test
+    void recordActivityThrowsWhenTheOpportunityIsNotVisible() {
+        UUID id = UUID.randomUUID();
+        when(opportunities.findById(id)).thenReturn(Optional.of(mock(Opportunity.class)));
+        when(accessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.recordActivity(id, activityCommand(), ACTOR, false, false))
+                .isInstanceOf(OpportunityAccessDeniedException.class);
+        verify(opportunities, never()).saveAndFlush(any());
+    }
+
+    private RecordActivityCommand activityCommand() {
+        return new RecordActivityCommand(
+                OpportunityActivityType.OTHER, OpportunityActivityResult.OTHER, "x", Instant.now(), null);
     }
 }
