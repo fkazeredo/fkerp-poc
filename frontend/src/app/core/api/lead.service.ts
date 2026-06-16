@@ -15,6 +15,25 @@ export interface Responsible {
 
 export type LeadStatus = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'LOST';
 
+export type PendingReason =
+  | 'UNASSIGNED'
+  | 'NEW_WITHOUT_INTERACTION'
+  | 'OVERDUE_NEXT_CONTACT'
+  | 'CONTACTED_WITHOUT_OUTCOME';
+
+export interface PendingItem {
+  id: string;
+  name: string;
+  mainContact: string | null;
+  status: LeadStatus;
+  responsibleId: string | null;
+  responsibleName: string | null;
+  unassigned: boolean;
+  createdAt: string;
+  nextContactAt: string | null;
+  reasons: PendingReason[];
+}
+
 export interface CreateLead {
   name: string;
   phone: string | null;
@@ -164,6 +183,11 @@ export class LeadService {
       params = params.set('q', filters.q.trim());
     }
     return this.http.get<PageResponse<LeadListItem>>('/api/leads', { params });
+  }
+
+  pending(page = 0, size = 20): Observable<PageResponse<PendingItem>> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return this.http.get<PageResponse<PendingItem>>('/api/leads/pending', { params });
   }
 
   detail(id: string): Observable<LeadDetail> {

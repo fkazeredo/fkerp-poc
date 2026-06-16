@@ -188,6 +188,19 @@ Use the filter bar above the table:
 The list is paginated — use the pager at the bottom to move between pages. You can only ever see the
 leads you are allowed to work with; searching and filtering never reveal anyone else's leads.
 
+### Pending items (Pendências)
+
+Open **Pendências** from the sidebar (or the home tile) for an operational worklist of the leads that
+**need action**, so follow-ups aren't lost. Each lead is tagged with one or more reasons:
+
+- **Sem responsável** — the lead has no responsible person (needs an owner).
+- **Sem interação** — a New lead that has never been contacted.
+- **Contato atrasado** — its scheduled next contact is past due.
+- **Sem desfecho** — a Contacted lead with no follow-up planned and not yet qualified or lost.
+
+The same **visibility rules** apply: a representative or seller sees only their own pending items, a
+manager sees all. Qualified and lost leads never appear here. Click a name to open its detail and act.
+
 ## 7. Opening a lead — detail & actions
 
 Click a lead's **name** in the list to open its detail page (you can only open leads you are

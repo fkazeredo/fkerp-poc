@@ -40,11 +40,12 @@ export class Shell {
   protected readonly sidebarOpen = signal(false);
   private goPending = false;
 
-  /** Início is always available; Leads only when the user can read Leads. */
+  /** Início is always available; Leads + Pendências only when the user can read Leads. */
   protected get nav(): NavLink[] {
     const items: NavLink[] = [{ label: 'Início', icon: 'pi pi-home', link: '/', exact: true }];
     if (this.auth.canSeeLeads()) {
       items.push({ label: 'Leads', icon: 'pi pi-list', link: '/leads', exact: false });
+      items.push({ label: 'Pendências', icon: 'pi pi-flag', link: '/pendencias', exact: true });
     }
     return items;
   }
