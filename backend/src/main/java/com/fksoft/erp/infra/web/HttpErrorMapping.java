@@ -12,8 +12,10 @@ import com.fksoft.erp.domain.crm.LeadCannotBeMarkedLostException;
 import com.fksoft.erp.domain.crm.LeadCannotBeQualifiedException;
 import com.fksoft.erp.domain.crm.LeadContactRequiredException;
 import com.fksoft.erp.domain.crm.LeadNotFoundException;
+import com.fksoft.erp.domain.crm.LeadNotQualifiedForOpportunityException;
 import com.fksoft.erp.domain.crm.LeadQualificationRequiresResponsibleException;
 import com.fksoft.erp.domain.crm.LossReasonNotAvailableException;
+import com.fksoft.erp.domain.crm.OpportunityAlreadyExistsForLeadException;
 import com.fksoft.erp.domain.crm.OriginNotAvailableException;
 import com.fksoft.erp.domain.crm.ReferenceNotFoundException;
 import com.fksoft.erp.domain.crm.ResponsiblePersonNotFoundException;
@@ -48,6 +50,8 @@ public class HttpErrorMapping {
             entry(InvalidCredentialsException.class, HttpStatus.UNAUTHORIZED),
             entry(DuplicateReferenceCodeException.class, HttpStatus.CONFLICT),
             entry(DuplicateLeadException.class, HttpStatus.CONFLICT),
+            entry(LeadNotQualifiedForOpportunityException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(OpportunityAlreadyExistsForLeadException.class, HttpStatus.CONFLICT),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {

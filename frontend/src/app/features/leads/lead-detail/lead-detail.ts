@@ -16,6 +16,7 @@ import { MessageService } from 'primeng/api';
 import { Observable } from 'rxjs';
 import { LeadDetail, LeadService, LeadStatus, Responsible } from '../../../core/api/lead.service';
 import { ReferenceItem, ReferenceService } from '../../../core/api/reference.service';
+import { CreateOpportunity, OpportunityService } from '../../../core/api/opportunity.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
@@ -53,6 +54,7 @@ export class LeadDetailPage implements OnInit {
   private readonly references = inject(ReferenceService);
   private readonly messages = inject(MessageService);
   private readonly auth = inject(AuthService);
+  private readonly opportunities = inject(OpportunityService);
 
   protected readonly lead = signal<LeadDetail | null>(null);
   protected readonly loading = signal(true);
@@ -62,6 +64,7 @@ export class LeadDetailPage implements OnInit {
   protected readonly loseOpen = signal(false);
   protected readonly reassignOpen = signal(false);
   protected readonly interactionOpen = signal(false);
+  protected readonly opportunityOpen = signal(false);
   protected readonly acting = signal(false);
 
   protected readonly lossReasons = signal<ReferenceItem[]>([]);
@@ -80,6 +83,12 @@ export class LeadDetailPage implements OnInit {
   protected interactionDescription = '';
   protected interactionOccurredAt: Date = new Date();
   protected interactionNextContactAt: Date | null = null;
+
+  protected oppProductType = '';
+  protected oppEstimatedValue: number | null = null;
+  protected oppExpectedCloseDate: Date | null = null;
+  protected oppResponsibleTo: string | null = null;
+  protected oppNote = '';
 
   /** Upper bound for the interaction date picker — an interaction cannot have happened in the future. */
   protected readonly now = new Date();
@@ -138,7 +147,14 @@ export class LeadDetailPage implements OnInit {
   /** A non-manager may claim (self-assign) an unassigned, non-lost lead they are viewing. */
   protected canClaim(): boolean {
     const lead = this.lead();
-    return this.canOperate() && !this.canAssign() && !!lead && lead.unassigned && lead.status !== 'LOST';
+    return (
+      this.canOperate() && !this.canAssign() && !!lead && lead.unassigned && lead.status !== 'LOST'
+    );
+  }
+
+  /** A qualified lead may originate one commercial Opportunity (scope crm:opportunity:create). */
+  protected canCreateOpportunity(): boolean {
+    return this.auth.canCreateOpportunity() && this.lead()?.status === 'QUALIFIED';
   }
 
   protected back(): void {
@@ -146,7 +162,13 @@ export class LeadDetailPage implements OnInit {
   }
 
   private anyDialogOpen(): boolean {
-    return this.qualifyOpen() || this.loseOpen() || this.reassignOpen() || this.interactionOpen();
+    return (
+      this.qualifyOpen() ||
+      this.loseOpen() ||
+      this.reassignOpen() ||
+      this.interactionOpen() ||
+      this.opportunityOpen()
+    );
   }
 
   /** Contextual shortcuts on the detail screen: i interaction, q qualify, p lose, r reassign/claim, Esc back. */
@@ -154,7 +176,8 @@ export class LeadDetailPage implements OnInit {
   protected onShortcut(event: KeyboardEvent): void {
     const target = event.target as HTMLElement | null;
     const typing =
-      !!target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
+      !!target &&
+      (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
     if (typing || event.ctrlKey || event.metaKey || event.altKey) {
       return;
     }
@@ -182,6 +205,11 @@ export class LeadDetailPage implements OnInit {
           this.openReassign();
         } else if (this.canClaim()) {
           this.claim();
+        }
+        break;
+      case 'o':
+        if (this.canCreateOpportunity()) {
+          this.openOpportunity();
         }
         break;
       case 'Escape':
@@ -263,10 +291,14 @@ export class LeadDetailPage implements OnInit {
     this.interactionOccurredAt = new Date();
     this.interactionNextContactAt = null;
     if (this.interactionTypes().length === 0) {
-      this.references.list('interaction-types').subscribe({ next: (list) => this.interactionTypes.set(list) });
+      this.references
+        .list('interaction-types')
+        .subscribe({ next: (list) => this.interactionTypes.set(list) });
     }
     if (this.interactionResults().length === 0) {
-      this.references.list('interaction-results').subscribe({ next: (list) => this.interactionResults.set(list) });
+      this.references
+        .list('interaction-results')
+        .subscribe({ next: (list) => this.interactionResults.set(list) });
     }
     this.interactionOpen.set(true);
   }
@@ -290,11 +322,54 @@ export class LeadDetailPage implements OnInit {
         resultId: this.interactionResultId!,
         description: this.interactionDescription.trim(),
         occurredAt: this.interactionOccurredAt.toISOString(),
-        nextContactAt: this.interactionNextContactAt ? this.interactionNextContactAt.toISOString() : null,
+        nextContactAt: this.interactionNextContactAt
+          ? this.interactionNextContactAt.toISOString()
+          : null,
       }),
       'Interação registrada',
       this.interactionOpen,
     );
+  }
+
+  protected openOpportunity(): void {
+    this.oppProductType = '';
+    this.oppEstimatedValue = null;
+    this.oppExpectedCloseDate = null;
+    this.oppResponsibleTo = this.lead()?.responsibleId ?? null;
+    this.oppNote = '';
+    if (this.responsibleOptions().length === 0) {
+      this.leads.responsibles().subscribe({ next: (list) => this.responsibleOptions.set(list) });
+    }
+    this.opportunityOpen.set(true);
+  }
+
+  /** Creates the Opportunity from this qualified lead. Does not change the lead (kept separate). */
+  protected confirmOpportunity(): void {
+    this.acting.set(true);
+    const payload: CreateOpportunity = {
+      leadId: this.leadId,
+      responsiblePersonId: this.oppResponsibleTo,
+      productType: this.oppProductType.trim() || null,
+      estimatedValue: this.oppEstimatedValue,
+      expectedCloseDate: toIsoDate(this.oppExpectedCloseDate),
+      initialNote: this.oppNote.trim() || null,
+    };
+    this.opportunities.create(payload).subscribe({
+      next: () => {
+        this.acting.set(false);
+        this.opportunityOpen.set(false);
+        this.messages.add({ severity: 'success', summary: 'Oportunidade criada' });
+      },
+      error: (err: HttpErrorResponse) => {
+        this.acting.set(false);
+        const body = err.error as { message?: string } | null;
+        this.messages.add({
+          severity: 'error',
+          summary: 'Erro',
+          detail: body?.message ?? 'Não foi possível criar a oportunidade.',
+        });
+      },
+    });
   }
 
   private load(): void {
@@ -342,4 +417,14 @@ export class LeadDetailPage implements OnInit {
       },
     });
   }
+}
+
+function toIsoDate(date: Date | null): string | null {
+  if (!date) {
+    return null;
+  }
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
