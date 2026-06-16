@@ -27,7 +27,7 @@ describe('LeadDetailPage', () => {
   const references = { list: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
-  const auth = { hasScope: vi.fn(), userId: vi.fn() };
+  const auth = { hasScope: vi.fn(), userId: vi.fn(), canOperateLead: vi.fn() };
 
   const sample = (over: Record<string, unknown> = {}) => ({
     id: 'l1',
@@ -79,6 +79,7 @@ describe('LeadDetailPage', () => {
       messages.add,
       auth.hasScope,
       auth.userId,
+      auth.canOperateLead,
     ].forEach((fn) => fn.mockReset());
     leads.detail.mockReturnValue(of(sample()));
     leads.responsibles.mockReturnValue(of([{ id: 'u1', name: 'comercial' }]));
@@ -93,6 +94,7 @@ describe('LeadDetailPage', () => {
     });
     auth.hasScope.mockReturnValue(false);
     auth.userId.mockReturnValue('rep-1');
+    auth.canOperateLead.mockReturnValue(true);
   });
 
   it('loads the detail on init', () => {
@@ -309,6 +311,31 @@ describe('LeadDetailPage', () => {
     expect(comp['lead']()?.status).toBe('CONTACTED');
     expect(comp['interactionOpen']()).toBe(false);
     expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
+  });
+
+  it('hides every action for a consultation-only user (no operate scope)', () => {
+    auth.canOperateLead.mockReturnValue(false);
+    leads.detail.mockReturnValue(
+      of(sample({ status: 'CONTACTED', responsibleId: 'u1', responsibleName: 'comercial', unassigned: false })),
+    );
+    const comp = build();
+    comp.ngOnInit();
+
+    expect(comp['canOperate']()).toBe(false);
+    expect(comp['canQualify']()).toBe(false);
+    expect(comp['canLose']()).toBe(false);
+    expect(comp['canReassign']()).toBe(false);
+    expect(comp['canClaim']()).toBe(false);
+  });
+
+  it('does not open the interaction dialog with "i" for a consultation-only user', () => {
+    auth.canOperateLead.mockReturnValue(false);
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['onShortcut'](new KeyboardEvent('keydown', { key: 'i' }));
+
+    expect(comp['interactionOpen']()).toBe(false);
   });
 
   it('opens the interaction dialog with the "i" shortcut', () => {

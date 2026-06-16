@@ -39,10 +39,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Commercial / CRM lead endpoints. Creating a Lead requires {@code crm:lead:create}; reading
- * (list + detail) requires {@code crm:lead:read} (a regular user sees own + unassigned;
- * {@code crm:lead:read:all} sees every Lead); the transitions (qualify / lose / reassign) require
- * {@code crm:lead:update} and the caller must be allowed to see the Lead.
+ * Commercial / CRM lead endpoints. Reading (list + detail) requires a read tier —
+ * {@code crm:lead:read} (own only), {@code crm:lead:read:unassigned} (also the unassigned pool) or
+ * {@code crm:lead:read:all} (all) — and the visibility tier is enforced by the policy. Creating
+ * requires {@code crm:lead:create}; the transitions (qualify / lose / reassign / interactions)
+ * require {@code crm:lead:update} and the caller must be allowed to see the Lead.
  */
 @RestController
 @RequestMapping("/api/leads")
@@ -110,8 +111,8 @@ public class LeadController {
                         ? createdTo.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
                         : null,
                 q);
-        Page<LeadListView> page = leadService.list(
-                criteria, pageable, userContext.currentUserId(), userContext.hasScope("crm:lead:read:all"));
+        Page<LeadListView> page =
+                leadService.list(criteria, pageable, userContext.currentUserId(), canSeeAll(), canSeeUnassigned());
         return PageResponse.from(page, LeadListItemResponse::from);
     }
 
@@ -123,7 +124,7 @@ public class LeadController {
      */
     @GetMapping("/{id}")
     public LeadDetailResponse detail(@PathVariable UUID id) {
-        LeadDetailView view = leadService.detail(id, userContext.currentUserId(), canSeeAll());
+        LeadDetailView view = leadService.detail(id, userContext.currentUserId(), canSeeAll(), canSeeUnassigned());
         return LeadDetailResponse.from(view);
     }
 
@@ -137,7 +138,12 @@ public class LeadController {
     @PostMapping("/{id}/qualify")
     public LeadDetailResponse qualify(@PathVariable UUID id, @Valid @RequestBody QualifyRequest request) {
         LeadDetailView view = leadService.qualify(
-                id, request.mainInterest(), request.note(), userContext.currentUserId(), canSeeAll());
+                id,
+                request.mainInterest(),
+                request.note(),
+                userContext.currentUserId(),
+                canSeeAll(),
+                canSeeUnassigned());
         return LeadDetailResponse.from(view);
     }
 
@@ -151,7 +157,12 @@ public class LeadController {
     @PostMapping("/{id}/lose")
     public LeadDetailResponse lose(@PathVariable UUID id, @Valid @RequestBody LoseRequest request) {
         LeadDetailView view = leadService.markLost(
-                id, request.lossReasonId(), request.note(), userContext.currentUserId(), canSeeAll());
+                id,
+                request.lossReasonId(),
+                request.note(),
+                userContext.currentUserId(),
+                canSeeAll(),
+                canSeeUnassigned());
         return LeadDetailResponse.from(view);
     }
 
@@ -169,6 +180,7 @@ public class LeadController {
                 request.responsiblePersonId(),
                 userContext.currentUserId(),
                 canSeeAll(),
+                canSeeUnassigned(),
                 userContext.hasScope("crm:lead:assign"));
         return LeadDetailResponse.from(view);
     }
@@ -190,11 +202,16 @@ public class LeadController {
                 request.description(),
                 request.occurredAt(),
                 request.nextContactAt());
-        LeadDetailView view = leadService.recordInteraction(id, command, userContext.currentUserId(), canSeeAll());
+        LeadDetailView view = leadService.recordInteraction(
+                id, command, userContext.currentUserId(), canSeeAll(), canSeeUnassigned());
         return LeadDetailResponse.from(view);
     }
 
     private boolean canSeeAll() {
         return userContext.hasScope("crm:lead:read:all");
+    }
+
+    private boolean canSeeUnassigned() {
+        return userContext.hasScope("crm:lead:read:unassigned");
     }
 }

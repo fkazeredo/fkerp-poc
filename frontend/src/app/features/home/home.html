@@ -5,18 +5,29 @@
   </div>
 </header>
 
-<div class="home-grid">
-  <a class="tile surface" routerLink="/leads">
-    <span class="tile-icon leads"><i class="pi pi-list"></i></span>
-    <span class="tile-title">Leads</span>
-    <span class="tile-desc muted">Veja, busque e filtre os leads que você pode trabalhar.</span>
-  </a>
+@if (!auth.canSeeLeads()) {
+  <div class="notice surface">
+    <i class="pi pi-lock"></i>
+    <span>Você não tem acesso ao módulo Comercial / CRM. Fale com o administrador.</span>
+  </div>
+}
 
-  <a class="tile surface" routerLink="/leads/new">
-    <span class="tile-icon new"><i class="pi pi-user-plus"></i></span>
-    <span class="tile-title">Novo lead</span>
-    <span class="tile-desc muted">Registre um novo interessado e a primeira anotação.</span>
-  </a>
+<div class="home-grid">
+  @if (auth.canSeeLeads()) {
+    <a class="tile surface" routerLink="/leads">
+      <span class="tile-icon leads"><i class="pi pi-list"></i></span>
+      <span class="tile-title">Leads</span>
+      <span class="tile-desc muted">Veja, busque e filtre os leads que você pode trabalhar.</span>
+    </a>
+  }
+
+  @if (auth.canCreateLead()) {
+    <a class="tile surface" routerLink="/leads/new">
+      <span class="tile-icon new"><i class="pi pi-user-plus"></i></span>
+      <span class="tile-title">Novo lead</span>
+      <span class="tile-desc muted">Registre um novo interessado e a primeira anotação.</span>
+    </a>
+  }
 
   <a class="tile surface" routerLink="/cadastros/origens">
     <span class="tile-icon ref"><i class="pi pi-database"></i></span>

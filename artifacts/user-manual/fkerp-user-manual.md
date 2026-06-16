@@ -44,13 +44,34 @@ environment this is:
 3. On success you land on the home screen. If the credentials are wrong, a message
    reads *"Usuário ou senha inválidos."* (Invalid username or password.)
 
-> Development/demo credentials: **`comercial` / `comercial123`** (a manager who can assign leads to
-> anyone) and **`vendedor` / `vendedor123`** (a sales rep who can only take unassigned leads). Your
-> real account is created by your administrator.
+> Development/demo accounts (password = username + `123`): **`comercial`** (manager — sees & operates
+> all), **`vendedor`** (seller — own + the unassigned pool), **`representante`** (sales rep — only
+> their own leads), **`diretor`** (board — sees everything, read-only) and **`financeiro`** (no Lead
+> access). Your real account is created by your administrator.
 
 Your session is kept alive automatically and securely while you use the app. If you
 reload the page you stay signed in. Use **Sair** (Sign out) in the top bar to end the
 session.
+
+### 2.3 Profiles & access — what you can see and do
+
+What you can see and do depends on your **profile**. The system enforces this on the server, so the
+rules always hold even outside the screen:
+
+| Profile | Sees | Can operate? |
+|---|---|---|
+| **Admin / Commercial Manager** | all leads | yes — create, assign, qualify, mark lost, interactions |
+| **Board / Directors, Marketing** | all leads | **no** — consultation only (read-only) |
+| **Sellers, Call Center** | their own leads **+ the unassigned pool** | yes |
+| **Sales Representatives** | **only their own** leads | yes (only on their own) |
+| **Finance / HR / IT** | — | no access to the Lead module |
+
+- A **representative never sees** leads assigned to other representatives, and cannot open or act on
+  them. Searching and filtering never reveal leads outside your visibility.
+- **Consultation-only** users (directors, marketing) browse lists and details but see **no action
+  buttons** and no *Novo lead*.
+- Users **without Lead access** don't see the **Leads** menu and are sent back to the home screen,
+  which shows a short "no access" notice.
 
 ---
 

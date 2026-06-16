@@ -35,6 +35,12 @@ public class SecurityConfig {
 
     private static final String HMAC = "HmacSHA256";
 
+    // Any read tier grants access to the list/detail read endpoints; the LeadAccessPolicy then
+    // narrows WHICH Leads are visible (own only / own + pool / all).
+    private static final String[] READ_SCOPES = {
+        "SCOPE_crm:lead:read", "SCOPE_crm:lead:read:unassigned", "SCOPE_crm:lead:read:all"
+    };
+
     private final SecurityProperties props;
 
     @Bean
@@ -86,9 +92,9 @@ public class SecurityConfig {
                                 "/api/leads/*/interactions")
                         .hasAuthority("SCOPE_crm:lead:update")
                         .requestMatchers(HttpMethod.GET, "/api/leads", "/api/leads/**")
-                        .hasAuthority("SCOPE_crm:lead:read")
+                        .hasAnyAuthority(READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/responsibles")
-                        .hasAuthority("SCOPE_crm:lead:read")
+                        .hasAnyAuthority(READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/**")
                         .authenticated()
                         .requestMatchers("/api/crm/**")
