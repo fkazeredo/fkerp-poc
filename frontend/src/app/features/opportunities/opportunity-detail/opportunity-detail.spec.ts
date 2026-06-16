@@ -16,7 +16,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 };
 
 describe('OpportunityDetailPage', () => {
-  const opportunities = { detail: vi.fn(), lose: vi.fn() };
+  const opportunities = { detail: vi.fn(), lose: vi.fn(), changeStage: vi.fn() };
   const references = { list: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
@@ -76,9 +76,15 @@ describe('OpportunityDetailPage', () => {
   }
 
   beforeEach(() => {
-    [opportunities.detail, opportunities.lose, references.list, router.navigateByUrl, messages.add, auth.canOperateOpportunity].forEach(
-      (fn) => fn.mockReset(),
-    );
+    [
+      opportunities.detail,
+      opportunities.lose,
+      opportunities.changeStage,
+      references.list,
+      router.navigateByUrl,
+      messages.add,
+      auth.canOperateOpportunity,
+    ].forEach((fn) => fn.mockReset());
     opportunities.detail.mockReturnValue(of(sample()));
     references.list.mockReturnValue(
       of([{ id: 'lr1', code: 'NO_RESPONSE', label: 'Sem resposta', active: true, sortOrder: 1 }]),
@@ -155,6 +161,49 @@ describe('OpportunityDetailPage', () => {
     comp['lossReasonId'] = null;
     comp['confirmLose']();
     expect(opportunities.lose).not.toHaveBeenCalled();
+  });
+
+  it('stageOptions excludes LOST and the current stage', () => {
+    const comp = build();
+    comp.ngOnInit(); // NEW_OPPORTUNITY
+    const values = comp['stageOptions']().map((o) => o.value);
+    expect(values).toEqual(['DISCOVERY', 'PRODUCT_FIT', 'READY_FOR_PROPOSAL']);
+  });
+
+  it('allows changing stage only when operable and not lost', () => {
+    const comp = build();
+    comp.ngOnInit();
+    expect(comp['canChangeStage']()).toBe(true);
+    comp['opportunity'].set(lost());
+    expect(comp['canChangeStage']()).toBe(false);
+  });
+
+  it('confirmStage moves the opportunity, refreshes the detail and closes the dialog', () => {
+    const moved = sample({
+      stage: 'DISCOVERY',
+      stageHistory: [{ from: 'NEW_OPPORTUNITY', to: 'DISCOVERY', at: '2026-06-16T10:00:00Z', by: 'comercial' }],
+    });
+    opportunities.changeStage.mockReturnValue(of(moved));
+    const comp = build();
+    comp.ngOnInit();
+    comp['openStage']();
+    comp['targetStage'] = 'DISCOVERY';
+
+    comp['confirmStage']();
+
+    expect(opportunities.changeStage).toHaveBeenCalledWith('o1', 'DISCOVERY');
+    expect(comp['opportunity']()?.stage).toBe('DISCOVERY');
+    expect(comp['opportunity']()?.stageHistory.length).toBe(1);
+    expect(comp['stageOpen']()).toBe(false);
+    expect(messages.add).toHaveBeenCalled();
+  });
+
+  it('confirmStage does nothing without a target stage', () => {
+    const comp = build();
+    comp.ngOnInit();
+    comp['targetStage'] = null;
+    comp['confirmStage']();
+    expect(opportunities.changeStage).not.toHaveBeenCalled();
   });
 
   it('maps stages to pt-BR labels', () => {
