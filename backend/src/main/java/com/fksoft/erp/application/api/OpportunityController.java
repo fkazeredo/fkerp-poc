@@ -1,6 +1,7 @@
 package com.fksoft.erp.application.api;
 
 import com.fksoft.erp.application.api.dto.OpportunityCreateRequest;
+import com.fksoft.erp.application.api.dto.OpportunityListParams;
 import com.fksoft.erp.application.api.dto.OpportunityResponse;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.service.OpportunityService;
@@ -11,7 +12,9 @@ import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
-import java.util.Set;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +25,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -30,7 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code crm:opportunity:create}, and the caller must be allowed to see the source Lead (the lead read
  * tiers are reused to decide that). Listing requires an Opportunity read tier —
  * {@code crm:opportunity:read} (own only), {@code crm:opportunity:read:unassigned} (also the unassigned
- * pool) or {@code crm:opportunity:read:all} (all) — the visibility tier being enforced by the policy.
+ * pool) or {@code crm:opportunity:read:all} (all) — the visibility tier being enforced by the policy at
+ * the query level, so filters and search can never expose Opportunities the caller may not see.
  */
 @RestController
 @RequestMapping("/api/opportunities")
@@ -62,21 +65,35 @@ public class OpportunityController {
     }
 
     /**
-     * Operational, paginated list of Opportunities visible to the caller, with an optional stage
-     * filter and search. Lost Opportunities are excluded unless the {@code stage} filter explicitly
-     * includes LOST.
+     * Operational, paginated list of Opportunities visible to the caller, with optional filters and
+     * search. Lost Opportunities are excluded unless the {@code stage} filter explicitly includes LOST.
      *
-     * @param stage optional stage filter (repeatable); empty means all non-lost
-     * @param q optional case-insensitive search over title, product type and main interest
+     * @param params the optional filters and search term (see {@link OpportunityListParams})
      * @param pageable page, size and sort (default: createdAt desc, size 20)
      * @return a page of operational Opportunity items
      */
     @GetMapping
     public PageResponse<OpportunityListItem> list(
-            @RequestParam(required = false) Set<OpportunityStage> stage,
-            @RequestParam(required = false) String q,
+            OpportunityListParams params,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        OpportunitySearchCriteria criteria = new OpportunitySearchCriteria(stage, q);
+        boolean unassignedOnly = "unassigned".equalsIgnoreCase(params.responsible());
+        UUID responsibleId = (!unassignedOnly
+                        && params.responsible() != null
+                        && !params.responsible().isBlank())
+                ? UUID.fromString(params.responsible())
+                : null;
+        OpportunitySearchCriteria criteria = new OpportunitySearchCriteria(
+                params.stage(),
+                responsibleId,
+                unassignedOnly,
+                params.originId(),
+                toStartOfDayUtc(params.createdFrom()),
+                toStartOfDayUtc(params.createdTo() != null ? params.createdTo().plusDays(1) : null),
+                params.closeFrom(),
+                params.closeTo(),
+                params.valueMin(),
+                params.valueMax(),
+                params.q());
         return PageResponse.from(
                 opportunityService.list(
                         criteria,
@@ -85,6 +102,12 @@ public class OpportunityController {
                         canSeeAllOpportunities(),
                         canSeeUnassignedOpportunities()),
                 item -> item);
+    }
+
+    // The creation period is given as calendar dates; the column is an instant, so anchor at UTC midnight
+    // (the upper bound is pre-incremented by a day by the caller, making the range [from, to) exclusive).
+    private static Instant toStartOfDayUtc(LocalDate date) {
+        return date != null ? date.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
     }
 
     // Source-lead visibility for creation reuses the Lead read tiers.
