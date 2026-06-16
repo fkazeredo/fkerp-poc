@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { crmReadGuard } from './core/auth/crm-read.guard';
+import { opportunityReadGuard } from './core/auth/opportunity-read.guard';
 
 export const routes: Routes = [
   {
@@ -43,6 +44,14 @@ export const routes: Routes = [
         canActivate: [crmReadGuard],
         loadComponent: () =>
           import('./features/leads/lead-detail/lead-detail').then((m) => m.LeadDetailPage),
+      },
+      {
+        path: 'oportunidades',
+        canActivate: [opportunityReadGuard],
+        loadComponent: () =>
+          import('./features/opportunities/opportunity-list/opportunity-list').then(
+            (m) => m.OpportunityList,
+          ),
       },
       {
         path: 'cadastros/origens',

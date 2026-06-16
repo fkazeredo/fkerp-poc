@@ -1,25 +1,39 @@
 package com.fksoft.erp.application.api;
 
 import com.fksoft.erp.application.api.dto.OpportunityCreateRequest;
+import com.fksoft.erp.application.api.dto.OpportunityListItemResponse;
 import com.fksoft.erp.application.api.dto.OpportunityResponse;
 import com.fksoft.erp.domain.crm.CreateOpportunityCommand;
+import com.fksoft.erp.domain.crm.OpportunityListView;
+import com.fksoft.erp.domain.crm.OpportunitySearchCriteria;
 import com.fksoft.erp.domain.crm.OpportunityService;
 import com.fksoft.erp.domain.crm.OpportunityStage;
 import com.fksoft.erp.infra.security.UserContextProvider;
+import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Commercial Opportunity endpoints. Creating an Opportunity from a Qualified Lead requires
  * {@code crm:opportunity:create}, and the caller must be allowed to see the source Lead (the lead read
- * tiers are reused to decide that).
+ * tiers are reused to decide that). Listing requires an Opportunity read tier —
+ * {@code crm:opportunity:read} (own only), {@code crm:opportunity:read:unassigned} (also the
+ * unassigned pool) or {@code crm:opportunity:read:all} (all) — and the visibility tier is enforced by
+ * the policy.
  */
 @RestController
 @RequestMapping("/api/opportunities")
@@ -44,16 +58,52 @@ public class OpportunityController {
                 request.estimatedValue(),
                 request.expectedCloseDate(),
                 request.initialNote());
-        UUID id = opportunityService.create(command, userContext.currentUserId(), canSeeAll(), canSeeUnassigned());
+        UUID id = opportunityService.create(
+                command, userContext.currentUserId(), canSeeAllLeads(), canSeeUnassignedLeads());
         return ResponseEntity.created(URI.create("/api/opportunities/" + id))
                 .body(new OpportunityResponse(id, OpportunityStage.NEW_OPPORTUNITY));
     }
 
-    private boolean canSeeAll() {
+    /**
+     * Operational, paginated list of Opportunities visible to the caller, with an optional stage
+     * filter and search. Lost Opportunities are excluded unless the {@code stage} filter explicitly
+     * includes LOST.
+     *
+     * @param stage optional stage filter (repeatable); empty means all non-lost
+     * @param q optional case-insensitive search over title, product type and main interest
+     * @param pageable page, size and sort (default: createdAt desc, size 20)
+     * @return a page of operational Opportunity items
+     */
+    @GetMapping
+    public PageResponse<OpportunityListItemResponse> list(
+            @RequestParam(required = false) Set<OpportunityStage> stage,
+            @RequestParam(required = false) String q,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        OpportunitySearchCriteria criteria = new OpportunitySearchCriteria(stage, q);
+        Page<OpportunityListView> page = opportunityService.list(
+                criteria,
+                pageable,
+                userContext.currentUserId(),
+                canSeeAllOpportunities(),
+                canSeeUnassignedOpportunities());
+        return PageResponse.from(page, OpportunityListItemResponse::from);
+    }
+
+    // Source-lead visibility for creation reuses the Lead read tiers.
+    private boolean canSeeAllLeads() {
         return userContext.hasScope("crm:lead:read:all");
     }
 
-    private boolean canSeeUnassigned() {
+    private boolean canSeeUnassignedLeads() {
         return userContext.hasScope("crm:lead:read:unassigned");
+    }
+
+    // Opportunity listing uses the Opportunity read tiers.
+    private boolean canSeeAllOpportunities() {
+        return userContext.hasScope("crm:opportunity:read:all");
+    }
+
+    private boolean canSeeUnassignedOpportunities() {
+        return userContext.hasScope("crm:opportunity:read:unassigned");
     }
 }

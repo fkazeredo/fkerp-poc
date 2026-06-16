@@ -362,6 +362,18 @@ Board/Marketing = read:all; Sellers/Call-Center = read + read:unassigned + creat
 Representatives = read + create/update (own only); Finance/HR/IT = none. The frontend mirrors this
 (hide actions/routes) but the backend is the only authority.
 
+**Opportunity authorization model (normative).** Mirrors the Lead model: same two orthogonal axes,
+the same escalating read tiers — `crm:opportunity:read` (own only) → also
+`crm:opportunity:read:unassigned` (the unassigned pool) → `crm:opportunity:read:all` (all); any read
+tier passes the GET security gate, and `OpportunityAccessPolicy` (a query Specification on
+`responsiblePersonId`) narrows which Opportunities are returned so filters can never bypass it.
+Operation `crm:opportunity:create` gates creating an Opportunity from a Qualified Lead (the creator
+must also be allowed to see the source Lead, via the Lead read tiers). Profile → scopes:
+Admin/Manager = read:all + create; Sellers = read + read:unassigned + create; Representatives = read +
+create (own only); Board/Director = read:all (consultation); Finance/HR/IT = none. The list exposes
+commercial pipeline data only — never Proposal, Sale, Sales Order, Booking, Financial or Commission
+data.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST
