@@ -10,12 +10,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fksoft.erp.AbstractIntegrationTest;
+import com.fksoft.erp.domain.crm.InteractionResultRepository;
+import com.fksoft.erp.domain.crm.InteractionTypeRepository;
 import com.fksoft.erp.domain.crm.LeadRepository;
 import com.fksoft.erp.domain.crm.LossReasonRepository;
 import com.fksoft.erp.domain.crm.OriginRepository;
 import com.fksoft.erp.domain.identity.AuthenticatedUser;
 import com.fksoft.erp.infra.security.TokenService;
 import com.jayway.jsonpath.JsonPath;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -44,6 +47,12 @@ class LeadDetailApiIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private LossReasonRepository lossReasons;
+
+    @Autowired
+    private InteractionTypeRepository interactionTypes;
+
+    @Autowired
+    private InteractionResultRepository interactionResults;
 
     @Autowired
     private TokenService tokens;
@@ -100,16 +109,18 @@ class LeadDetailApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void qualifiesALeadAndRecordsQualification() throws Exception {
+    void qualifiesAContactedLeadAndRecordsQualification() throws Exception {
         String id = createLead(manager(), "Qualify me", SEED_USER, null);
+        contact(id);
 
         mvc.perform(post("/api/leads/" + id + "/qualify")
                         .header("Authorization", "Bearer " + manager())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"note\":\"bom perfil\"}"))
+                        .content("{\"mainInterest\":\"Pacote corporativo\",\"note\":\"bom perfil\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("QUALIFIED"))
                 .andExpect(jsonPath("$.qualification.qualifiedBy").value("comercial"))
+                .andExpect(jsonPath("$.qualification.mainInterest").value("Pacote corporativo"))
                 .andExpect(jsonPath("$.qualification.note").value("bom perfil"));
     }
 
@@ -157,7 +168,10 @@ class LeadDetailApiIntegrationTest extends AbstractIntegrationTest {
         String id = createLead(manager(), "Already lost", SEED_USER, null);
         loseLead(id, activeLossReasonId());
 
-        mvc.perform(post("/api/leads/" + id + "/qualify").header("Authorization", "Bearer " + manager()))
+        mvc.perform(post("/api/leads/" + id + "/qualify")
+                        .header("Authorization", "Bearer " + manager())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mainInterest\":\"Pacote\"}"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("lead.cannot-qualify"));
         mvc.perform(post("/api/leads/" + id + "/lose")
@@ -214,6 +228,20 @@ class LeadDetailApiIntegrationTest extends AbstractIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         return JsonPath.read(response, "$.id");
+    }
+
+    /** Moves a lead to CONTACTED by registering an effective interaction (so it can be qualified). */
+    private void contact(String id) throws Exception {
+        UUID typeId = interactionTypes.findByCode("PHONE_CALL").orElseThrow().id();
+        UUID resultId =
+                interactionResults.findByCode("CONTACT_MADE").orElseThrow().id();
+        mvc.perform(post("/api/leads/" + id + "/interactions")
+                        .header("Authorization", "Bearer " + manager())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"contato\",\"occurredAt\":\"%s\"}"
+                                        .formatted(typeId, resultId, Instant.now())))
+                .andExpect(status().isOk());
     }
 
     private void loseLead(String id, UUID reasonId) throws Exception {

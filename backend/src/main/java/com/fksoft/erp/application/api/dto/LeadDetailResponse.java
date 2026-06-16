@@ -90,9 +90,9 @@ public record LeadDetailResponse(
     }
 
     /** Qualification outcome. */
-    public record QualificationInfo(Instant qualifiedAt, String qualifiedBy, String note) {
+    public record QualificationInfo(Instant qualifiedAt, String qualifiedBy, String mainInterest, String note) {
         static QualificationInfo from(QualificationView q) {
-            return new QualificationInfo(q.qualifiedAt(), q.qualifiedByName(), q.note());
+            return new QualificationInfo(q.qualifiedAt(), q.qualifiedByName(), q.mainInterest(), q.note());
         }
     }
 

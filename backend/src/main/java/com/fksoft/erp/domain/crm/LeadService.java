@@ -140,19 +140,21 @@ public class LeadService {
     }
 
     /**
-     * Qualifies a Lead and returns the refreshed detail.
+     * Qualifies a Lead with its main commercial interest and returns the refreshed detail.
      *
      * @param id the lead id
-     * @param note optional qualification note
+     * @param mainInterest the main commercial interest (required)
+     * @param note optional commercial note
      * @param userId the acting user
      * @param canSeeAll whether the caller may see every Lead (manager scope)
      * @return the updated detail
-     * @throws LeadCannotBeQualifiedException if the lead is already qualified or lost
+     * @throws LeadCannotBeQualifiedException if the lead is not in CONTACTED status
+     * @throws LeadQualificationRequiresResponsibleException if the lead has no responsible person
      */
     @Transactional
-    public LeadDetailView qualify(UUID id, String note, UUID userId, boolean canSeeAll) {
+    public LeadDetailView qualify(UUID id, String mainInterest, String note, UUID userId, boolean canSeeAll) {
         Lead lead = loadVisible(id, userId, canSeeAll);
-        lead.qualify(userId, note);
+        lead.qualify(userId, mainInterest, note);
         return toDetailView(leads.saveAndFlush(lead));
     }
 
@@ -279,7 +281,11 @@ public class LeadService {
                 .toList();
         QualificationView qualification = lead.qualifiedAt() == null
                 ? null
-                : new QualificationView(lead.qualifiedAt(), names.get(lead.qualifiedBy()), lead.qualificationNote());
+                : new QualificationView(
+                        lead.qualifiedAt(),
+                        names.get(lead.qualifiedBy()),
+                        lead.mainInterest(),
+                        lead.qualificationNote());
         LossView loss = lead.lostAt() == null
                 ? null
                 : new LossView(
