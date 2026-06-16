@@ -1,8 +1,8 @@
 package com.fksoft.erp.domain.crm.service;
 
-import com.fksoft.erp.domain.crm.dto.LeadSearchCriteria;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadStatus;
+import com.fksoft.erp.domain.crm.service.data.LeadSearchCriteria;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;

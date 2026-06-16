@@ -1,4 +1,4 @@
-package com.fksoft.erp.domain.crm.dto;
+package com.fksoft.erp.domain.crm.service.data;
 
 import com.fksoft.erp.domain.crm.model.LeadStatus;
 import java.time.Instant;

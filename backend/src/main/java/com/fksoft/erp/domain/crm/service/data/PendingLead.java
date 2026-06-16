@@ -1,4 +1,4 @@
-package com.fksoft.erp.application.api.dto;
+package com.fksoft.erp.domain.crm.service.data;
 
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadStatus;
@@ -8,11 +8,11 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Pending Lead item (entity-free transport DTO) for the operational worklist. {@code reasons} are
- * stable codes the UI localizes; {@code unassigned} flags Leads with no responsible. Assembled from
- * the Lead entity plus the responsible's resolved name and the computed reasons.
+ * Pending Lead item (read model) for the operational worklist. {@code reasons} are stable codes the UI
+ * localizes; {@code unassigned} flags Leads with no responsible. Assembled from the Lead entity plus
+ * the responsible's resolved name and the computed reasons.
  */
-public record PendingLeadResponse(
+public record PendingLead(
         UUID id,
         String name,
         String mainContact,
@@ -25,15 +25,15 @@ public record PendingLeadResponse(
         List<PendingReason> reasons) {
 
     /**
-     * Maps a Lead entity (plus enrichment) to the pending transport DTO.
+     * Maps a Lead entity (plus enrichment) to the pending item.
      *
      * @param lead the lead entity
      * @param responsibleName the responsible's display name, or {@code null} when unassigned/unknown
      * @param reasons the pending reasons that currently apply
-     * @return the response item
+     * @return the pending item
      */
-    public static PendingLeadResponse from(Lead lead, String responsibleName, List<PendingReason> reasons) {
-        return new PendingLeadResponse(
+    public static PendingLead from(Lead lead, String responsibleName, List<PendingReason> reasons) {
+        return new PendingLead(
                 lead.id(),
                 lead.name(),
                 mainContact(lead),

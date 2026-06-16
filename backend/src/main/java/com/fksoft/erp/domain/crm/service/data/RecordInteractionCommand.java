@@ -1,4 +1,4 @@
-package com.fksoft.erp.domain.crm.dto;
+package com.fksoft.erp.domain.crm.service.data;
 
 import java.time.Instant;
 import java.util.UUID;
