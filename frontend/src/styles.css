@@ -1,8 +1,44 @@
 /* Global styles for the FKERP frontend. */
 @import 'primeicons/primeicons.css';
 
+/* Tailwind v4 split into explicit layers so PrimeNG component styles sit BETWEEN Tailwind's base
+   reset and its utilities: utility classes win, but Tailwind's preflight never clobbers PrimeNG. */
+@layer tailwind-base, primeng, tailwind-utilities;
+@import 'tailwindcss/theme.css' layer(tailwind-base);
+@import 'tailwindcss/preflight.css' layer(tailwind-base);
+@import 'tailwindcss/utilities.css' layer(tailwind-utilities);
+@plugin 'tailwindcss-primeui';
+
+/* Tailwind `dark:` follows the same `.app-dark` selector PrimeNG's darkModeSelector uses. */
+@custom-variant dark (&:where(.app-dark, .app-dark *));
+
 :root {
   color-scheme: light;
+  --app-bg: #f1f5f9;
+  --app-surface: #ffffff;
+  --app-surface-2: #f8fafc;
+  --app-border: #e5e7eb;
+  --app-text: #0f172a;
+  --app-muted: #64748b;
+  --app-shadow: 0 1px 2px rgb(15 23 42 / 6%), 0 1px 3px rgb(15 23 42 / 8%);
+  /* The sidebar is dark in both themes (modern SaaS look). */
+  --app-sidebar-bg: #0f172a;
+  --app-sidebar-text: #cbd5e1;
+  --app-sidebar-muted: #64748b;
+  --app-sidebar-active: #1e293b;
+  --app-sidebar-active-text: #ffffff;
+}
+.app-dark {
+  color-scheme: dark;
+  --app-bg: #0b1120;
+  --app-surface: #111827;
+  --app-surface-2: #0f172a;
+  --app-border: #1f2a3b;
+  --app-text: #e5e7eb;
+  --app-muted: #94a3b8;
+  --app-shadow: 0 1px 2px rgb(0 0 0 / 40%);
+  --app-sidebar-bg: #070b14;
+  --app-sidebar-active: #16213a;
 }
 
 * {
@@ -22,15 +58,8 @@ body {
     Helvetica,
     Arial,
     sans-serif;
-  background: var(--p-content-background, #f4f6f9);
-  color: var(--p-text-color, #1f2937);
-}
-
-/* Page container used inside the authenticated shell. */
-.page {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 1.5rem 1.25rem 3rem;
+  background: var(--app-bg);
+  color: var(--app-text);
 }
 
 /* Vertical form field: label above control. */
@@ -75,13 +104,52 @@ body {
   font-size: 0.8rem;
 }
 
+.req {
+  color: var(--p-red-500, #ef4444);
+}
+
 .w-full {
   width: 100%;
 }
 
+/* Shared page header: title (+ optional subtitle) on the left, actions on the right. */
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.page-head .sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+}
+
+/* Elevated panel used across screens. */
+.surface {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 0.85rem;
+  box-shadow: var(--app-shadow);
+}
+
+.surface.pad {
+  padding: 1.1rem 1.25rem;
+}
+
 /* Keyboard key hint. */
 .kbd {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   padding: 0.05rem 0.4rem;
   border: 1px solid var(--p-surface-300, #d1d5db);
   border-bottom-width: 2px;
@@ -91,4 +159,9 @@ body {
   font-size: 0.72rem;
   line-height: 1.4;
   color: var(--p-text-muted-color, #6b7280);
+}
+
+.app-dark .kbd {
+  background: var(--p-surface-800, #1f2937);
+  border-color: var(--p-surface-600, #4b5563);
 }

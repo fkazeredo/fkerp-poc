@@ -7,7 +7,9 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:up": "docker compose -f ../compose.e2e.yaml up -d --build",
+    "e2e:down": "docker compose -f ../compose.e2e.yaml down"
   },
   "private": true,
   "packageManager": "npm@11.7.0",
@@ -30,8 +32,12 @@
     "@angular/cli": "^22.0.1",
     "@angular/compiler-cli": "^22.0.0",
     "@playwright/test": "^1.61.0",
+    "@tailwindcss/postcss": "^4.3.1",
     "jsdom": "^28.0.0",
+    "postcss": "^8.5.15",
     "prettier": "^3.8.1",
+    "tailwindcss": "^4.3.1",
+    "tailwindcss-primeui": "^0.6.1",
     "typescript": "~6.0.2",
     "vitest": "^4.0.8"
   }

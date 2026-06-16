@@ -1,34 +1,86 @@
 <p-toast />
 
-<p-menubar [model]="menu">
-  <ng-template pTemplate="start">
-    <span class="brand">FKERP</span>
-  </ng-template>
-  <ng-template pTemplate="end">
-    <div class="menu-end">
-      <p-button
-        label="Comandos"
-        icon="pi pi-search"
-        size="small"
-        [text]="true"
-        (onClick)="openPalette()"
-      />
-      <span class="kbd">Ctrl K</span>
-      <p-button
-        label="Sair"
-        icon="pi pi-sign-out"
-        size="small"
-        severity="secondary"
-        [text]="true"
-        (onClick)="logout()"
-      />
-    </div>
-  </ng-template>
-</p-menubar>
+<div class="shell" [class.sidebar-open]="sidebarOpen()">
+  <div class="scrim" (click)="sidebarOpen.set(false)"></div>
 
-<main class="page">
-  <router-outlet />
-</main>
+  <aside class="sidebar">
+    <div class="brand-row">
+      <span class="brand-mark">FK</span>
+      <div class="brand-text">
+        <span class="brand">FKERP</span>
+        <span class="brand-sub">Comercial / CRM</span>
+      </div>
+    </div>
+
+    <button class="cta" routerLink="/leads/new" (click)="sidebarOpen.set(false)">
+      <i class="pi pi-plus"></i><span>Novo lead</span>
+    </button>
+
+    <nav class="nav">
+      @for (item of nav; track item.link) {
+        <a
+          class="nav-item"
+          [routerLink]="item.link"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: item.exact }"
+          (click)="sidebarOpen.set(false)"
+        >
+          <i [class]="item.icon"></i><span>{{ item.label }}</span>
+        </a>
+      }
+
+      <span class="nav-group">Cadastros</span>
+      @for (item of cadastros; track item.link) {
+        <a
+          class="nav-item sub"
+          [routerLink]="item.link"
+          routerLinkActive="active"
+          (click)="sidebarOpen.set(false)"
+        >
+          <i class="pi pi-angle-right"></i><span>{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar-foot">
+      <button class="nav-item" (click)="helpOpen.set(true)">
+        <i class="pi pi-question-circle"></i><span>Atalhos</span><span class="kbd">?</span>
+      </button>
+      <button class="nav-item" (click)="logout()">
+        <i class="pi pi-sign-out"></i><span>Sair</span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-toggle" (click)="toggleSidebar()" aria-label="Menu">
+        <i class="pi pi-bars"></i>
+      </button>
+
+      <button class="cmd" (click)="openPalette()">
+        <i class="pi pi-search"></i>
+        <span class="cmd-text">Buscar comando…</span>
+        <span class="kbd">Ctrl K</span>
+      </button>
+
+      <span class="grow"></span>
+
+      <button
+        class="icon-btn"
+        (click)="theme.toggle()"
+        [attr.aria-label]="theme.dark() ? 'Tema claro' : 'Tema escuro'"
+        [title]="theme.dark() ? 'Tema claro' : 'Tema escuro'"
+      >
+        <i class="pi" [class.pi-sun]="theme.dark()" [class.pi-moon]="!theme.dark()"></i>
+      </button>
+    </header>
+
+    <main class="page">
+      <router-outlet />
+    </main>
+  </div>
+</div>
 
 <p-dialog
   header="Comandos"
@@ -46,13 +98,28 @@
     (onChange)="runCommand($event.value)"
   >
     <ng-template let-command pTemplate="item">
-      <span><i [class]="command.icon"></i>&nbsp;&nbsp;{{ command.label }}</span>
+      <span class="cmd-item"><i [class]="command.icon"></i>{{ command.label }}</span>
     </ng-template>
   </p-listbox>
-  <p class="muted palette-hint">
-    Atalhos: <span class="kbd">n</span> novo lead &middot; <span class="kbd">g</span> depois
-    <span class="kbd">o</span> origens &middot; <span class="kbd">g</span>
-    <span class="kbd">i</span>
-    início
-  </p>
+</p-dialog>
+
+<p-dialog
+  header="Atalhos do teclado"
+  [(visible)]="helpOpen"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '30rem' }"
+>
+  <ul class="shortcuts">
+    <li><span class="kbd">Ctrl</span> <span class="kbd">K</span> Paleta de comandos</li>
+    <li><span class="kbd">n</span> Novo lead</li>
+    <li><span class="kbd">g</span> depois <span class="kbd">l</span> Ir para Leads</li>
+    <li><span class="kbd">g</span> depois <span class="kbd">i</span> Ir para o Início</li>
+    <li><span class="kbd">g</span> depois <span class="kbd">o</span> Ir para Origens</li>
+    <li><span class="kbd">?</span> Esta ajuda</li>
+    <li class="sep">No detalhe de um lead:</li>
+    <li><span class="kbd">i</span> Registrar interação</li>
+    <li><span class="kbd">q</span> Qualificar &middot; <span class="kbd">p</span> Marcar perdido</li>
+    <li><span class="kbd">r</span> Reatribuir / Assumir &middot; <span class="kbd">Esc</span> Voltar</li>
+  </ul>
 </p-dialog>

@@ -58,4 +58,20 @@ Frontend (em `frontend/`):
 ```bash
 npm install
 npm start        # http://localhost:4200
+npm test         # testes unitários (Vitest)
+npm run build    # build de produção
 ```
+
+### Testes E2E (Playwright)
+
+Os testes E2E rodam contra uma **stack isolada e descartável** (`compose.e2e.yaml`) com um Postgres
+efêmero (em `tmpfs`), em portas próprias (frontend **4201**), para **nunca tocar no banco de
+desenvolvimento**. A partir de `frontend/`:
+
+```bash
+npm run e2e:up     # sobe a stack isolada (build) em http://localhost:4201
+npm run e2e        # roda os testes (baseURL 4201; sobrescreva com E2E_BASE_URL)
+npm run e2e:down   # derruba a stack (o Postgres efêmero é descartado)
+```
+
+A stack de desenvolvimento (`compose.yaml`, porta 4200) e a de E2E (4201) podem rodar juntas.

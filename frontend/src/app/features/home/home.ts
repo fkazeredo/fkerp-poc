@@ -1,19 +1,11 @@
-import { Component, inject } from '@angular/core';
-import { Router } from '@angular/router';
-import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
+import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
-/** Landing page with quick links and a reminder of the keyboard shortcuts. */
+/** Landing page: quick entry points and a reminder of the keyboard shortcuts. */
 @Component({
   selector: 'app-home',
-  imports: [ButtonModule, CardModule],
+  imports: [RouterLink],
   templateUrl: './home.html',
   styleUrl: './home.css',
 })
-export class Home {
-  private readonly router = inject(Router);
-
-  protected go(url: string): void {
-    this.router.navigateByUrl(url);
-  }
-}
+export class Home {}

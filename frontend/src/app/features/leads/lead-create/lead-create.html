@@ -1,13 +1,15 @@
-<header class="head">
-  <h1>Novo Lead</h1>
-  <p class="muted">Informe os dados do interessado. Ao menos um contato é obrigatório.</p>
+<header class="page-head">
+  <div>
+    <h1>Novo lead</h1>
+    <p class="sub muted">Informe os dados do interessado. Ao menos um contato é obrigatório.</p>
+  </div>
 </header>
 
 @if (formError()) {
   <p-message severity="error" [text]="formError()!" styleClass="w-full form-banner" />
 }
 
-<form [formGroup]="form" (ngSubmit)="submit()" class="lead-form">
+<form [formGroup]="form" (ngSubmit)="submit()" class="lead-form surface pad">
   <div class="field">
     <label for="name">Nome <span class="req">*</span></label>
     <input #nameInput pInputText id="name" formControlName="name" class="w-full" />

@@ -1,5 +1,8 @@
-<header class="head">
-  <h1>{{ title() }}</h1>
+<header class="page-head">
+  <div>
+    <h1>{{ title() }}</h1>
+    <p class="sub muted">Cadastro usado nos formulários e fluxos de leads.</p>
+  </div>
   <div class="head-actions">
     <p-button
       [label]="includeInactive() ? 'Ocultar inativos' : 'Mostrar inativos'"
@@ -13,6 +16,7 @@
   </div>
 </header>
 
+<div class="surface table-wrap">
 <p-table
   [value]="items()"
   [loading]="loading()"
@@ -80,6 +84,7 @@
     </tr>
   </ng-template>
 </p-table>
+</div>
 
 <p-dialog
   [header]="dialogTitle()"
