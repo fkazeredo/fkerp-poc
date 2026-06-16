@@ -11,10 +11,14 @@ import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.LossReason;
 import com.fksoft.erp.domain.crm.model.Opportunity;
+import com.fksoft.erp.domain.crm.model.OpportunityActivityResult;
+import com.fksoft.erp.domain.crm.model.OpportunityActivityType;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -126,5 +130,47 @@ class OpportunityTest {
 
         assertThatThrownBy(() -> opportunity.moveToStage(OpportunityStage.NEW_OPPORTUNITY, RESPONSIBLE))
                 .isInstanceOf(OpportunityStageTransitionException.class);
+    }
+
+    @Test
+    void recordsAnActivityKeepingHistoryAndWithoutMovingTheStage() {
+        Opportunity opportunity = newOpportunity();
+
+        opportunity.recordActivity(
+                OpportunityActivityType.PHONE_CALL,
+                OpportunityActivityResult.CLIENT_ENGAGED,
+                "ligação inicial",
+                Instant.parse("2026-06-10T13:00:00Z"),
+                LocalDate.parse("2026-06-20"),
+                RESPONSIBLE);
+
+        assertThat(opportunity.activities()).hasSize(1);
+        assertThat(opportunity.activities().get(0).type()).isEqualTo(OpportunityActivityType.PHONE_CALL);
+        assertThat(opportunity.activities().get(0).registeredBy()).isEqualTo(RESPONSIBLE);
+        assertThat(opportunity.nextActionDate()).isEqualTo(LocalDate.parse("2026-06-20"));
+        assertThat(opportunity.stage()).isEqualTo(OpportunityStage.NEW_OPPORTUNITY); // unchanged
+    }
+
+    @Test
+    void recordingAnActivityWithoutNextActionKeepsThePreviousOne() {
+        Opportunity opportunity = newOpportunity();
+        opportunity.recordActivity(
+                OpportunityActivityType.MEETING,
+                OpportunityActivityResult.PRODUCT_FIT_IDENTIFIED,
+                "reunião",
+                Instant.parse("2026-06-10T13:00:00Z"),
+                LocalDate.parse("2026-06-20"),
+                RESPONSIBLE);
+
+        opportunity.recordActivity(
+                OpportunityActivityType.EMAIL,
+                OpportunityActivityResult.WAITING_FOR_CLIENT,
+                "e-mail",
+                Instant.parse("2026-06-12T13:00:00Z"),
+                null,
+                RESPONSIBLE);
+
+        assertThat(opportunity.activities()).hasSize(2);
+        assertThat(opportunity.nextActionDate()).isEqualTo(LocalDate.parse("2026-06-20"));
     }
 }
