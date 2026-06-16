@@ -364,13 +364,14 @@ para entender a negociação antes da próxima ação comercial. O detalhe mostr
 - **Movimentação de estágio:** o histórico das mudanças de estágio da Oportunidade (de qual estágio para
   qual, quando e por quem), com a mais recente no topo.
 
-**Mudar estágio.** Cada Oportunidade tem um **estágio atual** no pipeline comercial — **Nova**,
+**Avançar estágio.** Cada Oportunidade tem um **estágio atual** no pipeline comercial — **Nova**,
 **Descoberta**, **Aderência**, **Pronta p/ proposta** ou **Perdida**. Se você tem permissão de operação,
-o detalhe oferece a ação **Mudar estágio** (atalho de teclado **`s`**): escolha o novo estágio entre os
-**ativos**. O movimento entre os estágios ativos é **livre** (pode avançar e voltar conforme a
-negociação), e cada mudança fica registrada na **movimentação de estágio**. *Pronta p/ proposta* é apenas
-um estágio — **não** gera uma proposta nesta versão. **Perdida** não é um estágio para o qual se "muda"
-por aqui: use **Marcar como perdida**.
+o detalhe oferece a ação **Avançar estágio** (atalho de teclado **`s`**): a Oportunidade avança **um
+passo por vez** ao longo do pipeline — **Nova → Descoberta → Aderência → Pronta p/ proposta** — e **não**
+é possível **pular** etapas nem **voltar** a um estágio anterior. Cada avanço fica registrado na
+**movimentação de estágio**. Em **Pronta p/ proposta** não há próximo passo (o pipeline desta sprint
+termina aí) e *Pronta p/ proposta* é apenas um estágio — **não** gera uma proposta nesta versão. Para
+encerrar uma negociação use **Marcar como perdida** (a seguir), de qualquer estágio ativo.
 
 **Marcar como perdida.** Se você tem permissão de operação sobre Oportunidades, o detalhe oferece a ação
 **Marcar como perdida** (atalho de teclado **`p`**): escolha um **motivo da perda** e, opcionalmente, uma

@@ -163,22 +163,33 @@ describe('OpportunityDetailPage', () => {
     expect(opportunities.lose).not.toHaveBeenCalled();
   });
 
-  it('stageOptions excludes LOST and the current stage', () => {
+  it('stageOptions offers only the next stage in the funnel', () => {
     const comp = build();
-    comp.ngOnInit(); // NEW_OPPORTUNITY
-    const values = comp['stageOptions']().map((o) => o.value);
-    expect(values).toEqual(['DISCOVERY', 'PRODUCT_FIT', 'READY_FOR_PROPOSAL']);
+    comp.ngOnInit(); // NEW_OPPORTUNITY → only DISCOVERY
+    expect(comp['stageOptions']().map((o) => o.value)).toEqual(['DISCOVERY']);
+    comp['opportunity'].set(sample({ stage: 'PRODUCT_FIT' }));
+    expect(comp['stageOptions']().map((o) => o.value)).toEqual(['READY_FOR_PROPOSAL']);
   });
 
-  it('allows changing stage only when operable and not lost', () => {
+  it('allows advancing only when operable and a next stage exists', () => {
     const comp = build();
-    comp.ngOnInit();
+    comp.ngOnInit(); // NEW → has a forward step
     expect(comp['canChangeStage']()).toBe(true);
+    comp['opportunity'].set(sample({ stage: 'READY_FOR_PROPOSAL' }));
+    expect(comp['canChangeStage']()).toBe(false); // end of the funnel
     comp['opportunity'].set(lost());
     expect(comp['canChangeStage']()).toBe(false);
   });
 
-  it('confirmStage moves the opportunity, refreshes the detail and closes the dialog', () => {
+  it('openStage pre-selects the next stage', () => {
+    const comp = build();
+    comp.ngOnInit();
+    comp['openStage']();
+    expect(comp['targetStage']).toBe('DISCOVERY');
+    expect(comp['stageOpen']()).toBe(true);
+  });
+
+  it('confirmStage advances the opportunity, refreshes the detail and closes the dialog', () => {
     const moved = sample({
       stage: 'DISCOVERY',
       stageHistory: [{ from: 'NEW_OPPORTUNITY', to: 'DISCOVERY', at: '2026-06-16T10:00:00Z', by: 'comercial' }],
@@ -186,8 +197,7 @@ describe('OpportunityDetailPage', () => {
     opportunities.changeStage.mockReturnValue(of(moved));
     const comp = build();
     comp.ngOnInit();
-    comp['openStage']();
-    comp['targetStage'] = 'DISCOVERY';
+    comp['openStage'](); // pre-selects DISCOVERY
 
     comp['confirmStage']();
 

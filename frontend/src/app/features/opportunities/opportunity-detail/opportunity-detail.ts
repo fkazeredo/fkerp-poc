@@ -28,6 +28,14 @@ const STAGE_LABELS: Record<OpportunityStage, string> = {
   LOST: 'Perdida',
 };
 
+// The single forward step allowed from each stage (the pipeline is a strict funnel; LOST is via the
+// lose action). READY_FOR_PROPOSAL and LOST have no further advance.
+const NEXT_STAGE: Partial<Record<OpportunityStage, OpportunityStage>> = {
+  NEW_OPPORTUNITY: 'DISCOVERY',
+  DISCOVERY: 'PRODUCT_FIT',
+  PRODUCT_FIT: 'READY_FOR_PROPOSAL',
+};
+
 type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'danger';
 
 /**
@@ -75,13 +83,6 @@ export class OpportunityDetailPage implements OnInit {
   protected readonly stageOpen = signal(false);
   protected targetStage: OpportunityStage | null = null;
 
-  private readonly activeStages: OpportunityStage[] = [
-    'NEW_OPPORTUNITY',
-    'DISCOVERY',
-    'PRODUCT_FIT',
-    'READY_FOR_PROPOSAL',
-  ];
-
   private opportunityId = '';
 
   ngOnInit(): void {
@@ -116,18 +117,21 @@ export class OpportunityDetailPage implements OnInit {
     return this.auth.canOperateOpportunity() && !!stage && stage !== 'LOST';
   }
 
-  /** Whether the user may move this Opportunity through the pipeline (has the update scope, not LOST). */
+  /** Whether the user may advance this Opportunity (has the update scope and a forward stage exists). */
   protected canChangeStage(): boolean {
-    const stage = this.opportunity()?.stage;
-    return this.auth.canOperateOpportunity() && !!stage && stage !== 'LOST';
+    return this.auth.canOperateOpportunity() && this.nextStage() !== null;
   }
 
-  /** The active stages the Opportunity can move to (excludes LOST and the current stage). */
+  /** The single forward step this Opportunity can advance to (strict funnel), or null. */
+  protected nextStage(): OpportunityStage | null {
+    const stage = this.opportunity()?.stage;
+    return (stage && NEXT_STAGE[stage]) || null;
+  }
+
+  /** The advance target offered in the dialog — only the immediate next stage. */
   protected stageOptions(): { value: OpportunityStage; label: string }[] {
-    const current = this.opportunity()?.stage;
-    return this.activeStages
-      .filter((s) => s !== current)
-      .map((value) => ({ value, label: STAGE_LABELS[value] }));
+    const next = this.nextStage();
+    return next ? [{ value: next, label: STAGE_LABELS[next] }] : [];
   }
 
   protected back(): void {
@@ -157,7 +161,7 @@ export class OpportunityDetailPage implements OnInit {
   }
 
   protected openStage(): void {
-    this.targetStage = null;
+    this.targetStage = this.nextStage();
     this.stageOpen.set(true);
   }
 

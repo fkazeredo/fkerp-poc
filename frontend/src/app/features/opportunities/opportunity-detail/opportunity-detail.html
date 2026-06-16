@@ -26,8 +26,8 @@
     <div class="head-actions">
       @if (canChangeStage()) {
         <p-button
-          label="Mudar estágio"
-          icon="pi pi-arrow-right-arrow-left"
+          label="Avançar estágio"
+          icon="pi pi-arrow-right"
           size="small"
           (onClick)="openStage()"
         />
@@ -158,9 +158,9 @@
     </div>
   </p-dialog>
 
-  <p-dialog header="Mudar estágio" [(visible)]="stageOpen" [modal]="true" [style]="{ width: '28rem' }">
+  <p-dialog header="Avançar estágio" [(visible)]="stageOpen" [modal]="true" [style]="{ width: '28rem' }">
     <div class="field">
-      <label for="stage">Novo estágio <span class="req">*</span></label>
+      <label for="stage">Avançar para <span class="req">*</span></label>
       <p-select
         inputId="stage"
         [options]="stageOptions()"
@@ -171,10 +171,11 @@
         styleClass="w-full"
         appendTo="body"
       />
+      <small class="muted">No pipeline avança-se um estágio por vez. Para encerrar, use "Marcar como perdida".</small>
     </div>
     <div class="actions">
       <p-button
-        label="Salvar"
+        label="Avançar"
         icon="pi pi-check"
         [disabled]="!targetStage"
         [loading]="acting()"

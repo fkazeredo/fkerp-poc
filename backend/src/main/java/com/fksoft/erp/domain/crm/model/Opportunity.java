@@ -187,17 +187,17 @@ public class Opportunity {
     }
 
     /**
-     * Moves the Opportunity to another active pipeline stage and records the movement. Movement among the
-     * active stages (New / Discovery / Product Fit / Ready for Proposal) is free; LOST is reached only
-     * through {@link #markLost} (it is terminal).
+     * Advances the Opportunity one step forward along the pipeline funnel
+     * ({@code NEW_OPPORTUNITY → DISCOVERY → PRODUCT_FIT → READY_FOR_PROPOSAL}) and records the movement.
+     * Skipping a stage, going back, and moving to LOST are rejected (LOST is reached only through
+     * {@link #markLost}, and it is terminal).
      *
-     * @param target the destination stage (must be an active stage, different from the current one)
+     * @param target the destination stage (must be the immediate next stage)
      * @param byUser id of the user moving the Opportunity
-     * @throws OpportunityStageTransitionException if the Opportunity is LOST (terminal), the target is
-     *     LOST (use the lose action), or the target equals the current stage
+     * @throws OpportunityStageTransitionException if {@code target} is not the immediate next stage
      */
     public void moveToStage(OpportunityStage target, UUID byUser) {
-        if (stage == OpportunityStage.LOST || target == OpportunityStage.LOST || target == stage) {
+        if (!stage.canAdvanceTo(target)) {
             throw new OpportunityStageTransitionException();
         }
         recordStageChange(stage, target, byUser);
