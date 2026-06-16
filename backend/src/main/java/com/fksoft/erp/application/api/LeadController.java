@@ -5,6 +5,7 @@ import com.fksoft.erp.application.api.dto.LeadDetailResponse;
 import com.fksoft.erp.application.api.dto.LeadListItemResponse;
 import com.fksoft.erp.application.api.dto.LeadResponse;
 import com.fksoft.erp.application.api.dto.LoseRequest;
+import com.fksoft.erp.application.api.dto.PendingLeadResponse;
 import com.fksoft.erp.application.api.dto.QualifyRequest;
 import com.fksoft.erp.application.api.dto.ReassignRequest;
 import com.fksoft.erp.application.api.dto.RegisterInteractionRequest;
@@ -13,6 +14,7 @@ import com.fksoft.erp.domain.crm.LeadListView;
 import com.fksoft.erp.domain.crm.LeadSearchCriteria;
 import com.fksoft.erp.domain.crm.LeadService;
 import com.fksoft.erp.domain.crm.LeadStatus;
+import com.fksoft.erp.domain.crm.PendingLeadView;
 import com.fksoft.erp.domain.crm.RecordInteractionCommand;
 import com.fksoft.erp.domain.crm.RegisterLeadCommand;
 import com.fksoft.erp.infra.security.UserContextProvider;
@@ -114,6 +116,21 @@ public class LeadController {
         Page<LeadListView> page =
                 leadService.list(criteria, pageable, userContext.currentUserId(), canSeeAll(), canSeeUnassigned());
         return PageResponse.from(page, LeadListItemResponse::from);
+    }
+
+    /**
+     * Operational pending-items worklist visible to the caller (unassigned, NEW without interaction,
+     * overdue next contact, contacted without a planned follow-up), each with its reasons.
+     *
+     * @param pageable page, size and sort (default: createdAt desc, size 20)
+     * @return a page of pending Leads
+     */
+    @GetMapping("/pending")
+    public PageResponse<PendingLeadResponse> pending(
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<PendingLeadView> page =
+                leadService.pending(pageable, userContext.currentUserId(), canSeeAll(), canSeeUnassigned());
+        return PageResponse.from(page, PendingLeadResponse::from);
     }
 
     /**

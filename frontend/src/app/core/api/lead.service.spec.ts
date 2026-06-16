@@ -89,6 +89,23 @@ describe('LeadService', () => {
     req.flush({});
   });
 
+  it('fetches the pending worklist with paging params', () => {
+    service.pending(1, 10).subscribe();
+    const req = http.expectOne((r) => r.url === '/api/leads/pending');
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('page')).toBe('1');
+    expect(req.request.params.get('size')).toBe('10');
+    req.flush({
+      content: [],
+      page: 1,
+      size: 10,
+      totalElements: 0,
+      totalPages: 0,
+      first: false,
+      last: true,
+    });
+  });
+
   it('posts qualify with the main interest and note', () => {
     service.qualify('l1', 'Pacote corporativo', 'bom perfil').subscribe();
     const req = http.expectOne('/api/leads/l1/qualify');

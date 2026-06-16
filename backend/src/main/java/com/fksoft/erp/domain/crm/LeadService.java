@@ -3,6 +3,7 @@ package com.fksoft.erp.domain.crm;
 import com.fksoft.erp.domain.identity.ResponsibleView;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -113,6 +114,55 @@ public class LeadService {
             UUID responsibleId = lead.responsiblePersonId();
             String responsibleName = responsibleId == null ? null : namesById.get(responsibleId);
             return toListView(lead, latestByLead.get(lead.id()), responsibleName);
+        });
+    }
+
+    /**
+     * Operational worklist: the Leads visible to the caller that currently need action (unassigned,
+     * NEW without interaction, overdue next contact, or contacted without a planned follow-up). Each
+     * item carries the reasons it is pending. Visibility is applied at the query level, so it never
+     * exposes Leads the caller cannot see.
+     *
+     * @param pageable page, size and sort
+     * @param currentUserId the calling user
+     * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return a page of pending Leads with their reasons
+     */
+    @Transactional(readOnly = true)
+    public Page<PendingLeadView> pending(
+            Pageable pageable, UUID currentUserId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Instant now = Instant.now();
+        Specification<Lead> spec = LeadPendingSpecifications.pending(now)
+                .and(accessPolicy.visibleTo(currentUserId, canSeeAll, canSeeUnassigned));
+        Page<Lead> page = leads.findAll(spec, pageable);
+
+        List<UUID> leadIds = page.getContent().stream().map(Lead::id).toList();
+        Set<UUID> withInteractions = leadIds.isEmpty()
+                ? Set.of()
+                : leads.findLatestInteractions(leadIds).stream()
+                        .map(LatestInteractionRow::getLeadId)
+                        .collect(Collectors.toSet());
+        Set<UUID> responsibleIds = page.getContent().stream()
+                .map(Lead::responsiblePersonId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> namesById = responsibleIds.isEmpty()
+                ? Map.of()
+                : users.findAllById(responsibleIds).stream().collect(Collectors.toMap(User::id, User::username));
+
+        return page.map(lead -> {
+            UUID responsibleId = lead.responsiblePersonId();
+            return new PendingLeadView(
+                    lead.id(),
+                    lead.name(),
+                    mainContact(lead),
+                    lead.status(),
+                    responsibleId,
+                    responsibleId == null ? null : namesById.get(responsibleId),
+                    lead.createdAt(),
+                    lead.nextContactAt(),
+                    PendingLeadReasons.of(lead, now, withInteractions.contains(lead.id())));
         });
     }
 
