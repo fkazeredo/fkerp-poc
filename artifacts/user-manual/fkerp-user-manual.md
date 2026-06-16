@@ -345,10 +345,17 @@ screen and your session is closed.
 
 ## 11. What's next
 
-This edition covers lead **creation** and reference-data management. Upcoming releases
-will add lead **follow-up** (status changes such as Contacted / Qualified / Lost),
-interaction history, and more. This manual will be updated as those ship.
+This edition covers the full **Sprint 1** lead lifecycle: registering and finding leads (list,
+search, filters), the lead detail, assigning a responsible person, interaction history with the
+**Contacted** rule, **qualification**, the **Lost** flow, visibility by profile, the operational
+**Pendências** worklist and the **Indicadores** view.
+
+The next release (Sprint 2) starts the **commercial Opportunity**: a **qualified** lead will
+originate an Opportunity, carrying over its data (contacts, origin, responsible, interaction
+history, main interest and the qualification details) so nothing is re-typed. The lead and the
+Opportunity stay separate records — qualifying a lead still does **not** create an Opportunity or a
+customer today. This manual will be updated when that ships.
 
 ---
 
-*Document status: first edition (Sprint 1 / Slice 1). Maintained alongside the product.*
+*Document status: Sprint 1 closed (lead intake through indicators). Maintained alongside the product.*
