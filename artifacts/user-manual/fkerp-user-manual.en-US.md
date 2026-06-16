@@ -349,6 +349,29 @@ button resets them at once. Applying any filter returns the list to the first pa
 - The list shows **commercial pipeline data only** — never proposal, sale, order, booking, financial
   or commission information.
 
+### 8.3 Opportunity detail
+
+Click an Opportunity's **title** in the list to open its **detail** — a consultation view to understand
+the negotiation before the next commercial action. The detail shows:
+
+- **Commercial summary:** responsible, origin, main interest, product type, estimated value and expected
+  close date (when informed), notes, and the creation and update dates.
+- **Source lead:** the name and contacts (phone, WhatsApp, email) of the lead that started the
+  Opportunity, with a **View source lead** shortcut — the lead stays traceable and remains the source of
+  record for contacts and history.
+- **Loss:** when the Opportunity is **Perdida** (Lost), the detail shows the reason, the date, who
+  recorded it and the note.
+
+**Mark as lost.** If you have operation permission over Opportunities, the detail offers the **Marcar
+como perdida** (Mark as lost) action (keyboard shortcut **`p`**): pick a **loss reason** and, optionally,
+a note. The Opportunity moves to the **Perdida** (Lost) stage and the loss is recorded on the detail
+itself. This action **does not change** the source lead. Consultation-only users do not see the action,
+and no one can close an Opportunity they are not allowed to see.
+
+The detail shows **commercial data only** — never proposal, sale, order, booking, financial, commission
+or customer care information. The **commercial activity history** and **stage movement** sections already
+appear on screen and will be populated in future releases.
+
 ## 9. Managing reference data (*cadastros*)
 
 Reference data are the lists that feed the lead form and future workflows. There are

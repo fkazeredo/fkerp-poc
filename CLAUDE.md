@@ -392,13 +392,16 @@ Representatives = read + create/update (own only); Finance/HR/IT = none. The fro
 the same escalating read tiers — `crm:opportunity:read` (own only) → also
 `crm:opportunity:read:unassigned` (the unassigned pool) → `crm:opportunity:read:all` (all); any read
 tier passes the GET security gate, and `OpportunityAccessPolicy` (a query Specification on
-`responsiblePersonId`) narrows which Opportunities are returned so filters can never bypass it.
-Operation `crm:opportunity:create` gates creating an Opportunity from a Qualified Lead (the creator
-must also be allowed to see the source Lead, via the Lead read tiers). Profile → scopes:
-Admin/Manager = read:all + create; Sellers = read + read:unassigned + create; Representatives = read +
-create (own only); Board/Director = read:all (consultation); Finance/HR/IT = none. The list exposes
-commercial pipeline data only — never Proposal, Sale, Sales Order, Booking, Financial or Commission
-data.
+`responsiblePersonId`) narrows which Opportunities are returned so filters can never bypass it; the
+single-record detail (`GET /api/opportunities/{id}`) applies the same `canSee` check (404 if absent, 403
+if not visible). Operation `crm:opportunity:create` gates creating an Opportunity from a Qualified Lead
+(the creator must also be allowed to see the source Lead, via the Lead read tiers). Operation
+`crm:opportunity:update` gates the Opportunity transitions — currently **marking an Opportunity as lost**
+(`POST /api/opportunities/{id}/lose`, with a loss reason; the caller must also be allowed to see it).
+Profile → scopes: Admin/Manager = read:all + create + update; Sellers = read + read:unassigned + create +
+update; Representatives = read + create + update (own only); Board/Director = read:all (consultation);
+Finance/HR/IT = none. The list and detail expose commercial pipeline data only — never Proposal, Sale,
+Sales Order, Booking, Financial or Commission data.
 
 ## 11. Observability & performance
 

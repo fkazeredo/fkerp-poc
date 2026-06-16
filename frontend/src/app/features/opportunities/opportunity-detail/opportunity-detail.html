@@ -1,0 +1,140 @@
+@if (loading()) {
+  <p class="muted">Carregando…</p>
+} @else if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+  <div class="back">
+    <p-button
+      label="Voltar às oportunidades"
+      icon="pi pi-arrow-left"
+      [text]="true"
+      (onClick)="back()"
+    />
+  </div>
+} @else if (opportunity(); as o) {
+  <header class="head">
+    <div class="head-main">
+      <p-button
+        icon="pi pi-arrow-left"
+        [text]="true"
+        severity="secondary"
+        size="small"
+        (onClick)="back()"
+      />
+      <h1>{{ o.name }}</h1>
+      <p-tag [value]="stageLabel(o.stage)" [severity]="stageSeverity(o.stage)" />
+    </div>
+    <div class="head-actions">
+      @if (canLose()) {
+        <p-button
+          label="Marcar como perdida"
+          icon="pi pi-times-circle"
+          severity="danger"
+          [outlined]="true"
+          size="small"
+          (onClick)="openLose()"
+        />
+      }
+    </div>
+  </header>
+
+  <div class="grid">
+    <p-card header="Resumo comercial">
+      <dl class="data">
+        <dt>Responsável</dt>
+        <dd>{{ o.unassigned ? 'Sem responsável' : (o.responsibleName ?? '—') }}</dd>
+        <dt>Origem</dt>
+        <dd>{{ o.origin }}</dd>
+        <dt>Interesse principal</dt>
+        <dd>{{ o.mainInterest ?? '—' }}</dd>
+        <dt>Tipo de produto</dt>
+        <dd>{{ o.productType ?? '—' }}</dd>
+        <dt>Valor estimado</dt>
+        <dd>{{ o.estimatedValue != null ? (o.estimatedValue | currency: 'BRL') : '—' }}</dd>
+        <dt>Fechamento previsto</dt>
+        <dd>{{ o.expectedCloseDate ? (o.expectedCloseDate | date: 'shortDate') : '—' }}</dd>
+        <dt>Anotações</dt>
+        <dd>{{ o.notes ?? '—' }}</dd>
+        <dt>Criada em</dt>
+        <dd>{{ o.createdAt | date: 'short' }}</dd>
+        <dt>Atualizada em</dt>
+        <dd>{{ o.updatedAt | date: 'short' }}</dd>
+      </dl>
+    </p-card>
+
+    <p-card header="Lead de origem">
+      <dl class="data">
+        <dt>Nome</dt>
+        <dd>{{ o.sourceLead.name }}</dd>
+        <dt>Telefone</dt>
+        <dd>{{ o.sourceLead.phone ?? '—' }}</dd>
+        <dt>WhatsApp</dt>
+        <dd>{{ o.sourceLead.whatsapp ?? '—' }}</dd>
+        <dt>E-mail</dt>
+        <dd>{{ o.sourceLead.email ?? '—' }}</dd>
+      </dl>
+      <div class="trace">
+        <a class="lead-link" [routerLink]="['/leads', o.leadId]">Ver lead de origem</a>
+      </div>
+    </p-card>
+
+    @if (o.loss; as loss) {
+      <p-card header="Perda">
+        <dl class="data">
+          <dt>Motivo</dt>
+          <dd>{{ loss.reason ?? '—' }}</dd>
+          <dt>Quando</dt>
+          <dd>{{ loss.lostAt | date: 'short' }}</dd>
+          <dt>Por</dt>
+          <dd>{{ loss.lostBy ?? '—' }}</dd>
+          <dt>Anotação</dt>
+          <dd>{{ loss.note ?? '—' }}</dd>
+        </dl>
+      </p-card>
+    }
+  </div>
+
+  <p-card header="Histórico de atividades comerciais" styleClass="section">
+    <p class="muted">Nenhuma atividade comercial registrada ainda.</p>
+  </p-card>
+
+  <p-card header="Movimentação de estágio" styleClass="section">
+    <p class="muted">Sem movimentações de estágio registradas ainda.</p>
+  </p-card>
+
+  <p-dialog
+    header="Marcar como perdida"
+    [(visible)]="loseOpen"
+    [modal]="true"
+    [style]="{ width: '28rem' }"
+  >
+    <div class="field">
+      <label for="reason">Motivo da perda <span class="req">*</span></label>
+      <p-select
+        inputId="reason"
+        [options]="lossReasons()"
+        optionLabel="label"
+        optionValue="id"
+        [(ngModel)]="lossReasonId"
+        placeholder="Selecione"
+        [filter]="true"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="lnote">Anotação (opcional)</label>
+      <textarea pTextarea id="lnote" [(ngModel)]="lossNote" rows="3" class="w-full"></textarea>
+    </div>
+    <div class="actions">
+      <p-button
+        label="Marcar como perdida"
+        icon="pi pi-times-circle"
+        severity="danger"
+        [disabled]="!lossReasonId"
+        [loading]="acting()"
+        (onClick)="confirmLose()"
+      />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="loseOpen.set(false)" />
+    </div>
+  </p-dialog>
+}

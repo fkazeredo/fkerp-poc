@@ -173,7 +173,7 @@
     <ng-template pTemplate="body" let-opp>
       <tr>
         <td>
-          <a [routerLink]="['/leads', opp.leadId]" class="opp-link">{{ opp.name }}</a>
+          <a [routerLink]="['/oportunidades', opp.id]" class="opp-link">{{ opp.name }}</a>
         </td>
         <td>
           @if (opp.unassigned) {

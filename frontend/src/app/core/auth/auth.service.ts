@@ -80,13 +80,18 @@ export class AuthService {
     return this.hasScope('crm:opportunity:create');
   }
 
-  /** Any Opportunity read tier (own / pool / all) grants access to the Opportunity list. */
+  /** Any Opportunity read tier (own / pool / all) grants access to the Opportunity list and detail. */
   canSeeOpportunities(): boolean {
     return (
       this.hasScope('crm:opportunity:read') ||
       this.hasScope('crm:opportunity:read:unassigned') ||
       this.hasScope('crm:opportunity:read:all')
     );
+  }
+
+  /** Operate = mark an Opportunity as lost (consultation-only users lack it). */
+  canOperateOpportunity(): boolean {
+    return this.hasScope('crm:opportunity:update');
   }
 }
 
