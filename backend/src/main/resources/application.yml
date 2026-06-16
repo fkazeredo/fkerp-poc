@@ -19,7 +19,7 @@ spring:
 
 app:
   name: FKERP
-  version: ${APP_VERSION:0.17.0}
+  version: ${APP_VERSION:0.18.0}
   security:
     jwt:
       secret: ${APP_JWT_SECRET:dev-insecure-secret-change-me-please-0123456789-abcdef}
