@@ -116,6 +116,15 @@ public class Opportunity {
     @JoinColumn(name = "opportunity_id", nullable = false)
     private List<OpportunityStageChange> stageChanges = new ArrayList<>();
 
+    // Commercial activity history (part of the aggregate): append-only negotiation log.
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "opportunity_id", nullable = false)
+    private List<OpportunityActivity> activities = new ArrayList<>();
+
+    // Planned next action date, denormalized from the latest activity that defined one (like Lead.nextContactAt).
+    @Column(name = "next_action_date")
+    private LocalDate nextActionDate;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -207,6 +216,32 @@ public class Opportunity {
 
     private void recordStageChange(OpportunityStage from, OpportunityStage to, UUID byUser) {
         stageChanges.add(OpportunityStageChange.of(from, to, byUser));
+    }
+
+    /**
+     * Registers a commercial activity (append-only negotiation history) and updates the planned next
+     * action date when the activity defines one. The activity never moves the pipeline stage and never
+     * creates a Proposal, Sale, Booking or Financial record.
+     *
+     * @param type the activity type
+     * @param result the activity outcome
+     * @param description what happened
+     * @param occurredAt when the activity happened
+     * @param nextActionDate optional planned next action date
+     * @param byUser id of the user registering the activity (its author)
+     */
+    public void recordActivity(
+            OpportunityActivityType type,
+            OpportunityActivityResult result,
+            String description,
+            Instant occurredAt,
+            LocalDate nextActionDate,
+            UUID byUser) {
+        activities.add(OpportunityActivity.of(type, result, description, occurredAt, nextActionDate, byUser));
+        if (nextActionDate != null) {
+            this.nextActionDate = nextActionDate;
+        }
+        updatedBy = byUser;
     }
 
     private static String emptyToNull(String value) {

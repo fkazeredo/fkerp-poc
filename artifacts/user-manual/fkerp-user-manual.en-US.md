@@ -323,7 +323,7 @@ Opportunities you may work. The list is paginated and shows, for each Opportunit
 | **Valor estimado** (Estimated value) | When informed. |
 | **Fechamento previsto** (Expected close) | When informed. |
 | **Criado em** (Created) | The creation date. |
-| **Última atividade / Próxima ação** | Reserved for a coming release (commercial activities). |
+| **Última atividade / Próxima ação** (Last activity / Next action) | The most recent activity's date and the planned next action, when present. |
 
 Above the list there is a **search and filter** bar. **Search** looks across the Opportunity's title,
 product type and interest **and also the source lead's name and contacts (phone, WhatsApp, email)** —
@@ -363,6 +363,18 @@ the negotiation before the next commercial action. The detail shows:
   recorded it and the note.
 - **Stage movement:** the history of the Opportunity's stage changes (from which stage to which, when and
   by whom), newest first.
+- **Commercial activity history:** every registered activity (type, result, description, date, next
+  action and author), newest first.
+
+**Register activity.** If you have operation permission, the detail offers the **Registrar atividade**
+(Register activity) action (keyboard shortcut **`a`**): provide the **type** (phone call, WhatsApp, email,
+meeting, internal note, document request, price discussion, travel requirement clarification or other),
+the **result** (client engaged, needs follow-up, waiting for client, waiting for internal information,
+product fit identified, ready for proposal, not interested or other), the **date** (not in the future), a
+**description** and, optionally, a **next action**. The activity is added to the history (which **cannot**
+be deleted), and the last-activity date and next action then also appear in the **list**. Registering an
+activity does **not** move the stage (use **Advance stage**) and does **not** create a proposal, sale,
+booking or financial record.
 
 **Advance stage.** Each Opportunity has a **current stage** in the commercial pipeline — **Nova** (New),
 **Descoberta** (Discovery), **Aderência** (Product Fit), **Pronta p/ proposta** (Ready for Proposal) or
@@ -382,8 +394,7 @@ Consultation-only users do not see the actions, and no one can operate an Opport
 to see.
 
 The detail shows **commercial data only** — never proposal, sale, order, booking, financial, commission
-or customer care information. The **commercial activity history** section already appears on screen and
-will be populated in a future release.
+or customer care information.
 
 ## 9. Managing reference data (*cadastros*)
 

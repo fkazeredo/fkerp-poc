@@ -71,6 +71,47 @@ export interface OpportunityStageChange {
   by: string | null;
 }
 
+export type OpportunityActivityType =
+  | 'PHONE_CALL'
+  | 'WHATSAPP'
+  | 'EMAIL'
+  | 'MEETING'
+  | 'INTERNAL_NOTE'
+  | 'DOCUMENT_REQUEST'
+  | 'PRICE_DISCUSSION'
+  | 'TRAVEL_REQUIREMENT_CLARIFICATION'
+  | 'OTHER';
+
+export type OpportunityActivityResult =
+  | 'CLIENT_ENGAGED'
+  | 'NEEDS_FOLLOW_UP'
+  | 'WAITING_FOR_CLIENT'
+  | 'WAITING_FOR_INTERNAL_INFO'
+  | 'PRODUCT_FIT_IDENTIFIED'
+  | 'READY_FOR_PROPOSAL'
+  | 'NOT_INTERESTED'
+  | 'OTHER';
+
+/** A single commercial activity in the negotiation history (newest first in the detail). */
+export interface OpportunityActivity {
+  id: string;
+  type: OpportunityActivityType;
+  result: OpportunityActivityResult;
+  description: string;
+  occurredAt: string;
+  nextActionDate: string | null;
+  registeredBy: string | null;
+}
+
+/** Payload to register a commercial activity on an Opportunity. */
+export interface RegisterActivity {
+  type: OpportunityActivityType;
+  result: OpportunityActivityResult;
+  description: string;
+  occurredAt: string;
+  nextActionDate: string | null;
+}
+
 /**
  * Full Opportunity detail. {@code loss} is present only when LOST; {@code activities},
  * {@code stageHistory} and {@code nextActionDate} are reserved for future slices (empty/null for now).
@@ -94,7 +135,7 @@ export interface OpportunityDetail {
   sourceLead: OpportunitySourceLead;
   loss: OpportunityLoss | null;
   stageHistory: OpportunityStageChange[];
-  activities: unknown[];
+  activities: OpportunityActivity[];
   nextActionDate: string | null;
 }
 
@@ -142,6 +183,10 @@ export class OpportunityService {
 
   changeStage(id: string, stage: OpportunityStage): Observable<OpportunityDetail> {
     return this.http.post<OpportunityDetail>(`/api/opportunities/${id}/stage`, { stage });
+  }
+
+  registerActivity(id: string, activity: RegisterActivity): Observable<OpportunityDetail> {
+    return this.http.post<OpportunityDetail>(`/api/opportunities/${id}/activities`, activity);
   }
 
   list(

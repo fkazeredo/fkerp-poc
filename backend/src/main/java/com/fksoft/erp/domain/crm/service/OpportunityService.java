@@ -12,19 +12,24 @@ import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.LossReason;
 import com.fksoft.erp.domain.crm.model.Opportunity;
+import com.fksoft.erp.domain.crm.model.OpportunityActivity;
 import com.fksoft.erp.domain.crm.model.OpportunityCreated;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.model.OpportunityStageChange;
 import com.fksoft.erp.domain.crm.model.ReferenceData;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.LossReasonRepository;
+import com.fksoft.erp.domain.crm.repository.OpportunityLastActivityRow;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
 import com.fksoft.erp.domain.crm.service.data.OpportunityListItem;
 import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
+import com.fksoft.erp.domain.crm.service.data.RecordActivityCommand;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -126,6 +131,15 @@ public class OpportunityService {
                 .and(accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned));
         Page<Opportunity> page = opportunities.findAll(spec, pageable);
 
+        List<UUID> opportunityIds =
+                page.getContent().stream().map(Opportunity::id).toList();
+        Map<UUID, Instant> lastActivity = opportunityIds.isEmpty()
+                ? Map.of()
+                : opportunities.findLastActivityAt(opportunityIds).stream()
+                        .collect(Collectors.toMap(
+                                OpportunityLastActivityRow::getOpportunityId,
+                                OpportunityLastActivityRow::getLastActivityAt));
+
         Set<UUID> responsibleIds = page.getContent().stream()
                 .map(Opportunity::responsiblePersonId)
                 .filter(Objects::nonNull)
@@ -134,8 +148,8 @@ public class OpportunityService {
                 ? Map.of()
                 : users.findAllById(responsibleIds).stream().collect(Collectors.toMap(User::id, User::username));
 
-        return page.map(
-                opportunity -> OpportunityListItem.from(opportunity, nameOf(names, opportunity.responsiblePersonId())));
+        return page.map(opportunity -> OpportunityListItem.from(
+                opportunity, nameOf(names, opportunity.responsiblePersonId()), lastActivity.get(opportunity.id())));
     }
 
     /**
@@ -206,6 +220,33 @@ public class OpportunityService {
         return toDetail(opportunities.saveAndFlush(opportunity));
     }
 
+    /**
+     * Registers a commercial activity on an Opportunity the caller is allowed to see, and returns the
+     * refreshed detail. The activity is append-only history; it never moves the stage.
+     *
+     * @param id the opportunity id
+     * @param command the activity data (type, result, description, date, optional next action)
+     * @param userId the acting user (the activity's author)
+     * @param canSeeAll whether the caller may see every Opportunity
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws OpportunityNotFoundException if the Opportunity does not exist
+     * @throws OpportunityAccessDeniedException if the caller may not see it
+     */
+    @Transactional
+    public OpportunityDetail recordActivity(
+            UUID id, RecordActivityCommand command, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Opportunity opportunity = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
+        opportunity.recordActivity(
+                command.type(),
+                command.result(),
+                command.description(),
+                command.occurredAt(),
+                command.nextActionDate(),
+                userId);
+        return toDetail(opportunities.saveAndFlush(opportunity));
+    }
+
     private Opportunity loadVisible(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Opportunity opportunity = opportunities.findById(id).orElseThrow(OpportunityNotFoundException::new);
         if (!accessPolicy.canSee(opportunity, userId, canSeeAll, canSeeUnassigned)) {
@@ -216,9 +257,11 @@ public class OpportunityService {
 
     private OpportunityDetail toDetail(Opportunity opportunity) {
         Lead lead = leads.findById(opportunity.leadId()).orElseThrow(LeadNotFoundException::new);
-        Set<UUID> actorIds = Stream.concat(
+        Set<UUID> actorIds = Stream.of(
                         Stream.of(opportunity.responsiblePersonId(), opportunity.lostBy()),
-                        opportunity.stageChanges().stream().map(OpportunityStageChange::changedBy))
+                        opportunity.stageChanges().stream().map(OpportunityStageChange::changedBy),
+                        opportunity.activities().stream().map(OpportunityActivity::registeredBy))
+                .flatMap(s -> s)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<UUID, String> names = actorIds.isEmpty()

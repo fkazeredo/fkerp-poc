@@ -322,7 +322,7 @@ Oportunidades que você pode trabalhar. A lista é paginada e mostra, para cada 
 | **Valor estimado** | Quando informado. |
 | **Fechamento previsto** | Quando informado. |
 | **Criado em** | A data de criação. |
-| **Última atividade / Próxima ação** | Reservadas para uma próxima versão (atividades comerciais). |
+| **Última atividade / Próxima ação** | A data da atividade mais recente e a próxima ação planejada, quando houver. |
 
 Acima da lista há uma barra de **busca e filtros**. A **busca** procura por título, tipo de produto
 ou interesse da Oportunidade **e também pelo nome e pelos contatos (telefone, WhatsApp, e-mail) do
@@ -363,6 +363,18 @@ para entender a negociação antes da próxima ação comercial. O detalhe mostr
   a anotação.
 - **Movimentação de estágio:** o histórico das mudanças de estágio da Oportunidade (de qual estágio para
   qual, quando e por quem), com a mais recente no topo.
+- **Histórico de atividades comerciais:** todas as atividades registradas (tipo, resultado, descrição,
+  data, próxima ação e autor), com a mais recente no topo.
+
+**Registrar atividade.** Se você tem permissão de operação, o detalhe oferece a ação **Registrar
+atividade** (atalho de teclado **`a`**): informe o **tipo** (ligação, WhatsApp, e-mail, reunião, nota
+interna, solicitação de documento, discussão de preço, esclarecimento de requisito de viagem ou outro),
+o **resultado** (cliente engajado, precisa follow-up, aguardando cliente, aguardando informação interna,
+aderência identificada, pronta para proposta, sem interesse ou outro), a **data** (não pode ser no
+futuro), uma **descrição** e, opcionalmente, uma **próxima ação**. A atividade entra no histórico (que
+**não** pode ser apagado) e a data da última atividade e a próxima ação passam a aparecer também na
+**lista**. Registrar uma atividade **não** move o estágio (use **Avançar estágio**) e **não** cria
+proposta, venda, reserva nem financeiro.
 
 **Avançar estágio.** Cada Oportunidade tem um **estágio atual** no pipeline comercial — **Nova**,
 **Descoberta**, **Aderência**, **Pronta p/ proposta** ou **Perdida**. Se você tem permissão de operação,
@@ -380,8 +392,7 @@ registrada no próprio detalhe. Essa ação **não altera** o Lead de origem. Qu
 as ações, e ninguém pode operar uma Oportunidade que não tem permissão para ver.
 
 O detalhe mostra **apenas dados comerciais** — nunca proposta, venda, pedido, reserva, financeiro,
-comissão ou atendimento. A seção de **histórico de atividades comerciais** já aparece na tela e será
-preenchida em versões futuras.
+comissão ou atendimento.
 
 ## 9. Gerenciando cadastros
 

@@ -24,11 +24,21 @@
       <p-tag [value]="stageLabel(o.stage)" [severity]="stageSeverity(o.stage)" />
     </div>
     <div class="head-actions">
+      @if (canRegisterActivity()) {
+        <p-button
+          label="Registrar atividade"
+          icon="pi pi-comment"
+          size="small"
+          (onClick)="openActivity()"
+        />
+      }
       @if (canChangeStage()) {
         <p-button
           label="Avançar estágio"
           icon="pi pi-arrow-right"
           size="small"
+          severity="secondary"
+          [outlined]="true"
           (onClick)="openStage()"
         />
       }
@@ -102,7 +112,26 @@
   </div>
 
   <p-card header="Histórico de atividades comerciais" styleClass="section">
-    <p class="muted">Nenhuma atividade comercial registrada ainda.</p>
+    @if (o.activities.length === 0) {
+      <p class="muted">Nenhuma atividade comercial registrada ainda.</p>
+    } @else {
+      <ul class="history">
+        @for (a of o.activities; track a.id) {
+          <li>
+            <span class="when">{{ a.occurredAt | date: 'short' }}</span>
+            <span class="what">
+              <strong>{{ activityTypeLabel(a.type) }}</strong>
+              <span class="muted"> · {{ activityResultLabel(a.result) }}</span>
+            </span>
+            <span class="note">{{ a.description }}</span>
+            @if (a.nextActionDate) {
+              <span class="muted">Próxima ação: {{ a.nextActionDate | date: 'shortDate' }}</span>
+            }
+            <span class="who muted">{{ a.registeredBy ?? '' }}</span>
+          </li>
+        }
+      </ul>
+    }
   </p-card>
 
   <p-card header="Movimentação de estágio" styleClass="section">
@@ -182,6 +211,82 @@
         (onClick)="confirmStage()"
       />
       <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="stageOpen.set(false)" />
+    </div>
+  </p-dialog>
+
+  <p-dialog
+    header="Registrar atividade"
+    [(visible)]="activityOpen"
+    [modal]="true"
+    [style]="{ width: '32rem' }"
+  >
+    <div class="field">
+      <label for="atype">Tipo <span class="req">*</span></label>
+      <p-select
+        inputId="atype"
+        [options]="activityTypeOptions"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="activityType"
+        placeholder="Selecione o tipo"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="aresult">Resultado <span class="req">*</span></label>
+      <p-select
+        inputId="aresult"
+        [options]="activityResultOptions"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="activityResult"
+        placeholder="Selecione o resultado"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="awhen">Data <span class="req">*</span></label>
+      <p-datepicker
+        inputId="awhen"
+        [(ngModel)]="activityOccurredAt"
+        [showTime]="true"
+        [maxDate]="now"
+        dateFormat="dd/mm/yy"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="adesc">Descrição <span class="req">*</span></label>
+      <textarea pTextarea id="adesc" [(ngModel)]="activityDescription" rows="3" class="w-full"></textarea>
+    </div>
+    <div class="field">
+      <label for="anext">Próxima ação (opcional)</label>
+      <p-datepicker
+        inputId="anext"
+        [(ngModel)]="activityNextActionDate"
+        dateFormat="dd/mm/yy"
+        [showButtonBar]="true"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="actions">
+      <p-button
+        label="Registrar"
+        icon="pi pi-check"
+        [disabled]="!canSaveActivity()"
+        [loading]="acting()"
+        (onClick)="confirmActivity()"
+      />
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="activityOpen.set(false)"
+      />
     </div>
   </p-dialog>
 }

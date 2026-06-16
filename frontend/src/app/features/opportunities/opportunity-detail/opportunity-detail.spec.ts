@@ -16,7 +16,12 @@ import { AuthService } from '../../../core/auth/auth.service';
 };
 
 describe('OpportunityDetailPage', () => {
-  const opportunities = { detail: vi.fn(), lose: vi.fn(), changeStage: vi.fn() };
+  const opportunities = {
+    detail: vi.fn(),
+    lose: vi.fn(),
+    changeStage: vi.fn(),
+    registerActivity: vi.fn(),
+  };
   const references = { list: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
@@ -80,6 +85,7 @@ describe('OpportunityDetailPage', () => {
       opportunities.detail,
       opportunities.lose,
       opportunities.changeStage,
+      opportunities.registerActivity,
       references.list,
       router.navigateByUrl,
       messages.add,
@@ -220,6 +226,72 @@ describe('OpportunityDetailPage', () => {
     const comp = build();
     expect(comp['stageLabel']('NEW_OPPORTUNITY')).toBe('Nova');
     expect(comp['stageLabel']('LOST')).toBe('Perdida');
+  });
+
+  it('allows registering an activity only when operable', () => {
+    const comp = build();
+    comp.ngOnInit();
+    expect(comp['canRegisterActivity']()).toBe(true);
+    auth.canOperateOpportunity.mockReturnValue(false);
+    expect(comp['canRegisterActivity']()).toBe(false);
+  });
+
+  it('openActivity resets the form and opens the dialog', () => {
+    const comp = build();
+    comp.ngOnInit();
+    comp['openActivity']();
+    expect(comp['activityOpen']()).toBe(true);
+    expect(comp['activityType']).toBeNull();
+    expect(comp['activityResult']).toBeNull();
+    expect(comp['activityDescription']).toBe('');
+  });
+
+  it('confirmActivity registers the activity, refreshes the detail and closes the dialog', () => {
+    const withActivity = sample({
+      activities: [
+        {
+          id: 'a1',
+          type: 'PHONE_CALL',
+          result: 'CLIENT_ENGAGED',
+          description: 'ligação',
+          occurredAt: '2026-06-10T10:00:00Z',
+          nextActionDate: '2026-06-20',
+          registeredBy: 'comercial',
+        },
+      ],
+      nextActionDate: '2026-06-20',
+    });
+    opportunities.registerActivity.mockReturnValue(of(withActivity));
+    const comp = build();
+    comp.ngOnInit();
+    comp['openActivity']();
+    comp['activityType'] = 'PHONE_CALL';
+    comp['activityResult'] = 'CLIENT_ENGAGED';
+    comp['activityDescription'] = 'ligação';
+
+    comp['confirmActivity']();
+
+    expect(opportunities.registerActivity).toHaveBeenCalledWith(
+      'o1',
+      expect.objectContaining({ type: 'PHONE_CALL', result: 'CLIENT_ENGAGED', description: 'ligação' }),
+    );
+    expect(comp['opportunity']()?.activities.length).toBe(1);
+    expect(comp['activityOpen']()).toBe(false);
+    expect(messages.add).toHaveBeenCalled();
+  });
+
+  it('confirmActivity does nothing when required fields are missing', () => {
+    const comp = build();
+    comp.ngOnInit();
+    comp['activityType'] = null;
+    comp['confirmActivity']();
+    expect(opportunities.registerActivity).not.toHaveBeenCalled();
+  });
+
+  it('maps activity type and result to pt-BR labels', () => {
+    const comp = build();
+    expect(comp['activityTypeLabel']('MEETING')).toBe('Reunião');
+    expect(comp['activityResultLabel']('READY_FOR_PROPOSAL')).toBe('Pronta para proposta');
   });
 
   it('back navigates to the opportunity list', () => {

@@ -82,6 +82,10 @@
   min-width: 9rem;
 }
 
+.history .note {
+  flex-basis: 100%;
+}
+
 .history .who {
   margin-left: auto;
   font-size: 0.8rem;
