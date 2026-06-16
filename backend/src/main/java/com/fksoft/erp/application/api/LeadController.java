@@ -2,6 +2,7 @@ package com.fksoft.erp.application.api;
 
 import com.fksoft.erp.application.api.dto.LeadCreateRequest;
 import com.fksoft.erp.application.api.dto.LeadDetailResponse;
+import com.fksoft.erp.application.api.dto.LeadIndicatorsResponse;
 import com.fksoft.erp.application.api.dto.LeadListItemResponse;
 import com.fksoft.erp.application.api.dto.LeadResponse;
 import com.fksoft.erp.application.api.dto.LoseRequest;
@@ -10,6 +11,7 @@ import com.fksoft.erp.application.api.dto.QualifyRequest;
 import com.fksoft.erp.application.api.dto.ReassignRequest;
 import com.fksoft.erp.application.api.dto.RegisterInteractionRequest;
 import com.fksoft.erp.domain.crm.LeadDetailView;
+import com.fksoft.erp.domain.crm.LeadIndicatorsView;
 import com.fksoft.erp.domain.crm.LeadListView;
 import com.fksoft.erp.domain.crm.LeadSearchCriteria;
 import com.fksoft.erp.domain.crm.LeadService;
@@ -21,6 +23,7 @@ import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Set;
@@ -131,6 +134,28 @@ public class LeadController {
         Page<PendingLeadView> page =
                 leadService.pending(pageable, userContext.currentUserId(), canSeeAll(), canSeeUnassigned());
         return PageResponse.from(page, PendingLeadResponse::from);
+    }
+
+    /**
+     * Minimum top-of-funnel Lead indicators for the caller, in an optional period (by creation date).
+     * Counts cover every status (Lost included) over the Leads the caller is allowed to see.
+     *
+     * @param createdFrom optional inclusive lower bound on the creation date (ISO date)
+     * @param createdTo optional inclusive upper bound on the creation date (ISO date)
+     * @return the indicators
+     */
+    @GetMapping("/indicators")
+    public LeadIndicatorsResponse indicators(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdTo) {
+        Instant from =
+                createdFrom != null ? createdFrom.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
+        Instant to = createdTo != null
+                ? createdTo.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
+                : null;
+        LeadIndicatorsView view =
+                leadService.indicators(userContext.currentUserId(), canSeeAll(), canSeeUnassigned(), from, to);
+        return LeadIndicatorsResponse.from(view);
     }
 
     /**
