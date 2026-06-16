@@ -1,12 +1,11 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
-import { MenuItem } from 'primeng/api';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { ListboxModule } from 'primeng/listbox';
-import { MenubarModule } from 'primeng/menubar';
 import { ToastModule } from 'primeng/toast';
 import { AuthService } from '../auth/auth.service';
+import { ThemeService } from '../theme/theme.service';
 
 interface Command {
   label: string;
@@ -14,63 +13,59 @@ interface Command {
   run: () => void;
 }
 
-/** Authenticated shell: top menubar, a Ctrl/Cmd+K command palette and keyboard accelerators. */
+interface NavLink {
+  label: string;
+  icon: string;
+  link: string;
+  exact: boolean;
+}
+
+/**
+ * Authenticated shell: a sidebar for navigation, a top bar with the command palette and the
+ * light/dark toggle, and global keyboard accelerators (Ctrl/Cmd+K, g-then-key, n, ?).
+ */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, MenubarModule, DialogModule, ListboxModule, ButtonModule, ToastModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, DialogModule, ListboxModule, ButtonModule, ToastModule],
   templateUrl: './shell.html',
   styleUrl: './shell.css',
 })
 export class Shell {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  protected readonly theme = inject(ThemeService);
 
   protected readonly paletteOpen = signal(false);
+  protected readonly helpOpen = signal(false);
+  protected readonly sidebarOpen = signal(false);
   private goPending = false;
 
-  protected readonly menu: MenuItem[] = [
-    { label: 'Início', icon: 'pi pi-home', command: () => this.go('/') },
-    { label: 'Leads', icon: 'pi pi-list', command: () => this.go('/leads') },
-    { label: 'Novo Lead', icon: 'pi pi-user-plus', command: () => this.go('/leads/new') },
-    {
-      label: 'Cadastros',
-      icon: 'pi pi-database',
-      items: [
-        { label: 'Origens', command: () => this.go('/cadastros/origens') },
-        { label: 'Motivos de perda', command: () => this.go('/cadastros/motivos-perda') },
-        { label: 'Tipos de interação', command: () => this.go('/cadastros/tipos-interacao') },
-        {
-          label: 'Resultados de interação',
-          command: () => this.go('/cadastros/resultados-interacao'),
-        },
-      ],
-    },
+  protected readonly nav: NavLink[] = [
+    { label: 'Início', icon: 'pi pi-home', link: '/', exact: true },
+    { label: 'Leads', icon: 'pi pi-list', link: '/leads', exact: false },
+  ];
+
+  protected readonly cadastros: { label: string; link: string }[] = [
+    { label: 'Origens', link: '/cadastros/origens' },
+    { label: 'Motivos de perda', link: '/cadastros/motivos-perda' },
+    { label: 'Tipos de interação', link: '/cadastros/tipos-interacao' },
+    { label: 'Resultados de interação', link: '/cadastros/resultados-interacao' },
   ];
 
   protected readonly commands: Command[] = [
     { label: 'Leads', icon: 'pi pi-list', run: () => this.go('/leads') },
     { label: 'Novo Lead', icon: 'pi pi-user-plus', run: () => this.go('/leads/new') },
     { label: 'Início', icon: 'pi pi-home', run: () => this.go('/') },
-    {
-      label: 'Cadastro: Origens',
-      icon: 'pi pi-database',
-      run: () => this.go('/cadastros/origens'),
-    },
-    {
-      label: 'Cadastro: Motivos de perda',
-      icon: 'pi pi-database',
-      run: () => this.go('/cadastros/motivos-perda'),
-    },
-    {
-      label: 'Cadastro: Tipos de interação',
-      icon: 'pi pi-database',
-      run: () => this.go('/cadastros/tipos-interacao'),
-    },
+    { label: 'Cadastro: Origens', icon: 'pi pi-database', run: () => this.go('/cadastros/origens') },
+    { label: 'Cadastro: Motivos de perda', icon: 'pi pi-database', run: () => this.go('/cadastros/motivos-perda') },
+    { label: 'Cadastro: Tipos de interação', icon: 'pi pi-database', run: () => this.go('/cadastros/tipos-interacao') },
     {
       label: 'Cadastro: Resultados de interação',
       icon: 'pi pi-database',
       run: () => this.go('/cadastros/resultados-interacao'),
     },
+    { label: 'Alternar tema claro/escuro', icon: 'pi pi-moon', run: () => this.theme.toggle() },
+    { label: 'Atalhos do teclado', icon: 'pi pi-question-circle', run: () => this.helpOpen.set(true) },
     { label: 'Sair', icon: 'pi pi-sign-out', run: () => this.logout() },
   ];
 
@@ -83,6 +78,10 @@ export class Shell {
     command.run();
   }
 
+  protected toggleSidebar(): void {
+    this.sidebarOpen.update((open) => !open);
+  }
+
   protected logout(): void {
     this.auth.logout().subscribe({
       next: () => this.router.navigateByUrl('/login'),
@@ -92,6 +91,7 @@ export class Shell {
 
   private go(url: string): void {
     this.paletteOpen.set(false);
+    this.sidebarOpen.set(false);
     this.router.navigateByUrl(url);
   }
 
@@ -104,8 +104,7 @@ export class Shell {
     }
     const target = event.target as HTMLElement | null;
     const typing =
-      !!target &&
-      (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
+      !!target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
     if (typing || event.ctrlKey || event.metaKey || event.altKey) {
       this.goPending = false;
       return;
@@ -122,6 +121,8 @@ export class Shell {
       this.goPending = true;
     } else if (event.key === 'n') {
       this.go('/leads/new');
+    } else if (event.key === '?') {
+      this.helpOpen.set(true);
     }
   }
 }

@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, HostListener, inject, signal, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -138,6 +138,51 @@ export class LeadDetailPage implements OnInit {
 
   protected back(): void {
     this.router.navigateByUrl('/leads');
+  }
+
+  private anyDialogOpen(): boolean {
+    return this.qualifyOpen() || this.loseOpen() || this.reassignOpen() || this.interactionOpen();
+  }
+
+  /** Contextual shortcuts on the detail screen: i interaction, q qualify, p lose, r reassign/claim, Esc back. */
+  @HostListener('document:keydown', ['$event'])
+  protected onShortcut(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement | null;
+    const typing =
+      !!target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
+    if (typing || event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
+    if (this.anyDialogOpen()) {
+      return; // let PrimeNG handle Esc/typing while a dialog is open
+    }
+    switch (event.key) {
+      case 'i':
+        this.openInteraction();
+        break;
+      case 'q':
+        if (this.canQualify()) {
+          this.openQualify();
+        }
+        break;
+      case 'p':
+        if (this.canLose()) {
+          this.openLose();
+        }
+        break;
+      case 'r':
+        if (this.canAssign() && this.canReassign()) {
+          this.openReassign();
+        } else if (this.canClaim()) {
+          this.claim();
+        }
+        break;
+      case 'Escape':
+        this.back();
+        break;
+      default:
+        break;
+    }
   }
 
   protected openQualify(): void {

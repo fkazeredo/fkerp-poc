@@ -61,6 +61,7 @@ FKERP is designed to be driven **from the keyboard**, so you rarely need the mou
 | Action | Shortcut |
 |--------|----------|
 | Open the **command palette** (search any action) | `Ctrl` + `K` (or `Cmd` + `K` on macOS) |
+| Show **all shortcuts** (help) | `?` |
 | New lead | `n` |
 | Go to the **lead list** | `g` then `l` |
 | Go to **Origins** | `g` then `o` |
@@ -69,14 +70,29 @@ FKERP is designed to be driven **from the keyboard**, so you rarely need the mou
 | Confirm / submit a form | `Enter` |
 | Close a dialog / cancel | `Esc` |
 
+**On a lead's detail page** (when no dialog is open):
+
+| Action | Shortcut |
+|--------|----------|
+| **Register interaction** | `i` |
+| **Qualify** | `q` |
+| **Mark as Lost** | `p` |
+| **Reassign / Take it** | `r` |
+| Back to the list | `Esc` |
+
 Notes:
 
 - The **command palette** (`Ctrl/Cmd + K`) lets you type the name of an action and run
-  it — the fastest way to move around.
+  it — the fastest way to move around. Press `?` anytime to see the full list.
 - When you open a form, the **first field is focused automatically**, so you can start
   typing right away.
-- Single-letter shortcuts (like `n`) are ignored while you are typing inside a field, so
-  they never interfere with data entry.
+- Single-letter shortcuts (like `n` or `i`) are ignored while you are typing inside a field
+  or while a dialog is open, so they never interfere with data entry.
+
+### Light / dark theme
+
+Use the **sun/moon button** in the top bar (or the *"Alternar tema claro/escuro"* command in the
+palette) to switch between light and dark mode. Your choice is remembered on the device.
 
 ---
 

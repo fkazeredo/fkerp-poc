@@ -421,10 +421,13 @@ the goal - high coverage with weak assertions is not quality.
   security infrastructure (auth interceptor's 401→refresh→replay, route guards) MUST be tested.
   Component tests render the DOM and assert the visible state (jsdom; polyfill `ResizeObserver`
   for the component library). E2E for critical flows only.
-- **E2E (Playwright):** the critical journey (login → create lead) runs in a real browser against
-  the running stack. Bring the stack up first (`docker compose up`), then `npm run e2e` from
-  `frontend/` (override the target with `E2E_BASE_URL`). E2E is the layer that catches
-  cross-cutting issues unit/integration miss (CORS origin, the same-origin proxy, port wiring).
+- **E2E (Playwright):** critical journeys run in a real browser against an **isolated, throwaway
+  stack** (`compose.e2e.yaml`) whose Postgres is **ephemeral** (`tmpfs`) and on its own ports
+  (frontend 4201), so E2E **MUST NOT** touch the development database. From `frontend/`:
+  `npm run e2e:up` (build + start the isolated stack), `npm run e2e` (baseURL defaults to 4201;
+  override with `E2E_BASE_URL`), `npm run e2e:down`. Never point the default E2E run at the dev stack
+  (4200) — that pollutes real data. E2E is the layer that catches cross-cutting issues
+  unit/integration miss (CORS origin, the same-origin proxy, port wiring).
 - Right level of realism: mocks/fakes for logic; Testcontainers for infrastructure behavior. Do
   not mock everything blindly or boot the whole stack for simple logic. Tests create their own
   data via builders/factories.
