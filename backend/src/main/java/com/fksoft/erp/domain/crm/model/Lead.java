@@ -1,10 +1,10 @@
 package com.fksoft.erp.domain.crm.model;
 
-import com.fksoft.erp.domain.crm.dto.RegisterLeadCommand;
 import com.fksoft.erp.domain.crm.exception.LeadCannotBeMarkedLostException;
 import com.fksoft.erp.domain.crm.exception.LeadCannotBeQualifiedException;
 import com.fksoft.erp.domain.crm.exception.LeadContactRequiredException;
 import com.fksoft.erp.domain.crm.exception.LeadQualificationRequiresResponsibleException;
+import com.fksoft.erp.domain.crm.service.data.RegisterLeadCommand;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

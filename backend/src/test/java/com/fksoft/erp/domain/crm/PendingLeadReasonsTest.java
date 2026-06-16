@@ -2,7 +2,6 @@ package com.fksoft.erp.domain.crm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fksoft.erp.domain.crm.dto.RegisterLeadCommand;
 import com.fksoft.erp.domain.crm.model.InteractionResult;
 import com.fksoft.erp.domain.crm.model.InteractionType;
 import com.fksoft.erp.domain.crm.model.Lead;
@@ -10,6 +9,7 @@ import com.fksoft.erp.domain.crm.model.LossReason;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.model.PendingLeadReasons;
 import com.fksoft.erp.domain.crm.model.PendingReason;
+import com.fksoft.erp.domain.crm.service.data.RegisterLeadCommand;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;

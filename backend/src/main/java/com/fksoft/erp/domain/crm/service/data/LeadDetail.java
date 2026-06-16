@@ -1,4 +1,4 @@
-package com.fksoft.erp.application.api.dto;
+package com.fksoft.erp.domain.crm.service.data;
 
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadAssignment;
@@ -11,11 +11,11 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Full Lead detail (entity-free transport DTO). {@code qualification} and {@code loss} are present
- * only when the lead has been qualified / lost; the history lists are empty when there is none.
- * Assembled from the Lead aggregate plus a map of user id → display name (resolved from Identity).
+ * Full Lead detail (read model). {@code qualification} and {@code loss} are present only when the lead
+ * has been qualified / lost; the history lists are empty when there is none. Assembled from the Lead
+ * aggregate plus a map of user id → display name (resolved from Identity).
  */
-public record LeadDetailResponse(
+public record LeadDetail(
         UUID id,
         String name,
         String phone,
@@ -35,13 +35,13 @@ public record LeadDetailResponse(
         LossInfo loss) {
 
     /**
-     * Assembles the detail response from the Lead aggregate and the resolved user names.
+     * Assembles the detail from the Lead aggregate and the resolved user names.
      *
      * @param lead the lead aggregate (with its interactions/assignments loaded)
      * @param names map of user id → display name for every actor referenced by the lead
-     * @return the response
+     * @return the detail read model
      */
-    public static LeadDetailResponse from(Lead lead, Map<UUID, String> names) {
+    public static LeadDetail from(Lead lead, Map<UUID, String> names) {
         List<InteractionItem> interactions = lead.interactions().stream()
                 .sorted(Comparator.comparing(LeadInteraction::occurredAt).reversed())
                 .map(i -> new InteractionItem(
@@ -76,7 +76,7 @@ public record LeadDetailResponse(
                         names.get(lead.lostBy()),
                         lead.lossNote());
 
-        return new LeadDetailResponse(
+        return new LeadDetail(
                 lead.id(),
                 lead.name(),
                 lead.phone(),

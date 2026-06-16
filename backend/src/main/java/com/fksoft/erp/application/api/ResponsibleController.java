@@ -1,7 +1,7 @@
 package com.fksoft.erp.application.api;
 
-import com.fksoft.erp.application.api.dto.ResponsibleResponse;
-import com.fksoft.erp.application.read.LeadReadService;
+import com.fksoft.erp.domain.crm.service.LeadService;
+import com.fksoft.erp.domain.crm.service.data.Responsible;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ResponsibleController {
 
-    private final LeadReadService leadReadService;
+    private final LeadService leadService;
 
     /**
      * Lists active users that can be set as a Lead responsible.
@@ -22,7 +22,7 @@ public class ResponsibleController {
      * @return the responsibles (id + name)
      */
     @GetMapping
-    public List<ResponsibleResponse> list() {
-        return leadReadService.responsibles();
+    public List<Responsible> list() {
+        return leadService.listResponsibles();
     }
 }

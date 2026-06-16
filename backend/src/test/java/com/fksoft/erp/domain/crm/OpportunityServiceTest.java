@@ -9,7 +9,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fksoft.erp.domain.crm.dto.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.exception.LeadAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.LeadNotQualifiedForOpportunityException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAlreadyExistsForLeadException;
@@ -24,6 +23,7 @@ import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.LeadAccessPolicy;
 import com.fksoft.erp.domain.crm.service.OpportunityService;
+import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.identity.UserRepository;
 import java.math.BigDecimal;
 import java.util.Optional;

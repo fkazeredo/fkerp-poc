@@ -1,10 +1,10 @@
 package com.fksoft.erp.domain.crm.service;
 
-import com.fksoft.erp.domain.crm.dto.ReferenceCommand;
 import com.fksoft.erp.domain.crm.exception.DuplicateReferenceCodeException;
 import com.fksoft.erp.domain.crm.exception.ReferenceNotFoundException;
 import com.fksoft.erp.domain.crm.model.ReferenceData;
 import com.fksoft.erp.domain.crm.repository.ReferenceDataRepository;
+import com.fksoft.erp.domain.crm.service.data.ReferenceCommand;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;

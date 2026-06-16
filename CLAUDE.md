@@ -93,23 +93,23 @@ layers under `com.fksoft`:
 
 | Layer | Package | Contents |
 |---|---|---|
-| **Domain** (pure core) | `com.fksoft.domain.<area>` | Organized by business area; each area split into role sub-packages: `model` (entities, enums, value objects, domain events + logic), `repository` (Spring Data repositories, projections, query objects), `service` (command Application Services + policies + specifications), `exception` (business exceptions), `dto` (command/criteria **inputs** only). **No read/view records here.** Plus kernel `domain.error` (`DomainException`, `ErrorDetails`, `RateLimited`). |
-| **Delivery** (driving adapters) | `com.fksoft.application` | `api` (controllers) + `api.dto` (request + **response** DTOs); `read` (read services that assemble responses from entities — see §5.4); `realtime` (+ `realtime.dto`); `queue` (consumers) if any. |
+| **Domain** (pure core) | `com.fksoft.domain.<area>` | Organized by business area; each area split into role sub-packages: `model` (entities, enums, value objects, domain events + logic), `repository` (Spring Data repositories, projections, query objects), `service` (Application Services — **command AND read** — + policies + specifications), `service.data` (the service's data records: **command/criteria inputs AND read-model outputs** like `LeadDetail`/`LeadListItem`), `exception` (business exceptions). **No `dto` package in the domain.** Plus kernel `domain.error` (`DomainException`, `ErrorDetails`, `RateLimited`). |
+| **Delivery** (driving adapters) | `com.fksoft.application` | `api` (controllers) + `api.dto` (request DTOs + trivial create responses); `realtime` (+ `realtime.dto`); `queue` (consumers) if any. Reads are served by the domain service's read models (no read layer here). |
 | **Infra** (driven adapters + config) | `com.fksoft.infra.<concern>` | `security` (JWT, `UserContext`/`UserContextProvider` + adapter), `email`, `integration`, `web` (`ApiErrorResponse`, `GlobalExceptionHandler`, `HttpErrorMapping`, `PageResponse`), `i18n`, `time`, `observability`, `socket`. |
 
 ```txt
 com.fksoft
   domain                         <- pure core; by business area, each area in role sub-packages; MUST NOT import application/infra
     order/
-      model/       Order  OrderStatus  OrderCancelled(event)  (entities/enums/events/VOs/logic)
-      repository/  OrderRepository  (+ projections, query objects)
-      service/     OrderService(commands)  OrderAccessPolicy  OrderSpecifications
-      exception/   OrderNotFoundException  ...
-      dto/         CreateOrderCommand  OrderSearchCriteria   (command/criteria INPUTS only; no read records)
+      model/         Order  OrderStatus  OrderCancelled(event)  (entities/enums/events/VOs/logic)
+      repository/    OrderRepository  (+ projections, query objects)
+      service/       OrderService(commands + reads)  OrderAccessPolicy  OrderSpecifications
+      service/data/  CreateOrderCommand  OrderSearchCriteria (inputs)  OrderListItem  OrderDetail (read models)
+      exception/     OrderNotFoundException  ...
     <other business areas>/
     error/   DomainException  ErrorDetails  RateLimited        <- kernel
-  application                    <- delivery; entities never leak (the *Response is the contract)
-    api/  api/dto/  read/  realtime/  realtime/dto/
+  application                    <- delivery; entities never leak (the read model is the contract)
+    api/  api/dto/  realtime/  realtime/dto/
   infra                          <- centralized technical layer, by concern
     security/ email/ integration/ time/ i18n/ socket/ observability/ web/
 ```
@@ -121,19 +121,21 @@ adapters live in `infra.<concern>` and implement a port defined in the domain mo
 domain depends on the port, never on infra. There is no `shared` package: error kernel goes to
 `domain.error`; identity and `PageResponse` go to `infra`.
 
-**Read assembly lives in delivery, not in the domain (CQRS-ish, Rule Zero).** The domain has **no**
-read/view DTOs: a domain Application Service holds **commands** only (it mutates and returns `void`
-or an id/entity). **Reads** — queries, visibility, cross-aggregate enrichment (e.g. resolving a
-responsible's name from another aggregate), and the assembly of the response — live in a **read
-service** under `com.fksoft.application.read` (`<Area>ReadService`). Because it is **outside
-`..api..`**, a read service MAY inject repositories and domain query objects (the
-`controllersMustNotAccessRepositories` gate only restricts `..api..`); the visibility predicate is
-applied at the query level. Controllers delegate reads to the read service (never touching a
-repository) and, after a write, re-read the refreshed detail through it.
+**One Application Service per area does commands AND reads — no CQS by default (Rule Zero).** Do
+**NOT** split a separate read/query layer (no `application.read`, no `*ReadService`) unless real
+complexity justifies it. The domain service registers/mutates **and** serves the list/detail/
+indicators, assembling its **read models** (queries, visibility, cross-aggregate enrichment such as
+resolving a responsible's name) and returning a record from `<area>.service.data`. A write transition
+returns the refreshed detail read model (assembled inside its own transaction). The controller calls
+the service and **passes the read model through** — it never touches a repository (the
+`controllersMustNotAccessRepositories` gate holds because reads go through the service).
 
-**Entities never leak; the `*Response` is the contract.** Response DTOs live in
-`application.api.dto` and are built from entities via explicit factories (`Response.from(entity,
-…enrichment)`); the read/command services never return an `@Entity` past the controller boundary.
+**Entities never leak; the read model is the contract.** The `service.data` records (built from
+entities via explicit factories, `LeadDetail.from(lead, names)`) ARE the JSON contract and are
+returned straight by the controller. Do **NOT** duplicate them with a parallel `*Response` in
+`application.api.dto` (that double-DTO is the overengineering this rule removes); `application.api.dto`
+keeps only request DTOs and the trivial create responses the controller builds itself. Services never
+return an `@Entity` past the controller boundary.
 
 MUST NOT create `domain/application/ports/adapters/in/out` folder trees unless complexity truly
 justifies it. Single Maven project, strong package modularity; multi-module only for shared
@@ -166,11 +168,11 @@ a `Command` per request by default - use commands only when multiple delivery me
 the same use case or the API shape differs from the use-case input. Prefer records. Map with
 explicit factory methods close to the object (`OrderResponse.from(order, …)`); dedicated mapper
 classes are not the default (a mapping library MAY be used for repetitive many-field mappings).
-**Read responses are built in delivery, not domain (§5.1):** the `*Response` lives in
-`application.api.dto` with a `from(entity, …)` factory; the `application.read` service supplies the
-enrichment (resolved names, history, counts) and the controller returns the `*Response`. Do **not**
-reintroduce domain-side read/view records — that duplication is the overengineering this rule
-removes (Rule Zero).
+**Read models live in the domain, not duplicated in delivery (§5.1):** the read records live in
+`<area>.service.data` with a `from(entity, …)` factory; the Application Service supplies the
+enrichment (resolved names, history, counts) and the controller returns the read model **directly**
+(via `PageResponse` when paged). Do **NOT** add a parallel `*Response` in `application.api.dto` for
+reads — that double-DTO is the overengineering this rule removes (Rule Zero).
 
 ### 5.5 Validation (defense in depth - protect every boundary)
 
@@ -258,7 +260,8 @@ intent, contract, constraints, side effects - never restate the name.
 ## 6. Domain access & boundaries
 
 The `domain` package is organized by business area (`domain.<area>`), each area split into role
-sub-packages (`model`/`repository`/`service`/`exception`/`dto`, §5.1), but is **internally open**:
+sub-packages (`model`/`repository`/`service`/`service.data`/`exception`, §5.1), but is **internally
+open**:
 any class under `domain` MAY use any other class under `domain` directly, including across areas and
 sub-packages (e.g. `domain.crm.service` may call `domain.identity` repositories/types). The role
 sub-packages are organization, not enforced walls — there is **no Facade pattern** for intra-domain
@@ -276,11 +279,11 @@ The architectural invariants that MUST hold (all the OTHER rules in this file st
   **adapters** (`infra -> domain` allowed; `domain -> infra` forbidden).
 - Asynchronous reactions use domain events.
 - The `application` (delivery) layer is organized by **mechanism, NOT by business area**:
-  controllers live flat in `application.api`, request/response DTOs in `application.api.dto`,
-  **read services in `application.read`** (`<Area>ReadService`, the read/query side that assembles
-  `*Response`s — §5.1/§5.4; outside `..api..` so it MAY use repositories), realtime/socket in
-  `application.realtime` (+ `application.realtime.dto`), queue consumers in `application.queue`. Do
-  NOT create `application.api.<area>` sub-packages.
+  controllers live flat in `application.api`, request DTOs + trivial create responses in
+  `application.api.dto`, realtime/socket in `application.realtime` (+ `application.realtime.dto`),
+  queue consumers in `application.queue`. Reads are served by the domain service's read models (§5.1) —
+  there is **no `application.read` / read-service layer** (no CQS by default). Do NOT create
+  `application.api.<area>` sub-packages.
 - In a monolith a shared database is acceptable - do not pretend to be distributed. Extract a
   microservice only with a clear bounded context plus a concrete reason (independent
   deploy/scale, separate ownership, fault/security isolation). Microservices do not fix bad

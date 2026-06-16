@@ -1,4 +1,4 @@
-package com.fksoft.erp.domain.crm.dto;
+package com.fksoft.erp.domain.crm.service.data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

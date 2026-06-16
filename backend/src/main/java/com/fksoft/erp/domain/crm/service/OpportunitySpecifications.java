@@ -1,8 +1,8 @@
 package com.fksoft.erp.domain.crm.service;
 
-import com.fksoft.erp.domain.crm.dto.OpportunitySearchCriteria;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
+import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
 import java.util.Set;
 import org.springframework.data.jpa.domain.Specification;
 

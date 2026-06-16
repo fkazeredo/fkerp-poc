@@ -1,6 +1,5 @@
 package com.fksoft.erp.domain.crm.service;
 
-import com.fksoft.erp.domain.crm.dto.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.exception.LeadAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.LeadNotFoundException;
 import com.fksoft.erp.domain.crm.exception.LeadNotQualifiedForOpportunityException;
@@ -12,20 +11,29 @@ import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityCreated;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
+import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
+import com.fksoft.erp.domain.crm.service.data.OpportunityListItem;
+import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Application Service (command side) for commercial Opportunities (Commercial / CRM). Creates an
- * Opportunity from a QUALIFIED Lead, preserving the lead's origin, responsible and main interest.
+ * Application Service for commercial Opportunities (Commercial / CRM): creates an Opportunity from a
+ * QUALIFIED Lead and serves the operational list. One service per area handles both command and reads.
  * Never creates a Proposal, Customer, Sale, Sales Order, Booking, Financial record or Commission, and
- * never modifies the source Lead. Reads (the operational list) live on the read side
- * ({@code application.read.OpportunityReadService}).
+ * never modifies the source Lead.
  */
 @Service
 @RequiredArgsConstructor
@@ -35,6 +43,7 @@ public class OpportunityService {
     private final LeadRepository leads;
     private final UserRepository users;
     private final LeadAccessPolicy leadAccessPolicy;
+    private final OpportunityAccessPolicy accessPolicy;
     private final ApplicationEventPublisher events;
 
     /**
@@ -82,5 +91,43 @@ public class OpportunityService {
         opportunities.save(opportunity);
         events.publishEvent(new OpportunityCreated(opportunity.id(), lead.id(), createdBy, responsibleId));
         return opportunity.id();
+    }
+
+    /**
+     * Operational, paginated Opportunity list filtered by the criteria and the caller's visibility.
+     * Lost Opportunities are excluded unless the criteria explicitly include LOST.
+     *
+     * @param criteria the (optional) filters
+     * @param pageable page, size and sort
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every Opportunity
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return a page of operational Opportunity items
+     */
+    @Transactional(readOnly = true)
+    public Page<OpportunityListItem> list(
+            OpportunitySearchCriteria criteria,
+            Pageable pageable,
+            UUID userId,
+            boolean canSeeAll,
+            boolean canSeeUnassigned) {
+        Specification<Opportunity> spec = OpportunitySpecifications.matching(criteria)
+                .and(accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned));
+        Page<Opportunity> page = opportunities.findAll(spec, pageable);
+
+        Set<UUID> responsibleIds = page.getContent().stream()
+                .map(Opportunity::responsiblePersonId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> names = responsibleIds.isEmpty()
+                ? Map.of()
+                : users.findAllById(responsibleIds).stream().collect(Collectors.toMap(User::id, User::username));
+
+        return page.map(
+                opportunity -> OpportunityListItem.from(opportunity, nameOf(names, opportunity.responsiblePersonId())));
+    }
+
+    private static String nameOf(Map<UUID, String> names, UUID id) {
+        return id == null ? null : names.get(id);
     }
 }
