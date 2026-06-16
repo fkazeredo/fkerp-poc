@@ -1,7 +1,7 @@
 package com.fksoft.erp.application.api;
 
-import com.fksoft.erp.domain.crm.LossReason;
-import com.fksoft.erp.domain.crm.LossReasonService;
+import com.fksoft.erp.domain.crm.model.LossReason;
+import com.fksoft.erp.domain.crm.service.LossReasonService;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 

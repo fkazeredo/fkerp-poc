@@ -2,6 +2,7 @@ package com.fksoft.erp.domain.crm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fksoft.erp.domain.crm.service.LeadAssignmentPolicy;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 

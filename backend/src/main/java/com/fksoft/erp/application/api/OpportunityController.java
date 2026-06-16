@@ -3,11 +3,11 @@ package com.fksoft.erp.application.api;
 import com.fksoft.erp.application.api.dto.OpportunityCreateRequest;
 import com.fksoft.erp.application.api.dto.OpportunityListItemResponse;
 import com.fksoft.erp.application.api.dto.OpportunityResponse;
-import com.fksoft.erp.domain.crm.CreateOpportunityCommand;
-import com.fksoft.erp.domain.crm.OpportunityListView;
-import com.fksoft.erp.domain.crm.OpportunitySearchCriteria;
-import com.fksoft.erp.domain.crm.OpportunityService;
-import com.fksoft.erp.domain.crm.OpportunityStage;
+import com.fksoft.erp.application.read.OpportunityReadService;
+import com.fksoft.erp.domain.crm.dto.CreateOpportunityCommand;
+import com.fksoft.erp.domain.crm.dto.OpportunitySearchCriteria;
+import com.fksoft.erp.domain.crm.model.OpportunityStage;
+import com.fksoft.erp.domain.crm.service.OpportunityService;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
@@ -15,7 +15,6 @@ import java.net.URI;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -30,10 +29,10 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Commercial Opportunity endpoints. Creating an Opportunity from a Qualified Lead requires
  * {@code crm:opportunity:create}, and the caller must be allowed to see the source Lead (the lead read
- * tiers are reused to decide that). Listing requires an Opportunity read tier —
- * {@code crm:opportunity:read} (own only), {@code crm:opportunity:read:unassigned} (also the
- * unassigned pool) or {@code crm:opportunity:read:all} (all) — and the visibility tier is enforced by
- * the policy.
+ * tiers are reused to decide that). Listing is served by {@link OpportunityReadService} and requires an
+ * Opportunity read tier — {@code crm:opportunity:read} (own only),
+ * {@code crm:opportunity:read:unassigned} (also the unassigned pool) or
+ * {@code crm:opportunity:read:all} (all) — the visibility tier being enforced by the policy.
  */
 @RestController
 @RequestMapping("/api/opportunities")
@@ -41,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class OpportunityController {
 
     private final OpportunityService opportunityService;
+    private final OpportunityReadService opportunityReadService;
     private final UserContextProvider userContext;
 
     /**
@@ -80,13 +80,14 @@ public class OpportunityController {
             @RequestParam(required = false) String q,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         OpportunitySearchCriteria criteria = new OpportunitySearchCriteria(stage, q);
-        Page<OpportunityListView> page = opportunityService.list(
-                criteria,
-                pageable,
-                userContext.currentUserId(),
-                canSeeAllOpportunities(),
-                canSeeUnassignedOpportunities());
-        return PageResponse.from(page, OpportunityListItemResponse::from);
+        return PageResponse.from(
+                opportunityReadService.list(
+                        criteria,
+                        pageable,
+                        userContext.currentUserId(),
+                        canSeeAllOpportunities(),
+                        canSeeUnassignedOpportunities()),
+                item -> item);
     }
 
     // Source-lead visibility for creation reuses the Lead read tiers.
