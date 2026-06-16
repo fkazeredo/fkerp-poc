@@ -325,7 +325,21 @@ Opportunities you may work. The list is paginated and shows, for each Opportunit
 | **Criado em** (Created) | The creation date. |
 | **Última atividade / Próxima ação** | Reserved for a coming release (commercial activities). |
 
-You can **search** (by title, product type or interest) and **filter by stage**.
+Above the list there is a **search and filter** bar. **Search** looks across the Opportunity's title,
+product type and interest **and also the source lead's name and contacts (phone, WhatsApp, email)** —
+so you can find a negotiation by typing the customer's name or phone number. The available filters are:
+
+| Filter | What it does |
+|--------|--------------|
+| **Estágio** (Stage) | One or more pipeline stages. |
+| **Responsável** (Responsible) | A specific owner, or *Sem responsável* (unassigned). |
+| **Origem** (Origin) | The origin of the lead that started the Opportunity. |
+| **Criado de / até** (Created from / to) | The Opportunity's creation period. |
+| **Fechamento de / até** (Close from / to) | The expected-close period. |
+| **Valor mín. / máx.** (Value min / max) | The estimated-value range. |
+
+Filters combine (the list shows only Opportunities matching all of them) and the **Limpar** (Clear)
+button resets them at once. Applying any filter returns the list to the first page.
 
 - **Lost Opportunities are hidden by default.** They show only when you select the **Perdida** (Lost)
   stage in the filter.
