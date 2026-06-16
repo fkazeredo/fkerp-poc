@@ -247,8 +247,10 @@ Os botões aparecem no topo quando a ação se aplica ao status atual:
 
 - **Qualificar** — marca o Lead como **Qualificado**. Aparece somente quando o Lead está **Em contato**
   e tem um **responsável**; é obrigatório informar o **interesse principal** e é possível adicionar uma
-  anotação comercial. Qualificar não cria uma Oportunidade nem um Cliente — prepara o Lead para a
-  Sprint 2.
+  anotação comercial. Qualificar, por si só, não cria uma Oportunidade nem um Cliente — torna o Lead
+  **apto** a originar uma.
+- **Criar oportunidade** — aparece somente em um Lead **Qualificado**. Abre uma **Oportunidade**
+  comercial a partir do Lead (veja *Oportunidades* adiante). Atalho de teclado: **`o`**.
 - **Marcar como perdido** — coloca o Lead em **Perdido**; é obrigatório escolher um **motivo de perda**
   e é possível adicionar uma anotação. Perdido é definitivo.
 - **Reatribuir** — muda o responsável (ou limpa para não atribuído). Toda mudança fica registrada no
@@ -291,7 +293,48 @@ contato**. Um contato é efetivo para todo resultado **exceto** *Não atendeu* e
 essas são tentativas sem sucesso, então o Lead permanece **Novo** mas mantém a tentativa no histórico.
 Leads que já passaram de Novo mantêm seu status.
 
-## 8. Gerenciando cadastros
+## 8. Oportunidades
+
+Uma **Oportunidade** é uma negociação comercial real, aberta a partir de um Lead **qualificado**. O
+Lead e a Oportunidade permanecem **registros separados**: a Oportunidade aproveita os dados do Lead
+(origem, responsável, interesse principal) para nada ser redigitado, enquanto o Lead segue sendo a
+fonte dos contatos e do histórico. Uma Oportunidade **não** é proposta, venda, pedido nem registro
+financeiro.
+
+### 8.1 Criando uma Oportunidade
+
+No detalhe de um Lead **Qualificado**, clique em **Criar oportunidade** (ou tecle **`o`**). Você pode,
+opcionalmente, informar o **tipo de produto / área de interesse**, um **valor estimado**, a
+**previsão de fechamento** e uma **anotação comercial inicial**. A Oportunidade nasce na primeira
+etapa do pipeline, **Nova**. Cada Lead origina **no máximo uma** Oportunidade; uma segunda tentativa é
+bloqueada e aponta a já existente. Criar uma Oportunidade não altera o Lead.
+
+### 8.2 A lista operacional
+
+Abra **Oportunidades** no menu lateral (ou pela paleta de comandos, `Ctrl K`) para ver as
+Oportunidades que você pode trabalhar. A lista é paginada e mostra, para cada Oportunidade:
+
+| Coluna | Observações |
+|--------|-------------|
+| **Título** | O título da Oportunidade; leva ao **Lead de origem**. |
+| **Responsável** | O dono, ou *Sem responsável* (não atribuída). |
+| **Estágio** | Nova, Descoberta, Aderência, Pronta p/ proposta, Perdida. |
+| **Valor estimado** | Quando informado. |
+| **Fechamento previsto** | Quando informado. |
+| **Criado em** | A data de criação. |
+| **Última atividade / Próxima ação** | Reservadas para uma próxima versão (atividades comerciais). |
+
+Você pode **buscar** (por título, tipo de produto ou interesse) e **filtrar por estágio**.
+
+- **Oportunidades perdidas ficam ocultas por padrão.** Só aparecem quando você seleciona o estágio
+  **Perdida** no filtro.
+- **Você vê apenas o que lhe compete.** O representante vê **somente as próprias** Oportunidades; o
+  vendedor vê as próprias **e as não atribuídas**; gerência comercial e diretoria veem **todas**. Busca
+  e filtros nunca revelam Oportunidades fora do seu alcance.
+- A lista mostra **apenas dados comerciais do pipeline** — nunca proposta, venda, pedido, reserva,
+  financeiro ou comissão.
+
+## 9. Gerenciando cadastros
 
 Os cadastros são as listas que alimentam o formulário de Lead e fluxos futuros. São quatro, todas
 gerenciadas do mesmo jeito:
@@ -305,27 +348,27 @@ gerenciadas do mesmo jeito:
 
 Abra-os em **Cadastros** no menu superior ou pela paleta de comandos.
 
-### 8.1 A lista
+### 9.1 A lista
 
 Cada linha mostra o **código**, o **rótulo** (o que os usuários veem), a **ordem** e se está **Ativo**
 ou **Inativo**. Por padrão só os ativos aparecem; use **Mostrar inativos / Ocultar inativos** para
 alternar.
 
-### 8.2 Criando um registro
+### 9.2 Criando um registro
 
 1. Clique em **Novo**.
 2. Preencha **Código** (um código interno estável), **Rótulo** (o texto exibido) e **Ordem** (ordem de
    exibição, um número ≥ 0).
 3. Clique em **Salvar**. Códigos precisam ser únicos — reusar um é rejeitado.
 
-### 8.3 Editando um registro
+### 9.3 Editando um registro
 
 1. Clique no ícone de **lápis** na linha.
 2. Você pode alterar o **rótulo**, a **ordem** e o interruptor **Ativo**. O **código** não pode ser
    alterado (é o identificador estável).
 3. Clique em **Salvar**.
 
-### 8.4 Ativando / desativando
+### 9.4 Ativando / desativando
 
 - Clique no ícone de **proibido** para **desativar** um registro (exclusão lógica). Valores inativos
   permanecem para a fidelidade histórica, mas **não podem ser usados em novos Leads**.
@@ -333,7 +376,7 @@ alternar.
 
 ---
 
-## 9. Mensagens e validação
+## 10. Mensagens e validação
 
 O FKERP valida o que você digita e mostra mensagens claras, em português:
 
@@ -344,27 +387,28 @@ O FKERP valida o que você digita e mostra mensagens claras, em português:
 
 ---
 
-## 10. Saindo
+## 11. Saindo
 
 Clique em **Sair** no canto superior direito da barra de menu. Você volta para a tela de login e sua
 sessão é encerrada.
 
 ---
 
-## 11. O que vem a seguir
+## 12. O que vem a seguir
 
-Esta edição cobre todo o ciclo de vida de Leads da **Sprint 1**: cadastrar e encontrar Leads (lista,
-busca, filtros), o detalhe do Lead, atribuir um responsável, histórico de interações com a regra de
-**Em contato**, **qualificação**, fluxo de **Perda**, visibilidade por perfil, o worklist de
-**Pendências** e a visão de **Indicadores**, além da **deduplicação** de Leads.
+Esta edição cobre todo o ciclo de vida de Leads da **Sprint 1** (cadastrar e encontrar Leads, o
+detalhe, atribuição, histórico de interações com a regra de **Em contato**, **qualificação**, fluxo de
+**Perda**, visibilidade por perfil, **Pendências**, **Indicadores** e deduplicação) e o início da
+**Sprint 2 — Oportunidades**: criar uma Oportunidade comercial a partir de um Lead qualificado e a
+**lista operacional de Oportunidades**, com filtro por estágio e visibilidade por perfil.
 
-O próximo grande passo (Sprint 2) inicia a **Oportunidade comercial**: um Lead **qualificado** vai
-originar uma Oportunidade, levando seus dados (contatos, origem, responsável, histórico de interações,
-interesse principal e os detalhes da qualificação) para nada ser digitado de novo. O Lead e a
-Oportunidade continuam registros separados — qualificar um Lead ainda **não** cria uma Oportunidade nem
-um cliente hoje. Este manual será atualizado quando isso for lançado.
+As próximas versões darão sequência ao pipeline comercial: abrir o **detalhe da Oportunidade**,
+movimentá-la **pelas etapas** (Descoberta, Aderência, Pronta para proposta), **registrar atividades
+comerciais** (que vão preencher as colunas de *última atividade* e *próxima ação*), **indicadores** de
+Oportunidades e preparar a Oportunidade para a geração de uma **proposta**. Este manual será atualizado
+a cada lançamento.
 
 ---
 
-*Status do documento: v0.12.0 — captação de Leads até indicadores, mais deduplicação.
-Mantido junto com o produto.*
+*Status do documento: Sprint 1 concluída; Sprint 2 em andamento (criação de Oportunidade + lista
+operacional). Mantido junto com o produto.*

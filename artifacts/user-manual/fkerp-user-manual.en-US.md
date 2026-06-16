@@ -250,7 +250,9 @@ Buttons appear at the top when the action applies to the current status:
 - **Qualificar** (Qualify) — marks a lead as **Qualified**. It appears only once the lead is **Em
   contato** (Contacted) and has a **responsible person**; you must enter the **main interest**
   (*interesse principal*) and may add a commercial note. Qualifying does not create an Opportunity or
-  Customer — it prepares the lead for Sprint 2.
+  Customer by itself — it makes the lead **eligible** to originate one.
+- **Criar oportunidade** (Create opportunity) — appears only on a **Qualified** lead. It opens a
+  commercial **Opportunity** from the lead (see *Opportunities* below). Keyboard shortcut: **`o`**.
 - **Marcar como perdido** (Mark as Lost) — sets the lead to **Lost**; you must choose a **loss
   reason** and may add a note. Lost is final.
 - **Reatribuir** (Reassign) — changes the responsible person (or clears it to unassigned). Every
@@ -293,7 +295,47 @@ recorded automatically.
 answer) and *Contato inválido* (Invalid contact) — those are failed attempts, so the lead stays
 **Novo** while still keeping the attempt in its history. Leads already past New keep their status.
 
-## 8. Managing reference data (*cadastros*)
+## 8. Opportunities (*Oportunidades*)
+
+An **Opportunity** is a real commercial negotiation opened from a **qualified** lead. The lead and
+the Opportunity stay **separate records**: the Opportunity carries over the lead's data (origin,
+responsible, main interest) so nothing is re-typed, while the lead remains the system of record for
+the contacts and history. An Opportunity is **not** a proposal, sale, order or financial record.
+
+### 8.1 Creating an Opportunity
+
+On a **Qualified** lead's detail, click **Criar oportunidade** (or press **`o`**). You may optionally
+inform the **product type / area of interest**, an **estimated value**, an **expected closing date**
+and an **initial commercial note**. The Opportunity is created at the first pipeline stage, **Nova**
+(New). Each lead originates **at most one** Opportunity; a second attempt is blocked and points to the
+existing one. Creating an Opportunity does not change the lead.
+
+### 8.2 The operational list
+
+Open **Oportunidades** in the side menu (or via the command palette, `Ctrl K`) to see the
+Opportunities you may work. The list is paginated and shows, for each Opportunity:
+
+| Column | Notes |
+|--------|-------|
+| **Título** (Title) | The Opportunity title; links to its **source lead**. |
+| **Responsável** (Responsible) | The owner, or *Sem responsável* (unassigned). |
+| **Estágio** (Stage) | Nova, Descoberta, Aderência, Pronta p/ proposta, Perdida. |
+| **Valor estimado** (Estimated value) | When informed. |
+| **Fechamento previsto** (Expected close) | When informed. |
+| **Criado em** (Created) | The creation date. |
+| **Última atividade / Próxima ação** | Reserved for a coming release (commercial activities). |
+
+You can **search** (by title, product type or interest) and **filter by stage**.
+
+- **Lost Opportunities are hidden by default.** They show only when you select the **Perdida** (Lost)
+  stage in the filter.
+- **You see only what is yours to work.** A representative sees **only their own** Opportunities; a
+  seller sees their own **and the unassigned** ones; commercial managers and the board see **all**.
+  Search and filters never reveal Opportunities outside your reach.
+- The list shows **commercial pipeline data only** — never proposal, sale, order, booking, financial
+  or commission information.
+
+## 9. Managing reference data (*cadastros*)
 
 Reference data are the lists that feed the lead form and future workflows. There are
 four, all managed the same way:
@@ -307,27 +349,27 @@ four, all managed the same way:
 
 Open them from **Cadastros** in the top menu or via the command palette.
 
-### 8.1 The list
+### 9.1 The list
 
 Each row shows the **code**, the **label** (what users see), the **order**, and whether
 it is **Active** or **Inactive**. By default only active records are shown; use
 **Mostrar inativos / Ocultar inativos** (Show / Hide inactive) to toggle.
 
-### 8.2 Creating a record
+### 9.2 Creating a record
 
 1. Click **Novo** (New).
 2. Fill in **Código** (a stable internal code), **Rótulo** (the display label), and
    **Ordem** (sort order, a number ≥ 0).
 3. Click **Salvar** (Save). Codes must be unique — reusing one is rejected.
 
-### 8.3 Editing a record
+### 9.3 Editing a record
 
 1. Click the **pencil** icon on the row.
 2. You can change the **label**, the **order**, and the **Active** switch. The **code**
    cannot be changed (it is the stable identifier).
 3. Click **Salvar**.
 
-### 8.4 Activating / deactivating
+### 9.4 Activating / deactivating
 
 - Click the **ban** icon to **deactivate** a record (soft delete). Inactive values stay
   for historical accuracy but **cannot be used on new leads**.
@@ -335,7 +377,7 @@ it is **Active** or **Inactive**. By default only active records are shown; use
 
 ---
 
-## 9. Messages and validation
+## 10. Messages and validation
 
 FKERP validates your input and shows clear, Portuguese-language messages:
 
@@ -346,26 +388,28 @@ FKERP validates your input and shows clear, Portuguese-language messages:
 
 ---
 
-## 10. Signing out
+## 11. Signing out
 
 Click **Sair** (Sign out) in the top-right of the menu bar. You are returned to the login
 screen and your session is closed.
 
 ---
 
-## 11. What's next
+## 12. What's next
 
-This edition covers the full **Sprint 1** lead lifecycle: registering and finding leads (list,
-search, filters), the lead detail, assigning a responsible person, interaction history with the
-**Contacted** rule, **qualification**, the **Lost** flow, visibility by profile, the operational
-**Pendências** worklist and the **Indicadores** view.
+This edition covers the full **Sprint 1** lead lifecycle (registering and finding leads, the lead
+detail, assignment, interaction history with the **Contacted** rule, **qualification**, the **Lost**
+flow, visibility by profile, the **Pendências** worklist and the **Indicadores** view) plus the start
+of **Sprint 2 — Opportunities**: creating a commercial Opportunity from a qualified lead and the
+**operational Opportunity list** with stage filtering and per-profile visibility.
 
-The next release (Sprint 2) starts the **commercial Opportunity**: a **qualified** lead will
-originate an Opportunity, carrying over its data (contacts, origin, responsible, interaction
-history, main interest and the qualification details) so nothing is re-typed. The lead and the
-Opportunity stay separate records — qualifying a lead still does **not** create an Opportunity or a
-customer today. This manual will be updated when that ships.
+The next releases will continue the commercial pipeline: opening an **Opportunity's detail**, moving
+it **through the stages** (Descoberta, Aderência, Pronta para proposta), **registering commercial
+activities** (which will fill the *last activity* and *next action* columns), Opportunity
+**indicators**, and preparing the Opportunity for the generation of a **proposal**. This manual will
+be updated as each ships.
 
 ---
 
-*Document status: Sprint 1 closed (lead intake through indicators). Maintained alongside the product.*
+*Document status: Sprint 1 closed; Sprint 2 in progress (Opportunity creation + operational list).
+Maintained alongside the product.*
