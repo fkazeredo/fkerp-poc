@@ -31,6 +31,106 @@
       appendTo="body"
     />
   </div>
+  <div class="filter">
+    <label>Responsável</label>
+    <p-select
+      [options]="responsibleOptions()"
+      optionLabel="name"
+      optionValue="id"
+      [(ngModel)]="responsible"
+      (ngModelChange)="applyFilters()"
+      placeholder="Todos"
+      [showClear]="true"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Origem</label>
+    <p-select
+      [options]="origins()"
+      optionLabel="label"
+      optionValue="id"
+      [(ngModel)]="originId"
+      (ngModelChange)="applyFilters()"
+      placeholder="Todas"
+      [showClear]="true"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Criado de</label>
+    <p-datepicker
+      [(ngModel)]="createdFrom"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Criado até</label>
+    <p-datepicker
+      [(ngModel)]="createdTo"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Fechamento de</label>
+    <p-datepicker
+      [(ngModel)]="closeFrom"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Fechamento até</label>
+    <p-datepicker
+      [(ngModel)]="closeTo"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label for="valueMin">Valor mín.</label>
+    <p-inputNumber
+      inputId="valueMin"
+      [(ngModel)]="valueMin"
+      (ngModelChange)="applyFilters()"
+      mode="currency"
+      currency="BRL"
+      [min]="0"
+      placeholder="0,00"
+      styleClass="w-full"
+    />
+  </div>
+  <div class="filter">
+    <label for="valueMax">Valor máx.</label>
+    <p-inputNumber
+      inputId="valueMax"
+      [(ngModel)]="valueMax"
+      (ngModelChange)="applyFilters()"
+      mode="currency"
+      currency="BRL"
+      [min]="0"
+      placeholder="0,00"
+      styleClass="w-full"
+    />
+  </div>
   <p-button
     label="Limpar"
     icon="pi pi-filter-slash"

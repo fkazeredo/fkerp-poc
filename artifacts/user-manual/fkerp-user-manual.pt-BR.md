@@ -324,7 +324,22 @@ Oportunidades que você pode trabalhar. A lista é paginada e mostra, para cada 
 | **Criado em** | A data de criação. |
 | **Última atividade / Próxima ação** | Reservadas para uma próxima versão (atividades comerciais). |
 
-Você pode **buscar** (por título, tipo de produto ou interesse) e **filtrar por estágio**.
+Acima da lista há uma barra de **busca e filtros**. A **busca** procura por título, tipo de produto
+ou interesse da Oportunidade **e também pelo nome e pelos contatos (telefone, WhatsApp, e-mail) do
+Lead de origem** — então é possível encontrar uma negociação digitando o nome ou o telefone do
+cliente. Os filtros disponíveis são:
+
+| Filtro | O que faz |
+|--------|-----------|
+| **Estágio** | Um ou mais estágios do pipeline. |
+| **Responsável** | Um responsável específico ou *Sem responsável* (não atribuídas). |
+| **Origem** | A origem do Lead que deu início à Oportunidade. |
+| **Criado de / até** | O período de criação da Oportunidade. |
+| **Fechamento de / até** | O período da previsão de fechamento. |
+| **Valor mín. / máx.** | A faixa de valor estimado. |
+
+Os filtros se combinam (a lista mostra apenas as Oportunidades que atendem a todos) e o botão
+**Limpar** zera todos de uma vez. Ao aplicar qualquer filtro, a lista volta para a primeira página.
 
 - **Oportunidades perdidas ficam ocultas por padrão.** Só aparecem quando você seleciona o estágio
   **Perdida** no filtro.

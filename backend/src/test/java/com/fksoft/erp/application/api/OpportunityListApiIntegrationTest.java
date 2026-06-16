@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.ResultActions;
 
 /**
  * End-to-end (MockMvc, real Postgres) of the operational Opportunity list: profile-based visibility
@@ -134,6 +135,106 @@ class OpportunityListApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void filtersByResponsible() throws Exception {
+        String token = manager();
+        // A specific responsible person.
+        mvc.perform(get("/api/opportunities")
+                        .param("responsible", VENDEDOR.toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].name", hasItem("Echo")))
+                .andExpect(jsonPath("$.content[*].name", not(hasItem("Alpha"))));
+        // The unassigned pool.
+        mvc.perform(get("/api/opportunities")
+                        .param("responsible", "unassigned")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.content[*].name", hasItem("Delta")))
+                .andExpect(jsonPath("$.content[*].name", not(hasItem("Echo"))));
+    }
+
+    @Test
+    void filtersByOrigin() throws Exception {
+        // Move Bravo to a second origin; filtering by it returns only Bravo.
+        UUID secondOrigin = origins.findByActiveTrueOrderBySortOrderAsc().get(1).id();
+        jdbc.update(
+                "UPDATE opportunities SET origin_id = cast(? as uuid) WHERE name = 'Bravo'", secondOrigin.toString());
+        mvc.perform(get("/api/opportunities")
+                        .param("originId", secondOrigin.toString())
+                        .header("Authorization", "Bearer " + manager()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].name", hasItem("Bravo")))
+                .andExpect(jsonPath("$.content[*].name", not(hasItem("Alpha"))));
+    }
+
+    @Test
+    void filtersByCreationPeriod() throws Exception {
+        jdbc.update("UPDATE opportunities SET created_at = TIMESTAMPTZ '2026-01-10 12:00:00+00' WHERE name = 'Alpha'");
+        jdbc.update("UPDATE opportunities SET created_at = TIMESTAMPTZ '2026-03-20 12:00:00+00' WHERE name = 'Bravo'");
+        mvc.perform(get("/api/opportunities")
+                        .param("createdFrom", "2026-01-01")
+                        .param("createdTo", "2026-01-31")
+                        .header("Authorization", "Bearer " + manager()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].name", hasItem("Alpha")))
+                .andExpect(jsonPath("$.content[*].name", not(hasItem("Bravo"))));
+    }
+
+    @Test
+    void filtersByExpectedClosePeriod() throws Exception {
+        jdbc.update("UPDATE opportunities SET expected_close_date = DATE '2026-02-15' WHERE name = 'Alpha'");
+        jdbc.update("UPDATE opportunities SET expected_close_date = DATE '2026-05-15' WHERE name = 'Bravo'");
+        mvc.perform(get("/api/opportunities")
+                        .param("closeFrom", "2026-02-01")
+                        .param("closeTo", "2026-02-28")
+                        .header("Authorization", "Bearer " + manager()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].name", hasItem("Alpha")))
+                .andExpect(jsonPath("$.content[*].name", not(hasItem("Bravo"))));
+    }
+
+    @Test
+    void filtersByEstimatedValueRange() throws Exception {
+        String token = manager(); // seeded values: Alpha=1000.00, Bravo=2500.00
+        mvc.perform(get("/api/opportunities").param("valueMin", "2000").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].name", hasItem("Bravo")))
+                .andExpect(jsonPath("$.content[*].name", not(hasItem("Alpha"))));
+        mvc.perform(get("/api/opportunities")
+                        .param("valueMin", "500")
+                        .param("valueMax", "1500")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.content[*].name", hasItem("Alpha")))
+                .andExpect(jsonPath("$.content[*].name", not(hasItem("Bravo"))));
+    }
+
+    @Test
+    void searchesByLeadNameContactAndSummary() throws Exception {
+        // Give Alpha's source lead a distinctive contact and the Opportunity a distinctive summary.
+        jdbc.update("UPDATE leads SET email = 'zephyr@example.com' WHERE name = 'Lead Alpha'");
+        jdbc.update("UPDATE opportunities SET main_interest = 'Zephyr rooftop package' WHERE name = 'Alpha'");
+        String token = manager();
+        // By the source Lead's name (correlated EXISTS subquery).
+        search(token, "Lead Alpha").andExpect(jsonPath("$.content[*].name", hasItem("Alpha")));
+        // By the source Lead's contact (email) — the contact lives on the Lead, not the Opportunity.
+        search(token, "zephyr@example.com").andExpect(jsonPath("$.content[*].name", hasItem("Alpha")));
+        // By the Opportunity's own summary (main interest).
+        search(token, "rooftop").andExpect(jsonPath("$.content[*].name", hasItem("Alpha")));
+        // A non-matching term finds nothing.
+        search(token, "no-such-term").andExpect(jsonPath("$.content[*].name", not(hasItem("Alpha"))));
+    }
+
+    @Test
+    void responsibleFilterDoesNotBypassVisibility() throws Exception {
+        // An own-only representative filtering by the manager's id must not surface the manager's Opportunities.
+        String rep = login("representante", "representante123");
+        mvc.perform(get("/api/opportunities")
+                        .param("responsible", MANAGER.toString())
+                        .header("Authorization", "Bearer " + rep))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].name", not(hasItem("Bravo"))));
+    }
+
+    @Test
     void paginatesWithEnvelope() throws Exception {
         mvc.perform(get("/api/opportunities").param("size", "2").header("Authorization", "Bearer " + manager()))
                 .andExpect(jsonPath("$.size").value(2))
@@ -228,6 +329,11 @@ class OpportunityListApiIntegrationTest extends AbstractIntegrationTest {
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;
+    }
+
+    private ResultActions search(String token, String term) throws Exception {
+        return mvc.perform(get("/api/opportunities").param("q", term).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
     }
 
     private String manager() throws Exception {
