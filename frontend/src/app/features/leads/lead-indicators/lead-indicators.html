@@ -1,0 +1,95 @@
+<header class="page-head">
+  <div>
+    <h1>Indicadores</h1>
+    <p class="sub muted">
+      Visão do topo do funil — total, por status, por origem e por responsável.
+    </p>
+  </div>
+</header>
+
+<div class="surface filters">
+  <div class="field">
+    <label for="from">Criado de</label>
+    <p-datepicker
+      inputId="from"
+      [(ngModel)]="createdFrom"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      [maxDate]="createdTo ?? undefined"
+      (onSelect)="applyPeriod()"
+      (onClear)="applyPeriod()"
+    />
+  </div>
+  <div class="field">
+    <label for="to">até</label>
+    <p-datepicker
+      inputId="to"
+      [(ngModel)]="createdTo"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      [minDate]="createdFrom ?? undefined"
+      (onSelect)="applyPeriod()"
+      (onClear)="applyPeriod()"
+    />
+  </div>
+  <p-button
+    label="Todo o período"
+    severity="secondary"
+    [text]="true"
+    icon="pi pi-times"
+    (onClick)="clearPeriod()"
+  />
+</div>
+
+@if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+}
+
+@if (loading() && !data()) {
+  <p class="muted state">Carregando indicadores…</p>
+} @else if (data()) {
+  <section class="kpis">
+    @for (kpi of kpis(); track kpi.key) {
+      <div class="kpi surface" [class]="kpi.accent">
+        <span class="kpi-value">{{ kpi.value }}</span>
+        <span class="kpi-label muted">{{ kpi.label }}</span>
+      </div>
+    }
+  </section>
+
+  @if (isEmpty()) {
+    <p class="muted state">Nenhum lead no período selecionado.</p>
+  } @else {
+    <div class="breakdowns">
+      <section class="surface breakdown">
+        <h2>Por origem</h2>
+        @for (bar of byOrigin(); track bar.label) {
+          <div class="bar-row">
+            <span class="bar-label">{{ bar.label }}</span>
+            <span class="bar-track"
+              ><span class="bar-fill" [style.width.%]="bar.ratio * 100"></span
+            ></span>
+            <span class="bar-count">{{ bar.count }}</span>
+          </div>
+        } @empty {
+          <p class="muted">Sem dados.</p>
+        }
+      </section>
+
+      <section class="surface breakdown">
+        <h2>Por responsável</h2>
+        @for (bar of byResponsible(); track bar.label) {
+          <div class="bar-row">
+            <span class="bar-label">{{ bar.label }}</span>
+            <span class="bar-track"
+              ><span class="bar-fill alt" [style.width.%]="bar.ratio * 100"></span
+            ></span>
+            <span class="bar-count">{{ bar.count }}</span>
+          </div>
+        } @empty {
+          <p class="muted">Sem dados.</p>
+        }
+      </section>
+    </div>
+  }
+}

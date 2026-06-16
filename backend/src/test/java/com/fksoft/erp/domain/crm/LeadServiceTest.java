@@ -14,6 +14,7 @@ import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,9 @@ class LeadServiceTest {
 
     @Mock
     private LeadAssignmentPolicy assignmentPolicy;
+
+    @Mock
+    private LeadIndicatorQueries indicatorQueries;
 
     @Mock
     private ApplicationEventPublisher events;
@@ -312,6 +316,35 @@ class LeadServiceTest {
         assertThat(view.status()).isEqualTo(LeadStatus.QUALIFIED);
         assertThat(view.qualification().mainInterest()).isEqualTo("Pacote corporativo");
         assertThat(view.qualification().note()).isEqualTo("bom perfil");
+    }
+
+    @Test
+    void indicatorsDeriveTotalFromStatusesAndResolveResponsibleNames() {
+        UUID r1 = UUID.randomUUID();
+        when(accessPolicy.visibleTo(any(), anyBoolean(), anyBoolean())).thenReturn((root, q, cb) -> null);
+        when(indicatorQueries.countByStatus(any(), any(), any()))
+                .thenReturn(Map.of(LeadStatus.NEW, 3L, LeadStatus.LOST, 2L));
+        when(indicatorQueries.countByOrigin(any(), any(), any()))
+                .thenReturn(List.of(new OriginCountView("Website", 4L)));
+        when(indicatorQueries.countByResponsible(any(), any(), any()))
+                .thenReturn(List.of(new ResponsibleCount(r1, 3L), new ResponsibleCount(null, 2L)));
+        when(indicatorQueries.countWaitingFirstContact(any(), any(), any())).thenReturn(1L);
+        User user = mock(User.class);
+        when(user.id()).thenReturn(r1);
+        when(user.username()).thenReturn("ana");
+        when(users.findAllById(any())).thenReturn(List.of(user));
+
+        LeadIndicatorsView view = service.indicators(UUID.randomUUID(), false, false, null, null);
+
+        assertThat(view.total()).isEqualTo(5);
+        assertThat(view.newLeads()).isEqualTo(3);
+        assertThat(view.lost()).isEqualTo(2);
+        assertThat(view.contacted()).isZero();
+        assertThat(view.qualified()).isZero();
+        assertThat(view.waitingFirstContact()).isEqualTo(1);
+        assertThat(view.byOrigin()).containsExactly(new OriginCountView("Website", 4L));
+        assertThat(view.byResponsible())
+                .containsExactlyInAnyOrder(new ResponsibleCountView("ana", 3L), new ResponsibleCountView(null, 2L));
     }
 
     private static Lead visibleLead() {

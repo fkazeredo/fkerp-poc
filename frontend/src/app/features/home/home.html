@@ -25,6 +25,12 @@
       <span class="tile-title">Pendências</span>
       <span class="tile-desc muted">Leads que precisam de ação para não perder oportunidades.</span>
     </a>
+
+    <a class="tile surface" routerLink="/indicadores">
+      <span class="tile-icon indicators"><i class="pi pi-chart-bar"></i></span>
+      <span class="tile-title">Indicadores</span>
+      <span class="tile-desc muted">O topo do funil: total, por status, origem e responsável.</span>
+    </a>
   }
 
   @if (auth.canCreateLead()) {
@@ -44,5 +50,6 @@
 
 <p class="muted home-hint">
   Dica: pressione <span class="kbd">Ctrl</span> <span class="kbd">K</span> para abrir os comandos,
-  <span class="kbd">n</span> para um novo lead ou <span class="kbd">?</span> para ver todos os atalhos.
+  <span class="kbd">n</span> para um novo lead ou <span class="kbd">?</span> para ver todos os
+  atalhos.
 </p>

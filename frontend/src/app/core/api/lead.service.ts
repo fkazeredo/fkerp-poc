@@ -75,6 +75,29 @@ export interface PageResponse<T> {
   last: boolean;
 }
 
+export interface OriginCount {
+  origin: string;
+  count: number;
+}
+
+/** {@code responsibleName === null} means the unassigned bucket. */
+export interface ResponsibleCount {
+  responsibleName: string | null;
+  count: number;
+}
+
+/** Minimum top-of-funnel indicators over the Leads the caller can see, in an optional period. */
+export interface LeadIndicators {
+  total: number;
+  newLeads: number;
+  contacted: number;
+  qualified: number;
+  lost: number;
+  waitingFirstContact: number;
+  byOrigin: OriginCount[];
+  byResponsible: ResponsibleCount[];
+}
+
 /** Operational Lead-list filters. {@code responsible} is a user id or the literal `unassigned`. */
 export interface LeadFilters {
   status?: LeadStatus[];
@@ -188,6 +211,21 @@ export class LeadService {
   pending(page = 0, size = 20): Observable<PageResponse<PendingItem>> {
     const params = new HttpParams().set('page', page).set('size', size);
     return this.http.get<PageResponse<PendingItem>>('/api/leads/pending', { params });
+  }
+
+  /** Top-of-funnel indicators in an optional period (ISO dates); absent dates mean all-time. */
+  indicators(
+    createdFrom: string | null = null,
+    createdTo: string | null = null,
+  ): Observable<LeadIndicators> {
+    let params = new HttpParams();
+    if (createdFrom) {
+      params = params.set('createdFrom', createdFrom);
+    }
+    if (createdTo) {
+      params = params.set('createdTo', createdTo);
+    }
+    return this.http.get<LeadIndicators>('/api/leads/indicators', { params });
   }
 
   detail(id: string): Observable<LeadDetail> {

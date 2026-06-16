@@ -50,6 +50,10 @@
   background: color-mix(in srgb, #ef4444 16%, transparent);
   color: #dc2626;
 }
+.tile-icon.indicators {
+  background: color-mix(in srgb, #a855f7 16%, transparent);
+  color: #9333ea;
+}
 
 .tile-title {
   font-weight: 700;

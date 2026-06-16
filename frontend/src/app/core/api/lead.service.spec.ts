@@ -82,6 +82,41 @@ describe('LeadService', () => {
     });
   });
 
+  it('fetches indicators with the period params', () => {
+    service.indicators('2026-06-01', '2026-06-16').subscribe();
+    const req = http.expectOne((r) => r.url === '/api/leads/indicators');
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('createdFrom')).toBe('2026-06-01');
+    expect(req.request.params.get('createdTo')).toBe('2026-06-16');
+    req.flush({
+      total: 0,
+      newLeads: 0,
+      contacted: 0,
+      qualified: 0,
+      lost: 0,
+      waitingFirstContact: 0,
+      byOrigin: [],
+      byResponsible: [],
+    });
+  });
+
+  it('omits absent indicator dates (all-time)', () => {
+    service.indicators().subscribe();
+    const req = http.expectOne((r) => r.url === '/api/leads/indicators');
+    expect(req.request.params.has('createdFrom')).toBe(false);
+    expect(req.request.params.has('createdTo')).toBe(false);
+    req.flush({
+      total: 0,
+      newLeads: 0,
+      contacted: 0,
+      qualified: 0,
+      lost: 0,
+      waitingFirstContact: 0,
+      byOrigin: [],
+      byResponsible: [],
+    });
+  });
+
   it('gets the lead detail', () => {
     service.detail('l1').subscribe();
     const req = http.expectOne('/api/leads/l1');
