@@ -9,6 +9,7 @@ import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
+import { InputTextModule } from 'primeng/inputtext';
 import { DatePickerModule } from 'primeng/datepicker';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
@@ -38,6 +39,7 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'dan
     DialogModule,
     SelectModule,
     TextareaModule,
+    InputTextModule,
     DatePickerModule,
     MessageModule,
   ],
@@ -67,6 +69,7 @@ export class LeadDetailPage implements OnInit {
   protected readonly interactionTypes = signal<ReferenceItem[]>([]);
   protected readonly interactionResults = signal<ReferenceItem[]>([]);
 
+  protected qualifyMainInterest = '';
   protected qualifyNote = '';
   protected lossReasonId: string | null = null;
   protected lossNote = '';
@@ -108,8 +111,8 @@ export class LeadDetailPage implements OnInit {
   }
 
   protected canQualify(): boolean {
-    const status = this.lead()?.status;
-    return status === 'NEW' || status === 'CONTACTED';
+    const lead = this.lead();
+    return !!lead && lead.status === 'CONTACTED' && !lead.unassigned;
   }
 
   protected canLose(): boolean {
@@ -138,6 +141,7 @@ export class LeadDetailPage implements OnInit {
   }
 
   protected openQualify(): void {
+    this.qualifyMainInterest = '';
     this.qualifyNote = '';
     this.qualifyOpen.set(true);
   }
@@ -162,8 +166,11 @@ export class LeadDetailPage implements OnInit {
   }
 
   protected confirmQualify(): void {
+    if (this.qualifyMainInterest.trim().length === 0) {
+      return;
+    }
     this.act(
-      this.leads.qualify(this.leadId, this.qualifyNote || null),
+      this.leads.qualify(this.leadId, this.qualifyMainInterest.trim(), this.qualifyNote || null),
       'Lead qualificado',
       this.qualifyOpen,
     );

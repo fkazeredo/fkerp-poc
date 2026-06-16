@@ -83,12 +83,17 @@ public class Lead {
     @Column(name = "next_contact_at")
     private Instant nextContactAt;
 
-    // Qualification outcome (set when the lead is qualified; kept for history).
+    // Qualification outcome (set when the lead is qualified; kept for history and to seed a future
+    // Opportunity). The main interest is required at qualification; the note is optional.
     @Column(name = "qualified_at")
     private Instant qualifiedAt;
 
     @Column(name = "qualified_by")
     private UUID qualifiedBy;
+
+    @Size(max = 500)
+    @Column(name = "main_interest")
+    private String mainInterest;
 
     @Size(max = 2000)
     @Column(name = "qualification_note")
@@ -208,20 +213,30 @@ public class Lead {
     }
 
     /**
-     * Qualifies the lead. Allowed only from {@link LeadStatus#NEW} or {@link LeadStatus#CONTACTED};
-     * the qualification (who/when/note) is kept for history.
+     * Qualifies the lead with its main commercial interest. Allowed only from
+     * {@link LeadStatus#CONTACTED} (the lead must have an effective contact first) and only when the
+     * lead has a responsible person; the qualification (interest/who/when/note) is kept for history
+     * and to seed a future Opportunity. The lead already carries valid contact information by
+     * construction ({@link #register}), so that precondition cannot be violated here.
      *
      * @param byUser id of the user qualifying the lead
-     * @param note optional qualification note
-     * @throws LeadCannotBeQualifiedException if the lead is already qualified or lost
+     * @param mainInterest the main commercial interest (required)
+     * @param note optional commercial note
+     * @throws LeadCannotBeQualifiedException if the lead is not in CONTACTED status (NEW, already
+     *     qualified, or lost)
+     * @throws LeadQualificationRequiresResponsibleException if the lead has no responsible person
      */
-    public void qualify(UUID byUser, String note) {
-        if (status != LeadStatus.NEW && status != LeadStatus.CONTACTED) {
+    public void qualify(UUID byUser, String mainInterest, String note) {
+        if (status != LeadStatus.CONTACTED) {
             throw new LeadCannotBeQualifiedException();
+        }
+        if (responsiblePersonId == null) {
+            throw new LeadQualificationRequiresResponsibleException();
         }
         status = LeadStatus.QUALIFIED;
         qualifiedAt = Instant.now();
         qualifiedBy = byUser;
+        this.mainInterest = mainInterest;
         qualificationNote = emptyToNull(note);
         updatedBy = byUser;
     }

@@ -11,6 +11,7 @@ import com.fksoft.erp.domain.crm.LeadCannotBeMarkedLostException;
 import com.fksoft.erp.domain.crm.LeadCannotBeQualifiedException;
 import com.fksoft.erp.domain.crm.LeadContactRequiredException;
 import com.fksoft.erp.domain.crm.LeadNotFoundException;
+import com.fksoft.erp.domain.crm.LeadQualificationRequiresResponsibleException;
 import com.fksoft.erp.domain.crm.LossReasonNotAvailableException;
 import com.fksoft.erp.domain.crm.OriginNotAvailableException;
 import com.fksoft.erp.domain.crm.ReferenceNotFoundException;
@@ -38,6 +39,7 @@ public class HttpErrorMapping {
             entry(LeadAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(LeadAssignmentNotAllowedException.class, HttpStatus.FORBIDDEN),
             entry(LeadCannotBeQualifiedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(LeadQualificationRequiresResponsibleException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(LeadCannotBeMarkedLostException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(LossReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(InteractionTypeNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),

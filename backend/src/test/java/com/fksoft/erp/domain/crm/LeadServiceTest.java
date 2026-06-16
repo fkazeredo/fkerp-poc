@@ -275,6 +275,33 @@ class LeadServiceTest {
         assertThat(view.interactions().get(0).resultLabel()).isEqualTo("Contato realizado");
     }
 
+    @Test
+    void qualifyMapsTheMainInterestIntoTheDetail() {
+        UUID id = UUID.randomUUID();
+        UUID responsible = UUID.randomUUID();
+        Lead lead = Lead.register(
+                new RegisterLeadCommand("Maria", "11999999999", null, null, UUID.randomUUID(), responsible, null),
+                Origin.create("WEBSITE", "Website", 1),
+                UUID.randomUUID());
+        lead.recordInteraction(
+                InteractionType.create("PHONE_CALL", "Ligação", 1),
+                InteractionResult.create("CONTACT_MADE", "Contato realizado", 1),
+                "falamos",
+                Instant.now(),
+                null,
+                responsible);
+        when(leads.findById(id)).thenReturn(Optional.of(lead));
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(true);
+        when(leads.saveAndFlush(any(Lead.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(users.findAllById(any())).thenReturn(List.of());
+
+        LeadDetailView view = service.qualify(id, "Pacote corporativo", "bom perfil", responsible, false);
+
+        assertThat(view.status()).isEqualTo(LeadStatus.QUALIFIED);
+        assertThat(view.qualification().mainInterest()).isEqualTo("Pacote corporativo");
+        assertThat(view.qualification().note()).isEqualTo("bom perfil");
+    }
+
     private static Lead visibleLead() {
         return Lead.register(
                 new RegisterLeadCommand("Maria", "11999999999", null, null, UUID.randomUUID(), null, null),

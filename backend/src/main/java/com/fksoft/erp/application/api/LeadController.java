@@ -128,17 +128,16 @@ public class LeadController {
     }
 
     /**
-     * Qualifies a Lead and returns the refreshed detail.
+     * Qualifies a Lead with its main commercial interest and returns the refreshed detail.
      *
      * @param id the lead id
-     * @param request optional qualification note
+     * @param request the main interest (required) and optional commercial note
      * @return the updated detail
      */
     @PostMapping("/{id}/qualify")
-    public LeadDetailResponse qualify(
-            @PathVariable UUID id, @Valid @RequestBody(required = false) QualifyRequest request) {
-        String note = request != null ? request.note() : null;
-        LeadDetailView view = leadService.qualify(id, note, userContext.currentUserId(), canSeeAll());
+    public LeadDetailResponse qualify(@PathVariable UUID id, @Valid @RequestBody QualifyRequest request) {
+        LeadDetailView view = leadService.qualify(
+                id, request.mainInterest(), request.note(), userContext.currentUserId(), canSeeAll());
         return LeadDetailResponse.from(view);
     }
 

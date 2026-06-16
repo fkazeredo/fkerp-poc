@@ -90,6 +90,8 @@
     @if (l.qualification; as q) {
       <p-card header="Qualificação">
         <dl class="data">
+          <dt>Interesse</dt>
+          <dd>{{ q.mainInterest }}</dd>
           <dt>Quando</dt>
           <dd>{{ q.qualifiedAt | date: 'short' }}</dd>
           <dt>Por</dt>
@@ -168,6 +170,10 @@
     [style]="{ width: '28rem' }"
   >
     <div class="field">
+      <label for="qinterest">Interesse principal <span class="req">*</span></label>
+      <input pInputText id="qinterest" [(ngModel)]="qualifyMainInterest" class="w-full" />
+    </div>
+    <div class="field">
       <label for="qnote">Anotação (opcional)</label>
       <textarea pTextarea id="qnote" [(ngModel)]="qualifyNote" rows="3" class="w-full"></textarea>
     </div>
@@ -175,6 +181,7 @@
       <p-button
         label="Qualificar"
         icon="pi pi-check"
+        [disabled]="!qualifyMainInterest.trim()"
         [loading]="acting()"
         (onClick)="confirmQualify()"
       />

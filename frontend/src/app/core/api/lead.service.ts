@@ -95,6 +95,7 @@ export interface AssignmentItem {
 export interface QualificationInfo {
   qualifiedAt: string;
   qualifiedBy: string | null;
+  mainInterest: string;
   note: string | null;
 }
 
@@ -169,8 +170,8 @@ export class LeadService {
     return this.http.get<LeadDetail>(`/api/leads/${id}`);
   }
 
-  qualify(id: string, note: string | null): Observable<LeadDetail> {
-    return this.http.post<LeadDetail>(`/api/leads/${id}/qualify`, { note });
+  qualify(id: string, mainInterest: string, note: string | null): Observable<LeadDetail> {
+    return this.http.post<LeadDetail>(`/api/leads/${id}/qualify`, { mainInterest, note });
   }
 
   lose(id: string, lossReasonId: string, note: string | null): Observable<LeadDetail> {
