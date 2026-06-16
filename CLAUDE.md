@@ -460,8 +460,14 @@ the goal - high coverage with weak assertions is not quality.
   feature; **PATCH** = backward-compatible bug fix. The version lives in **`APP_VERSION`**
   (`.env`/`.env.example`, wired through `compose.yaml`, bound to `app.version`), is served by the
   public `GET /api/version` and **displayed in the UI** (login screen + sidebar footer). Bump it on
-  release; every release gets a note in **`artifacts/release-notes/`** (one file per version, derived
-  from the development reports).
+  release; every release ships a **release note** (see below).
+- **Release notes (customer-facing):** each release has one note in **`artifacts/release-notes/`**
+  (one file per version, e.g. `v0.12.0.md`) written **for the key user / customer, NOT engineers** -
+  plain, benefit-led, scannable language organized as **Novidades / Melhorias / Correções**
+  (New / Improved / Fixed), answering "what changed and why it matters" in ~30 seconds. **No technical
+  jargon** (no endpoints, tests, architecture, scopes-as-code, migrations or SemVer internals). The
+  **development reports** (`artifacts/development-reports/`) stay the technical record; the release
+  note is the human-facing companion derived from them.
 - **User manual (bilingual):** the end-user manual is maintained in **en-US and pt-BR**
   (`artifacts/user-manual/fkerp-user-manual.en-US.md` and `...pt-BR.md`); keep both in sync whenever a
   user-facing behavior changes.

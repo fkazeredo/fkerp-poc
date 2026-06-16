@@ -15,8 +15,8 @@ describe('VersionService', () => {
     const service = TestBed.inject(VersionService); // construction fires the GET
     const req = http.expectOne('/api/version');
     expect(req.request.method).toBe('GET');
-    req.flush({ version: '0.1.0' });
-    expect(service.version()).toBe('0.1.0');
+    req.flush({ version: '0.12.0' });
+    expect(service.version()).toBe('0.12.0');
     http.verify();
   });
 
