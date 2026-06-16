@@ -93,6 +93,8 @@ public class SecurityConfig {
                         .hasAuthority("SCOPE_crm:lead:update")
                         .requestMatchers(HttpMethod.GET, "/api/leads", "/api/leads/**")
                         .hasAnyAuthority(READ_SCOPES)
+                        .requestMatchers(HttpMethod.POST, "/api/opportunities")
+                        .hasAuthority("SCOPE_crm:opportunity:create")
                         .requestMatchers(HttpMethod.GET, "/api/crm/responsibles")
                         .hasAnyAuthority(READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/**")

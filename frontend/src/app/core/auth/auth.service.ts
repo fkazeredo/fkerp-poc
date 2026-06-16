@@ -74,6 +74,11 @@ export class AuthService {
   canOperateLead(): boolean {
     return this.hasScope('crm:lead:update');
   }
+
+  /** Whether the user may create a commercial Opportunity from a qualified lead. */
+  canCreateOpportunity(): boolean {
+    return this.hasScope('crm:opportunity:create');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

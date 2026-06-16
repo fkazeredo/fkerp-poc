@@ -459,8 +459,10 @@ the goal - high coverage with weak assertions is not quality.
   `MAJOR.MINOR.PATCH` - **MAJOR** = backward-incompatible change; **MINOR** = new backward-compatible
   feature; **PATCH** = backward-compatible bug fix. The version lives in **`APP_VERSION`**
   (`.env`/`.env.example`, wired through `compose.yaml`, bound to `app.version`), is served by the
-  public `GET /api/version` and **displayed in the UI** (login screen + sidebar footer). Bump it on
-  release; every release ships a **release note** (see below).
+  public `GET /api/version` and **displayed in the UI** (login screen + sidebar footer). **Bump it on
+  EVERY delivered slice** (part of the Definition of Done): each slice merged to `develop`/`main`
+  increments the version per SemVer — **MINOR** for a new feature, **PATCH** for a fix/small change —
+  and ships the matching **release note** (see below). Keep `.env`/`.env.example` in sync.
 - **Release notes (delivery document, customer-facing):** each release has one note in
   **`artifacts/release-notes/`** (one file per version, e.g. `v0.12.0.md`), written **for key users and
   managers, NOT engineers**. It is a **serious delivery document**: a **header** (version, release
