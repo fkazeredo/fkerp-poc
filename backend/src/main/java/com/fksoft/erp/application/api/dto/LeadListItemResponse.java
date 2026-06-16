@@ -1,13 +1,15 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.LeadListView;
-import com.fksoft.erp.domain.crm.LeadStatus;
+import com.fksoft.erp.domain.crm.model.Lead;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
+import com.fksoft.erp.domain.crm.repository.LatestInteractionRow;
 import java.time.Instant;
 import java.util.UUID;
 
 /**
  * Operational Lead list item (entity-free transport DTO). {@code unassigned} flags leads with no
- * responsible so the UI can highlight them.
+ * responsible so the UI can highlight them. Assembled from the Lead entity plus the responsible's name
+ * (resolved from Identity) and the latest-interaction row (a separate query).
  */
 public record LeadListItemResponse(
         UUID id,
@@ -24,24 +26,36 @@ public record LeadListItemResponse(
         Instant nextContactAt) {
 
     /**
-     * Maps the domain list view to the transport DTO.
+     * Maps a Lead entity (plus enrichment) to the transport DTO.
      *
-     * @param v the operational list view
+     * @param lead the lead entity
+     * @param responsibleName the responsible's display name, or {@code null} when unassigned/unknown
+     * @param latest the latest interaction row for this lead, or {@code null} when none
      * @return the response item
      */
-    public static LeadListItemResponse from(LeadListView v) {
+    public static LeadListItemResponse from(Lead lead, String responsibleName, LatestInteractionRow latest) {
         return new LeadListItemResponse(
-                v.id(),
-                v.name(),
-                v.mainContact(),
-                v.originLabel(),
-                v.status(),
-                v.responsibleId(),
-                v.responsibleName(),
-                v.unassigned(),
-                v.createdAt(),
-                v.lastInteractionAt(),
-                v.lastInteractionType(),
-                v.nextContactAt());
+                lead.id(),
+                lead.name(),
+                mainContact(lead),
+                lead.origin().label(),
+                lead.status(),
+                lead.responsiblePersonId(),
+                responsibleName,
+                lead.responsiblePersonId() == null,
+                lead.createdAt(),
+                latest != null ? latest.getOccurredAt() : null,
+                latest != null ? latest.getTypeLabel() : null,
+                lead.nextContactAt());
+    }
+
+    private static String mainContact(Lead lead) {
+        if (lead.phone() != null) {
+            return lead.phone();
+        }
+        if (lead.whatsapp() != null) {
+            return lead.whatsapp();
+        }
+        return lead.email();
     }
 }

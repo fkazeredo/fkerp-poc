@@ -1,15 +1,16 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.LeadStatus;
-import com.fksoft.erp.domain.crm.PendingLeadView;
-import com.fksoft.erp.domain.crm.PendingReason;
+import com.fksoft.erp.domain.crm.model.Lead;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
+import com.fksoft.erp.domain.crm.model.PendingReason;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 /**
  * Pending Lead item (entity-free transport DTO) for the operational worklist. {@code reasons} are
- * stable codes the UI localizes; {@code unassigned} flags Leads with no responsible.
+ * stable codes the UI localizes; {@code unassigned} flags Leads with no responsible. Assembled from
+ * the Lead entity plus the responsible's resolved name and the computed reasons.
  */
 public record PendingLeadResponse(
         UUID id,
@@ -24,22 +25,34 @@ public record PendingLeadResponse(
         List<PendingReason> reasons) {
 
     /**
-     * Maps the domain pending view to the transport DTO.
+     * Maps a Lead entity (plus enrichment) to the pending transport DTO.
      *
-     * @param v the pending view
+     * @param lead the lead entity
+     * @param responsibleName the responsible's display name, or {@code null} when unassigned/unknown
+     * @param reasons the pending reasons that currently apply
      * @return the response item
      */
-    public static PendingLeadResponse from(PendingLeadView v) {
+    public static PendingLeadResponse from(Lead lead, String responsibleName, List<PendingReason> reasons) {
         return new PendingLeadResponse(
-                v.id(),
-                v.name(),
-                v.mainContact(),
-                v.status(),
-                v.responsibleId(),
-                v.responsibleName(),
-                v.unassigned(),
-                v.createdAt(),
-                v.nextContactAt(),
-                v.reasons());
+                lead.id(),
+                lead.name(),
+                mainContact(lead),
+                lead.status(),
+                lead.responsiblePersonId(),
+                responsibleName,
+                lead.responsiblePersonId() == null,
+                lead.createdAt(),
+                lead.nextContactAt(),
+                reasons);
+    }
+
+    private static String mainContact(Lead lead) {
+        if (lead.phone() != null) {
+            return lead.phone();
+        }
+        if (lead.whatsapp() != null) {
+            return lead.whatsapp();
+        }
+        return lead.email();
     }
 }

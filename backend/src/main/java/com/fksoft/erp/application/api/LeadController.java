@@ -10,15 +10,12 @@ import com.fksoft.erp.application.api.dto.PendingLeadResponse;
 import com.fksoft.erp.application.api.dto.QualifyRequest;
 import com.fksoft.erp.application.api.dto.ReassignRequest;
 import com.fksoft.erp.application.api.dto.RegisterInteractionRequest;
-import com.fksoft.erp.domain.crm.LeadDetailView;
-import com.fksoft.erp.domain.crm.LeadIndicatorsView;
-import com.fksoft.erp.domain.crm.LeadListView;
-import com.fksoft.erp.domain.crm.LeadSearchCriteria;
-import com.fksoft.erp.domain.crm.LeadService;
-import com.fksoft.erp.domain.crm.LeadStatus;
-import com.fksoft.erp.domain.crm.PendingLeadView;
-import com.fksoft.erp.domain.crm.RecordInteractionCommand;
-import com.fksoft.erp.domain.crm.RegisterLeadCommand;
+import com.fksoft.erp.application.read.LeadReadService;
+import com.fksoft.erp.domain.crm.dto.LeadSearchCriteria;
+import com.fksoft.erp.domain.crm.dto.RecordInteractionCommand;
+import com.fksoft.erp.domain.crm.dto.RegisterLeadCommand;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
+import com.fksoft.erp.domain.crm.service.LeadService;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
@@ -29,7 +26,6 @@ import java.time.ZoneOffset;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -44,11 +40,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Commercial / CRM lead endpoints. Reading (list + detail) requires a read tier —
- * {@code crm:lead:read} (own only), {@code crm:lead:read:unassigned} (also the unassigned pool) or
- * {@code crm:lead:read:all} (all) — and the visibility tier is enforced by the policy. Creating
- * requires {@code crm:lead:create}; the transitions (qualify / lose / reassign / interactions)
- * require {@code crm:lead:update} and the caller must be allowed to see the Lead.
+ * Commercial / CRM lead endpoints. Reading (list + detail + pending + indicators) is served by
+ * {@link LeadReadService} and requires a read tier — {@code crm:lead:read} (own only),
+ * {@code crm:lead:read:unassigned} (also the unassigned pool) or {@code crm:lead:read:all} (all) — the
+ * visibility tier being enforced by the policy. Creating requires {@code crm:lead:create}; the
+ * transitions (qualify / lose / reassign / interactions) require {@code crm:lead:update} and the caller
+ * must be allowed to see the Lead; after a transition the refreshed detail is re-read.
  */
 @RestController
 @RequestMapping("/api/leads")
@@ -56,6 +53,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class LeadController {
 
     private final LeadService leadService;
+    private final LeadReadService leadReadService;
     private final UserContextProvider userContext;
 
     /**
@@ -116,9 +114,9 @@ public class LeadController {
                         ? createdTo.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
                         : null,
                 q);
-        Page<LeadListView> page =
-                leadService.list(criteria, pageable, userContext.currentUserId(), canSeeAll(), canSeeUnassigned());
-        return PageResponse.from(page, LeadListItemResponse::from);
+        return PageResponse.from(
+                leadReadService.list(criteria, pageable, userContext.currentUserId(), canSeeAll(), canSeeUnassigned()),
+                item -> item);
     }
 
     /**
@@ -131,9 +129,9 @@ public class LeadController {
     @GetMapping("/pending")
     public PageResponse<PendingLeadResponse> pending(
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<PendingLeadView> page =
-                leadService.pending(pageable, userContext.currentUserId(), canSeeAll(), canSeeUnassigned());
-        return PageResponse.from(page, PendingLeadResponse::from);
+        return PageResponse.from(
+                leadReadService.pending(pageable, userContext.currentUserId(), canSeeAll(), canSeeUnassigned()),
+                item -> item);
     }
 
     /**
@@ -153,9 +151,7 @@ public class LeadController {
         Instant to = createdTo != null
                 ? createdTo.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
                 : null;
-        LeadIndicatorsView view =
-                leadService.indicators(userContext.currentUserId(), canSeeAll(), canSeeUnassigned(), from, to);
-        return LeadIndicatorsResponse.from(view);
+        return leadReadService.indicators(userContext.currentUserId(), canSeeAll(), canSeeUnassigned(), from, to);
     }
 
     /**
@@ -166,8 +162,7 @@ public class LeadController {
      */
     @GetMapping("/{id}")
     public LeadDetailResponse detail(@PathVariable UUID id) {
-        LeadDetailView view = leadService.detail(id, userContext.currentUserId(), canSeeAll(), canSeeUnassigned());
-        return LeadDetailResponse.from(view);
+        return leadReadService.detail(id, userContext.currentUserId(), canSeeAll(), canSeeUnassigned());
     }
 
     /**
@@ -179,14 +174,14 @@ public class LeadController {
      */
     @PostMapping("/{id}/qualify")
     public LeadDetailResponse qualify(@PathVariable UUID id, @Valid @RequestBody QualifyRequest request) {
-        LeadDetailView view = leadService.qualify(
+        leadService.qualify(
                 id,
                 request.mainInterest(),
                 request.note(),
                 userContext.currentUserId(),
                 canSeeAll(),
                 canSeeUnassigned());
-        return LeadDetailResponse.from(view);
+        return detail(id);
     }
 
     /**
@@ -198,14 +193,14 @@ public class LeadController {
      */
     @PostMapping("/{id}/lose")
     public LeadDetailResponse lose(@PathVariable UUID id, @Valid @RequestBody LoseRequest request) {
-        LeadDetailView view = leadService.markLost(
+        leadService.markLost(
                 id,
                 request.lossReasonId(),
                 request.note(),
                 userContext.currentUserId(),
                 canSeeAll(),
                 canSeeUnassigned());
-        return LeadDetailResponse.from(view);
+        return detail(id);
     }
 
     /**
@@ -217,14 +212,14 @@ public class LeadController {
      */
     @PostMapping("/{id}/reassign")
     public LeadDetailResponse reassign(@PathVariable UUID id, @Valid @RequestBody ReassignRequest request) {
-        LeadDetailView view = leadService.reassign(
+        leadService.reassign(
                 id,
                 request.responsiblePersonId(),
                 userContext.currentUserId(),
                 canSeeAll(),
                 canSeeUnassigned(),
                 userContext.hasScope("crm:lead:assign"));
-        return LeadDetailResponse.from(view);
+        return detail(id);
     }
 
     /**
@@ -244,9 +239,8 @@ public class LeadController {
                 request.description(),
                 request.occurredAt(),
                 request.nextContactAt());
-        LeadDetailView view = leadService.recordInteraction(
-                id, command, userContext.currentUserId(), canSeeAll(), canSeeUnassigned());
-        return LeadDetailResponse.from(view);
+        leadService.recordInteraction(id, command, userContext.currentUserId(), canSeeAll(), canSeeUnassigned());
+        return detail(id);
     }
 
     private boolean canSeeAll() {

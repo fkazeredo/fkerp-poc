@@ -7,9 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.LeadRepository;
-import com.fksoft.erp.domain.crm.LossReasonRepository;
-import com.fksoft.erp.domain.crm.OriginRepository;
+import com.fksoft.erp.domain.crm.repository.LeadRepository;
+import com.fksoft.erp.domain.crm.repository.LossReasonRepository;
+import com.fksoft.erp.domain.crm.repository.OriginRepository;
 import com.jayway.jsonpath.JsonPath;
 import java.util.HashMap;
 import java.util.Map;

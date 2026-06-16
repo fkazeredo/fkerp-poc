@@ -93,19 +93,23 @@ layers under `com.fksoft`:
 
 | Layer | Package | Contents |
 |---|---|---|
-| **Domain** (pure core) | `com.fksoft.domain.<module>` | Services, entities, repositories, domain events, enums, value/view records, business exceptions, public module facades (ports). Plus kernel `domain.error` (`DomainException`, `ErrorDetails`, `RateLimited`). |
-| **Delivery** (driving adapters) | `com.fksoft.application` | Entry mechanisms only: `api` (controllers) + `api.dto`; `realtime` (WebSocket publishers) + `realtime.dto`; `queue` (consumers) if any. |
+| **Domain** (pure core) | `com.fksoft.domain.<area>` | Organized by business area; each area split into role sub-packages: `model` (entities, enums, value objects, domain events + logic), `repository` (Spring Data repositories, projections, query objects), `service` (command Application Services + policies + specifications), `exception` (business exceptions), `dto` (command/criteria **inputs** only). **No read/view records here.** Plus kernel `domain.error` (`DomainException`, `ErrorDetails`, `RateLimited`). |
+| **Delivery** (driving adapters) | `com.fksoft.application` | `api` (controllers) + `api.dto` (request + **response** DTOs); `read` (read services that assemble responses from entities — see §5.4); `realtime` (+ `realtime.dto`); `queue` (consumers) if any. |
 | **Infra** (driven adapters + config) | `com.fksoft.infra.<concern>` | `security` (JWT, `UserContext`/`UserContextProvider` + adapter), `email`, `integration`, `web` (`ApiErrorResponse`, `GlobalExceptionHandler`, `HttpErrorMapping`, `PageResponse`), `i18n`, `time`, `observability`, `socket`. |
 
 ```txt
 com.fksoft
-  domain                         <- pure core; one package per module; MUST NOT import application/infra
-    order/   Order  OrderStatus  OrderService  OrderRepository  OrderCancelled(event)
-             OrderNotFoundException  OrderCatalog(facade/port)  OrderResponse(maps entity -> stays here)
-    <other business modules>/
+  domain                         <- pure core; by business area, each area in role sub-packages; MUST NOT import application/infra
+    order/
+      model/       Order  OrderStatus  OrderCancelled(event)  (entities/enums/events/VOs/logic)
+      repository/  OrderRepository  (+ projections, query objects)
+      service/     OrderService(commands)  OrderAccessPolicy  OrderSpecifications
+      exception/   OrderNotFoundException  ...
+      dto/         CreateOrderCommand  OrderSearchCriteria   (command/criteria INPUTS only; no read records)
+    <other business areas>/
     error/   DomainException  ErrorDetails  RateLimited        <- kernel
-  application                    <- delivery; entity-free
-    api/  api/dto/  realtime/  realtime/dto/
+  application                    <- delivery; entities never leak (the *Response is the contract)
+    api/  api/dto/  read/  realtime/  realtime/dto/
   infra                          <- centralized technical layer, by concern
     security/ email/ integration/ time/ i18n/ socket/ observability/ web/
 ```
@@ -117,9 +121,19 @@ adapters live in `infra.<concern>` and implement a port defined in the domain mo
 domain depends on the port, never on infra. There is no `shared` package: error kernel goes to
 `domain.error`; identity and `PageResponse` go to `infra`.
 
-**Entity-free delivery.** Services return view/Response records, never `@Entity`. A `Response`
-DTO that maps an entity (via `from(entity)`) stays inside its domain module; all other
-request/response DTOs are entity-free and live in `application.api.dto`.
+**Read assembly lives in delivery, not in the domain (CQRS-ish, Rule Zero).** The domain has **no**
+read/view DTOs: a domain Application Service holds **commands** only (it mutates and returns `void`
+or an id/entity). **Reads** — queries, visibility, cross-aggregate enrichment (e.g. resolving a
+responsible's name from another aggregate), and the assembly of the response — live in a **read
+service** under `com.fksoft.application.read` (`<Area>ReadService`). Because it is **outside
+`..api..`**, a read service MAY inject repositories and domain query objects (the
+`controllersMustNotAccessRepositories` gate only restricts `..api..`); the visibility predicate is
+applied at the query level. Controllers delegate reads to the read service (never touching a
+repository) and, after a write, re-read the refreshed detail through it.
+
+**Entities never leak; the `*Response` is the contract.** Response DTOs live in
+`application.api.dto` and are built from entities via explicit factories (`Response.from(entity,
+…enrichment)`); the read/command services never return an `@Entity` past the controller boundary.
 
 MUST NOT create `domain/application/ports/adapters/in/out` folder trees unless complexity truly
 justifies it. Single Maven project, strong package modularity; multi-module only for shared
@@ -150,8 +164,13 @@ that diverge, critical isolation).
 Request/response DTOs MAY be passed to Application Services when it stays simple. MUST NOT create
 a `Command` per request by default - use commands only when multiple delivery mechanisms trigger
 the same use case or the API shape differs from the use-case input. Prefer records. Map with
-explicit factory methods close to the object (`OrderResponse.from(order)`); dedicated mapper
+explicit factory methods close to the object (`OrderResponse.from(order, …)`); dedicated mapper
 classes are not the default (a mapping library MAY be used for repetitive many-field mappings).
+**Read responses are built in delivery, not domain (§5.1):** the `*Response` lives in
+`application.api.dto` with a `from(entity, …)` factory; the `application.read` service supplies the
+enrichment (resolved names, history, counts) and the controller returns the `*Response`. Do **not**
+reintroduce domain-side read/view records — that duplication is the overengineering this rule
+removes (Rule Zero).
 
 ### 5.5 Validation (defense in depth - protect every boundary)
 
@@ -238,10 +257,12 @@ intent, contract, constraints, side effects - never restate the name.
 
 ## 6. Domain access & boundaries
 
-The `domain` package is organized by business area (`domain.<area>`) but is **internally open**:
-any class under `domain` MAY use any other class under `domain` directly, including across areas
-(e.g. `domain.crm` may call `domain.identity` repositories/types). There is **no Facade pattern**
-for intra-domain collaboration and **no enforced inter-area boundary inside `domain`**. Spring
+The `domain` package is organized by business area (`domain.<area>`), each area split into role
+sub-packages (`model`/`repository`/`service`/`exception`/`dto`, §5.1), but is **internally open**:
+any class under `domain` MAY use any other class under `domain` directly, including across areas and
+sub-packages (e.g. `domain.crm.service` may call `domain.identity` repositories/types). The role
+sub-packages are organization, not enforced walls — there is **no Facade pattern** for intra-domain
+collaboration and **no enforced inter-area/inter-sub-package boundary inside `domain`**. Spring
 Modulith is therefore not used to police intra-domain boundaries.
 
 The architectural invariants that MUST hold (all the OTHER rules in this file still apply):
@@ -256,8 +277,10 @@ The architectural invariants that MUST hold (all the OTHER rules in this file st
 - Asynchronous reactions use domain events.
 - The `application` (delivery) layer is organized by **mechanism, NOT by business area**:
   controllers live flat in `application.api`, request/response DTOs in `application.api.dto`,
-  realtime/socket in `application.realtime` (+ `application.realtime.dto`), queue consumers in
-  `application.queue`. Do NOT create `application.api.<area>` sub-packages.
+  **read services in `application.read`** (`<Area>ReadService`, the read/query side that assembles
+  `*Response`s — §5.1/§5.4; outside `..api..` so it MAY use repositories), realtime/socket in
+  `application.realtime` (+ `application.realtime.dto`), queue consumers in `application.queue`. Do
+  NOT create `application.api.<area>` sub-packages.
 - In a monolith a shared database is acceptable - do not pretend to be distributed. Extract a
   microservice only with a clear bounded context plus a concrete reason (independent
   deploy/scale, separate ownership, fault/security isolation). Microservices do not fix bad
@@ -472,12 +495,16 @@ the goal - high coverage with weak assertions is not quality.
   feature; **PATCH** = backward-compatible bug fix. The version lives in **`APP_VERSION`**
   (`.env`/`.env.example`, wired through `compose.yaml`, bound to `app.version`), is served by the
   public `GET /api/version` and **displayed in the UI** (login screen + sidebar footer). **Bump it on
-  EVERY delivered slice** (part of the Definition of Done): each slice merged to `develop`/`main`
-  increments the version per SemVer — **MINOR** for a new feature, **PATCH** for a fix/small change —
-  and ships the matching **release note** (see below). Keep `.env`/`.env.example` in sync.
-- **Release notes (delivery document, customer-facing):** each release has one note in
-  **`artifacts/release-notes/`** (one file per version, e.g. `v0.12.0.md`), written **for key users and
-  managers, NOT engineers**. It is a **serious delivery document**: a **header** (version, release
+  EVERY delivered change** (part of the Definition of Done): each slice/change merged to
+  `develop`/`main` increments the version per SemVer — **MINOR** for a new feature, **PATCH** for a
+  fix/small change **or a purely internal refactor** (no API/behavior/schema/UI change). Keep
+  `.env`/`.env.example` in sync. The version bump is **independent of the release note** (below).
+- **Release notes (delivery document, customer-facing) — only at the end of a COMPLETE delivery:** a
+  release note is written **once per finished delivery (a sprint / milestone), NOT per slice** — it
+  summarizes everything shipped in that delivery. Do **not** create a release note per intermediate
+  slice, and **never** for an internal refactor (nothing customer-facing). Each note lives in
+  **`artifacts/release-notes/`** (one file per delivered version, e.g. `v0.12.0.md`), written **for key
+  users and managers, NOT engineers**. It is a **serious delivery document**: a **header** (version, release
   date, status, audience, prepared-by), a short **executive summary** for managers, then a
   **thorough, detailed**
   description organized **by capability/theme**, in **business language**. Tone is **professional and

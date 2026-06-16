@@ -1,6 +1,6 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.OpportunityStage;
+import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import java.util.UUID;
 
 /**
