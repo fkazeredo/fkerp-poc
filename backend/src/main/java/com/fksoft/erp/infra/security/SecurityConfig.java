@@ -41,6 +41,11 @@ public class SecurityConfig {
         "SCOPE_crm:lead:read", "SCOPE_crm:lead:read:unassigned", "SCOPE_crm:lead:read:all"
     };
 
+    // Same three-tier model for Opportunities; OpportunityAccessPolicy narrows WHICH are visible.
+    private static final String[] OPPORTUNITY_READ_SCOPES = {
+        "SCOPE_crm:opportunity:read", "SCOPE_crm:opportunity:read:unassigned", "SCOPE_crm:opportunity:read:all"
+    };
+
     private final SecurityProperties props;
 
     @Bean
@@ -95,6 +100,8 @@ public class SecurityConfig {
                         .hasAnyAuthority(READ_SCOPES)
                         .requestMatchers(HttpMethod.POST, "/api/opportunities")
                         .hasAuthority("SCOPE_crm:opportunity:create")
+                        .requestMatchers(HttpMethod.GET, "/api/opportunities", "/api/opportunities/**")
+                        .hasAnyAuthority(OPPORTUNITY_READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/responsibles")
                         .hasAnyAuthority(READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/**")

@@ -1,0 +1,101 @@
+<header class="page-head">
+  <div>
+    <h1>Oportunidades</h1>
+    <p class="sub muted">As oportunidades que você pode trabalhar — priorize as negociações.</p>
+  </div>
+</header>
+
+<div class="filters surface pad">
+  <div class="filter grow">
+    <label for="q">Buscar</label>
+    <input
+      pInputText
+      id="q"
+      [(ngModel)]="search"
+      (ngModelChange)="onSearchInput()"
+      placeholder="Título, produto ou interesse"
+      class="w-full"
+    />
+  </div>
+  <div class="filter">
+    <label>Estágio</label>
+    <p-multiSelect
+      [options]="stageOptions"
+      optionLabel="label"
+      optionValue="value"
+      [(ngModel)]="stage"
+      (ngModelChange)="applyFilters()"
+      placeholder="Exceto perdidas"
+      [showClear]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <p-button
+    label="Limpar"
+    icon="pi pi-filter-slash"
+    severity="secondary"
+    [text]="true"
+    size="small"
+    (onClick)="clearFilters()"
+  />
+</div>
+
+@if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+}
+
+<div class="surface table-wrap">
+  <p-table
+    [value]="items()"
+    [lazy]="true"
+    (onLazyLoad)="onLazyLoad($event)"
+    [paginator]="true"
+    [rows]="rows"
+    [totalRecords]="total()"
+    [first]="firstRow"
+    [loading]="loading()"
+    styleClass="p-datatable-sm"
+    [tableStyle]="{ 'min-width': '68rem' }"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Título</th>
+        <th>Responsável</th>
+        <th>Estágio</th>
+        <th>Valor estimado</th>
+        <th>Fechamento previsto</th>
+        <th>Criado em</th>
+        <th>Última atividade</th>
+        <th>Próxima ação</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-opp>
+      <tr>
+        <td>
+          <a [routerLink]="['/leads', opp.leadId]" class="opp-link">{{ opp.name }}</a>
+        </td>
+        <td>
+          @if (opp.unassigned) {
+            <span class="unassigned">Sem responsável</span>
+          } @else {
+            {{ opp.responsibleName ?? '—' }}
+          }
+        </td>
+        <td><p-tag [value]="stageLabel(opp.stage)" [severity]="stageSeverity(opp.stage)" /></td>
+        <td>
+          {{ opp.estimatedValue != null ? (opp.estimatedValue | currency: 'BRL') : '—' }}
+        </td>
+        <td>{{ opp.expectedCloseDate ? (opp.expectedCloseDate | date: 'shortDate') : '—' }}</td>
+        <td>{{ opp.createdAt | date: 'short' }}</td>
+        <td>{{ opp.lastActivityAt ? (opp.lastActivityAt | date: 'short') : '—' }}</td>
+        <td>{{ opp.nextActionDate ? (opp.nextActionDate | date: 'shortDate') : '—' }}</td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="8" class="muted empty">Nenhuma oportunidade encontrada.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

@@ -50,7 +50,10 @@ export class Shell {
   protected readonly sidebarOpen = signal(false);
   private goPending = false;
 
-  /** Início is always available; Leads, Pendências + Indicadores only when the user can read Leads. */
+  /**
+   * Início is always available; Leads, Pendências + Indicadores only when the user can read Leads;
+   * Oportunidades only when the user can read Opportunities.
+   */
   protected get nav(): NavLink[] {
     const items: NavLink[] = [{ label: 'Início', icon: 'pi pi-home', link: '/', exact: true }];
     if (this.auth.canSeeLeads()) {
@@ -61,6 +64,14 @@ export class Shell {
         icon: 'pi pi-chart-bar',
         link: '/indicadores',
         exact: true,
+      });
+    }
+    if (this.auth.canSeeOpportunities()) {
+      items.push({
+        label: 'Oportunidades',
+        icon: 'pi pi-briefcase',
+        link: '/oportunidades',
+        exact: false,
       });
     }
     return items;
@@ -78,6 +89,7 @@ export class Shell {
     { label: 'Novo Lead', icon: 'pi pi-user-plus', run: () => this.go('/leads/new') },
     { label: 'Pendências', icon: 'pi pi-flag', run: () => this.go('/pendencias') },
     { label: 'Indicadores', icon: 'pi pi-chart-bar', run: () => this.go('/indicadores') },
+    { label: 'Oportunidades', icon: 'pi pi-briefcase', run: () => this.go('/oportunidades') },
     { label: 'Início', icon: 'pi pi-home', run: () => this.go('/') },
     {
       label: 'Cadastro: Origens',

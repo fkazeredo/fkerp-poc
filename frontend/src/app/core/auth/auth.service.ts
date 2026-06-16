@@ -79,6 +79,15 @@ export class AuthService {
   canCreateOpportunity(): boolean {
     return this.hasScope('crm:opportunity:create');
   }
+
+  /** Any Opportunity read tier (own / pool / all) grants access to the Opportunity list. */
+  canSeeOpportunities(): boolean {
+    return (
+      this.hasScope('crm:opportunity:read') ||
+      this.hasScope('crm:opportunity:read:unassigned') ||
+      this.hasScope('crm:opportunity:read:all')
+    );
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {
