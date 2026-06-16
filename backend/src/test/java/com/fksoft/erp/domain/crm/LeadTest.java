@@ -112,6 +112,34 @@ class LeadTest {
     }
 
     @Test
+    void marksAContactedLeadLostWithoutANote() {
+        UUID responsible = UUID.randomUUID();
+        Lead lead = Lead.register(command("11999999999", null, null, responsible), origin, CREATOR);
+        lead.recordInteraction(callType, result("CONTACT_MADE"), "falamos", Instant.now(), null, CREATOR);
+        LossReason reason = LossReason.create("NO_RESPONSE", "Sem resposta", 1);
+
+        lead.markLost(reason, CREATOR, null);
+
+        assertThat(lead.status()).isEqualTo(LeadStatus.LOST);
+        assertThat(lead.lossReason()).isSameAs(reason);
+        assertThat(lead.lostBy()).isEqualTo(CREATOR);
+        assertThat(lead.lostAt()).isNotNull();
+        assertThat(lead.lossNote()).isNull(); // note is optional
+    }
+
+    @Test
+    void marksAQualifiedLeadLost() {
+        UUID responsible = UUID.randomUUID();
+        Lead lead = Lead.register(command("11999999999", null, null, responsible), origin, CREATOR);
+        lead.recordInteraction(callType, result("CONTACT_MADE"), "falamos", Instant.now(), null, CREATOR);
+        lead.qualify(CREATOR, "Pacote", null);
+
+        lead.markLost(LossReason.create("BOUGHT_ELSEWHERE", "Comprou em outro lugar", 5), CREATOR, null);
+
+        assertThat(lead.status()).isEqualTo(LeadStatus.LOST);
+    }
+
+    @Test
     void cannotMarkAnAlreadyLostLeadLostAgain() {
         Lead lead = Lead.register(command("11999999999", null, null, null), origin, CREATOR);
         LossReason reason = LossReason.create("NO_RESPONSE", "Sem resposta", 1);
