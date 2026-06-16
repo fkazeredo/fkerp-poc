@@ -20,6 +20,14 @@ export const routes: Routes = [
           import('./features/leads/lead-pending/lead-pending').then((m) => m.LeadPending),
       },
       {
+        path: 'indicadores',
+        canActivate: [crmReadGuard],
+        loadComponent: () =>
+          import('./features/leads/lead-indicators/lead-indicators').then(
+            (m) => m.LeadIndicatorsPage,
+          ),
+      },
+      {
         path: 'leads',
         canActivate: [crmReadGuard],
         loadComponent: () => import('./features/leads/lead-list/lead-list').then((m) => m.LeadList),

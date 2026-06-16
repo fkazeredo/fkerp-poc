@@ -39,6 +39,7 @@ public class LeadService {
     private final UserRepository users;
     private final LeadAccessPolicy accessPolicy;
     private final LeadAssignmentPolicy assignmentPolicy;
+    private final LeadIndicatorQueries indicatorQueries;
     private final ApplicationEventPublisher events;
 
     /**
@@ -164,6 +165,51 @@ public class LeadService {
                     lead.nextContactAt(),
                     PendingLeadReasons.of(lead, now, withInteractions.contains(lead.id())));
         });
+    }
+
+    /**
+     * Minimum top-of-funnel indicators over the Leads visible to the caller, in an optional period.
+     * Counts include every status (Lost included) and never expose Leads the caller cannot see.
+     *
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @param from inclusive lower bound on creation (or {@code null} for all-time)
+     * @param to exclusive upper bound on creation (or {@code null})
+     * @return the assembled indicators
+     */
+    @Transactional(readOnly = true)
+    public LeadIndicatorsView indicators(
+            UUID userId, boolean canSeeAll, boolean canSeeUnassigned, Instant from, Instant to) {
+        Specification<Lead> visible = accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned);
+
+        Map<LeadStatus, Long> byStatus = indicatorQueries.countByStatus(visible, from, to);
+        long total = byStatus.values().stream().mapToLong(Long::longValue).sum();
+
+        List<OriginCountView> byOrigin = indicatorQueries.countByOrigin(visible, from, to);
+
+        List<ResponsibleCount> responsibleCounts = indicatorQueries.countByResponsible(visible, from, to);
+        Set<UUID> responsibleIds = responsibleCounts.stream()
+                .map(ResponsibleCount::responsibleId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> names = responsibleIds.isEmpty()
+                ? Map.of()
+                : users.findAllById(responsibleIds).stream().collect(Collectors.toMap(User::id, User::username));
+        List<ResponsibleCountView> byResponsible = responsibleCounts.stream()
+                .map(rc -> new ResponsibleCountView(
+                        rc.responsibleId() == null ? null : names.get(rc.responsibleId()), rc.count()))
+                .toList();
+
+        return new LeadIndicatorsView(
+                total,
+                byStatus.getOrDefault(LeadStatus.NEW, 0L),
+                byStatus.getOrDefault(LeadStatus.CONTACTED, 0L),
+                byStatus.getOrDefault(LeadStatus.QUALIFIED, 0L),
+                byStatus.getOrDefault(LeadStatus.LOST, 0L),
+                indicatorQueries.countWaitingFirstContact(visible, from, to),
+                byOrigin,
+                byResponsible);
     }
 
     /**

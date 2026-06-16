@@ -26,7 +26,15 @@ interface NavLink {
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, DialogModule, ListboxModule, ButtonModule, ToastModule],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    DialogModule,
+    ListboxModule,
+    ButtonModule,
+    ToastModule,
+  ],
   templateUrl: './shell.html',
   styleUrl: './shell.css',
 })
@@ -40,12 +48,18 @@ export class Shell {
   protected readonly sidebarOpen = signal(false);
   private goPending = false;
 
-  /** Início is always available; Leads + Pendências only when the user can read Leads. */
+  /** Início is always available; Leads, Pendências + Indicadores only when the user can read Leads. */
   protected get nav(): NavLink[] {
     const items: NavLink[] = [{ label: 'Início', icon: 'pi pi-home', link: '/', exact: true }];
     if (this.auth.canSeeLeads()) {
       items.push({ label: 'Leads', icon: 'pi pi-list', link: '/leads', exact: false });
       items.push({ label: 'Pendências', icon: 'pi pi-flag', link: '/pendencias', exact: true });
+      items.push({
+        label: 'Indicadores',
+        icon: 'pi pi-chart-bar',
+        link: '/indicadores',
+        exact: true,
+      });
     }
     return items;
   }
@@ -60,17 +74,35 @@ export class Shell {
   protected readonly commands: Command[] = [
     { label: 'Leads', icon: 'pi pi-list', run: () => this.go('/leads') },
     { label: 'Novo Lead', icon: 'pi pi-user-plus', run: () => this.go('/leads/new') },
+    { label: 'Pendências', icon: 'pi pi-flag', run: () => this.go('/pendencias') },
+    { label: 'Indicadores', icon: 'pi pi-chart-bar', run: () => this.go('/indicadores') },
     { label: 'Início', icon: 'pi pi-home', run: () => this.go('/') },
-    { label: 'Cadastro: Origens', icon: 'pi pi-database', run: () => this.go('/cadastros/origens') },
-    { label: 'Cadastro: Motivos de perda', icon: 'pi pi-database', run: () => this.go('/cadastros/motivos-perda') },
-    { label: 'Cadastro: Tipos de interação', icon: 'pi pi-database', run: () => this.go('/cadastros/tipos-interacao') },
+    {
+      label: 'Cadastro: Origens',
+      icon: 'pi pi-database',
+      run: () => this.go('/cadastros/origens'),
+    },
+    {
+      label: 'Cadastro: Motivos de perda',
+      icon: 'pi pi-database',
+      run: () => this.go('/cadastros/motivos-perda'),
+    },
+    {
+      label: 'Cadastro: Tipos de interação',
+      icon: 'pi pi-database',
+      run: () => this.go('/cadastros/tipos-interacao'),
+    },
     {
       label: 'Cadastro: Resultados de interação',
       icon: 'pi pi-database',
       run: () => this.go('/cadastros/resultados-interacao'),
     },
     { label: 'Alternar tema claro/escuro', icon: 'pi pi-moon', run: () => this.theme.toggle() },
-    { label: 'Atalhos do teclado', icon: 'pi pi-question-circle', run: () => this.helpOpen.set(true) },
+    {
+      label: 'Atalhos do teclado',
+      icon: 'pi pi-question-circle',
+      run: () => this.helpOpen.set(true),
+    },
     { label: 'Sair', icon: 'pi pi-sign-out', run: () => this.logout() },
   ];
 
@@ -109,7 +141,8 @@ export class Shell {
     }
     const target = event.target as HTMLElement | null;
     const typing =
-      !!target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
+      !!target &&
+      (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
     if (typing || event.ctrlKey || event.metaKey || event.altKey) {
       this.goPending = false;
       return;

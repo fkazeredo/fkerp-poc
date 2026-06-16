@@ -201,6 +201,24 @@ Open **Pendências** from the sidebar (or the home tile) for an operational work
 The same **visibility rules** apply: a representative or seller sees only their own pending items, a
 manager sees all. Qualified and lost leads never appear here. Click a name to open its detail and act.
 
+### Indicators (Indicadores)
+
+Open **Indicadores** from the sidebar (or the home tile) for a read-only view of the **top of the
+funnel** over a period. It shows:
+
+- **KPI cards:** **Total** in the period, then by status — **Novos** (New), **Em contato**
+  (Contacted), **Qualificados** (Qualified) and **Perdidos** (Lost) — plus **Aguardando 1º contato**
+  (New leads not yet contacted). Unlike the operational list, **Lost leads are counted here**.
+- **Por origem** (by origin) and **Por responsável** (by responsible) — each label with its count and
+  a proportion bar; unassigned leads appear as **Sem responsável**.
+
+Use the **Criado de / até** date pickers to choose the period (by creation date); it **defaults to the
+current month** (1st → today). Click **Todo o período** to clear the dates and see all-time numbers.
+
+The same **visibility rules** apply: a representative or seller sees only their own numbers, a manager
+sees everyone's. It is an operational read-out, not an executive dashboard — there are no charts,
+forecasts or financial figures yet.
+
 ## 7. Opening a lead — detail & actions
 
 Click a lead's **name** in the list to open its detail page (you can only open leads you are
