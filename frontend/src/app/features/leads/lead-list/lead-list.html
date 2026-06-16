@@ -3,7 +3,9 @@
     <h1>Leads</h1>
     <p class="sub muted">Os leads que você pode trabalhar — seus e os não atribuídos.</p>
   </div>
-  <p-button label="Novo lead" icon="pi pi-user-plus" size="small" (onClick)="goNew()" />
+  @if (auth.canCreateLead()) {
+    <p-button label="Novo lead" icon="pi pi-user-plus" size="small" (onClick)="goNew()" />
+  }
 </header>
 
 <div class="filters surface pad">

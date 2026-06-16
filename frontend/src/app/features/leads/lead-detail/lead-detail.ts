@@ -110,19 +110,24 @@ export class LeadDetailPage implements OnInit {
     }
   }
 
+  /** Whether the user may perform operational actions (consultation-only users cannot). */
+  protected canOperate(): boolean {
+    return this.auth.canOperateLead();
+  }
+
   protected canQualify(): boolean {
     const lead = this.lead();
-    return !!lead && lead.status === 'CONTACTED' && !lead.unassigned;
+    return this.canOperate() && !!lead && lead.status === 'CONTACTED' && !lead.unassigned;
   }
 
   protected canLose(): boolean {
     const status = this.lead()?.status;
-    return !!status && status !== 'LOST';
+    return this.canOperate() && !!status && status !== 'LOST';
   }
 
   protected canReassign(): boolean {
     const status = this.lead()?.status;
-    return !!status && status !== 'LOST';
+    return this.canOperate() && !!status && status !== 'LOST';
   }
 
   /** Full assignment authority (managers/admins): may reassign to anyone. */
@@ -133,7 +138,7 @@ export class LeadDetailPage implements OnInit {
   /** A non-manager may claim (self-assign) an unassigned, non-lost lead they are viewing. */
   protected canClaim(): boolean {
     const lead = this.lead();
-    return !this.canAssign() && !!lead && lead.unassigned && lead.status !== 'LOST';
+    return this.canOperate() && !this.canAssign() && !!lead && lead.unassigned && lead.status !== 'LOST';
   }
 
   protected back(): void {
@@ -158,7 +163,9 @@ export class LeadDetailPage implements OnInit {
     }
     switch (event.key) {
       case 'i':
-        this.openInteraction();
+        if (this.canOperate()) {
+          this.openInteraction();
+        }
         break;
       case 'q':
         if (this.canQualify()) {

@@ -19,12 +19,14 @@
       <p-tag [value]="statusLabel(l.status)" [severity]="statusSeverity(l.status)" />
     </div>
     <div class="head-actions">
-      <p-button
-        label="Registrar interação"
-        icon="pi pi-comment"
-        size="small"
-        (onClick)="openInteraction()"
-      />
+      @if (canOperate()) {
+        <p-button
+          label="Registrar interação"
+          icon="pi pi-comment"
+          size="small"
+          (onClick)="openInteraction()"
+        />
+      }
       @if (canQualify()) {
         <p-button
           label="Qualificar"

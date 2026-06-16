@@ -57,6 +57,19 @@
   line-height: 1.4;
 }
 
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.1rem;
+  color: var(--app-muted);
+}
+
+.notice i {
+  color: var(--p-amber-500, #f59e0b);
+}
+
 .home-hint {
   margin-top: 2rem;
   font-size: 0.85rem;

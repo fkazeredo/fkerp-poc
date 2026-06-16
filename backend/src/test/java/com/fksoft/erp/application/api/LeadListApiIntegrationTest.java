@@ -136,10 +136,22 @@ class LeadListApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void regularUserSeesOnlyOwnPlusUnassigned() throws Exception {
-        String tokenA = tokens.issueAccessToken(new AuthenticatedUser(USER_A, "ua", Set.of("crm:lead:read")));
+    void sellerSeesOwnPlusUnassignedPool() throws Exception {
+        // A seller/call-center tier: own (crm:lead:read) + the unassigned pool (crm:lead:read:unassigned).
+        String tokenA = tokens.issueAccessToken(
+                new AuthenticatedUser(USER_A, "ua", Set.of("crm:lead:read", "crm:lead:read:unassigned")));
         mvc.perform(get("/api/leads").header("Authorization", "Bearer " + tokenA))
                 .andExpect(jsonPath("$.content[*].name", hasItems("Alpha", "Delta")))
+                .andExpect(jsonPath("$.content[*].name", not(hasItem("Bravo"))));
+    }
+
+    @Test
+    void representativeSeesOnlyOwnNotTheUnassignedPool() throws Exception {
+        // own-only tier (crm:lead:read with no read:unassigned): sees Alpha (own), not Delta (unassigned).
+        String tokenA = tokens.issueAccessToken(new AuthenticatedUser(USER_A, "ua", Set.of("crm:lead:read")));
+        mvc.perform(get("/api/leads").header("Authorization", "Bearer " + tokenA))
+                .andExpect(jsonPath("$.content[*].name", hasItem("Alpha")))
+                .andExpect(jsonPath("$.content[*].name", not(hasItem("Delta"))))
                 .andExpect(jsonPath("$.content[*].name", not(hasItem("Bravo"))));
     }
 

@@ -12,9 +12,11 @@
       </div>
     </div>
 
-    <button class="cta" routerLink="/leads/new" (click)="sidebarOpen.set(false)">
-      <i class="pi pi-plus"></i><span>Novo lead</span>
-    </button>
+    @if (auth.canCreateLead()) {
+      <button class="cta" routerLink="/leads/new" (click)="sidebarOpen.set(false)">
+        <i class="pi pi-plus"></i><span>Novo lead</span>
+      </button>
+    }
 
     <nav class="nav">
       @for (item of nav; track item.link) {

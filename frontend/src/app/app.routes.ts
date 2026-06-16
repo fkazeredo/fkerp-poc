@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { crmReadGuard } from './core/auth/crm-read.guard';
 
 export const routes: Routes = [
   {
@@ -14,15 +15,18 @@ export const routes: Routes = [
       { path: '', loadComponent: () => import('./features/home/home').then((m) => m.Home) },
       {
         path: 'leads',
+        canActivate: [crmReadGuard],
         loadComponent: () => import('./features/leads/lead-list/lead-list').then((m) => m.LeadList),
       },
       {
         path: 'leads/new',
+        canActivate: [crmReadGuard],
         loadComponent: () =>
           import('./features/leads/lead-create/lead-create').then((m) => m.LeadCreate),
       },
       {
         path: 'leads/:id',
+        canActivate: [crmReadGuard],
         loadComponent: () =>
           import('./features/leads/lead-detail/lead-detail').then((m) => m.LeadDetailPage),
       },

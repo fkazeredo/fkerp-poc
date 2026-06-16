@@ -349,6 +349,19 @@ PKs, FKs, unique/not-null/check constraints, indexes, isolation, locks, views.
   HTTP, security, queries, cache keys, logs, jobs and realtime. Tenant data leakage is a critical
   bug; the isolation strategy MUST be explicit.
 
+**Lead authorization model (normative).** Profiles are **scope bundles**, never a role enum (no
+second mechanism). Two orthogonal axes: a **read tier** (which Leads you may see) and **operation
+permissions** (which actions you may perform). Read tiers are escalating scopes — `crm:lead:read`
+(own only) → also `crm:lead:read:unassigned` (the unassigned pool) → `crm:lead:read:all` (all); any
+read tier passes the GET security gate, and `LeadAccessPolicy` narrows which Leads are returned (it
+MUST be applied as a query Specification + a `canSee` check so filters/detail can never bypass it).
+Operations are gated by `crm:lead:create` / `crm:lead:update` (qualify/lose/reassign/interactions) /
+`crm:lead:assign`. **Consultation-only** = a read tier with no operation scope; **no access** = no
+`crm:lead:*` scope (→ 403). Profile → scopes: Admin/Manager = read:all + create/update/assign;
+Board/Marketing = read:all; Sellers/Call-Center = read + read:unassigned + create/update;
+Representatives = read + create/update (own only); Finance/HR/IT = none. The frontend mirrors this
+(hide actions/routes) but the backend is the only authority.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST
