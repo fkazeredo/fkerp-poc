@@ -13,7 +13,7 @@ async function createLead(page: Page, name: string): Promise<void> {
   await page.locator('#name').fill(name);
   await page.getByText('Selecione a origem').click();
   await page.getByRole('option').first().click();
-  await page.locator('#phone').fill('11999992222');
+  await page.locator('#phone').fill(`119${Date.now()}${Math.floor(Math.random() * 1000)}`);
   await page.getByRole('button', { name: 'Salvar lead' }).click();
   await expect(page.getByText('Lead criado')).toBeVisible();
 }
@@ -43,7 +43,7 @@ test('qualifies a contacted, assigned lead with a main interest', async ({ page 
   await page.locator('#name').fill(name);
   await page.getByText('Selecione a origem').click();
   await page.getByRole('option').first().click();
-  await page.locator('#phone').fill('11999992222');
+  await page.locator('#phone').fill(`119${Date.now()}${Math.floor(Math.random() * 1000)}`);
   await page.getByText('Sem responsável').click();
   await page.getByRole('option', { name: 'comercial' }).click();
   await page.getByRole('button', { name: 'Salvar lead' }).click();

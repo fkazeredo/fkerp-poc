@@ -50,7 +50,11 @@ test('main journey: Instagram unassigned → manager assigns → seller WhatsApp
 
   // The manager registers an Instagram lead with no responsible.
   await login(page, 'comercial', 'comercial123');
-  await createLead(page, { name, origin: 'Instagram', phone: '11999990001' });
+  await createLead(page, {
+    name,
+    origin: 'Instagram',
+    phone: `119${Date.now()}${Math.floor(Math.random() * 1000)}`,
+  });
 
   // The manager finds it as a pending, unassigned lead.
   await page.locator('.sidebar').getByRole('link', { name: 'Pendências' }).click();
@@ -103,7 +107,7 @@ test('lost journey: referral → responsible no-interest → Lost → manager fi
   await createLead(page, {
     name,
     origin: 'Indicação',
-    phone: '11999990002',
+    phone: `119${Date.now()}${Math.floor(Math.random() * 1000)}`,
     responsible: 'representante',
   });
 

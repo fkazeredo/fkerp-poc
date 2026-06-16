@@ -20,7 +20,7 @@ test('signs in and registers a lead', async ({ page }) => {
   await page.getByText('Selecione a origem').click();
   await page.getByRole('option').first().click();
 
-  await page.locator('#phone').fill('11999990000');
+  await page.locator('#phone').fill(`119${Date.now()}${Math.floor(Math.random() * 1000)}`);
 
   await page.getByRole('button', { name: 'Salvar lead' }).click();
 

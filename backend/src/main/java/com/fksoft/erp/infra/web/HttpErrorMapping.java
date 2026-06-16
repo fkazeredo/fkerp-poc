@@ -2,6 +2,7 @@ package com.fksoft.erp.infra.web;
 
 import static java.util.Map.entry;
 
+import com.fksoft.erp.domain.crm.DuplicateLeadException;
 import com.fksoft.erp.domain.crm.DuplicateReferenceCodeException;
 import com.fksoft.erp.domain.crm.InteractionResultNotAvailableException;
 import com.fksoft.erp.domain.crm.InteractionTypeNotAvailableException;
@@ -46,6 +47,7 @@ public class HttpErrorMapping {
             entry(InteractionResultNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(InvalidCredentialsException.class, HttpStatus.UNAUTHORIZED),
             entry(DuplicateReferenceCodeException.class, HttpStatus.CONFLICT),
+            entry(DuplicateLeadException.class, HttpStatus.CONFLICT),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {

@@ -8,7 +8,9 @@ async function login(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Comercial / CRM' })).toBeVisible();
 }
 
-test('a new unassigned lead shows up in the pending worklist with its reasons', async ({ page }) => {
+test('a new unassigned lead shows up in the pending worklist with its reasons', async ({
+  page,
+}) => {
   await login(page);
   const name = `E2E Pend ${Date.now()}`;
 
@@ -17,7 +19,7 @@ test('a new unassigned lead shows up in the pending worklist with its reasons', 
   await page.locator('#name').fill(name);
   await page.getByText('Selecione a origem').click();
   await page.getByRole('option').first().click();
-  await page.locator('#phone').fill('11999998888');
+  await page.locator('#phone').fill(`119${Date.now()}${Math.floor(Math.random() * 1000)}`);
   await page.getByRole('button', { name: 'Salvar lead' }).click();
   await expect(page.getByText('Lead criado')).toBeVisible();
 

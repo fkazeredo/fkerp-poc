@@ -177,7 +177,11 @@ class LeadIndicatorsApiIntegrationTest extends AbstractIntegrationTest {
     private String createLead(String token, String name, UUID responsibleId, UUID originId) throws Exception {
         Map<String, Object> body = new HashMap<>();
         body.put("name", name);
-        body.put("phone", "11999990000");
+        body.put(
+                "phone",
+                "119%08d"
+                        .formatted(
+                                java.util.concurrent.ThreadLocalRandom.current().nextInt(100_000_000)));
         body.put("originId", originId.toString());
         if (responsibleId != null) {
             body.put("responsiblePersonId", responsibleId.toString());
