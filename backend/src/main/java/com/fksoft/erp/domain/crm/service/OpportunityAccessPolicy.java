@@ -41,4 +41,24 @@ public class OpportunityAccessPolicy {
             return canSeeUnassigned ? cb.or(own, cb.isNull(root.get("responsiblePersonId"))) : own;
         };
     }
+
+    /**
+     * Tells whether a user may see (and act on) a single Opportunity: they hold read-all (sees all), are
+     * its responsible, or it is unassigned and they may see the pool.
+     *
+     * @param opportunity the opportunity
+     * @param userId the current user id
+     * @param canSeeAll whether the user holds the read-all scope
+     * @param canSeeUnassigned whether the user may also see the unassigned pool
+     * @return {@code true} if the opportunity is visible to the user
+     */
+    public boolean canSee(Opportunity opportunity, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        if (canSeeAll) {
+            return true;
+        }
+        if (opportunity.responsiblePersonId() == null) {
+            return canSeeUnassigned;
+        }
+        return opportunity.responsiblePersonId().equals(userId);
+    }
 }

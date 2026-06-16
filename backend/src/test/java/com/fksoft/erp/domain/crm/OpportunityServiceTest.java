@@ -11,7 +11,10 @@ import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.crm.exception.LeadAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.LeadNotQualifiedForOpportunityException;
+import com.fksoft.erp.domain.crm.exception.LossReasonNotAvailableException;
+import com.fksoft.erp.domain.crm.exception.OpportunityAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAlreadyExistsForLeadException;
+import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadStatus;
@@ -20,8 +23,10 @@ import com.fksoft.erp.domain.crm.model.OpportunityCreated;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
+import com.fksoft.erp.domain.crm.repository.LossReasonRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.LeadAccessPolicy;
+import com.fksoft.erp.domain.crm.service.OpportunityAccessPolicy;
 import com.fksoft.erp.domain.crm.service.OpportunityService;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.identity.UserRepository;
@@ -49,7 +54,13 @@ class OpportunityServiceTest {
     private UserRepository users;
 
     @Mock
+    private LossReasonRepository lossReasons;
+
+    @Mock
     private LeadAccessPolicy leadAccessPolicy;
+
+    @Mock
+    private OpportunityAccessPolicy accessPolicy;
 
     @Mock
     private ApplicationEventPublisher events;
@@ -148,5 +159,48 @@ class OpportunityServiceTest {
         assertThatThrownBy(() -> service.create(command(override), ACTOR, true, false))
                 .isInstanceOf(ResponsiblePersonNotFoundException.class);
         verify(opportunities, never()).save(any());
+    }
+
+    @Test
+    void detailThrowsWhenOpportunityIsMissing() {
+        UUID id = UUID.randomUUID();
+        when(opportunities.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.detail(id, ACTOR, true, false))
+                .isInstanceOf(OpportunityNotFoundException.class);
+    }
+
+    @Test
+    void detailThrowsWhenTheOpportunityIsNotVisible() {
+        UUID id = UUID.randomUUID();
+        when(opportunities.findById(id)).thenReturn(Optional.of(mock(Opportunity.class)));
+        when(accessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.detail(id, ACTOR, false, false))
+                .isInstanceOf(OpportunityAccessDeniedException.class);
+    }
+
+    @Test
+    void markLostThrowsWhenTheOpportunityIsNotVisible() {
+        UUID id = UUID.randomUUID();
+        when(opportunities.findById(id)).thenReturn(Optional.of(mock(Opportunity.class)));
+        when(accessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.markLost(id, UUID.randomUUID(), null, ACTOR, false, false))
+                .isInstanceOf(OpportunityAccessDeniedException.class);
+        verify(opportunities, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void markLostRejectsAnUnknownOrInactiveReason() {
+        UUID id = UUID.randomUUID();
+        UUID reasonId = UUID.randomUUID();
+        when(opportunities.findById(id)).thenReturn(Optional.of(mock(Opportunity.class)));
+        when(accessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(true);
+        when(lossReasons.findById(reasonId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.markLost(id, reasonId, null, ACTOR, true, false))
+                .isInstanceOf(LossReasonNotAvailableException.class);
+        verify(opportunities, never()).saveAndFlush(any());
     }
 }

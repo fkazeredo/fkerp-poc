@@ -45,6 +45,51 @@ export interface OpportunityListItem {
   nextActionDate: string | null;
 }
 
+/** The source Lead, kept traceable from the Opportunity detail. */
+export interface OpportunitySourceLead {
+  id: string;
+  name: string;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  status: string;
+}
+
+/** Loss outcome, present only when the Opportunity is LOST. */
+export interface OpportunityLoss {
+  reason: string | null;
+  lostAt: string;
+  lostBy: string | null;
+  note: string | null;
+}
+
+/**
+ * Full Opportunity detail. {@code loss} is present only when LOST; {@code activities},
+ * {@code stageHistory} and {@code nextActionDate} are reserved for future slices (empty/null for now).
+ */
+export interface OpportunityDetail {
+  id: string;
+  leadId: string;
+  name: string;
+  stage: OpportunityStage;
+  responsibleId: string | null;
+  responsibleName: string | null;
+  unassigned: boolean;
+  origin: string;
+  mainInterest: string | null;
+  productType: string | null;
+  estimatedValue: number | null;
+  expectedCloseDate: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  sourceLead: OpportunitySourceLead;
+  loss: OpportunityLoss | null;
+  activities: unknown[];
+  stageHistory: unknown[];
+  nextActionDate: string | null;
+}
+
 /**
  * Operational Opportunity-list filters. Empty {@code stage} excludes LOST (it shows only when chosen).
  * {@code responsible} is a user id or the literal `unassigned`; the date bounds are ISO `yyyy-MM-dd`.
@@ -77,6 +122,14 @@ export class OpportunityService {
 
   create(payload: CreateOpportunity): Observable<OpportunityCreated> {
     return this.http.post<OpportunityCreated>('/api/opportunities', payload);
+  }
+
+  detail(id: string): Observable<OpportunityDetail> {
+    return this.http.get<OpportunityDetail>(`/api/opportunities/${id}`);
+  }
+
+  lose(id: string, lossReasonId: string, note: string | null): Observable<OpportunityDetail> {
+    return this.http.post<OpportunityDetail>(`/api/opportunities/${id}/lose`, { lossReasonId, note });
   }
 
   list(

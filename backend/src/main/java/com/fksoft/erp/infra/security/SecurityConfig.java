@@ -100,6 +100,8 @@ public class SecurityConfig {
                         .hasAnyAuthority(READ_SCOPES)
                         .requestMatchers(HttpMethod.POST, "/api/opportunities")
                         .hasAuthority("SCOPE_crm:opportunity:create")
+                        .requestMatchers(HttpMethod.POST, "/api/opportunities/*/lose")
+                        .hasAuthority("SCOPE_crm:opportunity:update")
                         .requestMatchers(HttpMethod.GET, "/api/opportunities", "/api/opportunities/**")
                         .hasAnyAuthority(OPPORTUNITY_READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/responsibles")

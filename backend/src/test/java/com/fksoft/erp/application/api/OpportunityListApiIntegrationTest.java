@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fksoft.erp.AbstractIntegrationTest;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
+import com.fksoft.erp.domain.crm.repository.LossReasonRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
 import com.fksoft.erp.domain.identity.AuthenticatedUser;
@@ -53,12 +54,16 @@ class OpportunityListApiIntegrationTest extends AbstractIntegrationTest {
     private OriginRepository origins;
 
     @Autowired
+    private LossReasonRepository lossReasons;
+
+    @Autowired
     private TokenService tokens;
 
     @Autowired
     private JdbcTemplate jdbc;
 
     private UUID originId;
+    private UUID lossReasonId;
     private int phoneSeq;
 
     @BeforeEach
@@ -66,6 +71,7 @@ class OpportunityListApiIntegrationTest extends AbstractIntegrationTest {
         opportunities.deleteAll(); // FK to leads — clear opportunities first
         leads.deleteAll();
         originId = origins.findByActiveTrueOrderBySortOrderAsc().get(0).id();
+        lossReasonId = lossReasons.findByActiveTrueOrderBySortOrderAsc().get(0).id();
         phoneSeq = 0;
         insertOpportunity("Alpha", OpportunityStage.NEW_OPPORTUNITY, REPRESENTANTE, new BigDecimal("1000.00"));
         insertOpportunity("Bravo", OpportunityStage.DISCOVERY, MANAGER, new BigDecimal("2500.00"));
@@ -294,9 +300,10 @@ class OpportunityListApiIntegrationTest extends AbstractIntegrationTest {
         jdbc.update(
                 """
                 INSERT INTO opportunities (id, version, lead_id, name, origin_id, responsible_person_id,
-                                           main_interest, stage, estimated_value, created_by, updated_by)
+                                           main_interest, stage, estimated_value, loss_reason_id,
+                                           created_by, updated_by)
                 VALUES (cast(? as uuid), 0, cast(? as uuid), ?, cast(? as uuid), cast(? as uuid),
-                        ?, ?, ?, cast(? as uuid), cast(? as uuid))
+                        ?, ?, ?, cast(? as uuid), cast(? as uuid), cast(? as uuid))
                 """,
                 UUID.randomUUID().toString(),
                 leadId.toString(),
@@ -306,6 +313,7 @@ class OpportunityListApiIntegrationTest extends AbstractIntegrationTest {
                 "Pacote " + name,
                 stage.name(),
                 estimatedValue,
+                stage == OpportunityStage.LOST ? lossReasonId.toString() : null,
                 MANAGER.toString(),
                 MANAGER.toString());
     }
