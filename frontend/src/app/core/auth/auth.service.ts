@@ -56,6 +56,24 @@ export class AuthService {
   userId(): string | null {
     return this.claims()?.sub ?? null;
   }
+
+  /** Any read tier (own / pool / all) grants access to the Lead list and detail. */
+  canSeeLeads(): boolean {
+    return (
+      this.hasScope('crm:lead:read') ||
+      this.hasScope('crm:lead:read:unassigned') ||
+      this.hasScope('crm:lead:read:all')
+    );
+  }
+
+  canCreateLead(): boolean {
+    return this.hasScope('crm:lead:create');
+  }
+
+  /** Operate = qualify / lose / reassign / register interaction (consultation-only users lack it). */
+  canOperateLead(): boolean {
+    return this.hasScope('crm:lead:update');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

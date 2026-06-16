@@ -82,13 +82,18 @@ public class LeadService {
      * @param pageable page, size and sort
      * @param currentUserId the calling user
      * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
      * @return a page of operational Lead views
      */
     @Transactional(readOnly = true)
     public Page<LeadListView> list(
-            LeadSearchCriteria criteria, Pageable pageable, UUID currentUserId, boolean canSeeAll) {
-        Specification<Lead> spec =
-                LeadSpecifications.matching(criteria).and(accessPolicy.visibleTo(currentUserId, canSeeAll));
+            LeadSearchCriteria criteria,
+            Pageable pageable,
+            UUID currentUserId,
+            boolean canSeeAll,
+            boolean canSeeUnassigned) {
+        Specification<Lead> spec = LeadSpecifications.matching(criteria)
+                .and(accessPolicy.visibleTo(currentUserId, canSeeAll, canSeeUnassigned));
         Page<Lead> page = leads.findAll(spec, pageable);
 
         List<UUID> leadIds = page.getContent().stream().map(Lead::id).toList();
@@ -130,13 +135,14 @@ public class LeadService {
      * @param id the lead id
      * @param userId the calling user
      * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
      * @return the lead detail view
      * @throws LeadNotFoundException if no lead has the given id
      * @throws LeadAccessDeniedException if the lead exists but is not visible to the caller
      */
     @Transactional(readOnly = true)
-    public LeadDetailView detail(UUID id, UUID userId, boolean canSeeAll) {
-        return toDetailView(loadVisible(id, userId, canSeeAll));
+    public LeadDetailView detail(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        return toDetailView(loadVisible(id, userId, canSeeAll, canSeeUnassigned));
     }
 
     /**
@@ -147,13 +153,15 @@ public class LeadService {
      * @param note optional commercial note
      * @param userId the acting user
      * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
      * @return the updated detail
      * @throws LeadCannotBeQualifiedException if the lead is not in CONTACTED status
      * @throws LeadQualificationRequiresResponsibleException if the lead has no responsible person
      */
     @Transactional
-    public LeadDetailView qualify(UUID id, String mainInterest, String note, UUID userId, boolean canSeeAll) {
-        Lead lead = loadVisible(id, userId, canSeeAll);
+    public LeadDetailView qualify(
+            UUID id, String mainInterest, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Lead lead = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
         lead.qualify(userId, mainInterest, note);
         return toDetailView(leads.saveAndFlush(lead));
     }
@@ -166,13 +174,15 @@ public class LeadService {
      * @param note optional loss note
      * @param userId the acting user
      * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
      * @return the updated detail
      * @throws LossReasonNotAvailableException if the loss reason is unknown or inactive
      * @throws LeadCannotBeMarkedLostException if the lead is already lost
      */
     @Transactional
-    public LeadDetailView markLost(UUID id, UUID lossReasonId, String note, UUID userId, boolean canSeeAll) {
-        Lead lead = loadVisible(id, userId, canSeeAll);
+    public LeadDetailView markLost(
+            UUID id, UUID lossReasonId, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Lead lead = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
         LossReason reason = lossReasons
                 .findById(lossReasonId)
                 .filter(ReferenceData::active)
@@ -189,6 +199,7 @@ public class LeadService {
      * @param toResponsibleId the new responsible, or {@code null} to unassign
      * @param userId the acting user
      * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
      * @param canAssign whether the caller holds full assignment authority ({@code crm:lead:assign})
      * @return the updated detail
      * @throws LeadAssignmentNotAllowedException if a user without assignment authority targets
@@ -196,8 +207,14 @@ public class LeadService {
      * @throws ResponsiblePersonNotFoundException if the target user is unknown or inactive
      */
     @Transactional
-    public LeadDetailView reassign(UUID id, UUID toResponsibleId, UUID userId, boolean canSeeAll, boolean canAssign) {
-        Lead lead = loadVisible(id, userId, canSeeAll);
+    public LeadDetailView reassign(
+            UUID id,
+            UUID toResponsibleId,
+            UUID userId,
+            boolean canSeeAll,
+            boolean canSeeUnassigned,
+            boolean canAssign) {
+        Lead lead = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
         if (!assignmentPolicy.canAssign(userId, toResponsibleId, canAssign)) {
             throw new LeadAssignmentNotAllowedException();
         }
@@ -218,13 +235,15 @@ public class LeadService {
      * @param cmd the interaction data (already validated at the boundary)
      * @param userId the acting user (becomes the interaction author)
      * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
      * @return the updated detail
      * @throws InteractionTypeNotAvailableException if the type is unknown or inactive
      * @throws InteractionResultNotAvailableException if the result is unknown or inactive
      */
     @Transactional
-    public LeadDetailView recordInteraction(UUID id, RecordInteractionCommand cmd, UUID userId, boolean canSeeAll) {
-        Lead lead = loadVisible(id, userId, canSeeAll);
+    public LeadDetailView recordInteraction(
+            UUID id, RecordInteractionCommand cmd, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Lead lead = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
         InteractionType type = interactionTypes
                 .findById(cmd.typeId())
                 .filter(ReferenceData::active)
@@ -237,9 +256,9 @@ public class LeadService {
         return toDetailView(leads.saveAndFlush(lead));
     }
 
-    private Lead loadVisible(UUID id, UUID userId, boolean canSeeAll) {
+    private Lead loadVisible(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Lead lead = leads.findById(id).orElseThrow(LeadNotFoundException::new);
-        if (!accessPolicy.canSee(lead, userId, canSeeAll)) {
+        if (!accessPolicy.canSee(lead, userId, canSeeAll, canSeeUnassigned)) {
             throw new LeadAccessDeniedException();
         }
         return lead;

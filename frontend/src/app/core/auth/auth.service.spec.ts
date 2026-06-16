@@ -66,6 +66,18 @@ describe('AuthService', () => {
     expect(service.userId()).toBe('00000000-0000-0000-0000-000000000002');
     expect(service.hasScope('crm:lead:update')).toBe(true);
     expect(service.hasScope('crm:lead:assign')).toBe(false);
+    expect(service.canSeeLeads()).toBe(true);
+    expect(service.canOperateLead()).toBe(true);
+    expect(service.canCreateLead()).toBe(false);
+  });
+
+  it('grants Lead read access through any read tier', () => {
+    service.accessToken.set(jwt({ sub: 'u', scope: 'crm:lead:read:all' }));
+    expect(service.canSeeLeads()).toBe(true);
+    expect(service.canOperateLead()).toBe(false); // consult-only
+
+    service.accessToken.set(jwt({ sub: 'u', scope: 'something:else' }));
+    expect(service.canSeeLeads()).toBe(false);
   });
 
   it('exposes no scopes and a null subject when there is no token', () => {

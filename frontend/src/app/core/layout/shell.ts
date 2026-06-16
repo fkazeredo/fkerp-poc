@@ -32,7 +32,7 @@ interface NavLink {
 })
 export class Shell {
   private readonly router = inject(Router);
-  private readonly auth = inject(AuthService);
+  protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
 
   protected readonly paletteOpen = signal(false);
@@ -40,10 +40,14 @@ export class Shell {
   protected readonly sidebarOpen = signal(false);
   private goPending = false;
 
-  protected readonly nav: NavLink[] = [
-    { label: 'Início', icon: 'pi pi-home', link: '/', exact: true },
-    { label: 'Leads', icon: 'pi pi-list', link: '/leads', exact: false },
-  ];
+  /** Início is always available; Leads only when the user can read Leads. */
+  protected get nav(): NavLink[] {
+    const items: NavLink[] = [{ label: 'Início', icon: 'pi pi-home', link: '/', exact: true }];
+    if (this.auth.canSeeLeads()) {
+      items.push({ label: 'Leads', icon: 'pi pi-list', link: '/leads', exact: false });
+    }
+    return items;
+  }
 
   protected readonly cadastros: { label: string; link: string }[] = [
     { label: 'Origens', link: '/cadastros/origens' },

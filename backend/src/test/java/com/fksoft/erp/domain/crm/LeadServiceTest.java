@@ -121,7 +121,7 @@ class LeadServiceTest {
                 UUID.randomUUID());
         Pageable pageable = PageRequest.of(0, 20);
 
-        when(accessPolicy.visibleTo(any(), anyBoolean())).thenReturn((root, query, cb) -> null);
+        when(accessPolicy.visibleTo(any(), anyBoolean(), anyBoolean())).thenReturn((root, query, cb) -> null);
         when(leads.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(withPhone, unassignedEmail), pageable, 2));
         LatestInteractionRow row = mock(LatestInteractionRow.class);
@@ -135,7 +135,11 @@ class LeadServiceTest {
         when(users.findAllById(any())).thenReturn(List.of(responsible));
 
         Page<LeadListView> page = service.list(
-                new LeadSearchCriteria(null, null, null, false, null, null, null), pageable, UUID.randomUUID(), false);
+                new LeadSearchCriteria(null, null, null, false, null, null, null),
+                pageable,
+                UUID.randomUUID(),
+                false,
+                true);
 
         LeadListView assigned = page.getContent().get(0);
         assertThat(assigned.name()).isEqualTo("Maria");
@@ -160,9 +164,10 @@ class LeadServiceTest {
                 Origin.create("WEBSITE", "Website", 1),
                 UUID.randomUUID());
         when(leads.findById(id)).thenReturn(Optional.of(lead));
-        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(true);
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean(), anyBoolean()))
+                .thenReturn(true);
 
-        LeadDetailView view = service.detail(id, UUID.randomUUID(), false);
+        LeadDetailView view = service.detail(id, UUID.randomUUID(), false, false);
 
         assertThat(view.name()).isEqualTo("Maria");
         assertThat(view.status()).isEqualTo(LeadStatus.NEW);
@@ -176,7 +181,7 @@ class LeadServiceTest {
         UUID id = UUID.randomUUID();
         when(leads.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.detail(id, UUID.randomUUID(), false))
+        assertThatThrownBy(() -> service.detail(id, UUID.randomUUID(), false, false))
                 .isInstanceOf(LeadNotFoundException.class);
     }
 
@@ -188,9 +193,10 @@ class LeadServiceTest {
                 Origin.create("WEBSITE", "Website", 1),
                 UUID.randomUUID());
         when(leads.findById(id)).thenReturn(Optional.of(lead));
-        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(false);
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean(), anyBoolean()))
+                .thenReturn(false);
 
-        assertThatThrownBy(() -> service.detail(id, UUID.randomUUID(), false))
+        assertThatThrownBy(() -> service.detail(id, UUID.randomUUID(), false, false))
                 .isInstanceOf(LeadAccessDeniedException.class);
     }
 
@@ -202,10 +208,11 @@ class LeadServiceTest {
                 Origin.create("WEBSITE", "Website", 1),
                 UUID.randomUUID());
         when(leads.findById(id)).thenReturn(Optional.of(lead));
-        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(true);
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean(), anyBoolean()))
+                .thenReturn(true);
         when(assignmentPolicy.canAssign(any(), any(), anyBoolean())).thenReturn(false);
 
-        assertThatThrownBy(() -> service.reassign(id, UUID.randomUUID(), UUID.randomUUID(), false, false))
+        assertThatThrownBy(() -> service.reassign(id, UUID.randomUUID(), UUID.randomUUID(), false, false, false))
                 .isInstanceOf(LeadAssignmentNotAllowedException.class);
     }
 
@@ -213,13 +220,14 @@ class LeadServiceTest {
     void recordInteractionRejectsAnUnknownOrInactiveType() {
         UUID id = UUID.randomUUID();
         when(leads.findById(id)).thenReturn(Optional.of(visibleLead()));
-        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(true);
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean(), anyBoolean()))
+                .thenReturn(true);
         UUID typeId = UUID.randomUUID();
         when(interactionTypes.findById(typeId)).thenReturn(Optional.empty());
         RecordInteractionCommand cmd =
                 new RecordInteractionCommand(typeId, UUID.randomUUID(), "desc", Instant.now(), null);
 
-        assertThatThrownBy(() -> service.recordInteraction(id, cmd, UUID.randomUUID(), false))
+        assertThatThrownBy(() -> service.recordInteraction(id, cmd, UUID.randomUUID(), false, false))
                 .isInstanceOf(InteractionTypeNotAvailableException.class);
     }
 
@@ -227,7 +235,8 @@ class LeadServiceTest {
     void recordInteractionRejectsAnUnknownOrInactiveResult() {
         UUID id = UUID.randomUUID();
         when(leads.findById(id)).thenReturn(Optional.of(visibleLead()));
-        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(true);
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean(), anyBoolean()))
+                .thenReturn(true);
         UUID typeId = UUID.randomUUID();
         UUID resultId = UUID.randomUUID();
         when(interactionTypes.findById(typeId))
@@ -235,7 +244,7 @@ class LeadServiceTest {
         when(interactionResults.findById(resultId)).thenReturn(Optional.empty());
         RecordInteractionCommand cmd = new RecordInteractionCommand(typeId, resultId, "desc", Instant.now(), null);
 
-        assertThatThrownBy(() -> service.recordInteraction(id, cmd, UUID.randomUUID(), false))
+        assertThatThrownBy(() -> service.recordInteraction(id, cmd, UUID.randomUUID(), false, false))
                 .isInstanceOf(InteractionResultNotAvailableException.class);
     }
 
@@ -243,11 +252,12 @@ class LeadServiceTest {
     void recordInteractionDeniedWhenLeadNotVisible() {
         UUID id = UUID.randomUUID();
         when(leads.findById(id)).thenReturn(Optional.of(visibleLead()));
-        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(false);
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean(), anyBoolean()))
+                .thenReturn(false);
         RecordInteractionCommand cmd =
                 new RecordInteractionCommand(UUID.randomUUID(), UUID.randomUUID(), "desc", Instant.now(), null);
 
-        assertThatThrownBy(() -> service.recordInteraction(id, cmd, UUID.randomUUID(), false))
+        assertThatThrownBy(() -> service.recordInteraction(id, cmd, UUID.randomUUID(), false, false))
                 .isInstanceOf(LeadAccessDeniedException.class);
     }
 
@@ -255,7 +265,8 @@ class LeadServiceTest {
     void recordInteractionWithEffectiveContactReturnsContactedDetail() {
         UUID id = UUID.randomUUID();
         when(leads.findById(id)).thenReturn(Optional.of(visibleLead()));
-        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(true);
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean(), anyBoolean()))
+                .thenReturn(true);
         UUID typeId = UUID.randomUUID();
         UUID resultId = UUID.randomUUID();
         when(interactionTypes.findById(typeId))
@@ -267,7 +278,7 @@ class LeadServiceTest {
         RecordInteractionCommand cmd =
                 new RecordInteractionCommand(typeId, resultId, "Conversamos", Instant.now(), null);
 
-        LeadDetailView view = service.recordInteraction(id, cmd, UUID.randomUUID(), false);
+        LeadDetailView view = service.recordInteraction(id, cmd, UUID.randomUUID(), false, false);
 
         assertThat(view.status()).isEqualTo(LeadStatus.CONTACTED);
         assertThat(view.interactions()).hasSize(1);
@@ -291,11 +302,12 @@ class LeadServiceTest {
                 null,
                 responsible);
         when(leads.findById(id)).thenReturn(Optional.of(lead));
-        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean())).thenReturn(true);
+        when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean(), anyBoolean()))
+                .thenReturn(true);
         when(leads.saveAndFlush(any(Lead.class))).thenAnswer(inv -> inv.getArgument(0));
         when(users.findAllById(any())).thenReturn(List.of());
 
-        LeadDetailView view = service.qualify(id, "Pacote corporativo", "bom perfil", responsible, false);
+        LeadDetailView view = service.qualify(id, "Pacote corporativo", "bom perfil", responsible, false, false);
 
         assertThat(view.status()).isEqualTo(LeadStatus.QUALIFIED);
         assertThat(view.qualification().mainInterest()).isEqualTo("Pacote corporativo");

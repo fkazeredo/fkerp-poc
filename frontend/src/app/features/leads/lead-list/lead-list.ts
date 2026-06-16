@@ -21,6 +21,7 @@ import {
   Origin,
   Responsible,
 } from '../../../core/api/lead.service';
+import { AuthService } from '../../../core/auth/auth.service';
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
   NEW: 'Novo',
@@ -55,6 +56,7 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'dan
 export class LeadList implements OnInit {
   private readonly leads = inject(LeadService);
   private readonly router = inject(Router);
+  protected readonly auth = inject(AuthService);
 
   protected readonly statusOptions = (
     ['NEW', 'CONTACTED', 'QUALIFIED', 'LOST'] as LeadStatus[]
