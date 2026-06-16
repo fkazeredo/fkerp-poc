@@ -30,7 +30,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * End-to-end (MockMvc, real Postgres) of the operational Lead list: visibility, the lost-by-default
  * rule, every filter, search, the {@code PageResponse} shape and the read scopes. Test leads are
- * inserted directly (status transitions / assignment do not exist in the domain yet).
+ * inserted directly (JDBC) to set up varied statuses cheaply; the lose-to-list flow through the real
+ * API is covered by {@code LeadLossApiIntegrationTest}.
  */
 class LeadListApiIntegrationTest extends AbstractIntegrationTest {
 
