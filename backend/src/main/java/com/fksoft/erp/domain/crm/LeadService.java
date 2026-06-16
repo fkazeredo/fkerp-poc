@@ -1,31 +1,20 @@
 package com.fksoft.erp.domain.crm;
 
-import com.fksoft.erp.domain.identity.ResponsibleView;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
-import java.time.Instant;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.Locale;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Application Service of the Commercial / CRM module: registers Leads, serves the operational list,
- * and serves the Lead detail with its commercial history plus the transitions that produce it
- * (qualify, mark lost, reassign). Never creates Customer, Opportunity, Sale, Sales Order, Booking or
- * Financial data. Collaborates with Identity (responsible/actor resolution) directly.
+ * Application Service (command side) of the Commercial / CRM module: registers Leads and applies the
+ * transitions that change them (qualify, mark lost, reassign, record interaction). It never creates
+ * Customer, Opportunity, Sale, Sales Order, Booking or Financial data. Reads (list/detail/pending/
+ * indicators) live on the read side ({@code application.read.LeadReadService}); these command methods
+ * return {@code void} and the controller re-reads the refreshed detail.
  */
 @Service
 @RequiredArgsConstructor
@@ -39,7 +28,6 @@ public class LeadService {
     private final UserRepository users;
     private final LeadAccessPolicy accessPolicy;
     private final LeadAssignmentPolicy assignmentPolicy;
-    private final LeadIndicatorQueries indicatorQueries;
     private final ApplicationEventPublisher events;
 
     /**
@@ -89,7 +77,7 @@ public class LeadService {
         String phone = blankOrNull(command.phone());
         String whatsapp = blankOrNull(command.whatsapp());
         String email = blankOrNull(command.email());
-        String normalizedEmail = email == null ? null : email.toLowerCase(java.util.Locale.ROOT);
+        String normalizedEmail = email == null ? null : email.toLowerCase(Locale.ROOT);
         leads.findOpenDuplicates(phone, whatsapp, normalizedEmail).stream()
                 .findFirst()
                 .ifPresent(existing -> {
@@ -102,173 +90,7 @@ public class LeadService {
     }
 
     /**
-     * Operational, paginated Lead list filtered by the given criteria and the caller's visibility.
-     * The visibility predicate is applied at the query level, so filters and search can never expose
-     * Leads the caller is not allowed to see.
-     *
-     * @param criteria the (optional) filters
-     * @param pageable page, size and sort
-     * @param currentUserId the calling user
-     * @param canSeeAll whether the caller may see every Lead (manager scope)
-     * @param canSeeUnassigned whether the caller may also see the unassigned pool
-     * @return a page of operational Lead views
-     */
-    @Transactional(readOnly = true)
-    public Page<LeadListView> list(
-            LeadSearchCriteria criteria,
-            Pageable pageable,
-            UUID currentUserId,
-            boolean canSeeAll,
-            boolean canSeeUnassigned) {
-        Specification<Lead> spec = LeadSpecifications.matching(criteria)
-                .and(accessPolicy.visibleTo(currentUserId, canSeeAll, canSeeUnassigned));
-        Page<Lead> page = leads.findAll(spec, pageable);
-
-        List<UUID> leadIds = page.getContent().stream().map(Lead::id).toList();
-        Map<UUID, LatestInteractionRow> latestByLead = leadIds.isEmpty()
-                ? Map.of()
-                : leads.findLatestInteractions(leadIds).stream()
-                        .collect(Collectors.toMap(LatestInteractionRow::getLeadId, row -> row, (a, b) -> a));
-        Set<UUID> responsibleIds = page.getContent().stream()
-                .map(Lead::responsiblePersonId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<UUID, String> namesById = responsibleIds.isEmpty()
-                ? Map.of()
-                : users.findAllById(responsibleIds).stream().collect(Collectors.toMap(User::id, User::username));
-
-        return page.map(lead -> {
-            UUID responsibleId = lead.responsiblePersonId();
-            String responsibleName = responsibleId == null ? null : namesById.get(responsibleId);
-            return toListView(lead, latestByLead.get(lead.id()), responsibleName);
-        });
-    }
-
-    /**
-     * Operational worklist: the Leads visible to the caller that currently need action (unassigned,
-     * NEW without interaction, overdue next contact, or contacted without a planned follow-up). Each
-     * item carries the reasons it is pending. Visibility is applied at the query level, so it never
-     * exposes Leads the caller cannot see.
-     *
-     * @param pageable page, size and sort
-     * @param currentUserId the calling user
-     * @param canSeeAll whether the caller may see every Lead (manager scope)
-     * @param canSeeUnassigned whether the caller may also see the unassigned pool
-     * @return a page of pending Leads with their reasons
-     */
-    @Transactional(readOnly = true)
-    public Page<PendingLeadView> pending(
-            Pageable pageable, UUID currentUserId, boolean canSeeAll, boolean canSeeUnassigned) {
-        Instant now = Instant.now();
-        Specification<Lead> spec = LeadPendingSpecifications.pending(now)
-                .and(accessPolicy.visibleTo(currentUserId, canSeeAll, canSeeUnassigned));
-        Page<Lead> page = leads.findAll(spec, pageable);
-
-        List<UUID> leadIds = page.getContent().stream().map(Lead::id).toList();
-        Set<UUID> withInteractions = leadIds.isEmpty()
-                ? Set.of()
-                : leads.findLatestInteractions(leadIds).stream()
-                        .map(LatestInteractionRow::getLeadId)
-                        .collect(Collectors.toSet());
-        Set<UUID> responsibleIds = page.getContent().stream()
-                .map(Lead::responsiblePersonId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<UUID, String> namesById = responsibleIds.isEmpty()
-                ? Map.of()
-                : users.findAllById(responsibleIds).stream().collect(Collectors.toMap(User::id, User::username));
-
-        return page.map(lead -> {
-            UUID responsibleId = lead.responsiblePersonId();
-            return new PendingLeadView(
-                    lead.id(),
-                    lead.name(),
-                    mainContact(lead),
-                    lead.status(),
-                    responsibleId,
-                    responsibleId == null ? null : namesById.get(responsibleId),
-                    lead.createdAt(),
-                    lead.nextContactAt(),
-                    PendingLeadReasons.of(lead, now, withInteractions.contains(lead.id())));
-        });
-    }
-
-    /**
-     * Minimum top-of-funnel indicators over the Leads visible to the caller, in an optional period.
-     * Counts include every status (Lost included) and never expose Leads the caller cannot see.
-     *
-     * @param userId the calling user
-     * @param canSeeAll whether the caller may see every Lead (manager scope)
-     * @param canSeeUnassigned whether the caller may also see the unassigned pool
-     * @param from inclusive lower bound on creation (or {@code null} for all-time)
-     * @param to exclusive upper bound on creation (or {@code null})
-     * @return the assembled indicators
-     */
-    @Transactional(readOnly = true)
-    public LeadIndicatorsView indicators(
-            UUID userId, boolean canSeeAll, boolean canSeeUnassigned, Instant from, Instant to) {
-        Specification<Lead> visible = accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned);
-
-        Map<LeadStatus, Long> byStatus = indicatorQueries.countByStatus(visible, from, to);
-        long total = byStatus.values().stream().mapToLong(Long::longValue).sum();
-
-        List<OriginCountView> byOrigin = indicatorQueries.countByOrigin(visible, from, to);
-
-        List<ResponsibleCount> responsibleCounts = indicatorQueries.countByResponsible(visible, from, to);
-        Set<UUID> responsibleIds = responsibleCounts.stream()
-                .map(ResponsibleCount::responsibleId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<UUID, String> names = responsibleIds.isEmpty()
-                ? Map.of()
-                : users.findAllById(responsibleIds).stream().collect(Collectors.toMap(User::id, User::username));
-        List<ResponsibleCountView> byResponsible = responsibleCounts.stream()
-                .map(rc -> new ResponsibleCountView(
-                        rc.responsibleId() == null ? null : names.get(rc.responsibleId()), rc.count()))
-                .toList();
-
-        return new LeadIndicatorsView(
-                total,
-                byStatus.getOrDefault(LeadStatus.NEW, 0L),
-                byStatus.getOrDefault(LeadStatus.CONTACTED, 0L),
-                byStatus.getOrDefault(LeadStatus.QUALIFIED, 0L),
-                byStatus.getOrDefault(LeadStatus.LOST, 0L),
-                indicatorQueries.countWaitingFirstContact(visible, from, to),
-                byOrigin,
-                byResponsible);
-    }
-
-    /**
-     * Active users that can be assigned as a Lead responsible (for the assignment selector and the
-     * responsible filter).
-     *
-     * @return active users as lightweight views, ordered by username
-     */
-    @Transactional(readOnly = true)
-    public List<ResponsibleView> listResponsibles() {
-        return users.findByActiveTrueOrderByUsernameAsc().stream()
-                .map(ResponsibleView::from)
-                .toList();
-    }
-
-    /**
-     * Full detail of a Lead the caller is allowed to see, including its commercial history.
-     *
-     * @param id the lead id
-     * @param userId the calling user
-     * @param canSeeAll whether the caller may see every Lead (manager scope)
-     * @param canSeeUnassigned whether the caller may also see the unassigned pool
-     * @return the lead detail view
-     * @throws LeadNotFoundException if no lead has the given id
-     * @throws LeadAccessDeniedException if the lead exists but is not visible to the caller
-     */
-    @Transactional(readOnly = true)
-    public LeadDetailView detail(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
-        return toDetailView(loadVisible(id, userId, canSeeAll, canSeeUnassigned));
-    }
-
-    /**
-     * Qualifies a Lead with its main commercial interest and returns the refreshed detail.
+     * Qualifies a Lead with its main commercial interest.
      *
      * @param id the lead id
      * @param mainInterest the main commercial interest (required)
@@ -276,20 +98,19 @@ public class LeadService {
      * @param userId the acting user
      * @param canSeeAll whether the caller may see every Lead (manager scope)
      * @param canSeeUnassigned whether the caller may also see the unassigned pool
-     * @return the updated detail
      * @throws LeadCannotBeQualifiedException if the lead is not in CONTACTED status
      * @throws LeadQualificationRequiresResponsibleException if the lead has no responsible person
      */
     @Transactional
-    public LeadDetailView qualify(
+    public void qualify(
             UUID id, String mainInterest, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Lead lead = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
         lead.qualify(userId, mainInterest, note);
-        return toDetailView(leads.saveAndFlush(lead));
+        leads.saveAndFlush(lead);
     }
 
     /**
-     * Marks a Lead as lost with a reason and returns the refreshed detail.
+     * Marks a Lead as lost with a reason.
      *
      * @param id the lead id
      * @param lossReasonId the (active) loss reason id
@@ -297,12 +118,11 @@ public class LeadService {
      * @param userId the acting user
      * @param canSeeAll whether the caller may see every Lead (manager scope)
      * @param canSeeUnassigned whether the caller may also see the unassigned pool
-     * @return the updated detail
      * @throws LossReasonNotAvailableException if the loss reason is unknown or inactive
      * @throws LeadCannotBeMarkedLostException if the lead is already lost
      */
     @Transactional
-    public LeadDetailView markLost(
+    public void markLost(
             UUID id, UUID lossReasonId, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Lead lead = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
         LossReason reason = lossReasons
@@ -310,12 +130,12 @@ public class LeadService {
                 .filter(ReferenceData::active)
                 .orElseThrow(LossReasonNotAvailableException::new);
         lead.markLost(reason, userId, note);
-        return toDetailView(leads.saveAndFlush(lead));
+        leads.saveAndFlush(lead);
     }
 
     /**
-     * Reassigns the responsible person of a Lead (recording assignment history) and returns the
-     * refreshed detail. A {@code null} target unassigns the lead.
+     * Reassigns the responsible person of a Lead (recording assignment history). A {@code null} target
+     * unassigns the lead.
      *
      * @param id the lead id
      * @param toResponsibleId the new responsible, or {@code null} to unassign
@@ -323,13 +143,12 @@ public class LeadService {
      * @param canSeeAll whether the caller may see every Lead (manager scope)
      * @param canSeeUnassigned whether the caller may also see the unassigned pool
      * @param canAssign whether the caller holds full assignment authority ({@code crm:lead:assign})
-     * @return the updated detail
      * @throws LeadAssignmentNotAllowedException if a user without assignment authority targets
      *     anyone other than themselves
      * @throws ResponsiblePersonNotFoundException if the target user is unknown or inactive
      */
     @Transactional
-    public LeadDetailView reassign(
+    public void reassign(
             UUID id,
             UUID toResponsibleId,
             UUID userId,
@@ -345,25 +164,24 @@ public class LeadService {
             throw new ResponsiblePersonNotFoundException();
         }
         lead.reassign(toResponsibleId, userId);
-        return toDetailView(leads.saveAndFlush(lead));
+        leads.saveAndFlush(lead);
     }
 
     /**
-     * Registers a new interaction in a Lead the caller is allowed to operate and returns the refreshed
-     * detail. An effective contact moves a NEW lead to CONTACTED; a non-effective attempt only adds to
-     * the history (§ {@link Lead#recordInteraction}).
+     * Registers a new interaction in a Lead the caller is allowed to operate. An effective contact
+     * moves a NEW lead to CONTACTED; a non-effective attempt only adds to the history
+     * (§ {@link Lead#recordInteraction}).
      *
      * @param id the lead id
      * @param cmd the interaction data (already validated at the boundary)
      * @param userId the acting user (becomes the interaction author)
      * @param canSeeAll whether the caller may see every Lead (manager scope)
      * @param canSeeUnassigned whether the caller may also see the unassigned pool
-     * @return the updated detail
      * @throws InteractionTypeNotAvailableException if the type is unknown or inactive
      * @throws InteractionResultNotAvailableException if the result is unknown or inactive
      */
     @Transactional
-    public LeadDetailView recordInteraction(
+    public void recordInteraction(
             UUID id, RecordInteractionCommand cmd, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Lead lead = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
         InteractionType type = interactionTypes
@@ -375,117 +193,25 @@ public class LeadService {
                 .filter(ReferenceData::active)
                 .orElseThrow(InteractionResultNotAvailableException::new);
         lead.recordInteraction(type, result, cmd.description(), cmd.occurredAt(), cmd.nextContactAt(), userId);
-        return toDetailView(leads.saveAndFlush(lead));
+        leads.saveAndFlush(lead);
     }
 
+    /**
+     * Loads a Lead the caller is allowed to see, for a command.
+     *
+     * @param id the lead id
+     * @param userId the acting user
+     * @param canSeeAll whether the caller may see every Lead (manager scope)
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the lead
+     * @throws LeadNotFoundException if no lead has the given id
+     * @throws LeadAccessDeniedException if the lead exists but is not visible to the caller
+     */
     private Lead loadVisible(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Lead lead = leads.findById(id).orElseThrow(LeadNotFoundException::new);
         if (!accessPolicy.canSee(lead, userId, canSeeAll, canSeeUnassigned)) {
             throw new LeadAccessDeniedException();
         }
         return lead;
-    }
-
-    private LeadDetailView toDetailView(Lead lead) {
-        Set<UUID> userIds = new HashSet<>();
-        addIfPresent(userIds, lead.responsiblePersonId());
-        addIfPresent(userIds, lead.qualifiedBy());
-        addIfPresent(userIds, lead.lostBy());
-        lead.interactions().forEach(i -> addIfPresent(userIds, i.registeredBy()));
-        lead.assignments().forEach(a -> {
-            addIfPresent(userIds, a.assignedBy());
-            addIfPresent(userIds, a.fromResponsibleId());
-            addIfPresent(userIds, a.toResponsibleId());
-        });
-        Map<UUID, String> names = userIds.isEmpty()
-                ? new HashMap<>()
-                : users.findAllById(userIds).stream().collect(Collectors.toMap(User::id, User::username));
-
-        List<InteractionView> interactions = lead.interactions().stream()
-                .sorted(Comparator.comparing(LeadInteraction::occurredAt).reversed())
-                .map(i -> new InteractionView(
-                        i.id(),
-                        i.type().label(),
-                        i.result() != null ? i.result().label() : null,
-                        i.content(),
-                        i.occurredAt(),
-                        i.nextContactAt(),
-                        names.get(i.registeredBy())))
-                .toList();
-        List<AssignmentView> assignments = lead.assignments().stream()
-                .sorted(Comparator.comparing(LeadAssignment::assignedAt).reversed())
-                .map(a -> new AssignmentView(
-                        nameOf(names, a.fromResponsibleId()),
-                        nameOf(names, a.toResponsibleId()),
-                        names.get(a.assignedBy()),
-                        a.assignedAt()))
-                .toList();
-        QualificationView qualification = lead.qualifiedAt() == null
-                ? null
-                : new QualificationView(
-                        lead.qualifiedAt(),
-                        names.get(lead.qualifiedBy()),
-                        lead.mainInterest(),
-                        lead.qualificationNote());
-        LossView loss = lead.lostAt() == null
-                ? null
-                : new LossView(
-                        lead.lossReason() != null ? lead.lossReason().label() : null,
-                        lead.lostAt(),
-                        names.get(lead.lostBy()),
-                        lead.lossNote());
-
-        return new LeadDetailView(
-                lead.id(),
-                lead.name(),
-                lead.phone(),
-                lead.whatsapp(),
-                lead.email(),
-                lead.origin().label(),
-                lead.status(),
-                lead.responsiblePersonId(),
-                nameOf(names, lead.responsiblePersonId()),
-                lead.createdAt(),
-                lead.updatedAt(),
-                lead.nextContactAt(),
-                interactions,
-                assignments,
-                qualification,
-                loss);
-    }
-
-    private static LeadListView toListView(Lead lead, LatestInteractionRow latest, String responsibleName) {
-        return new LeadListView(
-                lead.id(),
-                lead.name(),
-                mainContact(lead),
-                lead.origin().label(),
-                lead.status(),
-                lead.responsiblePersonId(),
-                responsibleName,
-                lead.createdAt(),
-                latest != null ? latest.getOccurredAt() : null,
-                latest != null ? latest.getTypeLabel() : null,
-                lead.nextContactAt());
-    }
-
-    private static String nameOf(Map<UUID, String> names, UUID id) {
-        return id == null ? null : names.get(id);
-    }
-
-    private static void addIfPresent(Set<UUID> ids, UUID id) {
-        if (id != null) {
-            ids.add(id);
-        }
-    }
-
-    private static String mainContact(Lead lead) {
-        if (lead.phone() != null) {
-            return lead.phone();
-        }
-        if (lead.whatsapp() != null) {
-            return lead.whatsapp();
-        }
-        return lead.email();
     }
 }

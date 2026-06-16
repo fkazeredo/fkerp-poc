@@ -1,6 +1,6 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.OpportunityListView;
+import com.fksoft.erp.domain.crm.Opportunity;
 import com.fksoft.erp.domain.crm.OpportunityStage;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -29,24 +29,27 @@ public record OpportunityListItemResponse(
         LocalDate nextActionDate) {
 
     /**
-     * Maps the domain list view to the transport DTO.
+     * Maps an Opportunity entity (plus the responsible's resolved name) to the transport DTO.
+     * {@code lastActivityAt}/{@code nextActionDate} stay {@code null} until the Opportunity-activities
+     * slice exists.
      *
-     * @param v the operational list view
+     * @param o the opportunity entity
+     * @param responsibleName the responsible's display name, or {@code null} when unassigned/unknown
      * @return the response item
      */
-    public static OpportunityListItemResponse from(OpportunityListView v) {
+    public static OpportunityListItemResponse from(Opportunity o, String responsibleName) {
         return new OpportunityListItemResponse(
-                v.id(),
-                v.leadId(),
-                v.name(),
-                v.responsibleId(),
-                v.responsibleName(),
-                v.unassigned(),
-                v.stage(),
-                v.estimatedValue(),
-                v.expectedCloseDate(),
-                v.createdAt(),
-                v.lastActivityAt(),
-                v.nextActionDate());
+                o.id(),
+                o.leadId(),
+                o.name(),
+                o.responsiblePersonId(),
+                responsibleName,
+                o.responsiblePersonId() == null,
+                o.stage(),
+                o.estimatedValue(),
+                o.expectedCloseDate(),
+                o.createdAt(),
+                null,
+                null);
     }
 }

@@ -1,18 +1,19 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.AssignmentView;
-import com.fksoft.erp.domain.crm.InteractionView;
-import com.fksoft.erp.domain.crm.LeadDetailView;
+import com.fksoft.erp.domain.crm.Lead;
+import com.fksoft.erp.domain.crm.LeadAssignment;
+import com.fksoft.erp.domain.crm.LeadInteraction;
 import com.fksoft.erp.domain.crm.LeadStatus;
-import com.fksoft.erp.domain.crm.LossView;
-import com.fksoft.erp.domain.crm.QualificationView;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * Full Lead detail (entity-free transport DTO). {@code qualification} and {@code loss} are present
  * only when the lead has been qualified / lost; the history lists are empty when there is none.
+ * Assembled from the Lead aggregate plus a map of user id → display name (resolved from Identity).
  */
 public record LeadDetailResponse(
         UUID id,
@@ -34,30 +35,69 @@ public record LeadDetailResponse(
         LossInfo loss) {
 
     /**
-     * Maps the domain detail view to the transport DTO.
+     * Assembles the detail response from the Lead aggregate and the resolved user names.
      *
-     * @param v the detail view
+     * @param lead the lead aggregate (with its interactions/assignments loaded)
+     * @param names map of user id → display name for every actor referenced by the lead
      * @return the response
      */
-    public static LeadDetailResponse from(LeadDetailView v) {
+    public static LeadDetailResponse from(Lead lead, Map<UUID, String> names) {
+        List<InteractionItem> interactions = lead.interactions().stream()
+                .sorted(Comparator.comparing(LeadInteraction::occurredAt).reversed())
+                .map(i -> new InteractionItem(
+                        i.id(),
+                        i.type().label(),
+                        i.result() != null ? i.result().label() : null,
+                        i.content(),
+                        i.occurredAt(),
+                        i.nextContactAt(),
+                        names.get(i.registeredBy())))
+                .toList();
+        List<AssignmentItem> assignments = lead.assignments().stream()
+                .sorted(Comparator.comparing(LeadAssignment::assignedAt).reversed())
+                .map(a -> new AssignmentItem(
+                        nameOf(names, a.fromResponsibleId()),
+                        nameOf(names, a.toResponsibleId()),
+                        names.get(a.assignedBy()),
+                        a.assignedAt()))
+                .toList();
+        QualificationInfo qualification = lead.qualifiedAt() == null
+                ? null
+                : new QualificationInfo(
+                        lead.qualifiedAt(),
+                        names.get(lead.qualifiedBy()),
+                        lead.mainInterest(),
+                        lead.qualificationNote());
+        LossInfo loss = lead.lostAt() == null
+                ? null
+                : new LossInfo(
+                        lead.lossReason() != null ? lead.lossReason().label() : null,
+                        lead.lostAt(),
+                        names.get(lead.lostBy()),
+                        lead.lossNote());
+
         return new LeadDetailResponse(
-                v.id(),
-                v.name(),
-                v.phone(),
-                v.whatsapp(),
-                v.email(),
-                v.originLabel(),
-                v.status(),
-                v.responsibleId(),
-                v.responsibleName(),
-                v.unassigned(),
-                v.createdAt(),
-                v.updatedAt(),
-                v.nextContactAt(),
-                v.interactions().stream().map(InteractionItem::from).toList(),
-                v.assignments().stream().map(AssignmentItem::from).toList(),
-                v.qualification() == null ? null : QualificationInfo.from(v.qualification()),
-                v.loss() == null ? null : LossInfo.from(v.loss()));
+                lead.id(),
+                lead.name(),
+                lead.phone(),
+                lead.whatsapp(),
+                lead.email(),
+                lead.origin().label(),
+                lead.status(),
+                lead.responsiblePersonId(),
+                nameOf(names, lead.responsiblePersonId()),
+                lead.responsiblePersonId() == null,
+                lead.createdAt(),
+                lead.updatedAt(),
+                lead.nextContactAt(),
+                interactions,
+                assignments,
+                qualification,
+                loss);
+    }
+
+    private static String nameOf(Map<UUID, String> names, UUID id) {
+        return id == null ? null : names.get(id);
     }
 
     /** A single interaction in the lead history. */
@@ -68,38 +108,14 @@ public record LeadDetailResponse(
             String content,
             Instant occurredAt,
             Instant nextContactAt,
-            String registeredBy) {
-        static InteractionItem from(InteractionView i) {
-            return new InteractionItem(
-                    i.id(),
-                    i.typeLabel(),
-                    i.resultLabel(),
-                    i.content(),
-                    i.occurredAt(),
-                    i.nextContactAt(),
-                    i.registeredByName());
-        }
-    }
+            String registeredBy) {}
 
     /** A single assignment-history entry. */
-    public record AssignmentItem(String from, String to, String by, Instant at) {
-        static AssignmentItem from(AssignmentView a) {
-            return new AssignmentItem(
-                    a.fromResponsibleName(), a.toResponsibleName(), a.assignedByName(), a.assignedAt());
-        }
-    }
+    public record AssignmentItem(String from, String to, String by, Instant at) {}
 
     /** Qualification outcome. */
-    public record QualificationInfo(Instant qualifiedAt, String qualifiedBy, String mainInterest, String note) {
-        static QualificationInfo from(QualificationView q) {
-            return new QualificationInfo(q.qualifiedAt(), q.qualifiedByName(), q.mainInterest(), q.note());
-        }
-    }
+    public record QualificationInfo(Instant qualifiedAt, String qualifiedBy, String mainInterest, String note) {}
 
     /** Loss outcome. */
-    public record LossInfo(String reason, Instant lostAt, String lostBy, String note) {
-        static LossInfo from(LossView l) {
-            return new LossInfo(l.lossReasonLabel(), l.lostAt(), l.lostByName(), l.note());
-        }
-    }
+    public record LossInfo(String reason, Instant lostAt, String lostBy, String note) {}
 }

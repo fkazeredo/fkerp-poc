@@ -9,6 +9,7 @@ import jakarta.persistence.criteria.Subquery;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -56,9 +57,9 @@ public class LeadIndicatorQueries {
      * @param visible the visibility predicate
      * @param from inclusive lower bound on creation (or {@code null})
      * @param to exclusive upper bound on creation (or {@code null})
-     * @return origin/count pairs
+     * @return counts keyed by origin label, in busiest-first order
      */
-    public List<OriginCountView> countByOrigin(Specification<Lead> visible, Instant from, Instant to) {
+    public Map<String, Long> countByOrigin(Specification<Lead> visible, Instant from, Instant to) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<Object[]> q = cb.createQuery(Object[].class);
         Root<Lead> root = q.from(Lead.class);
@@ -67,9 +68,9 @@ public class LeadIndicatorQueries {
         q.where(where(cb, root, q, visible, from, to));
         q.groupBy(label);
         q.orderBy(cb.desc(cb.count(root)));
-        List<OriginCountView> out = new ArrayList<>();
+        Map<String, Long> out = new LinkedHashMap<>();
         for (Object[] row : em.createQuery(q).getResultList()) {
-            out.add(new OriginCountView((String) row[0], (Long) row[1]));
+            out.put((String) row[0], (Long) row[1]);
         }
         return out;
     }
@@ -80,9 +81,9 @@ public class LeadIndicatorQueries {
      * @param visible the visibility predicate
      * @param from inclusive lower bound on creation (or {@code null})
      * @param to exclusive upper bound on creation (or {@code null})
-     * @return responsible-id/count pairs
+     * @return counts keyed by responsible id ({@code null} key = unassigned), busiest-first
      */
-    public List<ResponsibleCount> countByResponsible(Specification<Lead> visible, Instant from, Instant to) {
+    public Map<UUID, Long> countByResponsible(Specification<Lead> visible, Instant from, Instant to) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<Object[]> q = cb.createQuery(Object[].class);
         Root<Lead> root = q.from(Lead.class);
@@ -91,9 +92,9 @@ public class LeadIndicatorQueries {
         q.where(where(cb, root, q, visible, from, to));
         q.groupBy(responsible);
         q.orderBy(cb.desc(cb.count(root)));
-        List<ResponsibleCount> out = new ArrayList<>();
+        Map<UUID, Long> out = new LinkedHashMap<>();
         for (Object[] row : em.createQuery(q).getResultList()) {
-            out.add(new ResponsibleCount((UUID) row[0], (Long) row[1]));
+            out.put((UUID) row[0], (Long) row[1]);
         }
         return out;
     }
