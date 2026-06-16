@@ -3,7 +3,7 @@
 > **Audience:** end users of the FKERP system (commercial / sales team).
 > **Language:** English (en-US). A Portuguese edition is maintained alongside
 > (`fkerp-user-manual.pt-BR.md`).
-> **Scope:** covers everything released through **Sprint 1 (v0.1.0)** — the full Commercial / CRM
+> **Scope:** covers everything released through **v0.12.0** — the full Commercial / CRM
 > lead lifecycle (intake, list/search/filters, detail, assignment, interactions, the Contacted rule,
 > qualification, the Lost flow, visibility by profile, pending items and indicators) plus lead
 > **deduplication**. It grows as new capabilities ship.
@@ -55,7 +55,7 @@ Your session is kept alive automatically and securely while you use the app. If 
 reload the page you stay signed in. Use **Sair** (Sign out) in the top bar to end the
 session.
 
-The application **version** (e.g., `v0.1.0`) is shown on the login screen and in the bottom of the
+The application **version** (e.g., `v0.12.0`) is shown on the login screen and in the bottom of the
 sidebar, so you always know which release you are using.
 
 ### 2.3 Profiles & access — what you can see and do
