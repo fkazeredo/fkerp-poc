@@ -364,13 +364,15 @@ the negotiation before the next commercial action. The detail shows:
 - **Stage movement:** the history of the Opportunity's stage changes (from which stage to which, when and
   by whom), newest first.
 
-**Change stage.** Each Opportunity has a **current stage** in the commercial pipeline — **Nova** (New),
+**Advance stage.** Each Opportunity has a **current stage** in the commercial pipeline — **Nova** (New),
 **Descoberta** (Discovery), **Aderência** (Product Fit), **Pronta p/ proposta** (Ready for Proposal) or
-**Perdida** (Lost). If you have operation permission, the detail offers the **Mudar estágio** (Change
-stage) action (keyboard shortcut **`s`**): pick the new stage among the **active** ones. Movement between
-active stages is **free** (you can move forward and back as the negotiation evolves), and every change is
-recorded in the **stage movement** history. *Ready for Proposal* is just a stage — it does **not** create
-a proposal in this release. **Lost** is not a stage you "move" to here: use **Mark as lost**.
+**Perdida** (Lost). If you have operation permission, the detail offers the **Avançar estágio** (Advance
+stage) action (keyboard shortcut **`s`**): the Opportunity advances **one step at a time** along the
+pipeline — **New → Discovery → Product Fit → Ready for Proposal** — and you **cannot skip** stages or
+**go back** to an earlier one. Every advance is recorded in the **stage movement** history. At **Ready for
+Proposal** there is no next step (this sprint's pipeline ends there) and *Ready for Proposal* is just a
+stage — it does **not** create a proposal in this release. To end a negotiation, use **Mark as lost**
+(below), from any active stage.
 
 **Mark as lost.** If you have operation permission over Opportunities, the detail offers the **Marcar
 como perdida** (Mark as lost) action (keyboard shortcut **`p`**): pick a **loss reason** and, optionally,

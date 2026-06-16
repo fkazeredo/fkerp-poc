@@ -75,22 +75,39 @@ class OpportunityStageApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void allowsFreeMovementBackToAnEarlierStage() throws Exception {
+    void advancesThroughTheWholeFunnel() throws Exception {
+        String token = manager();
+        changeStage(managerOpp, "DISCOVERY", token).andExpect(status().isOk());
+        changeStage(managerOpp, "PRODUCT_FIT", token).andExpect(status().isOk());
+        changeStage(managerOpp, "READY_FOR_PROPOSAL", token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("READY_FOR_PROPOSAL"))
+                .andExpect(jsonPath("$.stageHistory.length()").value(3))
+                .andExpect(jsonPath("$.stageHistory[0].to").value("READY_FOR_PROPOSAL"));
+    }
+
+    @Test
+    void rejectsMovingBackward() throws Exception {
         String token = manager();
         changeStage(managerOpp, "DISCOVERY", token).andExpect(status().isOk());
         changeStage(managerOpp, "NEW_OPPORTUNITY", token)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.stage").value("NEW_OPPORTUNITY"))
-                .andExpect(jsonPath("$.stageHistory.length()").value(2))
-                .andExpect(jsonPath("$.stageHistory[0].to").value("NEW_OPPORTUNITY"));
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("opportunity.invalid-stage-transition"));
+    }
+
+    @Test
+    void rejectsSkippingAStage() throws Exception {
+        changeStage(managerOpp, "PRODUCT_FIT", manager())
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("opportunity.invalid-stage-transition"));
     }
 
     @Test
     void representativeMovesOwnOpportunity() throws Exception {
         String rep = login("representante", "representante123");
-        changeStage(repOpp, "PRODUCT_FIT", rep)
+        changeStage(repOpp, "DISCOVERY", rep)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.stage").value("PRODUCT_FIT"));
+                .andExpect(jsonPath("$.stage").value("DISCOVERY"));
     }
 
     @Test

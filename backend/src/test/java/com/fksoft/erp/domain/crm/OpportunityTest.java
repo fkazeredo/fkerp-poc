@@ -73,18 +73,34 @@ class OpportunityTest {
     }
 
     @Test
-    void movesFreelyBetweenActiveStagesRecordingEachMovement() {
+    void advancesForwardThroughTheFunnelRecordingEachMovement() {
         Opportunity opportunity = newOpportunity();
 
         opportunity.moveToStage(OpportunityStage.DISCOVERY, RESPONSIBLE);
-        assertThat(opportunity.stage()).isEqualTo(OpportunityStage.DISCOVERY);
+        opportunity.moveToStage(OpportunityStage.PRODUCT_FIT, RESPONSIBLE);
+        opportunity.moveToStage(OpportunityStage.READY_FOR_PROPOSAL, RESPONSIBLE);
 
-        // free movement back to an earlier stage
-        opportunity.moveToStage(OpportunityStage.NEW_OPPORTUNITY, RESPONSIBLE);
-        assertThat(opportunity.stage()).isEqualTo(OpportunityStage.NEW_OPPORTUNITY);
-        assertThat(opportunity.stageChanges()).hasSize(2);
+        assertThat(opportunity.stage()).isEqualTo(OpportunityStage.READY_FOR_PROPOSAL);
+        assertThat(opportunity.stageChanges()).hasSize(3);
         assertThat(opportunity.stageChanges().get(0).toStage()).isEqualTo(OpportunityStage.DISCOVERY);
-        assertThat(opportunity.stageChanges().get(1).toStage()).isEqualTo(OpportunityStage.NEW_OPPORTUNITY);
+        assertThat(opportunity.stageChanges().get(2).toStage()).isEqualTo(OpportunityStage.READY_FOR_PROPOSAL);
+    }
+
+    @Test
+    void rejectsMovingBackward() {
+        Opportunity opportunity = newOpportunity();
+        opportunity.moveToStage(OpportunityStage.DISCOVERY, RESPONSIBLE);
+
+        assertThatThrownBy(() -> opportunity.moveToStage(OpportunityStage.NEW_OPPORTUNITY, RESPONSIBLE))
+                .isInstanceOf(OpportunityStageTransitionException.class);
+    }
+
+    @Test
+    void rejectsSkippingAStage() {
+        Opportunity opportunity = newOpportunity();
+
+        assertThatThrownBy(() -> opportunity.moveToStage(OpportunityStage.PRODUCT_FIT, RESPONSIBLE))
+                .isInstanceOf(OpportunityStageTransitionException.class);
     }
 
     @Test
