@@ -14,6 +14,12 @@ export const routes: Routes = [
     children: [
       { path: '', loadComponent: () => import('./features/home/home').then((m) => m.Home) },
       {
+        path: 'pendencias',
+        canActivate: [crmReadGuard],
+        loadComponent: () =>
+          import('./features/leads/lead-pending/lead-pending').then((m) => m.LeadPending),
+      },
+      {
         path: 'leads',
         canActivate: [crmReadGuard],
         loadComponent: () => import('./features/leads/lead-list/lead-list').then((m) => m.LeadList),

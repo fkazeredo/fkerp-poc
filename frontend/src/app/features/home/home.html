@@ -19,6 +19,12 @@
       <span class="tile-title">Leads</span>
       <span class="tile-desc muted">Veja, busque e filtre os leads que você pode trabalhar.</span>
     </a>
+
+    <a class="tile surface" routerLink="/pendencias">
+      <span class="tile-icon pending"><i class="pi pi-flag"></i></span>
+      <span class="tile-title">Pendências</span>
+      <span class="tile-desc muted">Leads que precisam de ação para não perder oportunidades.</span>
+    </a>
   }
 
   @if (auth.canCreateLead()) {

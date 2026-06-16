@@ -30,6 +30,11 @@ public class LeadInteraction {
     @Id
     private UUID id;
 
+    // Read-only mapping of the owning FK (written by the parent Lead's @OneToMany @JoinColumn); lets
+    // queries reference the lead id (e.g. the "no interaction" pending predicate).
+    @Column(name = "lead_id", insertable = false, updatable = false)
+    private UUID leadId;
+
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "type_id", nullable = false)

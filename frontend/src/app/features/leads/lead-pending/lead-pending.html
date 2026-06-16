@@ -1,0 +1,65 @@
+<header class="page-head">
+  <div>
+    <h1>Pendências</h1>
+    <p class="sub muted">Leads que precisam de ação — para não perder oportunidades por falta de follow-up.</p>
+  </div>
+</header>
+
+@if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+}
+
+<div class="surface table-wrap">
+  <p-table
+    [value]="items()"
+    [lazy]="true"
+    (onLazyLoad)="onLazyLoad($event)"
+    [paginator]="true"
+    [rows]="rows"
+    [totalRecords]="total()"
+    [first]="firstRow"
+    [loading]="loading()"
+    styleClass="p-datatable-sm"
+    [tableStyle]="{ 'min-width': '60rem' }"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Nome</th>
+        <th>Responsável</th>
+        <th>Pendências</th>
+        <th>Status</th>
+        <th>Próximo contato</th>
+        <th>Criado em</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-lead>
+      <tr>
+        <td>
+          <a [routerLink]="['/leads', lead.id]" class="lead-link">{{ lead.name }}</a>
+        </td>
+        <td>
+          @if (lead.unassigned) {
+            <span class="unassigned">Sem responsável</span>
+          } @else {
+            {{ lead.responsibleName ?? '—' }}
+          }
+        </td>
+        <td>
+          <div class="reasons">
+            @for (reason of lead.reasons; track reason) {
+              <p-tag [value]="reasonLabel(reason)" [severity]="reasonSeverity(reason)" />
+            }
+          </div>
+        </td>
+        <td><p-tag [value]="statusLabel(lead.status)" [severity]="statusSeverity(lead.status)" /></td>
+        <td>{{ lead.nextContactAt ? (lead.nextContactAt | date: 'short') : '—' }}</td>
+        <td>{{ lead.createdAt | date: 'short' }}</td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="6" class="muted empty">Nenhuma pendência. Tudo em dia! 🎉</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
