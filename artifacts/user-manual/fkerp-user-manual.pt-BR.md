@@ -3,7 +3,7 @@
 > **Público:** usuários finais do sistema FKERP (equipe comercial / vendas).
 > **Idioma:** Português (pt-BR). Há uma edição em inglês mantida em paralelo
 > (`fkerp-user-manual.en-US.md`).
-> **Escopo:** cobre tudo que foi liberado até a **Sprint 1 (v0.1.0)** — o ciclo de vida completo de
+> **Escopo:** cobre tudo que foi liberado até a **v0.12.0** — o ciclo de vida completo de
 > Leads do Comercial / CRM (cadastro, lista/busca/filtros, detalhe, atribuição, interações, regra de
 > Em contato, qualificação, fluxo de Perda, visibilidade por perfil, pendências e indicadores) mais a
 > **deduplicação** de Leads. Será ampliado à medida que novos recursos forem lançados.
@@ -52,7 +52,7 @@ Abra o navegador no endereço informado pelo seu administrador. Em um ambiente l
 Sua sessão é mantida ativa de forma automática e segura enquanto você usa o sistema. Se recarregar a
 página, você continua conectado. Use **Sair** na barra superior para encerrar a sessão.
 
-A **versão** da aplicação (ex.: `v0.1.0`) é exibida na tela de login e no rodapé da barra lateral,
+A **versão** da aplicação (ex.: `v0.12.0`) é exibida na tela de login e no rodapé da barra lateral,
 para você sempre saber qual release está usando.
 
 ### 2.3 Perfis e acesso — o que você vê e faz
@@ -366,5 +366,5 @@ um cliente hoje. Este manual será atualizado quando isso for lançado.
 
 ---
 
-*Status do documento: Sprint 1 fechada (v0.1.0) — captação de Leads até indicadores, mais deduplicação.
+*Status do documento: v0.12.0 — captação de Leads até indicadores, mais deduplicação.
 Mantido junto com o produto.*
