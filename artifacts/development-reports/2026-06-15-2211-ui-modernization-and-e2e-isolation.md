@@ -1,6 +1,6 @@
 # Relatório — Modernização da UI, atalhos e isolamento do E2E
 
-- **Data:** 2026-06-16
+- **Data:** 2026-06-15
 - **Branch:** `feature/ui-modernization` (a partir de `develop`)
 - **Motivação (feedback do dono):** a interface estava "feia"/genérica, os atalhos pareciam
   quebrados e faltavam atalhos para as ações novas, e os testes E2E estavam **poluindo o banco de
