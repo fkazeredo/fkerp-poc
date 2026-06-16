@@ -80,7 +80,7 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/**", "/api/auth/**")
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/**", "/api/auth/**", "/api/version")
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/leads")
                         .hasAuthority("SCOPE_crm:lead:create")

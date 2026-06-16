@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { providePrimeNG } from 'primeng/config';
 import { of, throwError } from 'rxjs';
 import { Login } from './login';
@@ -24,6 +25,8 @@ describe('Login', () => {
       imports: [Login],
       providers: [
         providePrimeNG(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: AuthService, useValue: auth },
         { provide: Router, useValue: router },
       ],
