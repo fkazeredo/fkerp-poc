@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of } from 'rxjs';
 import { Shell } from './shell';
 import { AuthService } from '../auth/auth.service';
@@ -11,6 +13,8 @@ describe('Shell keyboard shortcuts', () => {
   function build(): Shell {
     TestBed.configureTestingModule({
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: Router, useValue: router },
         { provide: AuthService, useValue: auth },
       ],

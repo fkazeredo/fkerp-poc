@@ -1,10 +1,12 @@
 # FKERP — User Manual
 
 > **Audience:** end users of the FKERP system (commercial / sales team).
-> **Language:** English (en-US).
-> **Scope:** this is the **first edition** and covers the features released so far
-> (Sprint 1 / Slice 1 — Commercial / CRM: lead intake and reference data). It will
-> grow as new capabilities ship.
+> **Language:** English (en-US). A Portuguese edition is maintained alongside
+> (`fkerp-user-manual.pt-BR.md`).
+> **Scope:** covers everything released through **Sprint 1 (v0.1.0)** — the full Commercial / CRM
+> lead lifecycle (intake, list/search/filters, detail, assignment, interactions, the Contacted rule,
+> qualification, the Lost flow, visibility by profile, pending items and indicators) plus lead
+> **deduplication**. It grows as new capabilities ship.
 
 ---
 
@@ -52,6 +54,9 @@ environment this is:
 Your session is kept alive automatically and securely while you use the app. If you
 reload the page you stay signed in. Use **Sair** (Sign out) in the top bar to end the
 session.
+
+The application **version** (e.g., `v0.1.0`) is shown on the login screen and in the bottom of the
+sidebar, so you always know which release you are using.
 
 ### 2.3 Profiles & access — what you can see and do
 
@@ -147,6 +152,11 @@ Open **Novo Lead** (top menu, the `n` shortcut, or the command palette).
 **Contact rule:** a lead must have **at least one** way to be reached — phone, WhatsApp,
 or e-mail. If none is provided, the system rejects the lead with the message
 *"Informe ao menos um contato (telefone, WhatsApp ou e-mail)."*
+
+**No duplicates:** a lead is refused when an **open** lead (one not yet Lost) already has the **same
+phone/WhatsApp number or e-mail** — the message *"Já existe um lead ativo com este telefone ou
+e-mail"* appears. Open the existing lead instead of creating a copy. Once a lead has been marked
+**Lost**, the same contact can be registered again.
 
 ### 5.2 Saving
 
