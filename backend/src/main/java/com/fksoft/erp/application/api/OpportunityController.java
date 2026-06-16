@@ -1,11 +1,13 @@
 package com.fksoft.erp.application.api;
 
+import com.fksoft.erp.application.api.dto.LoseRequest;
 import com.fksoft.erp.application.api.dto.OpportunityCreateRequest;
 import com.fksoft.erp.application.api.dto.OpportunityListParams;
 import com.fksoft.erp.application.api.dto.OpportunityResponse;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.service.OpportunityService;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
+import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
 import com.fksoft.erp.domain.crm.service.data.OpportunityListItem;
 import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
 import com.fksoft.erp.infra.security.UserContextProvider;
@@ -22,6 +24,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,10 +33,12 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Commercial Opportunity endpoints. Creating an Opportunity from a Qualified Lead requires
  * {@code crm:opportunity:create}, and the caller must be allowed to see the source Lead (the lead read
- * tiers are reused to decide that). Listing requires an Opportunity read tier —
+ * tiers are reused to decide that). Listing and detail require an Opportunity read tier —
  * {@code crm:opportunity:read} (own only), {@code crm:opportunity:read:unassigned} (also the unassigned
  * pool) or {@code crm:opportunity:read:all} (all) — the visibility tier being enforced by the policy at
- * the query level, so filters and search can never expose Opportunities the caller may not see.
+ * the query/record level, so filters, search and detail can never expose Opportunities the caller may
+ * not see. Marking an Opportunity as lost requires {@code crm:opportunity:update} and that the caller may
+ * see it; the transition returns the refreshed detail.
  */
 @RestController
 @RequestMapping("/api/opportunities")
@@ -102,6 +107,37 @@ public class OpportunityController {
                         canSeeAllOpportunities(),
                         canSeeUnassignedOpportunities()),
                 item -> item);
+    }
+
+    /**
+     * Full detail of an Opportunity the caller may see, with the source Lead kept traceable.
+     *
+     * @param id the opportunity id
+     * @return the Opportunity detail read model
+     */
+    @GetMapping("/{id}")
+    public OpportunityDetail detail(@PathVariable UUID id) {
+        return opportunityService.detail(
+                id, userContext.currentUserId(), canSeeAllOpportunities(), canSeeUnassignedOpportunities());
+    }
+
+    /**
+     * Marks an Opportunity as lost with a reason; returns the refreshed detail. The source Lead is not
+     * affected.
+     *
+     * @param id the opportunity id
+     * @param request the loss reason and optional note
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/lose")
+    public OpportunityDetail lose(@PathVariable UUID id, @Valid @RequestBody LoseRequest request) {
+        return opportunityService.markLost(
+                id,
+                request.lossReasonId(),
+                request.note(),
+                userContext.currentUserId(),
+                canSeeAllOpportunities(),
+                canSeeUnassignedOpportunities());
     }
 
     // The creation period is given as calendar dates; the column is an instant, so anchor at UTC midnight

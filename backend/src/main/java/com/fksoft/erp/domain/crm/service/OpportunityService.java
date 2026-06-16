@@ -3,15 +3,22 @@ package com.fksoft.erp.domain.crm.service;
 import com.fksoft.erp.domain.crm.exception.LeadAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.LeadNotFoundException;
 import com.fksoft.erp.domain.crm.exception.LeadNotQualifiedForOpportunityException;
+import com.fksoft.erp.domain.crm.exception.LossReasonNotAvailableException;
+import com.fksoft.erp.domain.crm.exception.OpportunityAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAlreadyExistsForLeadException;
+import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadStatus;
+import com.fksoft.erp.domain.crm.model.LossReason;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityCreated;
+import com.fksoft.erp.domain.crm.model.ReferenceData;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
+import com.fksoft.erp.domain.crm.repository.LossReasonRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
+import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
 import com.fksoft.erp.domain.crm.service.data.OpportunityListItem;
 import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
 import com.fksoft.erp.domain.identity.User;
@@ -21,6 +28,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -42,6 +50,7 @@ public class OpportunityService {
     private final OpportunityRepository opportunities;
     private final LeadRepository leads;
     private final UserRepository users;
+    private final LossReasonRepository lossReasons;
     private final LeadAccessPolicy leadAccessPolicy;
     private final OpportunityAccessPolicy accessPolicy;
     private final ApplicationEventPublisher events;
@@ -125,6 +134,73 @@ public class OpportunityService {
 
         return page.map(
                 opportunity -> OpportunityListItem.from(opportunity, nameOf(names, opportunity.responsiblePersonId())));
+    }
+
+    /**
+     * Full detail of an Opportunity the caller is allowed to see, with the source Lead kept traceable.
+     *
+     * @param id the opportunity id
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every Opportunity
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the detail read model
+     * @throws OpportunityNotFoundException if the Opportunity does not exist
+     * @throws OpportunityAccessDeniedException if the caller may not see it
+     */
+    @Transactional(readOnly = true)
+    public OpportunityDetail detail(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        return toDetail(loadVisible(id, userId, canSeeAll, canSeeUnassigned));
+    }
+
+    /**
+     * Marks an Opportunity the caller is allowed to see as lost with a reason, and returns the refreshed
+     * detail. The source Lead is not affected.
+     *
+     * @param id the opportunity id
+     * @param lossReasonId the (active) loss reason id
+     * @param note optional loss note
+     * @param userId the acting user
+     * @param canSeeAll whether the caller may see every Opportunity
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws OpportunityNotFoundException if the Opportunity does not exist
+     * @throws OpportunityAccessDeniedException if the caller may not see it
+     * @throws LossReasonNotAvailableException if the loss reason is unknown or inactive
+     * @throws com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException if already lost
+     */
+    @Transactional
+    public OpportunityDetail markLost(
+            UUID id, UUID lossReasonId, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Opportunity opportunity = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
+        LossReason reason = lossReasons
+                .findById(lossReasonId)
+                .filter(ReferenceData::active)
+                .orElseThrow(LossReasonNotAvailableException::new);
+        opportunity.markLost(reason, userId, note);
+        return toDetail(opportunities.saveAndFlush(opportunity));
+    }
+
+    private Opportunity loadVisible(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Opportunity opportunity = opportunities.findById(id).orElseThrow(OpportunityNotFoundException::new);
+        if (!accessPolicy.canSee(opportunity, userId, canSeeAll, canSeeUnassigned)) {
+            throw new OpportunityAccessDeniedException();
+        }
+        return opportunity;
+    }
+
+    private OpportunityDetail toDetail(Opportunity opportunity) {
+        Lead lead = leads.findById(opportunity.leadId()).orElseThrow(LeadNotFoundException::new);
+        Set<UUID> actorIds = Stream.of(opportunity.responsiblePersonId(), opportunity.lostBy())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> names = actorIds.isEmpty()
+                ? Map.of()
+                : users.findAllById(actorIds).stream().collect(Collectors.toMap(User::id, User::username));
+        return OpportunityDetail.from(
+                opportunity,
+                lead,
+                nameOf(names, opportunity.responsiblePersonId()),
+                nameOf(names, opportunity.lostBy()));
     }
 
     private static String nameOf(Map<UUID, String> names, UUID id) {

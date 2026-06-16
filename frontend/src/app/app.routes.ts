@@ -54,6 +54,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'oportunidades/:id',
+        canActivate: [opportunityReadGuard],
+        loadComponent: () =>
+          import('./features/opportunities/opportunity-detail/opportunity-detail').then(
+            (m) => m.OpportunityDetailPage,
+          ),
+      },
+      {
         path: 'cadastros/origens',
         data: { title: 'Origens', path: 'origins' },
         loadComponent: () =>

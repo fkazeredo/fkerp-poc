@@ -349,6 +349,29 @@ Os filtros se combinam (a lista mostra apenas as Oportunidades que atendem a tod
 - A lista mostra **apenas dados comerciais do pipeline** — nunca proposta, venda, pedido, reserva,
   financeiro ou comissão.
 
+### 8.3 Detalhe da Oportunidade
+
+Clique no **título** de uma Oportunidade na lista para abrir o seu **detalhe** — uma visão de consulta
+para entender a negociação antes da próxima ação comercial. O detalhe mostra:
+
+- **Resumo comercial:** responsável, origem, interesse principal, tipo de produto, valor estimado e
+  previsão de fechamento (quando informados), anotações e as datas de criação e atualização.
+- **Lead de origem:** nome e contatos (telefone, WhatsApp, e-mail) do Lead que deu início à
+  Oportunidade, com um atalho **Ver lead de origem** — o Lead permanece rastreável e é sempre o registro
+  de origem dos contatos e do histórico.
+- **Perda:** quando a Oportunidade está **Perdida**, o detalhe mostra o motivo, a data, quem registrou e
+  a anotação.
+
+**Marcar como perdida.** Se você tem permissão de operação sobre Oportunidades, o detalhe oferece a ação
+**Marcar como perdida** (atalho de teclado **`p`**): escolha um **motivo da perda** e, opcionalmente, uma
+anotação. A Oportunidade passa ao estágio **Perdida** e a perda fica registrada no próprio detalhe. Essa
+ação **não altera** o Lead de origem. Quem só pode consultar não vê a ação, e ninguém pode encerrar uma
+Oportunidade que não tem permissão para ver.
+
+O detalhe mostra **apenas dados comerciais** — nunca proposta, venda, pedido, reserva, financeiro,
+comissão ou atendimento. As seções de **histórico de atividades comerciais** e **movimentação de
+estágio** já aparecem na tela e serão preenchidas em versões futuras.
+
 ## 9. Gerenciando cadastros
 
 Os cadastros são as listas que alimentam o formulário de Lead e fluxos futuros. São quatro, todas

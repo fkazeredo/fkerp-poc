@@ -1,6 +1,7 @@
 package com.fksoft.erp.domain.crm.model;
 
 import com.fksoft.erp.domain.crm.exception.LeadNotQualifiedForOpportunityException;
+import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -89,6 +90,22 @@ public class Opportunity {
     @Size(max = 2000)
     private String notes;
 
+    // Loss outcome (set when the Opportunity is marked lost; kept for history). The source Lead is never
+    // touched — the Opportunity owns its own loss outcome, mirroring the Lead's loss fields.
+    @Column(name = "lost_at")
+    private Instant lostAt;
+
+    @Column(name = "lost_by")
+    private UUID lostBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "loss_reason_id")
+    private LossReason lossReason;
+
+    @Size(max = 2000)
+    @Column(name = "loss_note")
+    private String lossNote;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -135,6 +152,27 @@ public class Opportunity {
         opportunity.createdBy = createdBy;
         opportunity.updatedBy = createdBy;
         return opportunity;
+    }
+
+    /**
+     * Marks the Opportunity as lost with a reason. Allowed from any non-lost stage; the loss
+     * (reason/who/when/note) is kept for history. The source Lead is not affected.
+     *
+     * @param reason the (active) loss reason
+     * @param byUser id of the user marking the Opportunity lost
+     * @param note optional loss note
+     * @throws OpportunityCannotBeMarkedLostException if the Opportunity is already lost
+     */
+    public void markLost(LossReason reason, UUID byUser, String note) {
+        if (stage == OpportunityStage.LOST) {
+            throw new OpportunityCannotBeMarkedLostException();
+        }
+        stage = OpportunityStage.LOST;
+        lossReason = reason;
+        lostAt = Instant.now();
+        lostBy = byUser;
+        lossNote = emptyToNull(note);
+        updatedBy = byUser;
     }
 
     private static String emptyToNull(String value) {
