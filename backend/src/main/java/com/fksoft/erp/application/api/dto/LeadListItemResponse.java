@@ -1,8 +1,8 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.LatestInteractionRow;
-import com.fksoft.erp.domain.crm.Lead;
-import com.fksoft.erp.domain.crm.LeadStatus;
+import com.fksoft.erp.domain.crm.model.Lead;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
+import com.fksoft.erp.domain.crm.repository.LatestInteractionRow;
 import java.time.Instant;
 import java.util.UUID;
 

@@ -10,10 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.LeadRepository;
-import com.fksoft.erp.domain.crm.OpportunityRepository;
-import com.fksoft.erp.domain.crm.OpportunityStage;
-import com.fksoft.erp.domain.crm.OriginRepository;
+import com.fksoft.erp.domain.crm.model.OpportunityStage;
+import com.fksoft.erp.domain.crm.repository.LeadRepository;
+import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
+import com.fksoft.erp.domain.crm.repository.OriginRepository;
 import com.fksoft.erp.domain.identity.AuthenticatedUser;
 import com.fksoft.erp.infra.security.TokenService;
 import com.jayway.jsonpath.JsonPath;

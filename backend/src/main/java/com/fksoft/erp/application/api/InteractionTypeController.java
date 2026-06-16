@@ -1,7 +1,7 @@
 package com.fksoft.erp.application.api;
 
-import com.fksoft.erp.domain.crm.InteractionType;
-import com.fksoft.erp.domain.crm.InteractionTypeService;
+import com.fksoft.erp.domain.crm.model.InteractionType;
+import com.fksoft.erp.domain.crm.service.InteractionTypeService;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 

@@ -1,11 +1,11 @@
 package com.fksoft.erp.application.read;
 
 import com.fksoft.erp.application.api.dto.OpportunityListItemResponse;
-import com.fksoft.erp.domain.crm.Opportunity;
-import com.fksoft.erp.domain.crm.OpportunityAccessPolicy;
-import com.fksoft.erp.domain.crm.OpportunityRepository;
-import com.fksoft.erp.domain.crm.OpportunitySearchCriteria;
-import com.fksoft.erp.domain.crm.OpportunitySpecifications;
+import com.fksoft.erp.domain.crm.dto.OpportunitySearchCriteria;
+import com.fksoft.erp.domain.crm.model.Opportunity;
+import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
+import com.fksoft.erp.domain.crm.service.OpportunityAccessPolicy;
+import com.fksoft.erp.domain.crm.service.OpportunitySpecifications;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
 import java.util.Map;

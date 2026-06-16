@@ -1,9 +1,9 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.Lead;
-import com.fksoft.erp.domain.crm.LeadAssignment;
-import com.fksoft.erp.domain.crm.LeadInteraction;
-import com.fksoft.erp.domain.crm.LeadStatus;
+import com.fksoft.erp.domain.crm.model.Lead;
+import com.fksoft.erp.domain.crm.model.LeadAssignment;
+import com.fksoft.erp.domain.crm.model.LeadInteraction;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;

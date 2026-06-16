@@ -1,6 +1,6 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.LeadStatus;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
 import java.util.UUID;
 
 /**

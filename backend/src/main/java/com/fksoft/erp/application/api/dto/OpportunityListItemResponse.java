@@ -1,7 +1,7 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.Opportunity;
-import com.fksoft.erp.domain.crm.OpportunityStage;
+import com.fksoft.erp.domain.crm.model.Opportunity;
+import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;

@@ -1,6 +1,6 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.ReferenceData;
+import com.fksoft.erp.domain.crm.model.ReferenceData;
 import java.util.UUID;
 
 /**

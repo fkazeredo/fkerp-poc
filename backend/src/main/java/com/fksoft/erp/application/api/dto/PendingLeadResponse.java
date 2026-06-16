@@ -1,8 +1,8 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.Lead;
-import com.fksoft.erp.domain.crm.LeadStatus;
-import com.fksoft.erp.domain.crm.PendingReason;
+import com.fksoft.erp.domain.crm.model.Lead;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
+import com.fksoft.erp.domain.crm.model.PendingReason;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

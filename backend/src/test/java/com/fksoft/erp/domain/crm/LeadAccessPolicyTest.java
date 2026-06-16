@@ -2,6 +2,10 @@ package com.fksoft.erp.domain.crm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fksoft.erp.domain.crm.dto.RegisterLeadCommand;
+import com.fksoft.erp.domain.crm.model.Lead;
+import com.fksoft.erp.domain.crm.model.Origin;
+import com.fksoft.erp.domain.crm.service.LeadAccessPolicy;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
