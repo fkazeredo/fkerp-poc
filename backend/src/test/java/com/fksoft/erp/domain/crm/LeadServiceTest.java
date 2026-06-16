@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -109,6 +110,24 @@ class LeadServiceTest {
 
         assertThatThrownBy(() -> service.register(command, UUID.randomUUID()))
                 .isInstanceOf(ResponsiblePersonNotFoundException.class);
+    }
+
+    @Test
+    void rejectsDuplicateOpenLeadAtRegistration() {
+        UUID originId = UUID.randomUUID();
+        Origin origin = Origin.create("WEBSITE", "Website", 1);
+        Lead existing = Lead.register(
+                new RegisterLeadCommand("Maria", "11999999999", null, null, originId, null, null),
+                origin,
+                UUID.randomUUID());
+        when(origins.findById(originId)).thenReturn(Optional.of(origin));
+        when(leads.findOpenDuplicates(any(), any(), any())).thenReturn(List.of(existing));
+        RegisterLeadCommand command =
+                new RegisterLeadCommand("Maria 2", "11999999999", null, null, originId, null, null);
+
+        assertThatThrownBy(() -> service.register(command, UUID.randomUUID()))
+                .isInstanceOf(DuplicateLeadException.class);
+        verify(leads, never()).save(any());
     }
 
     @Test

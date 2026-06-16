@@ -25,7 +25,7 @@ test('creates an assigned lead and finds it via search on the list', async ({ pa
   await page.locator('#name').fill(name);
   await page.getByText('Selecione a origem').click();
   await page.getByRole('option').first().click();
-  await page.locator('#phone').fill('11999991234');
+  await page.locator('#phone').fill(`119${Date.now()}${Math.floor(Math.random() * 1000)}`);
   await page.getByText('Sem responsável').click();
   await page.getByRole('option', { name: 'comercial' }).click();
   await page.getByRole('button', { name: 'Salvar lead' }).click();

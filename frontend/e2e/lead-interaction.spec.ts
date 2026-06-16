@@ -13,7 +13,7 @@ async function createLead(page: Page, name: string): Promise<void> {
   await page.locator('#name').fill(name);
   await page.getByText('Selecione a origem').click();
   await page.getByRole('option').first().click();
-  await page.locator('#phone').fill('11999994444');
+  await page.locator('#phone').fill(`119${Date.now()}${Math.floor(Math.random() * 1000)}`);
   await page.getByRole('button', { name: 'Salvar lead' }).click();
   await expect(page.getByText('Lead criado')).toBeVisible();
 }
@@ -39,7 +39,9 @@ async function registerInteraction(page: Page, result: string, description: stri
   await expect(page.getByText('Interação registrada')).toBeVisible();
 }
 
-test('an effective contact moves a new lead to Contacted and shows in history', async ({ page }) => {
+test('an effective contact moves a new lead to Contacted and shows in history', async ({
+  page,
+}) => {
   await login(page);
   const name = `E2E Contacted ${Date.now()}`;
   await createLead(page, name);

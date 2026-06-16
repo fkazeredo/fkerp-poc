@@ -170,7 +170,11 @@ class LeadVisibilityApiIntegrationTest extends AbstractIntegrationTest {
             throws Exception {
         Map<String, Object> body = new HashMap<>();
         body.put("name", name);
-        body.put("phone", "11999990000");
+        body.put(
+                "phone",
+                "119%08d"
+                        .formatted(
+                                java.util.concurrent.ThreadLocalRandom.current().nextInt(100_000_000)));
         body.put(
                 "originId",
                 origins.findByActiveTrueOrderBySortOrderAsc().get(0).id().toString());

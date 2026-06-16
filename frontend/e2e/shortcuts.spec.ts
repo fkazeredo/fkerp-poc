@@ -37,7 +37,7 @@ test('the "i" shortcut opens the interaction dialog on a lead detail', async ({ 
   await page.locator('#name').fill(name);
   await page.getByText('Selecione a origem').click();
   await page.getByRole('option').first().click();
-  await page.locator('#phone').fill('11999995555');
+  await page.locator('#phone').fill(`119${Date.now()}${Math.floor(Math.random() * 1000)}`);
   await page.getByRole('button', { name: 'Salvar lead' }).click();
   await expect(page.getByText('Lead criado')).toBeVisible();
 
