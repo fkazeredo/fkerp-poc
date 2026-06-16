@@ -1,13 +1,13 @@
-package com.fksoft.erp.application.api.dto;
+package com.fksoft.erp.domain.crm.service.data;
 
 import java.util.List;
 
 /**
- * Minimum top-of-funnel Lead indicators (entity-free transport DTO). Counts cover every status (Lost
- * included) over the Leads visible to the caller in the requested period. Assembled by the read side
- * from the aggregate queries plus responsible-name resolution.
+ * Minimum top-of-funnel Lead indicators (read model). Counts cover every status (Lost included) over
+ * the Leads visible to the caller in the requested period. Assembled by the service from the aggregate
+ * queries plus responsible-name resolution.
  */
-public record LeadIndicatorsResponse(
+public record LeadIndicators(
         long total,
         long newLeads,
         long contacted,

@@ -1,13 +1,12 @@
 package com.fksoft.erp.application.api;
 
 import com.fksoft.erp.application.api.dto.OpportunityCreateRequest;
-import com.fksoft.erp.application.api.dto.OpportunityListItemResponse;
 import com.fksoft.erp.application.api.dto.OpportunityResponse;
-import com.fksoft.erp.application.read.OpportunityReadService;
-import com.fksoft.erp.domain.crm.dto.CreateOpportunityCommand;
-import com.fksoft.erp.domain.crm.dto.OpportunitySearchCriteria;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.service.OpportunityService;
+import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
+import com.fksoft.erp.domain.crm.service.data.OpportunityListItem;
+import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
@@ -29,10 +28,9 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Commercial Opportunity endpoints. Creating an Opportunity from a Qualified Lead requires
  * {@code crm:opportunity:create}, and the caller must be allowed to see the source Lead (the lead read
- * tiers are reused to decide that). Listing is served by {@link OpportunityReadService} and requires an
- * Opportunity read tier — {@code crm:opportunity:read} (own only),
- * {@code crm:opportunity:read:unassigned} (also the unassigned pool) or
- * {@code crm:opportunity:read:all} (all) — the visibility tier being enforced by the policy.
+ * tiers are reused to decide that). Listing requires an Opportunity read tier —
+ * {@code crm:opportunity:read} (own only), {@code crm:opportunity:read:unassigned} (also the unassigned
+ * pool) or {@code crm:opportunity:read:all} (all) — the visibility tier being enforced by the policy.
  */
 @RestController
 @RequestMapping("/api/opportunities")
@@ -40,7 +38,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class OpportunityController {
 
     private final OpportunityService opportunityService;
-    private final OpportunityReadService opportunityReadService;
     private final UserContextProvider userContext;
 
     /**
@@ -75,13 +72,13 @@ public class OpportunityController {
      * @return a page of operational Opportunity items
      */
     @GetMapping
-    public PageResponse<OpportunityListItemResponse> list(
+    public PageResponse<OpportunityListItem> list(
             @RequestParam(required = false) Set<OpportunityStage> stage,
             @RequestParam(required = false) String q,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         OpportunitySearchCriteria criteria = new OpportunitySearchCriteria(stage, q);
         return PageResponse.from(
-                opportunityReadService.list(
+                opportunityService.list(
                         criteria,
                         pageable,
                         userContext.currentUserId(),

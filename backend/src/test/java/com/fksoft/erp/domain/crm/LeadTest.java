@@ -3,7 +3,6 @@ package com.fksoft.erp.domain.crm;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fksoft.erp.domain.crm.dto.RegisterLeadCommand;
 import com.fksoft.erp.domain.crm.exception.LeadCannotBeMarkedLostException;
 import com.fksoft.erp.domain.crm.exception.LeadCannotBeQualifiedException;
 import com.fksoft.erp.domain.crm.exception.LeadContactRequiredException;
@@ -14,6 +13,7 @@ import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.LossReason;
 import com.fksoft.erp.domain.crm.model.Origin;
+import com.fksoft.erp.domain.crm.service.data.RegisterLeadCommand;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;

@@ -1,7 +1,7 @@
 package com.fksoft.erp.domain.crm.model;
 
-import com.fksoft.erp.domain.crm.dto.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.exception.LeadNotQualifiedForOpportunityException;
+import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
