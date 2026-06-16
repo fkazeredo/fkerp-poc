@@ -1,45 +1,31 @@
-<header class="home-head">
-  <h1>Comercial / CRM</h1>
-  <p class="muted">Cadastre e organize os leads da equipe comercial.</p>
+<header class="page-head">
+  <div>
+    <h1>Comercial / CRM</h1>
+    <p class="sub muted">Cadastre e organize os leads da equipe comercial.</p>
+  </div>
 </header>
 
 <div class="home-grid">
-  <p-card header="Leads">
-    <p class="muted">Veja, busque e filtre os leads que você pode trabalhar.</p>
-    <ng-template pTemplate="footer">
-      <p-button label="Ver leads" icon="pi pi-list" (onClick)="go('/leads')" />
-    </ng-template>
-  </p-card>
+  <a class="tile surface" routerLink="/leads">
+    <span class="tile-icon leads"><i class="pi pi-list"></i></span>
+    <span class="tile-title">Leads</span>
+    <span class="tile-desc muted">Veja, busque e filtre os leads que você pode trabalhar.</span>
+  </a>
 
-  <p-card header="Novo Lead">
-    <p class="muted">Registre um novo interessado e a primeira anotação.</p>
-    <ng-template pTemplate="footer">
-      <p-button
-        label="Criar lead"
-        icon="pi pi-user-plus"
-        severity="secondary"
-        [outlined]="true"
-        (onClick)="go('/leads/new')"
-      />
-    </ng-template>
-  </p-card>
+  <a class="tile surface" routerLink="/leads/new">
+    <span class="tile-icon new"><i class="pi pi-user-plus"></i></span>
+    <span class="tile-title">Novo lead</span>
+    <span class="tile-desc muted">Registre um novo interessado e a primeira anotação.</span>
+  </a>
 
-  <p-card header="Cadastros">
-    <p class="muted">Gerencie origens, motivos de perda e tipos de interação.</p>
-    <ng-template pTemplate="footer">
-      <p-button
-        label="Origens"
-        icon="pi pi-database"
-        severity="secondary"
-        [outlined]="true"
-        (onClick)="go('/cadastros/origens')"
-      />
-    </ng-template>
-  </p-card>
+  <a class="tile surface" routerLink="/cadastros/origens">
+    <span class="tile-icon ref"><i class="pi pi-database"></i></span>
+    <span class="tile-title">Cadastros</span>
+    <span class="tile-desc muted">Origens, motivos de perda e tipos/resultados de interação.</span>
+  </a>
 </div>
 
 <p class="muted home-hint">
   Dica: pressione <span class="kbd">Ctrl</span> <span class="kbd">K</span> para abrir os comandos,
-  <span class="kbd">n</span> para um novo lead ou <span class="kbd">g</span> depois
-  <span class="kbd">o</span> para as origens.
+  <span class="kbd">n</span> para um novo lead ou <span class="kbd">?</span> para ver todos os atalhos.
 </p>

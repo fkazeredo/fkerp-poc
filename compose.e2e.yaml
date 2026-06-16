@@ -1,0 +1,53 @@
+# Isolated, throwaway stack for the Playwright E2E suite. Its Postgres is ephemeral (tmpfs, wiped
+# when the container stops), so running the E2E tests NEVER touches the development database
+# (compose.yaml). Self-contained: needs no .env. Different host ports than the dev stack (4201/8081)
+# so both can run side by side.
+#
+#   docker compose -f compose.e2e.yaml up -d --build   # or: npm run e2e:up  (from frontend/)
+#   E2E_BASE_URL=http://localhost:4201 npm run e2e      # default baseURL is already 4201
+#   docker compose -f compose.e2e.yaml down             # npm run e2e:down
+name: fkerp-e2e
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: erp
+      POSTGRES_USER: erp
+      POSTGRES_PASSWORD: erp
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp -d erp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [fkerp-e2e]
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/erp
+      SPRING_DATASOURCE_USERNAME: erp
+      SPRING_DATASOURCE_PASSWORD: erp
+      APP_JWT_SECRET: e2e-insecure-secret-please-change-0123456789-abcdef
+      APP_CORS_ORIGIN: http://localhost:4201
+      APP_COOKIE_SECURE: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [fkerp-e2e]
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "4201:80"
+    depends_on:
+      - backend
+    networks: [fkerp-e2e]
+
+networks:
+  fkerp-e2e:
+    driver: bridge

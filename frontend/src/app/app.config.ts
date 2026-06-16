@@ -20,7 +20,13 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(withInterceptors([authInterceptor])),
     providePrimeNG({
-      theme: { preset: Aura, options: { darkModeSelector: '.app-dark' } },
+      theme: {
+        preset: Aura,
+        options: {
+          darkModeSelector: '.app-dark',
+          cssLayer: { name: 'primeng', order: 'tailwind-base, primeng, tailwind-utilities' },
+        },
+      },
     }),
     MessageService,
     // Restore the session on startup using the httpOnly refresh cookie (ignore if absent).

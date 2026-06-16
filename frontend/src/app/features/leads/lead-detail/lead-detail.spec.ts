@@ -310,4 +310,26 @@ describe('LeadDetailPage', () => {
     expect(comp['interactionOpen']()).toBe(false);
     expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
   });
+
+  it('opens the interaction dialog with the "i" shortcut', () => {
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['onShortcut'](new KeyboardEvent('keydown', { key: 'i' }));
+
+    expect(comp['interactionOpen']()).toBe(true);
+  });
+
+  it('ignores contextual shortcuts while a dialog is already open', () => {
+    leads.detail.mockReturnValue(
+      of(sample({ status: 'CONTACTED', responsibleId: 'u1', responsibleName: 'comercial', unassigned: false })),
+    );
+    const comp = build();
+    comp.ngOnInit();
+    comp['interactionOpen'].set(true);
+
+    comp['onShortcut'](new KeyboardEvent('keydown', { key: 'q' }));
+
+    expect(comp['qualifyOpen']()).toBe(false);
+  });
 });
