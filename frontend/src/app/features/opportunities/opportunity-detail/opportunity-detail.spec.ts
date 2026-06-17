@@ -21,6 +21,7 @@ describe('OpportunityDetailPage', () => {
     lose: vi.fn(),
     changeStage: vi.fn(),
     registerActivity: vi.fn(),
+    updateDetails: vi.fn(),
   };
   const references = { list: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
@@ -86,6 +87,7 @@ describe('OpportunityDetailPage', () => {
       opportunities.lose,
       opportunities.changeStage,
       opportunities.registerActivity,
+      opportunities.updateDetails,
       references.list,
       router.navigateByUrl,
       messages.add,
@@ -292,6 +294,54 @@ describe('OpportunityDetailPage', () => {
     const comp = build();
     expect(comp['activityTypeLabel']('MEETING')).toBe('Reunião');
     expect(comp['activityResultLabel']('READY_FOR_PROPOSAL')).toBe('Pronta para proposta');
+  });
+
+  it('allows editing commercial details only when operable', () => {
+    const comp = build();
+    comp.ngOnInit();
+    expect(comp['canEditDetails']()).toBe(true);
+    auth.canOperateOpportunity.mockReturnValue(false);
+    expect(comp['canEditDetails']()).toBe(false);
+  });
+
+  it('openEdit pre-fills the form from the current opportunity', () => {
+    opportunities.detail.mockReturnValue(
+      of(
+        sample({
+          estimatedValue: 5000,
+          expectedCloseDate: '2026-09-30',
+          productType: 'Pacote',
+          notes: 'nota',
+        }),
+      ),
+    );
+    const comp = build();
+    comp.ngOnInit();
+    comp['openEdit']();
+    expect(comp['editOpen']()).toBe(true);
+    expect(comp['editEstimatedValue']).toBe(5000);
+    expect(comp['editProductType']).toBe('Pacote');
+    expect(comp['editNotes']).toBe('nota');
+    expect(comp['editExpectedCloseDate']).toBeInstanceOf(Date);
+  });
+
+  it('confirmEdit updates the details, refreshes the detail and closes the dialog', () => {
+    opportunities.updateDetails.mockReturnValue(of(sample({ estimatedValue: 8000, productType: 'Novo' })));
+    const comp = build();
+    comp.ngOnInit();
+    comp['openEdit']();
+    comp['editEstimatedValue'] = 8000;
+    comp['editProductType'] = 'Novo';
+
+    comp['confirmEdit']();
+
+    expect(opportunities.updateDetails).toHaveBeenCalledWith(
+      'o1',
+      expect.objectContaining({ estimatedValue: 8000, productType: 'Novo' }),
+    );
+    expect(comp['opportunity']()?.estimatedValue).toBe(8000);
+    expect(comp['editOpen']()).toBe(false);
+    expect(messages.add).toHaveBeenCalled();
   });
 
   it('back navigates to the opportunity list', () => {

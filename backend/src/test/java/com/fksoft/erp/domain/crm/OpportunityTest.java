@@ -173,4 +173,31 @@ class OpportunityTest {
         assertThat(opportunity.activities()).hasSize(2);
         assertThat(opportunity.nextActionDate()).isEqualTo(LocalDate.parse("2026-06-20"));
     }
+
+    @Test
+    void updatesCommercialDetailsWithoutTouchingMainInterestOrStage() {
+        Opportunity opportunity = newOpportunity(); // mainInterest "Pacote corporativo", stage NEW
+
+        opportunity.updateCommercialDetails(
+                new BigDecimal("9000.00"), LocalDate.parse("2026-12-01"), "Novo produto", "nota", CREATOR);
+
+        assertThat(opportunity.estimatedValue()).isEqualByComparingTo("9000.00");
+        assertThat(opportunity.expectedCloseDate()).isEqualTo(LocalDate.parse("2026-12-01"));
+        assertThat(opportunity.productType()).isEqualTo("Novo produto");
+        assertThat(opportunity.notes()).isEqualTo("nota");
+        assertThat(opportunity.mainInterest()).isEqualTo("Pacote corporativo"); // unchanged
+        assertThat(opportunity.stage()).isEqualTo(OpportunityStage.NEW_OPPORTUNITY); // unchanged
+    }
+
+    @Test
+    void clearsCommercialFieldsWhenGivenNull() {
+        Opportunity opportunity = newOpportunity(); // seeded productType "Software", estimatedValue 1500
+
+        opportunity.updateCommercialDetails(null, null, null, null, CREATOR);
+
+        assertThat(opportunity.estimatedValue()).isNull();
+        assertThat(opportunity.expectedCloseDate()).isNull();
+        assertThat(opportunity.productType()).isNull();
+        assertThat(opportunity.notes()).isNull();
+    }
 }

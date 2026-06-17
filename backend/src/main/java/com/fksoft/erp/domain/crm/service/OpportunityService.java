@@ -26,6 +26,7 @@ import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
 import com.fksoft.erp.domain.crm.service.data.OpportunityListItem;
 import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
 import com.fksoft.erp.domain.crm.service.data.RecordActivityCommand;
+import com.fksoft.erp.domain.crm.service.data.UpdateOpportunityDetailsCommand;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
 import java.time.Instant;
@@ -244,6 +245,33 @@ public class OpportunityService {
                 command.occurredAt(),
                 command.nextActionDate(),
                 userId);
+        return toDetail(opportunities.saveAndFlush(opportunity));
+    }
+
+    /**
+     * Edits the commercial details (estimated value, expected closing date, product type, notes) of an
+     * Opportunity the caller is allowed to see, and returns the refreshed detail. The main interest, stage
+     * and source Lead are not affected.
+     *
+     * @param id the opportunity id
+     * @param command the new commercial details ({@code null} clears a field)
+     * @param userId the acting user
+     * @param canSeeAll whether the caller may see every Opportunity
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws OpportunityNotFoundException if the Opportunity does not exist
+     * @throws OpportunityAccessDeniedException if the caller may not see it
+     */
+    @Transactional
+    public OpportunityDetail updateDetails(
+            UUID id,
+            UpdateOpportunityDetailsCommand command,
+            UUID userId,
+            boolean canSeeAll,
+            boolean canSeeUnassigned) {
+        Opportunity opportunity = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
+        opportunity.updateCommercialDetails(
+                command.estimatedValue(), command.expectedCloseDate(), command.productType(), command.notes(), userId);
         return toDetail(opportunities.saveAndFlush(opportunity));
     }
 
