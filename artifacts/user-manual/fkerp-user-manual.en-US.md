@@ -406,6 +406,26 @@ operate an Opportunity they are not allowed to see.
 The detail shows **commercial data only** — never proposal, sale, order, booking, financial, commission
 or customer care information.
 
+### 8.4 Pending Opportunities
+
+Open **Pending Opportunities** in the sidebar (or from the command palette, `Ctrl K`) for an
+operational worklist of the Opportunities that **need action**, so a negotiation does not stall
+silently. The table lists, for each Opportunity, the **title** (links to the detail), the **stage**,
+the **responsible**, the **estimated value**, the **expected closing date**, the **next action**, the
+**last activity** and the pending **reasons**. Each Opportunity is tagged with one or more reasons:
+
+- **No recent activity** — no commercial activity has been recorded in the last **14 days**.
+- **Next action overdue** — the planned next action is past due.
+- **Stuck in New** — it has stayed in the **New** stage for more than 14 days without moving.
+- **Stuck in Discovery** — it has stayed in the **Discovery** stage for more than 14 days.
+- **Ready for proposal** — it is ready for a proposal (a step not yet handled in this version).
+- **Closing date overdue** — its expected closing date has passed.
+
+The same **visibility rules** as the list apply: a representative sees **only their own** pending; a
+manager sees all. **Lost** Opportunities never appear here (they are terminal). This is an operational
+view, not an executive dashboard — there are no notifications, e-mail alerts or deadline targets (SLAs),
+and no proposal, sale, booking or financial data.
+
 ## 9. Managing reference data (*cadastros*)
 
 Reference data are the lists that feed the lead form and future workflows. There are
