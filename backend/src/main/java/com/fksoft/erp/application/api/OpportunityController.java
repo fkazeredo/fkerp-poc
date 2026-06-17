@@ -1,6 +1,6 @@
 package com.fksoft.erp.application.api;
 
-import com.fksoft.erp.application.api.dto.LoseRequest;
+import com.fksoft.erp.application.api.dto.LoseOpportunityRequest;
 import com.fksoft.erp.application.api.dto.OpportunityCreateRequest;
 import com.fksoft.erp.application.api.dto.OpportunityListParams;
 import com.fksoft.erp.application.api.dto.OpportunityResponse;
@@ -137,10 +137,10 @@ public class OpportunityController {
      * @return the updated detail
      */
     @PostMapping("/{id}/lose")
-    public OpportunityDetail lose(@PathVariable UUID id, @Valid @RequestBody LoseRequest request) {
+    public OpportunityDetail lose(@PathVariable UUID id, @Valid @RequestBody LoseOpportunityRequest request) {
         return opportunityService.markLost(
                 id,
-                request.lossReasonId(),
+                request.reason(),
                 request.note(),
                 userContext.currentUserId(),
                 canSeeAllOpportunities(),

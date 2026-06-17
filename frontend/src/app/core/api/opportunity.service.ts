@@ -55,9 +55,21 @@ export interface OpportunitySourceLead {
   status: string;
 }
 
+export type OpportunityLossReason =
+  | 'NO_BUDGET'
+  | 'NO_DECISION'
+  | 'NO_RESPONSE'
+  | 'COMPETITOR_CHOSEN'
+  | 'PRODUCT_MISMATCH'
+  | 'PRICE_TOO_HIGH'
+  | 'TRAVEL_CANCELLED'
+  | 'DUPLICATED_OPPORTUNITY'
+  | 'OUT_OF_PROFILE'
+  | 'OTHER';
+
 /** Loss outcome, present only when the Opportunity is LOST. */
 export interface OpportunityLoss {
-  reason: string | null;
+  reason: OpportunityLossReason | null;
   lostAt: string;
   lostBy: string | null;
   note: string | null;
@@ -185,8 +197,8 @@ export class OpportunityService {
     return this.http.get<OpportunityDetail>(`/api/opportunities/${id}`);
   }
 
-  lose(id: string, lossReasonId: string, note: string | null): Observable<OpportunityDetail> {
-    return this.http.post<OpportunityDetail>(`/api/opportunities/${id}/lose`, { lossReasonId, note });
+  lose(id: string, reason: OpportunityLossReason, note: string | null): Observable<OpportunityDetail> {
+    return this.http.post<OpportunityDetail>(`/api/opportunities/${id}/lose`, { reason, note });
   }
 
   changeStage(id: string, stage: OpportunityStage): Observable<OpportunityDetail> {

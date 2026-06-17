@@ -103,9 +103,9 @@ public class Opportunity {
     @Column(name = "lost_by")
     private UUID lostBy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "loss_reason_id")
-    private LossReason lossReason;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "loss_reason")
+    private OpportunityLossReason lossReason;
 
     @Size(max = 2000)
     @Column(name = "loss_note")
@@ -177,12 +177,12 @@ public class Opportunity {
      * Marks the Opportunity as lost with a reason. Allowed from any non-lost stage; the loss
      * (reason/who/when/note) is kept for history. The source Lead is not affected.
      *
-     * @param reason the (active) loss reason
+     * @param reason the loss reason
      * @param byUser id of the user marking the Opportunity lost
      * @param note optional loss note
      * @throws OpportunityCannotBeMarkedLostException if the Opportunity is already lost
      */
-    public void markLost(LossReason reason, UUID byUser, String note) {
+    public void markLost(OpportunityLossReason reason, UUID byUser, String note) {
         if (stage == OpportunityStage.LOST) {
             throw new OpportunityCannotBeMarkedLostException();
         }

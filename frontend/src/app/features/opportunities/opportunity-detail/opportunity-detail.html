@@ -109,7 +109,7 @@
       <p-card header="Perda">
         <dl class="data">
           <dt>Motivo</dt>
-          <dd>{{ loss.reason ?? '—' }}</dd>
+          <dd>{{ loss.reason ? lossReasonLabel(loss.reason) : '—' }}</dd>
           <dt>Quando</dt>
           <dd>{{ loss.lostAt | date: 'short' }}</dd>
           <dt>Por</dt>
@@ -170,10 +170,10 @@
       <label for="reason">Motivo da perda <span class="req">*</span></label>
       <p-select
         inputId="reason"
-        [options]="lossReasons()"
+        [options]="lossReasonOptions"
         optionLabel="label"
-        optionValue="id"
-        [(ngModel)]="lossReasonId"
+        optionValue="value"
+        [(ngModel)]="lossReason"
         placeholder="Selecione"
         [filter]="true"
         styleClass="w-full"
@@ -189,7 +189,7 @@
         label="Marcar como perdida"
         icon="pi pi-times-circle"
         severity="danger"
-        [disabled]="!lossReasonId"
+        [disabled]="!lossReason"
         [loading]="acting()"
         (onClick)="confirmLose()"
       />

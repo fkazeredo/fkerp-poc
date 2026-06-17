@@ -6,7 +6,6 @@ import { providePrimeNG } from 'primeng/config';
 import { of, throwError } from 'rxjs';
 import { OpportunityDetailPage } from './opportunity-detail';
 import { OpportunityDetail, OpportunityService } from '../../../core/api/opportunity.service';
-import { ReferenceService } from '../../../core/api/reference.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
@@ -23,7 +22,6 @@ describe('OpportunityDetailPage', () => {
     registerActivity: vi.fn(),
     updateDetails: vi.fn(),
   };
-  const references = { list: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
   const auth = { canOperateOpportunity: vi.fn() };
@@ -62,7 +60,7 @@ describe('OpportunityDetailPage', () => {
   const lost = () =>
     sample({
       stage: 'LOST',
-      loss: { reason: 'Sem resposta', lostAt: '2026-06-16T10:00:00Z', lostBy: 'comercial', note: 'sumiu' },
+      loss: { reason: 'NO_RESPONSE', lostAt: '2026-06-16T10:00:00Z', lostBy: 'comercial', note: 'sumiu' },
     });
 
   function build() {
@@ -71,7 +69,6 @@ describe('OpportunityDetailPage', () => {
       providers: [
         providePrimeNG(),
         { provide: OpportunityService, useValue: opportunities },
-        { provide: ReferenceService, useValue: references },
         { provide: Router, useValue: router },
         { provide: MessageService, useValue: messages },
         { provide: AuthService, useValue: auth },
@@ -88,15 +85,11 @@ describe('OpportunityDetailPage', () => {
       opportunities.changeStage,
       opportunities.registerActivity,
       opportunities.updateDetails,
-      references.list,
       router.navigateByUrl,
       messages.add,
       auth.canOperateOpportunity,
     ].forEach((fn) => fn.mockReset());
     opportunities.detail.mockReturnValue(of(sample()));
-    references.list.mockReturnValue(
-      of([{ id: 'lr1', code: 'NO_RESPONSE', label: 'Sem resposta', active: true, sortOrder: 1 }]),
-    );
     auth.canOperateOpportunity.mockReturnValue(true);
   });
 
@@ -139,25 +132,25 @@ describe('OpportunityDetailPage', () => {
     expect(comp['canLose']()).toBe(false);
   });
 
-  it('loads loss reasons when opening the lose dialog', () => {
+  it('openLose opens the dialog with the loss-reason options', () => {
     const comp = build();
     comp.ngOnInit();
     comp['openLose']();
-    expect(references.list).toHaveBeenCalledWith('loss-reasons');
     expect(comp['loseOpen']()).toBe(true);
-    expect(comp['lossReasons']().length).toBe(1);
+    expect(comp['lossReason']).toBeNull();
+    expect(comp['lossReasonOptions'].map((o) => o.value)).toContain('NO_BUDGET');
   });
 
   it('confirmLose marks as lost, refreshes the detail and closes the dialog', () => {
     opportunities.lose.mockReturnValue(of(lost()));
     const comp = build();
     comp.ngOnInit();
-    comp['lossReasonId'] = 'lr1';
+    comp['lossReason'] = 'COMPETITOR_CHOSEN';
     comp['lossNote'] = 'sumiu';
 
     comp['confirmLose']();
 
-    expect(opportunities.lose).toHaveBeenCalledWith('o1', 'lr1', 'sumiu');
+    expect(opportunities.lose).toHaveBeenCalledWith('o1', 'COMPETITOR_CHOSEN', 'sumiu');
     expect(comp['opportunity']()?.stage).toBe('LOST');
     expect(comp['loseOpen']()).toBe(false);
     expect(messages.add).toHaveBeenCalled();
@@ -166,9 +159,15 @@ describe('OpportunityDetailPage', () => {
   it('confirmLose does nothing without a reason', () => {
     const comp = build();
     comp.ngOnInit();
-    comp['lossReasonId'] = null;
+    comp['lossReason'] = null;
     comp['confirmLose']();
     expect(opportunities.lose).not.toHaveBeenCalled();
+  });
+
+  it('maps loss reasons to pt-BR labels', () => {
+    const comp = build();
+    expect(comp['lossReasonLabel']('NO_BUDGET')).toBe('Sem orçamento');
+    expect(comp['lossReasonLabel']('TRAVEL_CANCELLED')).toBe('Viagem cancelada');
   });
 
   it('stageOptions offers only the next stage in the funnel', () => {

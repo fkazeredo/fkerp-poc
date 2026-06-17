@@ -19,10 +19,10 @@ import {
   OpportunityActivityResult,
   OpportunityActivityType,
   OpportunityDetail,
+  OpportunityLossReason,
   OpportunityService,
   OpportunityStage,
 } from '../../../core/api/opportunity.service';
-import { ReferenceItem, ReferenceService } from '../../../core/api/reference.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 const STAGE_LABELS: Record<OpportunityStage, string> = {
@@ -71,6 +71,24 @@ const ACTIVITY_RESULT_OPTIONS = (Object.keys(ACTIVITY_RESULT_LABELS) as Opportun
   (value) => ({ value, label: ACTIVITY_RESULT_LABELS[value] }),
 );
 
+const LOSS_REASON_LABELS: Record<OpportunityLossReason, string> = {
+  NO_BUDGET: 'Sem orçamento',
+  NO_DECISION: 'Sem decisão',
+  NO_RESPONSE: 'Sem resposta',
+  COMPETITOR_CHOSEN: 'Concorrente escolhido',
+  PRODUCT_MISMATCH: 'Incompatibilidade de produto',
+  PRICE_TOO_HIGH: 'Preço muito alto',
+  TRAVEL_CANCELLED: 'Viagem cancelada',
+  DUPLICATED_OPPORTUNITY: 'Oportunidade duplicada',
+  OUT_OF_PROFILE: 'Fora do perfil',
+  OTHER: 'Outro',
+};
+
+const LOSS_REASON_OPTIONS = (Object.keys(LOSS_REASON_LABELS) as OpportunityLossReason[]).map((value) => ({
+  value,
+  label: LOSS_REASON_LABELS[value],
+}));
+
 type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'danger';
 
 /**
@@ -104,7 +122,6 @@ export class OpportunityDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly opportunities = inject(OpportunityService);
-  private readonly references = inject(ReferenceService);
   private readonly messages = inject(MessageService);
   private readonly auth = inject(AuthService);
 
@@ -114,8 +131,8 @@ export class OpportunityDetailPage implements OnInit {
 
   protected readonly loseOpen = signal(false);
   protected readonly acting = signal(false);
-  protected readonly lossReasons = signal<ReferenceItem[]>([]);
-  protected lossReasonId: string | null = null;
+  protected readonly lossReasonOptions = LOSS_REASON_OPTIONS;
+  protected lossReason: OpportunityLossReason | null = null;
   protected lossNote = '';
 
   protected readonly stageOpen = signal(false);
@@ -212,23 +229,22 @@ export class OpportunityDetailPage implements OnInit {
     this.router.navigateByUrl('/oportunidades');
   }
 
+  protected lossReasonLabel(reason: OpportunityLossReason): string {
+    return LOSS_REASON_LABELS[reason];
+  }
+
   protected openLose(): void {
-    this.lossReasonId = null;
+    this.lossReason = null;
     this.lossNote = '';
-    if (this.lossReasons().length === 0) {
-      this.references
-        .list('loss-reasons')
-        .subscribe({ next: (list) => this.lossReasons.set(list) });
-    }
     this.loseOpen.set(true);
   }
 
   protected confirmLose(): void {
-    if (!this.lossReasonId) {
+    if (!this.lossReason) {
       return;
     }
     this.act(
-      this.opportunities.lose(this.opportunityId, this.lossReasonId, this.lossNote || null),
+      this.opportunities.lose(this.opportunityId, this.lossReason, this.lossNote || null),
       'Oportunidade marcada como perdida',
       this.loseOpen,
     );

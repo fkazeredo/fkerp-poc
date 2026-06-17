@@ -6,6 +6,7 @@ import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivityResult;
 import com.fksoft.erp.domain.crm.model.OpportunityActivityType;
+import com.fksoft.erp.domain.crm.model.OpportunityLossReason;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.model.OpportunityStageChange;
 import java.math.BigDecimal;
@@ -67,11 +68,7 @@ public record OpportunityDetail(
                 new SourceLead(lead.id(), lead.name(), lead.phone(), lead.whatsapp(), lead.email(), lead.status());
         LossInfo loss = o.lostAt() == null
                 ? null
-                : new LossInfo(
-                        o.lossReason() != null ? o.lossReason().label() : null,
-                        o.lostAt(),
-                        nameOf(names, o.lostBy()),
-                        o.lossNote());
+                : new LossInfo(o.lossReason(), o.lostAt(), nameOf(names, o.lostBy()), o.lossNote());
         List<StageChange> stageHistory = o.stageChanges().stream()
                 .sorted(Comparator.comparing(OpportunityStageChange::changedAt).reversed())
                 .map(c -> new StageChange(c.fromStage(), c.toStage(), c.changedAt(), nameOf(names, c.changedBy())))
@@ -118,7 +115,7 @@ public record OpportunityDetail(
     public record SourceLead(UUID id, String name, String phone, String whatsapp, String email, LeadStatus status) {}
 
     /** Loss outcome (present only when the Opportunity is LOST). */
-    public record LossInfo(String reason, Instant lostAt, String lostBy, String note) {}
+    public record LossInfo(OpportunityLossReason reason, Instant lostAt, String lostBy, String note) {}
 
     /** A single pipeline stage-movement entry. */
     public record StageChange(OpportunityStage from, OpportunityStage to, Instant at, String by) {}
