@@ -219,6 +219,27 @@ public class Opportunity {
     }
 
     /**
+     * Updates the editable commercial details (estimated value, expected closing date, product type and
+     * commercial notes); a {@code null} clears the field. Does not touch the main interest (kept from the
+     * Lead qualification), the stage, the responsible or the source Lead, and creates no Financial,
+     * Booking, Proposal or Commission data. The change is traced via the audit fields ({@code updatedBy}).
+     *
+     * @param estimatedValue the estimated value ({@code >= 0}), or {@code null}
+     * @param expectedCloseDate the expected closing date, or {@code null}
+     * @param productType the product / service interest area (free text), or {@code null}
+     * @param notes the commercial notes, or {@code null}
+     * @param byUser id of the user editing the Opportunity
+     */
+    public void updateCommercialDetails(
+            BigDecimal estimatedValue, LocalDate expectedCloseDate, String productType, String notes, UUID byUser) {
+        this.estimatedValue = estimatedValue;
+        this.expectedCloseDate = expectedCloseDate;
+        this.productType = emptyToNull(productType);
+        this.notes = emptyToNull(notes);
+        updatedBy = byUser;
+    }
+
+    /**
      * Registers a commercial activity (append-only negotiation history) and updates the planned next
      * action date when the activity defines one. The activity never moves the pipeline stage and never
      * creates a Proposal, Sale, Booking or Financial record.

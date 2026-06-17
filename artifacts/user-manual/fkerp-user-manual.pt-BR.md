@@ -366,6 +366,14 @@ para entender a negociação antes da próxima ação comercial. O detalhe mostr
 - **Histórico de atividades comerciais:** todas as atividades registradas (tipo, resultado, descrição,
   data, próxima ação e autor), com a mais recente no topo.
 
+**Editar dados comerciais.** Se você tem permissão de operação, o detalhe oferece a ação **Editar dados
+comerciais** (atalho de teclado **`e`**): ajuste o **valor estimado**, a **previsão de fechamento**, o
+**tipo de produto / área de interesse** e as **anotações comerciais**. Deixar um campo em branco o
+**limpa**. O **interesse principal** não é editado aqui — ele permanece como definido na qualificação do
+Lead. O valor e a previsão de fechamento passam a aparecer também na **lista**. A edição **não** cria
+financeiro, recebível, previsão de vendas, reserva, proposta nem comissão — é apenas informação
+comercial.
+
 **Registrar atividade.** Se você tem permissão de operação, o detalhe oferece a ação **Registrar
 atividade** (atalho de teclado **`a`**): informe o **tipo** (ligação, WhatsApp, e-mail, reunião, nota
 interna, solicitação de documento, discussão de preço, esclarecimento de requisito de viagem ou outro),

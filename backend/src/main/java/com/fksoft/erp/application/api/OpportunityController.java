@@ -6,6 +6,7 @@ import com.fksoft.erp.application.api.dto.OpportunityListParams;
 import com.fksoft.erp.application.api.dto.OpportunityResponse;
 import com.fksoft.erp.application.api.dto.OpportunityStageChangeRequest;
 import com.fksoft.erp.application.api.dto.RegisterOpportunityActivityRequest;
+import com.fksoft.erp.application.api.dto.UpdateOpportunityDetailsRequest;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.service.OpportunityService;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
@@ -13,6 +14,7 @@ import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
 import com.fksoft.erp.domain.crm.service.data.OpportunityListItem;
 import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
 import com.fksoft.erp.domain.crm.service.data.RecordActivityCommand;
+import com.fksoft.erp.domain.crm.service.data.UpdateOpportunityDetailsCommand;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
@@ -29,6 +31,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,9 +43,9 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code crm:opportunity:read} (own only), {@code crm:opportunity:read:unassigned} (also the unassigned
  * pool) or {@code crm:opportunity:read:all} (all) — the visibility tier being enforced by the policy at
  * the query/record level, so filters, search and detail can never expose Opportunities the caller may
- * not see. The Opportunity operations — moving it through the pipeline stages, marking it as lost and
- * registering commercial activities — require {@code crm:opportunity:update} and that the caller may see
- * it; each returns the refreshed detail.
+ * not see. The Opportunity operations — editing its commercial details, moving it through the pipeline
+ * stages, marking it as lost and registering commercial activities — require {@code crm:opportunity:update}
+ * and that the caller may see it; each returns the refreshed detail.
  */
 @RestController
 @RequestMapping("/api/opportunities")
@@ -181,6 +184,24 @@ public class OpportunityController {
                 request.occurredAt(),
                 request.nextActionDate());
         return opportunityService.recordActivity(
+                id, command, userContext.currentUserId(), canSeeAllOpportunities(), canSeeUnassignedOpportunities());
+    }
+
+    /**
+     * Edits an Opportunity's commercial details (estimated value, expected closing date, product type,
+     * commercial notes); returns the refreshed detail. A {@code null} field clears it. Creates no
+     * Financial, Booking, Proposal or Commission data.
+     *
+     * @param id the opportunity id
+     * @param request the new commercial details
+     * @return the updated detail
+     */
+    @PutMapping("/{id}")
+    public OpportunityDetail updateDetails(
+            @PathVariable UUID id, @Valid @RequestBody UpdateOpportunityDetailsRequest request) {
+        UpdateOpportunityDetailsCommand command = new UpdateOpportunityDetailsCommand(
+                request.estimatedValue(), request.expectedCloseDate(), request.productType(), request.notes());
+        return opportunityService.updateDetails(
                 id, command, userContext.currentUserId(), canSeeAllOpportunities(), canSeeUnassignedOpportunities());
     }
 
