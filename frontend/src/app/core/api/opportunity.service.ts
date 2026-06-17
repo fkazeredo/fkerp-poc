@@ -27,8 +27,8 @@ export interface OpportunityCreated {
 
 /**
  * Operational Opportunity list item. {@code leadId} links to the source Lead (still the system of
- * record for contacts/history). {@code lastActivityAt}/{@code nextActionDate} are reserved for the
- * future Opportunity-activities slice and are always null for now.
+ * record for contacts/history). {@code lastActivityAt} is the most recent commercial activity's instant
+ * and {@code nextActionDate} the planned next action — both {@code null} until an activity is registered.
  */
 export interface OpportunityListItem {
   id: string;
@@ -133,8 +133,9 @@ export interface UpdateOpportunityDetails {
 }
 
 /**
- * Full Opportunity detail. {@code loss} is present only when LOST; {@code activities},
- * {@code stageHistory} and {@code nextActionDate} are reserved for future slices (empty/null for now).
+ * Full Opportunity detail. {@code loss} is present only when LOST; {@code stageHistory} is the pipeline
+ * movement history and {@code activities} the commercial activity history (both newest-first, empty until
+ * the first move/activity); {@code nextActionDate} is the planned next action from the latest activity.
  */
 export interface OpportunityDetail {
   id: string;
