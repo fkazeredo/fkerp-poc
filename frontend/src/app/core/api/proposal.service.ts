@@ -65,6 +65,15 @@ export interface ProposalItemPayload {
   discountValue?: number | null;
 }
 
+/** Payload to edit a Draft Proposal's commercial details (validity, terms, payment notes, discount). */
+export interface UpdateProposal {
+  validUntil?: string | null;
+  commercialTerms?: string | null;
+  paymentNotes?: string | null;
+  discountType?: DiscountType | null;
+  discountValue?: number | null;
+}
+
 /** Full Proposal detail. Exposes commercial-offer data only — never sale/order/booking/financial. */
 export interface ProposalDetail {
   id: string;
@@ -78,7 +87,11 @@ export interface ProposalDetail {
   notes: string | null;
   validUntil: string | null;
   commercialTerms: string | null;
+  paymentNotes: string | null;
   items: ProposalItem[];
+  subtotal: number;
+  discountType: DiscountType | null;
+  discountValue: number | null;
   total: number;
   createdAt: string;
   updatedAt: string;
@@ -111,6 +124,16 @@ export class ProposalService {
 
   detail(id: string): Observable<ProposalDetail> {
     return this.http.get<ProposalDetail>(`/api/proposals/${id}`);
+  }
+
+  /** Edits a Draft Proposal's commercial details (validity/terms/payment notes/discount); returns the detail. */
+  updateDetails(id: string, payload: UpdateProposal): Observable<ProposalDetail> {
+    return this.http.put<ProposalDetail>(`/api/proposals/${id}`, payload);
+  }
+
+  /** Submits a Draft Proposal for review (requires items and a positive total); returns the detail. */
+  submitForReview(id: string): Observable<ProposalDetail> {
+    return this.http.post<ProposalDetail>(`/api/proposals/${id}/submit`, {});
   }
 
   /** Adds an item to a Draft Proposal; returns the refreshed detail (with the recomputed total). */

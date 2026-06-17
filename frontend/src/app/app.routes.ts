@@ -3,6 +3,7 @@ import { authGuard } from './core/auth/auth.guard';
 import { crmReadGuard } from './core/auth/crm-read.guard';
 import { opportunityReadGuard } from './core/auth/opportunity-read.guard';
 import { proposalReadGuard } from './core/auth/proposal-read.guard';
+import { unsavedChangesGuard } from './core/guards/unsaved-changes.guard';
 
 export const routes: Routes = [
   {
@@ -37,12 +38,14 @@ export const routes: Routes = [
       {
         path: 'leads/new',
         canActivate: [crmReadGuard],
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/leads/lead-create/lead-create').then((m) => m.LeadCreate),
       },
       {
         path: 'leads/:id',
         canActivate: [crmReadGuard],
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/leads/lead-detail/lead-detail').then((m) => m.LeadDetailPage),
       },
@@ -73,6 +76,7 @@ export const routes: Routes = [
       {
         path: 'oportunidades/:id',
         canActivate: [opportunityReadGuard],
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/opportunities/opportunity-detail/opportunity-detail').then(
             (m) => m.OpportunityDetailPage,
@@ -87,6 +91,7 @@ export const routes: Routes = [
       {
         path: 'propostas/:id',
         canActivate: [proposalReadGuard],
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/proposals/proposal-detail/proposal-detail').then(
             (m) => m.ProposalDetailPage,
@@ -95,24 +100,28 @@ export const routes: Routes = [
       {
         path: 'cadastros/origens',
         data: { title: 'Origens', path: 'origins' },
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
       },
       {
         path: 'cadastros/motivos-perda',
         data: { title: 'Motivos de perda', path: 'loss-reasons' },
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
       },
       {
         path: 'cadastros/tipos-interacao',
         data: { title: 'Tipos de interação', path: 'interaction-types' },
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
       },
       {
         path: 'cadastros/resultados-interacao',
         data: { title: 'Resultados de interação', path: 'interaction-results' },
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
       },

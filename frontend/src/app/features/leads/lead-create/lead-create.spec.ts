@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 import { of, throwError } from 'rxjs';
 import { LeadCreate } from './lead-create';
@@ -23,6 +23,7 @@ describe('LeadCreate', () => {
       imports: [LeadCreate],
       providers: [
         providePrimeNG(),
+        ConfirmationService,
         { provide: LeadService, useValue: leads },
         { provide: Router, useValue: router },
         { provide: MessageService, useValue: messages },

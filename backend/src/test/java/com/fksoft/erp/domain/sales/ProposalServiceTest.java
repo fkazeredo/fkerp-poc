@@ -30,6 +30,7 @@ import com.fksoft.erp.domain.sales.service.ProposalAccessPolicy;
 import com.fksoft.erp.domain.sales.service.ProposalService;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
+import com.fksoft.erp.domain.sales.service.data.UpdateProposalCommand;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
@@ -209,7 +210,53 @@ class ProposalServiceTest {
         verify(proposals, never()).saveAndFlush(any());
     }
 
+    @Test
+    void updateDetailsThrowsWhenTheProposalIsMissing() {
+        UUID id = UUID.randomUUID();
+        when(proposals.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.updateDetails(id, updateCommand(), ACTOR, true, false))
+                .isInstanceOf(ProposalNotFoundException.class);
+        verify(proposals, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void updateDetailsThrowsWhenTheProposalIsNotVisible() {
+        UUID id = UUID.randomUUID();
+        when(proposals.findById(id)).thenReturn(Optional.of(mock(Proposal.class)));
+        when(accessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.updateDetails(id, updateCommand(), ACTOR, false, false))
+                .isInstanceOf(ProposalAccessDeniedException.class);
+        verify(proposals, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void submitForReviewThrowsWhenTheProposalIsMissing() {
+        UUID id = UUID.randomUUID();
+        when(proposals.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.submitForReview(id, ACTOR, true, false))
+                .isInstanceOf(ProposalNotFoundException.class);
+        verify(proposals, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void submitForReviewThrowsWhenTheProposalIsNotVisible() {
+        UUID id = UUID.randomUUID();
+        when(proposals.findById(id)).thenReturn(Optional.of(mock(Proposal.class)));
+        when(accessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.submitForReview(id, ACTOR, false, false))
+                .isInstanceOf(ProposalAccessDeniedException.class);
+        verify(proposals, never()).saveAndFlush(any());
+    }
+
     private ProposalItemCommand itemCommand() {
         return new ProposalItemCommand(ProposalItemType.OTHER, "linha", 1, new BigDecimal("10.00"), null, null);
+    }
+
+    private UpdateProposalCommand updateCommand() {
+        return new UpdateProposalCommand(null, null, null, null, null);
     }
 }

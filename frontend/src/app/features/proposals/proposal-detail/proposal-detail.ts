@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, HostListener, effect, inject, signal, OnDestroy, OnInit } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -11,6 +11,8 @@ import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { TextareaModule } from 'primeng/textarea';
+import { DatePickerModule } from 'primeng/datepicker';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { Observable } from 'rxjs';
@@ -21,9 +23,11 @@ import {
   ProposalItemType,
   ProposalService,
   ProposalStatus,
+  UpdateProposal,
 } from '../../../core/api/proposal.service';
 import { OpportunityStage } from '../../../core/api/opportunity.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { HasUnsavedChanges, UnsavedChangesService } from '../../../core/forms/unsaved-changes.service';
 
 const STATUS_LABELS: Record<ProposalStatus, string> = {
   DRAFT: 'Rascunho',
@@ -87,23 +91,32 @@ type DiscountMode = 'NONE' | DiscountType;
     SelectModule,
     InputTextModule,
     InputNumberModule,
+    TextareaModule,
+    DatePickerModule,
     MessageModule,
   ],
   templateUrl: './proposal-detail.html',
   styleUrl: './proposal-detail.css',
 })
-export class ProposalDetailPage implements OnInit {
+export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly proposals = inject(ProposalService);
   private readonly messages = inject(MessageService);
   private readonly auth = inject(AuthService);
+  private readonly unsaved = inject(UnsavedChangesService);
+
+  constructor() {
+    // An open edit dialog means an in-progress edit; keep the global flag in sync for the tab-close warning.
+    effect(() => this.unsaved.set(this.hasUnsavedChanges()));
+  }
 
   protected readonly proposal = signal<ProposalDetail | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
 
   protected readonly itemOpen = signal(false);
+  protected readonly detailsOpen = signal(false);
   protected readonly acting = signal(false);
   protected readonly itemTypeOptions = (Object.keys(ITEM_TYPE_LABELS) as ProposalItemType[]).map(
     (value) => ({ value, label: ITEM_TYPE_LABELS[value] }),
@@ -122,11 +135,27 @@ export class ProposalDetailPage implements OnInit {
   protected itemDiscountMode: DiscountMode = 'NONE';
   protected itemDiscountValue: number | null = null;
 
+  // Commercial-details dialog (validity, terms, payment notes, Proposal-level discount).
+  protected detailsValidUntil: Date | null = null;
+  protected detailsCommercialTerms = '';
+  protected detailsPaymentNotes = '';
+  protected detailsDiscountMode: DiscountMode = 'NONE';
+  protected detailsDiscountValue: number | null = null;
+
   private proposalId = '';
 
   ngOnInit(): void {
     this.proposalId = this.route.snapshot.paramMap.get('id') ?? '';
     this.load();
+  }
+
+  ngOnDestroy(): void {
+    this.unsaved.set(false);
+  }
+
+  /** Whether an edit dialog (item or commercial details) is open — route guard + tab-close warning. */
+  hasUnsavedChanges(): boolean {
+    return this.itemOpen() || this.detailsOpen();
   }
 
   protected statusLabel(status: ProposalStatus): string {
@@ -207,6 +236,72 @@ export class ProposalDetailPage implements OnInit {
     this.act(this.proposals.removeItem(this.proposalId, item.id), 'Item removido');
   }
 
+  /** Opens the commercial-details dialog, pre-filled from the current Proposal. */
+  protected openEditDetails(): void {
+    const p = this.proposal();
+    if (!p) {
+      return;
+    }
+    this.detailsValidUntil = p.validUntil ? new Date(p.validUntil) : null;
+    this.detailsCommercialTerms = p.commercialTerms ?? '';
+    this.detailsPaymentNotes = p.paymentNotes ?? '';
+    this.detailsDiscountMode = p.discountType ?? 'NONE';
+    this.detailsDiscountValue = p.discountValue;
+    this.detailsOpen.set(true);
+  }
+
+  protected canSaveDetails(): boolean {
+    return this.detailsDiscountMode === 'NONE' || this.detailsDiscountValue != null;
+  }
+
+  protected confirmEditDetails(): void {
+    if (!this.canSaveDetails()) {
+      return;
+    }
+    const payload: UpdateProposal = {
+      validUntil: this.detailsValidUntil ? toIsoDate(this.detailsValidUntil) : null,
+      commercialTerms: this.detailsCommercialTerms.trim() || null,
+      paymentNotes: this.detailsPaymentNotes.trim() || null,
+      discountType: this.detailsDiscountMode === 'NONE' ? null : this.detailsDiscountMode,
+      discountValue: this.detailsDiscountMode === 'NONE' ? null : this.detailsDiscountValue,
+    };
+    this.act(this.proposals.updateDetails(this.proposalId, payload), 'Dados atualizados', this.detailsOpen);
+  }
+
+  /** Whether the Proposal can be submitted for review (operable Draft with items and a positive total). */
+  protected canSubmit(): boolean {
+    const p = this.proposal();
+    return this.canManageItems() && !!p && p.items.length > 0 && p.total > 0;
+  }
+
+  protected submitForReview(): void {
+    if (!this.canSubmit()) {
+      return;
+    }
+    this.act(this.proposals.submitForReview(this.proposalId), 'Proposta enviada para revisão');
+  }
+
+  /** Shortcuts on the proposal detail: i add item, e edit commercial details, s submit for review, Esc back. */
+  @HostListener('document:keydown', ['$event'])
+  protected onShortcut(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement | null;
+    const typing =
+      !!target &&
+      (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
+    if (typing || event.ctrlKey || event.metaKey || event.altKey || this.itemOpen() || this.detailsOpen()) {
+      return;
+    }
+    if (event.key === 'i' && this.canManageItems()) {
+      this.openAddItem();
+    } else if (event.key === 'e' && this.canManageItems()) {
+      this.openEditDetails();
+    } else if (event.key === 's' && this.canSubmit()) {
+      this.submitForReview();
+    } else if (event.key === 'Escape') {
+      this.back();
+    }
+  }
+
   private load(): void {
     this.loading.set(true);
     this.error.set(null);
@@ -248,4 +343,12 @@ export class ProposalDetailPage implements OnInit {
       },
     });
   }
+}
+
+/** Formats a local Date as an ISO calendar date (yyyy-MM-dd), as the validity contract expects. */
+function toIsoDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = `${date.getMonth() + 1}`.padStart(2, '0');
+  const d = `${date.getDate()}`.padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }

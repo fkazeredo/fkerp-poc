@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 import { of } from 'rxjs';
 import { ReferenceList } from './reference-list';
@@ -30,6 +30,7 @@ describe('ReferenceList', () => {
       imports: [ReferenceList],
       providers: [
         providePrimeNG(),
+        ConfirmationService,
         { provide: ReferenceService, useValue: api },
         { provide: MessageService, useValue: messages },
         { provide: ActivatedRoute, useValue: { data: of({ title: 'Origens', path: 'origins' }) } },

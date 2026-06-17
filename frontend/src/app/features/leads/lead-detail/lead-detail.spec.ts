@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 import { of, throwError } from 'rxjs';
 import { LeadDetailPage } from './lead-detail';
@@ -55,6 +55,7 @@ describe('LeadDetailPage', () => {
       imports: [LeadDetailPage],
       providers: [
         providePrimeNG(),
+        ConfirmationService,
         { provide: LeadService, useValue: leads },
         { provide: ReferenceService, useValue: references },
         { provide: Router, useValue: router },

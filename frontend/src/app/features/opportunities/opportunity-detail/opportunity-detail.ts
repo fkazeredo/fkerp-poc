@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, signal, OnInit } from '@angular/core';
+import { Component, HostListener, effect, inject, signal, OnDestroy, OnInit } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -25,6 +25,7 @@ import {
 } from '../../../core/api/opportunity.service';
 import { Responsible } from '../../../core/api/lead.service';
 import { ProposalService } from '../../../core/api/proposal.service';
+import { HasUnsavedChanges, UnsavedChangesService } from '../../../core/forms/unsaved-changes.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 const STAGE_LABELS: Record<OpportunityStage, string> = {
@@ -120,13 +121,30 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'dan
   templateUrl: './opportunity-detail.html',
   styleUrl: './opportunity-detail.css',
 })
-export class OpportunityDetailPage implements OnInit {
+export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChanges {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly opportunities = inject(OpportunityService);
   private readonly messages = inject(MessageService);
   private readonly auth = inject(AuthService);
   private readonly proposals = inject(ProposalService);
+  private readonly unsaved = inject(UnsavedChangesService);
+
+  constructor() {
+    // An open edit dialog means an in-progress edit; keep the global flag in sync for the tab-close warning.
+    effect(() => this.unsaved.set(this.hasUnsavedChanges()));
+  }
+
+  /** Whether an edit dialog is open (used by the route guard and the tab-close warning). */
+  hasUnsavedChanges(): boolean {
+    return (
+      this.loseOpen() || this.stageOpen() || this.activityOpen() || this.editOpen() || this.proposalOpen()
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.unsaved.set(false);
+  }
 
   protected readonly opportunity = signal<OpportunityDetail | null>(null);
   protected readonly loading = signal(true);

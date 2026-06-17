@@ -3,10 +3,14 @@ package com.fksoft.erp.domain.sales.model;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
+import com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException;
+import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
+import com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
+import com.fksoft.erp.domain.sales.service.data.UpdateProposalCommand;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -84,6 +88,11 @@ public class Proposal {
     @Column(name = "commercial_terms")
     private String commercialTerms;
 
+    // Descriptive payment notes for the offer (free text). NOT a Financial / Payment / Receivable record.
+    @Size(max = 4000)
+    @Column(name = "payment_notes")
+    private String paymentNotes;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -94,8 +103,21 @@ public class Proposal {
     @JoinColumn(name = "proposal_id", nullable = false)
     private List<ProposalItem> items = new ArrayList<>();
 
-    // The Proposal total, denormalized from the items (recomputed on every item change) so the list and
-    // detail expose it without an N+1.
+    // An optional Proposal-level discount applied to the items subtotal (in addition to per-line discounts).
+    @Enumerated(EnumType.STRING)
+    @Column(name = "discount_type")
+    private DiscountType discountType;
+
+    @Column(name = "discount_value")
+    private BigDecimal discountValue;
+
+    // The items subtotal (sum of the lines' totals), denormalized so the detail exposes it without an N+1.
+    @NotNull
+    @Column(nullable = false)
+    private BigDecimal subtotal = BigDecimal.ZERO;
+
+    // The final Proposal total (subtotal minus the Proposal-level discount; never negative), denormalized
+    // from the items + discount (recomputed on every change) so the list and detail expose it without an N+1.
     @NotNull
     @Column(nullable = false)
     private BigDecimal total = BigDecimal.ZERO;
@@ -174,7 +196,7 @@ public class Proposal {
                 command.unitValue(),
                 command.discountType(),
                 command.discountValue()));
-        recomputeTotal();
+        recomputeTotals();
         updatedBy = byUser;
     }
 
@@ -201,7 +223,7 @@ public class Proposal {
                 command.unitValue(),
                 command.discountType(),
                 command.discountValue());
-        recomputeTotal();
+        recomputeTotals();
         updatedBy = byUser;
     }
 
@@ -218,7 +240,71 @@ public class Proposal {
         if (!items.removeIf(i -> i.id().equals(itemId))) {
             throw new ProposalItemNotFoundException();
         }
-        recomputeTotal();
+        recomputeTotals();
+        updatedBy = byUser;
+    }
+
+    /**
+     * Edits the Proposal's commercial details (Draft only): validity, commercial terms, descriptive payment
+     * notes and the optional Proposal-level discount, then refreshes the total. Creates no Financial,
+     * Receivable, Payment, Booking or Commission data.
+     *
+     * @param validUntil the validity date (optional)
+     * @param commercialTerms the commercial terms (optional)
+     * @param paymentNotes descriptive payment notes (optional, free text — not a Financial record)
+     * @param discountType the Proposal-level discount type, or {@code null} for no discount
+     * @param discountValue the Proposal-level discount value, or {@code null} for no discount
+     * @param byUser id of the user editing the Proposal
+     * @throws ProposalNotEditableException if the Proposal is not a Draft
+     * @throws ProposalDiscountInvalidException if the discount is invalid (pairing or range)
+     */
+    public void updateCommercialDetails(
+            LocalDate validUntil,
+            String commercialTerms,
+            String paymentNotes,
+            DiscountType discountType,
+            BigDecimal discountValue,
+            UUID byUser) {
+        requireDraft();
+        validateProposalDiscount(discountType, discountValue);
+        this.validUntil = validUntil;
+        this.commercialTerms = emptyToNull(commercialTerms);
+        this.paymentNotes = emptyToNull(paymentNotes);
+        this.discountType = discountType;
+        this.discountValue = discountValue;
+        recomputeTotals();
+        updatedBy = byUser;
+    }
+
+    /** Convenience overload taking the command record. */
+    public void updateCommercialDetails(UpdateProposalCommand command, UUID byUser) {
+        updateCommercialDetails(
+                command.validUntil(),
+                command.commercialTerms(),
+                command.paymentNotes(),
+                command.discountType(),
+                command.discountValue(),
+                byUser);
+    }
+
+    /**
+     * Submits the Proposal for review (Draft → {@link ProposalStatus#READY_FOR_REVIEW}). The offer must have
+     * at least one item and a positive total. Creates no Sale, Order, Booking, Financial or Commission data.
+     *
+     * @param byUser id of the user submitting the Proposal
+     * @throws ProposalNotEditableException if the Proposal is not a Draft
+     * @throws ProposalHasNoItemsException if the Proposal has no items
+     * @throws ProposalTotalRequiredException if the Proposal total is not positive
+     */
+    public void submitForReview(UUID byUser) {
+        requireDraft();
+        if (items.isEmpty()) {
+            throw new ProposalHasNoItemsException();
+        }
+        if (total.signum() <= 0) {
+            throw new ProposalTotalRequiredException();
+        }
+        status = ProposalStatus.READY_FOR_REVIEW;
         updatedBy = byUser;
     }
 
@@ -228,8 +314,26 @@ public class Proposal {
         }
     }
 
-    private void recomputeTotal() {
-        total = items.stream()
+    private void validateProposalDiscount(DiscountType type, BigDecimal value) {
+        if ((type == null) != (value == null)) {
+            throw new ProposalDiscountInvalidException();
+        }
+        if (type != null && !type.isValid(value, itemsSubtotal())) {
+            throw new ProposalDiscountInvalidException();
+        }
+    }
+
+    private void recomputeTotals() {
+        subtotal = itemsSubtotal();
+        BigDecimal discount = discountType == null ? BigDecimal.ZERO : discountType.amountOf(discountValue, subtotal);
+        // Cap the effective discount at the subtotal so the total can never go negative — e.g. if items are
+        // removed after a fixed-amount discount was set, leaving the discount larger than the new subtotal.
+        discount = discount.min(subtotal);
+        total = subtotal.subtract(discount).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal itemsSubtotal() {
+        return items.stream()
                 .map(ProposalItem::lineTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);

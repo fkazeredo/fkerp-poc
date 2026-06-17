@@ -21,6 +21,7 @@ import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalListItem;
+import com.fksoft.erp.domain.sales.service.data.UpdateProposalCommand;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -199,6 +200,53 @@ public class ProposalService {
             UUID proposalId, UUID itemId, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
         proposal.removeItem(itemId, userId);
+        return toDetail(proposals.saveAndFlush(proposal));
+    }
+
+    /**
+     * Edits a Draft Proposal's commercial details (validity, terms, payment notes, Proposal-level discount)
+     * the caller is allowed to see, and returns the refreshed detail (with the recomputed subtotal/total).
+     * Creates no Financial, Receivable, Payment, Booking or Commission data.
+     *
+     * @param proposalId the proposal id
+     * @param command the new commercial details
+     * @param userId the acting user
+     * @param canSeeAll whether the caller may see every Proposal
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws ProposalNotFoundException if the Proposal does not exist
+     * @throws ProposalAccessDeniedException if the caller may not see it
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalNotEditableException if it is not a Draft
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException if the discount is invalid
+     */
+    @Transactional
+    public ProposalDetail updateDetails(
+            UUID proposalId, UpdateProposalCommand command, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
+        proposal.updateCommercialDetails(command, userId);
+        return toDetail(proposals.saveAndFlush(proposal));
+    }
+
+    /**
+     * Submits a Draft Proposal the caller is allowed to see for review (Draft → READY_FOR_REVIEW). The
+     * Proposal must have at least one item and a positive total. Creates no Sale, Order, Booking, Financial
+     * or Commission data.
+     *
+     * @param proposalId the proposal id
+     * @param userId the acting user
+     * @param canSeeAll whether the caller may see every Proposal
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws ProposalNotFoundException if the Proposal does not exist
+     * @throws ProposalAccessDeniedException if the caller may not see it
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalNotEditableException if it is not a Draft
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException if it has no items
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException if the total is not positive
+     */
+    @Transactional
+    public ProposalDetail submitForReview(UUID proposalId, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
+        proposal.submitForReview(userId);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 

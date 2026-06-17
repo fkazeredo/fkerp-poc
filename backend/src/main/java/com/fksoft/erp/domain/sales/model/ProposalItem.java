@@ -35,7 +35,6 @@ import org.hibernate.annotations.CreationTimestamp;
 public class ProposalItem {
 
     private static final int SCALE = 2;
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     @Id
     private UUID id;
@@ -116,10 +115,7 @@ public class ProposalItem {
         if (discountType == null) {
             return BigDecimal.ZERO.setScale(SCALE);
         }
-        return switch (discountType) {
-            case AMOUNT -> discountValue.setScale(SCALE, RoundingMode.HALF_UP);
-            case PERCENT -> subtotal().multiply(discountValue).divide(HUNDRED, SCALE, RoundingMode.HALF_UP);
-        };
+        return discountType.amountOf(discountValue, subtotal());
     }
 
     /** The line total: the subtotal minus the discount. */
@@ -129,7 +125,8 @@ public class ProposalItem {
 
     /**
      * Validates the optional discount: type and value are present together or both absent; a percentage is
-     * 0–100; an absolute amount is between 0 and the line subtotal.
+     * 0–100; an absolute amount is between 0 and the line subtotal. The range rules live on
+     * {@link DiscountType#isValid(BigDecimal, BigDecimal)} so the item and the Proposal share them.
      */
     private static void validateDiscount(
             int quantity, BigDecimal unitValue, DiscountType discountType, BigDecimal discountValue) {
@@ -139,18 +136,9 @@ public class ProposalItem {
         if (discountType == null) {
             return;
         }
-        if (discountValue.signum() < 0) {
+        BigDecimal subtotal = unitValue.multiply(BigDecimal.valueOf(quantity));
+        if (!discountType.isValid(discountValue, subtotal)) {
             throw new ProposalItemInvalidException();
-        }
-        if (discountType == DiscountType.PERCENT) {
-            if (discountValue.compareTo(HUNDRED) > 0) {
-                throw new ProposalItemInvalidException();
-            }
-        } else {
-            BigDecimal subtotal = unitValue.multiply(BigDecimal.valueOf(quantity));
-            if (discountValue.compareTo(subtotal) > 0) {
-                throw new ProposalItemInvalidException();
-            }
         }
     }
 }

@@ -484,13 +484,31 @@ Each item has:
 - an **optional discount**, applied per line as either a **value (R$)** or a **percentage (%)** — choose
   *Sem desconto* (No discount), *Valor (R$)* or *Percentual (%)*.
 
-The **line total** is the unit value times the quantity, minus the discount; the **proposal total** is the
-sum of all line totals, recalculated automatically whenever you add, change or remove an item. A percentage
-discount must be between 0 and 100, and a value discount cannot exceed the line's amount.
+The **line total** is the unit value times the quantity, minus the line discount. A percentage discount must
+be between 0 and 100, and a value discount cannot exceed the line's amount.
 
 Items can be changed **only while the proposal is a Draft**. Adding or editing items **does not** reserve
 anything, check availability with suppliers, or create any sale, order, booking, financial or commission
 data — the proposal remains a commercial offer.
+
+### 9.4 Totals, discount and validity
+Below the items, the proposal shows a clear **totals** summary:
+
+- **Subtotal** — the sum of all the items' line totals;
+- **Proposal discount** — an optional discount on the whole proposal (a **value (R$)** or a **percentage
+  (%)**), shown only when present;
+- **Total** — the subtotal minus the proposal discount. The total is **never negative**: a value discount is
+  capped at the subtotal.
+
+Use **Editar dados comerciais** (Edit commercial details) — available while the proposal is a Draft and you
+may operate it — to set the **validity date**, the **commercial terms**, the **payment notes** (descriptive
+text only — it does **not** create any financial or receivable record) and the **proposal discount**. The
+total recalculates automatically.
+
+When the offer is ready, use **Enviar para revisão** (Submit for review). The proposal must have **at least
+one item** and a **total greater than zero**; it then leaves *Rascunho* (Draft) and becomes *Pronta para
+revisão* (Ready for review), after which its items and details are no longer editable. (The validity date
+becomes mandatory only at the later *send to client* step.)
 
 > The next steps of the Sales module (internal approval, customer acceptance and the generation of a
 > **commercial order**) will come in later releases.
@@ -545,6 +563,25 @@ FKERP validates your input and shows clear, Portuguese-language messages:
 - **Required fields** are marked with an asterisk (`*`).
 - The system never shows raw technical errors; if something unexpected happens you get a
   short, safe message and can try again.
+- **Unsaved changes are protected.** If you start filling a form or an edit dialog and then try to leave the
+  page — by a link, by a keyboard shortcut, or by closing the browser tab — the system asks you to confirm
+  before discarding your changes (**Descartar** to leave, **Continuar editando** to stay).
+
+---
+
+## 11.1 Keyboard shortcuts
+
+The menu is organized into clear **modules** — **Comercial / CRM**, **Vendas** and **Cadastros** — each its
+own block in the sidebar. Everything is also reachable by keyboard:
+
+- **`Ctrl`/`Cmd` + `K`** — the **command palette**: search and jump to any screen or action from anywhere.
+- **`?`** — show the full shortcut help at any time.
+- **Go to (press `g`, then a letter):** `g i` Home · `g l` Leads · `g o` Opportunities · `g p` Proposals ·
+  `g c` Reference data. **`n`** creates a new lead.
+- **On a lead:** `i` log interaction · `q` qualify · `o` create opportunity · `p` mark lost · `r` reassign ·
+  `Esc` back.
+- **On an opportunity:** `a` log activity · `e` edit details · `s` advance stage · `p` mark lost · `Esc` back.
+- **On a proposal:** `i` add item · `e` edit commercial details · `s` submit for review · `Esc` back.
 
 ---
 
