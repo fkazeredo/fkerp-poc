@@ -54,6 +54,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'oportunidades/pendencias',
+        canActivate: [opportunityReadGuard],
+        loadComponent: () =>
+          import('./features/opportunities/opportunity-pending/opportunity-pending').then(
+            (m) => m.OpportunityPending,
+          ),
+      },
+      {
         path: 'oportunidades/:id',
         canActivate: [opportunityReadGuard],
         loadComponent: () =>

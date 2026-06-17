@@ -73,6 +73,12 @@ export class Shell {
         link: '/oportunidades',
         exact: false,
       });
+      items.push({
+        label: 'Oportunidades pendentes',
+        icon: 'pi pi-flag',
+        link: '/oportunidades/pendencias',
+        exact: true,
+      });
     }
     return items;
   }
@@ -90,6 +96,11 @@ export class Shell {
     { label: 'Pendências', icon: 'pi pi-flag', run: () => this.go('/pendencias') },
     { label: 'Indicadores', icon: 'pi pi-chart-bar', run: () => this.go('/indicadores') },
     { label: 'Oportunidades', icon: 'pi pi-briefcase', run: () => this.go('/oportunidades') },
+    {
+      label: 'Oportunidades pendentes',
+      icon: 'pi pi-flag',
+      run: () => this.go('/oportunidades/pendencias'),
+    },
     { label: 'Início', icon: 'pi pi-home', run: () => this.go('/') },
     {
       label: 'Cadastro: Origens',

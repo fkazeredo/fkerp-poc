@@ -405,6 +405,26 @@ ninguém pode operar uma Oportunidade que não tem permissão para ver.
 O detalhe mostra **apenas dados comerciais** — nunca proposta, venda, pedido, reserva, financeiro,
 comissão ou atendimento.
 
+### 8.4 Oportunidades pendentes
+
+Abra **Oportunidades pendentes** na barra lateral (ou pela paleta de comandos, `Ctrl K`) para um
+worklist operacional das Oportunidades que **precisam de ação**, para a negociação não estagnar
+silenciosamente. A tabela lista, para cada Oportunidade, o **título** (leva ao detalhe), o **estágio**,
+o **responsável**, o **valor estimado**, o **fechamento previsto**, a **próxima ação**, a **última
+atividade** e os **motivos** da pendência. Cada Oportunidade recebe um ou mais motivos:
+
+- **Sem atividade recente** — não há atividade comercial registrada nos últimos **14 dias**.
+- **Próxima ação atrasada** — a próxima ação planejada está vencida.
+- **Parada em Nova** — segue na etapa **Nova** há mais de 14 dias, sem avançar.
+- **Parada em Descoberta** — segue na etapa **Descoberta** há mais de 14 dias.
+- **Pronta p/ proposta** — está pronta para uma proposta (etapa ainda não tratada nesta versão).
+- **Fechamento vencido** — a previsão de fechamento já passou.
+
+Valem as mesmas **regras de visibilidade** da lista: um representante vê **somente as próprias**
+pendências; um gerente vê todas. Oportunidades **perdidas** nunca aparecem aqui (são finais). É uma
+leitura operacional, não um dashboard executivo — não há notificações, alertas por e-mail nem metas de
+prazo (SLA), e nada de proposta, venda, reserva ou financeiro.
+
 ## 9. Gerenciando cadastros
 
 Os cadastros são as listas que alimentam o formulário de Lead e fluxos futuros. São quatro, todas

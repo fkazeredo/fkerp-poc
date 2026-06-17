@@ -13,6 +13,7 @@ import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivity;
 import com.fksoft.erp.domain.crm.model.OpportunityCreated;
 import com.fksoft.erp.domain.crm.model.OpportunityLossReason;
+import com.fksoft.erp.domain.crm.model.OpportunityPendingReasons;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.model.OpportunityStageChange;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
@@ -22,11 +23,14 @@ import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
 import com.fksoft.erp.domain.crm.service.data.OpportunityListItem;
 import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
+import com.fksoft.erp.domain.crm.service.data.PendingOpportunity;
 import com.fksoft.erp.domain.crm.service.data.RecordActivityCommand;
 import com.fksoft.erp.domain.crm.service.data.UpdateOpportunityDetailsCommand;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -147,6 +151,55 @@ public class OpportunityService {
 
         return page.map(opportunity -> OpportunityListItem.from(
                 opportunity, nameOf(names, opportunity.responsiblePersonId()), lastActivity.get(opportunity.id())));
+    }
+
+    /**
+     * Operational pending-items worklist of the Opportunities visible to the caller that need action
+     * (no recent activity, overdue next action, stuck in NEW/DISCOVERY, ready for a proposal, or past
+     * the expected closing date), each with its reasons. Read-only; creates no Proposal, Sale, Booking,
+     * Financial record or notification, and never modifies the Opportunity or its source Lead. LOST
+     * Opportunities are excluded.
+     *
+     * @param pageable page, size and sort
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every Opportunity
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return a page of pending Opportunity items
+     */
+    @Transactional(readOnly = true)
+    public Page<PendingOpportunity> pending(
+            Pageable pageable, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Instant now = Instant.now();
+        LocalDate today = LocalDate.ofInstant(now, ZoneOffset.UTC);
+        Specification<Opportunity> spec = OpportunityPendingSpecifications.pending(now, today)
+                .and(accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned));
+        Page<Opportunity> page = opportunities.findAll(spec, pageable);
+
+        List<UUID> opportunityIds =
+                page.getContent().stream().map(Opportunity::id).toList();
+        Map<UUID, Instant> lastActivity = opportunityIds.isEmpty()
+                ? Map.of()
+                : opportunities.findLastActivityAt(opportunityIds).stream()
+                        .collect(Collectors.toMap(
+                                OpportunityLastActivityRow::getOpportunityId,
+                                OpportunityLastActivityRow::getLastActivityAt));
+
+        Set<UUID> responsibleIds = page.getContent().stream()
+                .map(Opportunity::responsiblePersonId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> names = responsibleIds.isEmpty()
+                ? Map.of()
+                : users.findAllById(responsibleIds).stream().collect(Collectors.toMap(User::id, User::username));
+
+        return page.map(opportunity -> {
+            Instant lastActivityAt = lastActivity.get(opportunity.id());
+            return PendingOpportunity.from(
+                    opportunity,
+                    nameOf(names, opportunity.responsiblePersonId()),
+                    lastActivityAt,
+                    OpportunityPendingReasons.of(opportunity, now, today, lastActivityAt));
+        });
     }
 
     /**
