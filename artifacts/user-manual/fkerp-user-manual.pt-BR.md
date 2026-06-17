@@ -425,6 +425,24 @@ pendências; um gerente vê todas. Oportunidades **perdidas** nunca aparecem aqu
 leitura operacional, não um dashboard executivo — não há notificações, alertas por e-mail nem metas de
 prazo (SLA), e nada de proposta, venda, reserva ou financeiro.
 
+### 8.5 Indicadores de oportunidades
+
+Abra **Indicadores de oportunidades** na barra lateral (ou pela paleta de comandos, `Ctrl K`) para uma
+visão mínima do pipeline comercial. A tela tem **dois blocos**, como na maioria dos CRMs:
+
+- **Volume no período** (filtrado pela data de criação; padrão = mês atual): **Total** e **Perdidas**, mais
+  as quebras **Por estágio**, **Por origem** e **Por responsável** (contagens). Ajuste o período pelos
+  campos **Criado de / até**, ou clique em **Todo o período** para ver todo o histórico.
+- **Pipeline atual** (um retrato de hoje, que **independe do período**): **Ativas** (em aberto, não
+  perdidas), **Prontas p/ proposta**, **Fechamento vencido** (em aberto com a previsão de fechamento já
+  passada), o **valor do pipeline ativo** (R$) e o **valor por responsável**.
+
+Valem as mesmas **regras de visibilidade**: um representante vê **somente os próprios** números; um
+gerente vê os de todos. As Oportunidades **perdidas** entram na contagem do volume (e em "Perdidas"), mas
+nunca no pipeline ativo nem no valor. É uma leitura operacional, **não** um dashboard executivo — sem
+receita, fluxo de caixa, previsão de vendas, comissão ou ROI, e o indicador "Prontas p/ proposta" **não**
+cria proposta.
+
 ## 9. Gerenciando cadastros
 
 Os cadastros são as listas que alimentam o formulário de Lead e fluxos futuros. São quatro, todas

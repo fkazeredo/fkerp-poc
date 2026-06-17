@@ -11,6 +11,7 @@ import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.service.OpportunityService;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
+import com.fksoft.erp.domain.crm.service.data.OpportunityIndicators;
 import com.fksoft.erp.domain.crm.service.data.OpportunityListItem;
 import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
 import com.fksoft.erp.domain.crm.service.data.PendingOpportunity;
@@ -28,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,6 +37,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -135,6 +138,28 @@ public class OpportunityController {
                         canSeeAllOpportunities(),
                         canSeeUnassignedOpportunities()),
                 item -> item);
+    }
+
+    /**
+     * Minimum commercial-pipeline indicators for the caller: volume figures over the requested period
+     * (by creation date) plus a current snapshot of the active pipeline. Read-only; never exposes
+     * Proposal, Sale, Booking, Financial or Commission data.
+     *
+     * @param createdFrom optional inclusive lower bound on the creation date (ISO date)
+     * @param createdTo optional inclusive upper bound on the creation date (ISO date)
+     * @return the indicators
+     */
+    @GetMapping("/indicators")
+    public OpportunityIndicators indicators(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdTo) {
+        Instant from =
+                createdFrom != null ? createdFrom.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
+        Instant to = createdTo != null
+                ? createdTo.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
+                : null;
+        return opportunityService.indicators(
+                userContext.currentUserId(), canSeeAllOpportunities(), canSeeUnassignedOpportunities(), from, to);
     }
 
     /**

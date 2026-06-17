@@ -204,6 +204,50 @@ export interface OpportunityFilters {
   q?: string | null;
 }
 
+/** Opportunity count for a pipeline stage (volume, in period). */
+export interface OpportunityStageCount {
+  stage: OpportunityStage;
+  count: number;
+}
+
+/** Opportunity count for a Lead origin (volume, in period). */
+export interface OpportunityOriginCount {
+  origin: string;
+  count: number;
+}
+
+/** Opportunity count for a responsible person; `responsibleName === null` means unassigned. */
+export interface OpportunityResponsibleCount {
+  responsibleName: string | null;
+  count: number;
+}
+
+/** Active-pipeline estimated value for a responsible person; `responsibleName === null` = unassigned. */
+export interface OpportunityResponsibleValue {
+  responsibleName: string | null;
+  value: number;
+}
+
+/**
+ * Minimum commercial-pipeline indicators. Two scopes: the **volume** figures ({@code total},
+ * {@code lost}, {@code byStage}, {@code byOrigin}, {@code byResponsible}) cover the selected period (by
+ * creation date); the **pipeline** figures ({@code active}, {@code readyForProposal},
+ * {@code overdueClose}, {@code activePipelineValue}, {@code valueByResponsible}) are a current snapshot
+ * of all the visible Opportunities, independent of the period.
+ */
+export interface OpportunityIndicators {
+  total: number;
+  lost: number;
+  byStage: OpportunityStageCount[];
+  byOrigin: OpportunityOriginCount[];
+  byResponsible: OpportunityResponsibleCount[];
+  active: number;
+  readyForProposal: number;
+  overdueClose: number;
+  activePipelineValue: number;
+  valueByResponsible: OpportunityResponsibleValue[];
+}
+
 /** API client for the commercial Opportunity endpoints. */
 @Injectable({ providedIn: 'root' })
 export class OpportunityService {
@@ -229,6 +273,21 @@ export class OpportunityService {
   pending(page = 0, size = 20): Observable<PageResponse<PendingOpportunity>> {
     const params = new HttpParams().set('page', page).set('size', size);
     return this.http.get<PageResponse<PendingOpportunity>>('/api/opportunities/pending', { params });
+  }
+
+  /** Minimum commercial-pipeline indicators in an optional period (ISO dates); absent dates = all-time. */
+  indicators(
+    createdFrom: string | null = null,
+    createdTo: string | null = null,
+  ): Observable<OpportunityIndicators> {
+    let params = new HttpParams();
+    if (createdFrom) {
+      params = params.set('createdFrom', createdFrom);
+    }
+    if (createdTo) {
+      params = params.set('createdTo', createdTo);
+    }
+    return this.http.get<OpportunityIndicators>('/api/opportunities/indicators', { params });
   }
 
   lose(id: string, reason: OpportunityLossReason, note: string | null): Observable<OpportunityDetail> {
