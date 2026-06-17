@@ -395,11 +395,13 @@ stage — it does **not** create a proposal in this release. To end a negotiatio
 (below), from any active stage.
 
 **Mark as lost.** If you have operation permission over Opportunities, the detail offers the **Marcar
-como perdida** (Mark as lost) action (keyboard shortcut **`p`**): pick a **loss reason** and, optionally,
-a note. The Opportunity moves to the **Perdida** (Lost) stage (which is **final** — it does not reopen)
-and the loss is recorded on the detail itself. This action **does not change** the source lead.
-Consultation-only users do not see the actions, and no one can operate an Opportunity they are not allowed
-to see.
+como perdida** (Mark as lost) action (keyboard shortcut **`p`**): pick a **loss reason** (required) — no
+budget, no decision, no response, competitor chosen, product mismatch, price too high, travel cancelled,
+duplicated Opportunity, out of profile or other — and, optionally, a note. (These reasons are specific to
+the Opportunity, different from the lead's loss reasons.) The Opportunity moves to the **Perdida** (Lost)
+stage (which is **final** — it does not reopen) and the loss is recorded on the detail itself. This action
+**does not change** the source lead. Consultation-only users do not see the actions, and no one can
+operate an Opportunity they are not allowed to see.
 
 The detail shows **commercial data only** — never proposal, sale, order, booking, financial, commission
 or customer care information.

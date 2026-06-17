@@ -11,7 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fksoft.erp.AbstractIntegrationTest;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
-import com.fksoft.erp.domain.crm.repository.LossReasonRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
 import com.jayway.jsonpath.JsonPath;
@@ -45,13 +44,9 @@ class OpportunityDetailsUpdateApiIntegrationTest extends AbstractIntegrationTest
     private OriginRepository origins;
 
     @Autowired
-    private LossReasonRepository lossReasons;
-
-    @Autowired
     private JdbcTemplate jdbc;
 
     private UUID originId;
-    private UUID lossReasonId;
     private int phoneSeq;
 
     private UUID managerOpp;
@@ -62,7 +57,6 @@ class OpportunityDetailsUpdateApiIntegrationTest extends AbstractIntegrationTest
         opportunities.deleteAll();
         leads.deleteAll();
         originId = origins.findByActiveTrueOrderBySortOrderAsc().get(0).id();
-        lossReasonId = lossReasons.findByActiveTrueOrderBySortOrderAsc().get(0).id();
         phoneSeq = 0;
         managerOpp = insertOpportunity("Aurora", OpportunityStage.NEW_OPPORTUNITY, MANAGER);
         insertOpportunity("Beta", OpportunityStage.NEW_OPPORTUNITY, REPRESENTANTE);
@@ -161,10 +155,10 @@ class OpportunityDetailsUpdateApiIntegrationTest extends AbstractIntegrationTest
         jdbc.update(
                 """
                 INSERT INTO opportunities (id, version, lead_id, name, origin_id, responsible_person_id,
-                                           main_interest, stage, estimated_value, loss_reason_id,
+                                           main_interest, stage, estimated_value, loss_reason,
                                            created_by, updated_by)
                 VALUES (cast(? as uuid), 0, cast(? as uuid), ?, cast(? as uuid), cast(? as uuid),
-                        ?, ?, ?, cast(? as uuid), cast(? as uuid), cast(? as uuid))
+                        ?, ?, ?, ?, cast(? as uuid), cast(? as uuid))
                 """,
                 id.toString(),
                 leadId.toString(),
@@ -174,7 +168,7 @@ class OpportunityDetailsUpdateApiIntegrationTest extends AbstractIntegrationTest
                 "Interesse " + name,
                 stage.name(),
                 new BigDecimal("1000.00"),
-                stage == OpportunityStage.LOST ? lossReasonId.toString() : null,
+                stage == OpportunityStage.LOST ? "OTHER" : null,
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

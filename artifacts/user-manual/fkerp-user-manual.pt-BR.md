@@ -394,10 +394,13 @@ termina aí) e *Pronta p/ proposta* é apenas um estágio — **não** gera uma 
 encerrar uma negociação use **Marcar como perdida** (a seguir), de qualquer estágio ativo.
 
 **Marcar como perdida.** Se você tem permissão de operação sobre Oportunidades, o detalhe oferece a ação
-**Marcar como perdida** (atalho de teclado **`p`**): escolha um **motivo da perda** e, opcionalmente, uma
-anotação. A Oportunidade passa ao estágio **Perdida** (que é **final** — não reabre) e a perda fica
-registrada no próprio detalhe. Essa ação **não altera** o Lead de origem. Quem só pode consultar não vê
-as ações, e ninguém pode operar uma Oportunidade que não tem permissão para ver.
+**Marcar como perdida** (atalho de teclado **`p`**): escolha um **motivo da perda** (obrigatório) —
+sem orçamento, sem decisão, sem resposta, concorrente escolhido, incompatibilidade de produto, preço
+muito alto, viagem cancelada, oportunidade duplicada, fora do perfil ou outro — e, opcionalmente, uma
+anotação. (Esses motivos são próprios da Oportunidade, diferentes dos motivos de perda do Lead.) A
+Oportunidade passa ao estágio **Perdida** (que é **final** — não reabre) e a perda fica registrada no
+próprio detalhe. Essa ação **não altera** o Lead de origem. Quem só pode consultar não vê as ações, e
+ninguém pode operar uma Oportunidade que não tem permissão para ver.
 
 O detalhe mostra **apenas dados comerciais** — nunca proposta, venda, pedido, reserva, financeiro,
 comissão ou atendimento.

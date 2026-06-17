@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fksoft.erp.AbstractIntegrationTest;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
-import com.fksoft.erp.domain.crm.repository.LossReasonRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
 import com.jayway.jsonpath.JsonPath;
@@ -43,13 +42,9 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
     private OriginRepository origins;
 
     @Autowired
-    private LossReasonRepository lossReasons;
-
-    @Autowired
     private JdbcTemplate jdbc;
 
     private UUID originId;
-    private UUID lossReasonId;
     private int phoneSeq;
 
     private UUID managerOpp;
@@ -60,7 +55,6 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
         opportunities.deleteAll(); // cascades to activities/stage changes via JPA
         leads.deleteAll();
         originId = origins.findByActiveTrueOrderBySortOrderAsc().get(0).id();
-        lossReasonId = lossReasons.findByActiveTrueOrderBySortOrderAsc().get(0).id();
         phoneSeq = 0;
         managerOpp = insertOpportunity("Aurora", OpportunityStage.NEW_OPPORTUNITY, MANAGER);
         insertOpportunity("Beta", OpportunityStage.NEW_OPPORTUNITY, REPRESENTANTE);
@@ -235,9 +229,9 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
         jdbc.update(
                 """
                 INSERT INTO opportunities (id, version, lead_id, name, origin_id, responsible_person_id,
-                                           main_interest, stage, loss_reason_id, created_by, updated_by)
+                                           main_interest, stage, loss_reason, created_by, updated_by)
                 VALUES (cast(? as uuid), 0, cast(? as uuid), ?, cast(? as uuid), cast(? as uuid),
-                        ?, ?, cast(? as uuid), cast(? as uuid), cast(? as uuid))
+                        ?, ?, ?, cast(? as uuid), cast(? as uuid))
                 """,
                 id.toString(),
                 leadId.toString(),
@@ -246,7 +240,7 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
                 responsibleId == null ? null : responsibleId.toString(),
                 "Interesse " + name,
                 stage.name(),
-                stage == OpportunityStage.LOST ? lossReasonId.toString() : null,
+                stage == OpportunityStage.LOST ? "OTHER" : null,
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;
