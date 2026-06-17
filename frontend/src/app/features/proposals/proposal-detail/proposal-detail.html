@@ -1,0 +1,54 @@
+@if (loading()) {
+  <p class="muted">Carregando…</p>
+} @else if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+  <div class="back">
+    <p-button label="Voltar às propostas" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
+  </div>
+} @else if (proposal(); as p) {
+  <header class="head">
+    <div class="head-main">
+      <p-button
+        icon="pi pi-arrow-left"
+        [text]="true"
+        severity="secondary"
+        size="small"
+        (onClick)="back()"
+      />
+      <h1>{{ p.title }}</h1>
+      <p-tag [value]="statusLabel(p.status)" [severity]="statusSeverity(p.status)" />
+    </div>
+  </header>
+
+  <div class="grid">
+    <p-card header="Resumo da proposta">
+      <dl class="data">
+        <dt>Responsável</dt>
+        <dd>{{ p.unassigned ? 'Sem responsável' : (p.responsibleName ?? '—') }}</dd>
+        <dt>Validade</dt>
+        <dd>{{ p.validUntil ? (p.validUntil | date: 'shortDate') : '—' }}</dd>
+        <dt>Termos comerciais</dt>
+        <dd>{{ p.commercialTerms ?? '—' }}</dd>
+        <dt>Anotações</dt>
+        <dd>{{ p.notes ?? '—' }}</dd>
+        <dt>Criada em</dt>
+        <dd>{{ p.createdAt | date: 'short' }}</dd>
+        <dt>Atualizada em</dt>
+        <dd>{{ p.updatedAt | date: 'short' }}</dd>
+      </dl>
+    </p-card>
+
+    <p-card header="Oportunidade de origem">
+      <dl class="data">
+        <dt>Oportunidade</dt>
+        <dd>{{ p.sourceOpportunity.name }}</dd>
+        <dt>Estágio</dt>
+        <dd>{{ stageLabel(p.sourceOpportunity.stage) }}</dd>
+      </dl>
+      <div class="trace">
+        <a class="link" [routerLink]="['/oportunidades', p.opportunityId]">Ver oportunidade de origem</a>
+        <a class="link" [routerLink]="['/leads', p.leadId]">Ver lead de origem</a>
+      </div>
+    </p-card>
+  </div>
+}

@@ -128,6 +128,11 @@
   color: var(--p-red-500, #ef4444);
 }
 
+.dialog-hint {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+}
+
 .back {
   margin-top: 1rem;
 }

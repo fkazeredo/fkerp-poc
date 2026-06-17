@@ -443,7 +443,39 @@ nunca no pipeline ativo nem no valor. É uma leitura operacional, **não** um da
 receita, fluxo de caixa, previsão de vendas, comissão ou ROI, e o indicador "Prontas p/ proposta" **não**
 cria proposta.
 
-## 9. Gerenciando cadastros
+## 9. Propostas (módulo Vendas)
+
+O FKERP separa os módulos no menu: além de **Comercial / CRM** (Leads e Oportunidades), há agora o módulo
+**Vendas**, com a tela **Propostas**. Uma **proposta comercial** é a oferta formalizada ao cliente, criada
+a partir de uma Oportunidade que esteja **Pronta para proposta**.
+
+### 9.1 Criando uma proposta
+No detalhe de uma Oportunidade em **Pronta para proposta**, clique em **Criar proposta**. Informe o
+**título / resumo para o cliente** (vem preenchido com o nome da Oportunidade, e você pode ajustar) e,
+opcionalmente, a **validade**, os **termos comerciais**, **anotações** e o **responsável** (que, por
+padrão, é o mesmo da Oportunidade). A proposta aproveita os dados da Oportunidade de origem — e, por meio
+dela, do Lead — **sem redigitação**, e nasce como **Rascunho**. A Oportunidade **não** é alterada.
+
+Regras importantes:
+
+- **Só uma Oportunidade "Pronta para proposta"** pode originar uma proposta — estágios anteriores e
+  Oportunidades **perdidas** não podem.
+- **Uma proposta ativa por Oportunidade**: enquanto houver uma proposta em aberto, o sistema bloqueia
+  criar outra para a mesma Oportunidade (uma nova só é permitida depois que a anterior for rejeitada,
+  expirada ou cancelada).
+- Criar uma proposta **não** cria venda, pedido, reserva nem dado financeiro — isso é etapa futura.
+
+### 9.2 A lista e o detalhe
+Abra **Vendas → Propostas** no menu para a lista das propostas que você pode ver (com título, status,
+responsável, a Oportunidade de origem, validade e data de criação). Clique no título para abrir o
+**detalhe**, que mostra o resumo da proposta, o status e a **Oportunidade de origem** (com atalhos para a
+Oportunidade e o Lead). Valem as mesmas **regras de visibilidade** das Oportunidades: o representante vê
+apenas as próprias propostas; o gerente vê todas.
+
+> As próximas etapas do módulo Vendas (itens, valores, descontos, aprovação interna, aceite do cliente e a
+> geração de um **pedido comercial**) virão nas próximas versões.
+
+## 10. Gerenciando cadastros
 
 Os cadastros são as listas que alimentam o formulário de Lead e fluxos futuros. São quatro, todas
 gerenciadas do mesmo jeito:
@@ -457,27 +489,27 @@ gerenciadas do mesmo jeito:
 
 Abra-os em **Cadastros** no menu superior ou pela paleta de comandos.
 
-### 9.1 A lista
+### 10.1 A lista
 
 Cada linha mostra o **código**, o **rótulo** (o que os usuários veem), a **ordem** e se está **Ativo**
 ou **Inativo**. Por padrão só os ativos aparecem; use **Mostrar inativos / Ocultar inativos** para
 alternar.
 
-### 9.2 Criando um registro
+### 10.2 Criando um registro
 
 1. Clique em **Novo**.
 2. Preencha **Código** (um código interno estável), **Rótulo** (o texto exibido) e **Ordem** (ordem de
    exibição, um número ≥ 0).
 3. Clique em **Salvar**. Códigos precisam ser únicos — reusar um é rejeitado.
 
-### 9.3 Editando um registro
+### 10.3 Editando um registro
 
 1. Clique no ícone de **lápis** na linha.
 2. Você pode alterar o **rótulo**, a **ordem** e o interruptor **Ativo**. O **código** não pode ser
    alterado (é o identificador estável).
 3. Clique em **Salvar**.
 
-### 9.4 Ativando / desativando
+### 10.4 Ativando / desativando
 
 - Clique no ícone de **proibido** para **desativar** um registro (exclusão lógica). Valores inativos
   permanecem para a fidelidade histórica, mas **não podem ser usados em novos Leads**.
@@ -485,7 +517,7 @@ alternar.
 
 ---
 
-## 10. Mensagens e validação
+## 11. Mensagens e validação
 
 O FKERP valida o que você digita e mostra mensagens claras, em português:
 
@@ -496,14 +528,14 @@ O FKERP valida o que você digita e mostra mensagens claras, em português:
 
 ---
 
-## 11. Saindo
+## 12. Saindo
 
 Clique em **Sair** no canto superior direito da barra de menu. Você volta para a tela de login e sua
 sessão é encerrada.
 
 ---
 
-## 12. O que vem a seguir
+## 13. O que vem a seguir
 
 Esta edição cobre todo o ciclo de vida de Leads da **Sprint 1** (cadastrar e encontrar Leads, o
 detalhe, atribuição, histórico de interações com a regra de **Em contato**, **qualificação**, fluxo de
@@ -514,10 +546,12 @@ Descoberta → Aderência → Pronta para proposta), o **registro de atividades 
 dados comerciais** (valor estimado e previsão de fechamento), o fluxo de **Perda** com motivo, as
 **Oportunidades pendentes** e os **Indicadores de oportunidades** — tudo com visibilidade por perfil.
 
-A próxima etapa (**Sprint 3**) dará sequência ao pipeline a partir de uma Oportunidade **Pronta para
-proposta**, com a geração da **proposta** comercial. Este manual será atualizado a cada lançamento.
+A **Sprint 3 — Vendas & Propostas** começou: já é possível **criar uma proposta comercial** a partir de
+uma Oportunidade pronta (módulo **Vendas → Propostas**). As próximas etapas darão sequência ao ciclo da
+proposta (itens, valores, descontos, aprovação interna, aceite do cliente) e a geração de um **pedido
+comercial**. Este manual será atualizado a cada lançamento.
 
 ---
 
-*Status do documento: Sprint 1 e Sprint 2 concluídas (captação de Leads e Oportunidades comerciais);
-próxima etapa: Proposta (Sprint 3). Mantido junto com o produto.*
+*Status do documento: Sprint 1 e Sprint 2 concluídas; Sprint 3 (Vendas & Propostas) em andamento — criação
+de proposta a partir de uma Oportunidade pronta. Mantido junto com o produto.*
