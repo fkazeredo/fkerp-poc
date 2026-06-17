@@ -9,6 +9,8 @@ import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
+import { InputTextModule } from 'primeng/inputtext';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { DatePickerModule } from 'primeng/datepicker';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
@@ -90,6 +92,8 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'dan
     DialogModule,
     SelectModule,
     TextareaModule,
+    InputTextModule,
+    InputNumberModule,
     DatePickerModule,
     MessageModule,
   ],
@@ -128,6 +132,12 @@ export class OpportunityDetailPage implements OnInit {
 
   /** Upper bound for the activity date picker — an activity cannot have happened in the future. */
   protected readonly now = new Date();
+
+  protected readonly editOpen = signal(false);
+  protected editEstimatedValue: number | null = null;
+  protected editExpectedCloseDate: Date | null = null;
+  protected editProductType = '';
+  protected editNotes = '';
 
   private opportunityId = '';
 
@@ -182,6 +192,11 @@ export class OpportunityDetailPage implements OnInit {
 
   /** Whether the user may register a commercial activity (has the update scope; any stage). */
   protected canRegisterActivity(): boolean {
+    return this.auth.canOperateOpportunity() && this.opportunity() !== null;
+  }
+
+  /** Whether the user may edit the commercial details (has the update scope; any stage). */
+  protected canEditDetails(): boolean {
     return this.auth.canOperateOpportunity() && this.opportunity() !== null;
   }
 
@@ -270,7 +285,29 @@ export class OpportunityDetailPage implements OnInit {
     );
   }
 
-  /** Contextual shortcuts on the detail screen: a register activity, s change stage, p lose, Esc back. */
+  protected openEdit(): void {
+    const o = this.opportunity();
+    this.editEstimatedValue = o?.estimatedValue ?? null;
+    this.editExpectedCloseDate = parseLocalDate(o?.expectedCloseDate ?? null);
+    this.editProductType = o?.productType ?? '';
+    this.editNotes = o?.notes ?? '';
+    this.editOpen.set(true);
+  }
+
+  protected confirmEdit(): void {
+    this.act(
+      this.opportunities.updateDetails(this.opportunityId, {
+        estimatedValue: this.editEstimatedValue,
+        expectedCloseDate: toIsoDate(this.editExpectedCloseDate),
+        productType: this.editProductType.trim() || null,
+        notes: this.editNotes.trim() || null,
+      }),
+      'Dados comerciais atualizados',
+      this.editOpen,
+    );
+  }
+
+  /** Shortcuts: a register activity, e edit details, s change stage, p lose, Esc back. */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
     const target = event.target as HTMLElement | null;
@@ -284,12 +321,15 @@ export class OpportunityDetailPage implements OnInit {
       event.altKey ||
       this.loseOpen() ||
       this.stageOpen() ||
-      this.activityOpen()
+      this.activityOpen() ||
+      this.editOpen()
     ) {
       return;
     }
     if (event.key === 'a' && this.canRegisterActivity()) {
       this.openActivity();
+    } else if (event.key === 'e' && this.canEditDetails()) {
+      this.openEdit();
     } else if (event.key === 's' && this.canChangeStage()) {
       this.openStage();
     } else if (event.key === 'p' && this.canLose()) {
@@ -354,4 +394,13 @@ function toIsoDate(date: Date | null): string | null {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+/** Parses an ISO `yyyy-MM-dd` into a local-midnight Date (avoids the UTC-parse day shift). */
+function parseLocalDate(value: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
 }

@@ -32,6 +32,7 @@ import com.fksoft.erp.domain.crm.service.OpportunityAccessPolicy;
 import com.fksoft.erp.domain.crm.service.OpportunityService;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.service.data.RecordActivityCommand;
+import com.fksoft.erp.domain.crm.service.data.UpdateOpportunityDetailsCommand;
 import com.fksoft.erp.domain.identity.UserRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -251,5 +252,29 @@ class OpportunityServiceTest {
     private RecordActivityCommand activityCommand() {
         return new RecordActivityCommand(
                 OpportunityActivityType.OTHER, OpportunityActivityResult.OTHER, "x", Instant.now(), null);
+    }
+
+    @Test
+    void updateDetailsThrowsWhenOpportunityIsMissing() {
+        UUID id = UUID.randomUUID();
+        when(opportunities.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.updateDetails(id, detailsCommand(), ACTOR, true, false))
+                .isInstanceOf(OpportunityNotFoundException.class);
+    }
+
+    @Test
+    void updateDetailsThrowsWhenTheOpportunityIsNotVisible() {
+        UUID id = UUID.randomUUID();
+        when(opportunities.findById(id)).thenReturn(Optional.of(mock(Opportunity.class)));
+        when(accessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.updateDetails(id, detailsCommand(), ACTOR, false, false))
+                .isInstanceOf(OpportunityAccessDeniedException.class);
+        verify(opportunities, never()).saveAndFlush(any());
+    }
+
+    private UpdateOpportunityDetailsCommand detailsCommand() {
+        return new UpdateOpportunityDetailsCommand(null, null, null, null);
     }
 }

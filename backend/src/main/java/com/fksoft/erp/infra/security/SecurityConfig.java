@@ -106,6 +106,8 @@ public class SecurityConfig {
                                 "/api/opportunities/*/stage",
                                 "/api/opportunities/*/activities")
                         .hasAuthority("SCOPE_crm:opportunity:update")
+                        .requestMatchers(HttpMethod.PUT, "/api/opportunities/*")
+                        .hasAuthority("SCOPE_crm:opportunity:update")
                         .requestMatchers(HttpMethod.GET, "/api/opportunities", "/api/opportunities/**")
                         .hasAnyAuthority(OPPORTUNITY_READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/responsibles")

@@ -112,6 +112,14 @@ export interface RegisterActivity {
   nextActionDate: string | null;
 }
 
+/** Payload to edit an Opportunity's commercial details (each field; null clears it). */
+export interface UpdateOpportunityDetails {
+  estimatedValue: number | null;
+  expectedCloseDate: string | null;
+  productType: string | null;
+  notes: string | null;
+}
+
 /**
  * Full Opportunity detail. {@code loss} is present only when LOST; {@code activities},
  * {@code stageHistory} and {@code nextActionDate} are reserved for future slices (empty/null for now).
@@ -187,6 +195,10 @@ export class OpportunityService {
 
   registerActivity(id: string, activity: RegisterActivity): Observable<OpportunityDetail> {
     return this.http.post<OpportunityDetail>(`/api/opportunities/${id}/activities`, activity);
+  }
+
+  updateDetails(id: string, details: UpdateOpportunityDetails): Observable<OpportunityDetail> {
+    return this.http.put<OpportunityDetail>(`/api/opportunities/${id}`, details);
   }
 
   list(

@@ -396,14 +396,17 @@ tier passes the GET security gate, and `OpportunityAccessPolicy` (a query Specif
 single-record detail (`GET /api/opportunities/{id}`) applies the same `canSee` check (404 if absent, 403
 if not visible). Operation `crm:opportunity:create` gates creating an Opportunity from a Qualified Lead
 (the creator must also be allowed to see the source Lead, via the Lead read tiers). Operation
-`crm:opportunity:update` gates the Opportunity transitions — **advancing it through the pipeline**
-(`POST /api/opportunities/{id}/stage`; a strict forward funnel `New → Discovery → Product Fit → Ready for
-Proposal`, one step at a time — skipping a stage and going back are rejected; `LOST` is terminal and
-reached only via the lose action; every move is recorded in the stage-movement history), **marking it as
-lost** (`POST /api/opportunities/{id}/lose`, with a loss reason, from any active stage) and **registering
-commercial activities** (`POST /api/opportunities/{id}/activities` — append-only history with type,
-result, description, date, optional next action; never moves the stage nor creates a Proposal/Sale/
-Booking/Financial record); in all the caller must also be allowed to see it. Profile → scopes: Admin/Manager = read:all + create + update; Sellers = read +
+`crm:opportunity:update` gates the Opportunity operations — **editing its commercial details**
+(`PUT /api/opportunities/{id}` — estimated value, expected closing date, product type and commercial
+notes; the main interest stays from the Lead qualification; creates no Financial/Booking/Proposal/
+Commission data), **advancing it through the pipeline** (`POST /api/opportunities/{id}/stage`; a strict
+forward funnel `New → Discovery → Product Fit → Ready for Proposal`, one step at a time — skipping a stage
+and going back are rejected; `LOST` is terminal and reached only via the lose action; every move is
+recorded in the stage-movement history), **marking it as lost** (`POST /api/opportunities/{id}/lose`, with
+a loss reason, from any active stage) and **registering commercial activities**
+(`POST /api/opportunities/{id}/activities` — append-only history with type, result, description, date,
+optional next action; never moves the stage nor creates a Proposal/Sale/Booking/Financial record); in all
+the caller must also be allowed to see it. Profile → scopes: Admin/Manager = read:all + create + update; Sellers = read +
 read:unassigned + create +
 update; Representatives = read + create + update (own only); Board/Director = read:all (consultation);
 Finance/HR/IT = none. The list and detail expose commercial pipeline data only — never Proposal, Sale,

@@ -24,6 +24,16 @@
       <p-tag [value]="stageLabel(o.stage)" [severity]="stageSeverity(o.stage)" />
     </div>
     <div class="head-actions">
+      @if (canEditDetails()) {
+        <p-button
+          label="Editar dados comerciais"
+          icon="pi pi-pencil"
+          size="small"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="openEdit()"
+        />
+      }
       @if (canRegisterActivity()) {
         <p-button
           label="Registrar atividade"
@@ -287,6 +297,49 @@
         [text]="true"
         (onClick)="activityOpen.set(false)"
       />
+    </div>
+  </p-dialog>
+
+  <p-dialog
+    header="Editar dados comerciais"
+    [(visible)]="editOpen"
+    [modal]="true"
+    [style]="{ width: '32rem' }"
+  >
+    <div class="field">
+      <label for="evalue">Valor estimado</label>
+      <p-inputNumber
+        inputId="evalue"
+        [(ngModel)]="editEstimatedValue"
+        mode="currency"
+        currency="BRL"
+        [min]="0"
+        placeholder="—"
+        styleClass="w-full"
+      />
+    </div>
+    <div class="field">
+      <label for="eclose">Previsão de fechamento</label>
+      <p-datepicker
+        inputId="eclose"
+        [(ngModel)]="editExpectedCloseDate"
+        dateFormat="dd/mm/yy"
+        [showButtonBar]="true"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="eproduct">Tipo de produto / área de interesse</label>
+      <input pInputText id="eproduct" [(ngModel)]="editProductType" maxlength="200" class="w-full" />
+    </div>
+    <div class="field">
+      <label for="enotes">Anotações comerciais</label>
+      <textarea pTextarea id="enotes" [(ngModel)]="editNotes" rows="3" class="w-full"></textarea>
+    </div>
+    <div class="actions">
+      <p-button label="Salvar" icon="pi pi-check" [loading]="acting()" (onClick)="confirmEdit()" />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="editOpen.set(false)" />
     </div>
   </p-dialog>
 }
