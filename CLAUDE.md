@@ -437,7 +437,8 @@ tier passes the GET gate and `ProposalAccessPolicy` (a query Specification on `r
 narrows the list, the single-record detail applying the same `canSee` check. Operation
 `sales:proposal:create` gates creating a Proposal from an Opportunity that is **`READY_FOR_PROPOSAL`**
 (the creator must also be allowed to **see the source Opportunity**, via the Opportunity read tiers);
-`sales:proposal:update` will gate the future lifecycle transitions. A Proposal **preserves** its source
+`sales:proposal:update` gates managing the Proposal's **items** (add/edit/remove, see below) and the
+future lifecycle transitions. A Proposal **preserves** its source
 Opportunity (`opportunityId`, never modified) and the source **Lead reference** (`leadId`), defaults the
 responsible from the Opportunity, and starts as **`DRAFT`**. An Opportunity has **at most one open
 Proposal at a time** (the service returns a friendly 409; a partial unique index is the last-resort guard;
@@ -448,6 +449,24 @@ read + read:unassigned + create + update; Representatives = read + create + upda
 Board/Director = read:all (consultation); Finance/HR/IT = none. The **frontend separates the modules
 visually** — the sidebar groups **Comercial / CRM** (Leads + Opportunities) and **Vendas** (Proposals) as
 distinct menus, each gated by its read scopes; the backend stays the only authority.
+
+**Proposal items (normative — Sales & Proposals).** A **`DRAFT`** Proposal carries **items** — the
+commercial-offer lines (what the company intends to sell), modeled as a child collection of the Proposal
+aggregate (`@OneToMany`, cascade + `orphanRemoval`, mirroring `OpportunityActivity`). Each item has a
+**type** (`TRAVEL_PACKAGE`, `CAR_RENTAL`, `SERVICE_FEE`, `OTHER`), a **description**, a **quantity**
+(integer ≥ 1), a **unit value** (≥ 0) and an **optional discount** expressed as either an **amount**
+(`AMOUNT`, in R$, 0–subtotal) or a **percentage** (`PERCENT`, 0–100) — both null = no discount; an invalid
+discount throws `proposal.item-invalid` (**422**). Each item's **line total** = `unitValue × quantity −
+discount`; the Proposal **total** = the sum of the line totals — **persisted/denormalized** on the
+aggregate and **recomputed inside the aggregate on every item change** (no N+1 for the list), all in
+`BigDecimal` scale 2, `HALF_UP`. Items are added/edited/removed **only while the Proposal is `DRAFT`** (the
+aggregate's `requireDraft()` guard → `proposal.not-editable`, **422**); an unknown item id →
+`proposal.item-not-found` (**404**). Managing items **never** creates a Booking, checks external
+availability, or creates Financial/Commission/supplier-cost/margin/tax/invoice data, and never touches the
+source Opportunity or Lead. Endpoints `POST/PUT/DELETE /api/proposals/{id}/items[/{itemId}]` are each gated
+by `sales:proposal:update` and return the refreshed `ProposalDetail` (its `items` + `total`); the list and
+detail expose the **total** alongside the existing commercial-offer fields — still never Sale / Sales Order
+/ Booking / Financial / Commission data.
 
 ## 11. Observability & performance
 

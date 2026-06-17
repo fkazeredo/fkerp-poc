@@ -3,19 +3,29 @@ package com.fksoft.erp.domain.sales.model;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
+import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
+import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -79,6 +89,17 @@ public class Proposal {
     @Column(nullable = false)
     private ProposalStatus status;
 
+    // The commercial offer's lines (part of the aggregate). Editable only while the Proposal is a Draft.
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "proposal_id", nullable = false)
+    private List<ProposalItem> items = new ArrayList<>();
+
+    // The Proposal total, denormalized from the items (recomputed on every item change) so the list and
+    // detail expose it without an N+1.
+    @NotNull
+    @Column(nullable = false)
+    private BigDecimal total = BigDecimal.ZERO;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -133,6 +154,85 @@ public class Proposal {
      */
     public boolean isOpen() {
         return status.isOpen();
+    }
+
+    /**
+     * Adds an item to the Proposal (Draft only) and refreshes the total. Creates no Booking, Financial or
+     * Commission data and does not check external availability.
+     *
+     * @param command the item data (type, description, quantity, unit value, optional discount)
+     * @param byUser id of the user editing the Proposal
+     * @throws ProposalNotEditableException if the Proposal is not a Draft
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalItemInvalidException if the discount is invalid
+     */
+    public void addItem(ProposalItemCommand command, UUID byUser) {
+        requireDraft();
+        items.add(ProposalItem.of(
+                command.type(),
+                command.description(),
+                command.quantity(),
+                command.unitValue(),
+                command.discountType(),
+                command.discountValue()));
+        recomputeTotal();
+        updatedBy = byUser;
+    }
+
+    /**
+     * Updates an existing item (Draft only) and refreshes the total.
+     *
+     * @param itemId the item id
+     * @param command the new item data
+     * @param byUser id of the user editing the Proposal
+     * @throws ProposalNotEditableException if the Proposal is not a Draft
+     * @throws ProposalItemNotFoundException if the item does not belong to this Proposal
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalItemInvalidException if the discount is invalid
+     */
+    public void updateItem(UUID itemId, ProposalItemCommand command, UUID byUser) {
+        requireDraft();
+        ProposalItem item = items.stream()
+                .filter(i -> i.id().equals(itemId))
+                .findFirst()
+                .orElseThrow(ProposalItemNotFoundException::new);
+        item.update(
+                command.type(),
+                command.description(),
+                command.quantity(),
+                command.unitValue(),
+                command.discountType(),
+                command.discountValue());
+        recomputeTotal();
+        updatedBy = byUser;
+    }
+
+    /**
+     * Removes an item from the Proposal (Draft only) and refreshes the total.
+     *
+     * @param itemId the item id
+     * @param byUser id of the user editing the Proposal
+     * @throws ProposalNotEditableException if the Proposal is not a Draft
+     * @throws ProposalItemNotFoundException if the item does not belong to this Proposal
+     */
+    public void removeItem(UUID itemId, UUID byUser) {
+        requireDraft();
+        if (!items.removeIf(i -> i.id().equals(itemId))) {
+            throw new ProposalItemNotFoundException();
+        }
+        recomputeTotal();
+        updatedBy = byUser;
+    }
+
+    private void requireDraft() {
+        if (status != ProposalStatus.DRAFT) {
+            throw new ProposalNotEditableException();
+        }
+    }
+
+    private void recomputeTotal() {
+        total = items.stream()
+                .map(ProposalItem::lineTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private static String emptyToNull(String value) {

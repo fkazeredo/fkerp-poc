@@ -19,6 +19,7 @@ import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
+import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalListItem;
 import java.util.Map;
 import java.util.Objects;
@@ -124,11 +125,81 @@ public class ProposalService {
      */
     @Transactional(readOnly = true)
     public ProposalDetail detail(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
-        Proposal proposal = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
-        Opportunity opportunity =
-                opportunities.findById(proposal.opportunityId()).orElseThrow(OpportunityNotFoundException::new);
-        Map<UUID, String> names = resolveNames(Stream.of(proposal.responsiblePersonId()));
-        return ProposalDetail.from(proposal, opportunity, names);
+        return toDetail(loadVisible(id, userId, canSeeAll, canSeeUnassigned));
+    }
+
+    /**
+     * Adds an item to a Draft Proposal the caller is allowed to see, and returns the refreshed detail
+     * (with the recomputed total). Creates no Booking, Financial or Commission data.
+     *
+     * @param proposalId the proposal id
+     * @param command the item data
+     * @param userId the acting user
+     * @param canSeeAll whether the caller may see every Proposal
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws ProposalNotFoundException if the Proposal does not exist
+     * @throws ProposalAccessDeniedException if the caller may not see it
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalNotEditableException if it is not a Draft
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalItemInvalidException if the discount is invalid
+     */
+    @Transactional
+    public ProposalDetail addItem(
+            UUID proposalId, ProposalItemCommand command, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
+        proposal.addItem(command, userId);
+        return toDetail(proposals.saveAndFlush(proposal));
+    }
+
+    /**
+     * Updates an item of a Draft Proposal the caller is allowed to see, and returns the refreshed detail.
+     *
+     * @param proposalId the proposal id
+     * @param itemId the item id
+     * @param command the new item data
+     * @param userId the acting user
+     * @param canSeeAll whether the caller may see every Proposal
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws ProposalNotFoundException if the Proposal does not exist
+     * @throws ProposalAccessDeniedException if the caller may not see it
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalNotEditableException if it is not a Draft
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException if the item is unknown
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalItemInvalidException if the discount is invalid
+     */
+    @Transactional
+    public ProposalDetail updateItem(
+            UUID proposalId,
+            UUID itemId,
+            ProposalItemCommand command,
+            UUID userId,
+            boolean canSeeAll,
+            boolean canSeeUnassigned) {
+        Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
+        proposal.updateItem(itemId, command, userId);
+        return toDetail(proposals.saveAndFlush(proposal));
+    }
+
+    /**
+     * Removes an item of a Draft Proposal the caller is allowed to see, and returns the refreshed detail.
+     *
+     * @param proposalId the proposal id
+     * @param itemId the item id
+     * @param userId the acting user
+     * @param canSeeAll whether the caller may see every Proposal
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws ProposalNotFoundException if the Proposal does not exist
+     * @throws ProposalAccessDeniedException if the caller may not see it
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalNotEditableException if it is not a Draft
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException if the item is unknown
+     */
+    @Transactional
+    public ProposalDetail removeItem(
+            UUID proposalId, UUID itemId, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
+        proposal.removeItem(itemId, userId);
+        return toDetail(proposals.saveAndFlush(proposal));
     }
 
     /**
@@ -146,6 +217,13 @@ public class ProposalService {
         Page<Proposal> page = proposals.findAll(spec, pageable);
         Map<UUID, String> names = resolveNames(page.getContent().stream().map(Proposal::responsiblePersonId));
         return page.map(p -> ProposalListItem.from(p, nameOf(names, p.responsiblePersonId())));
+    }
+
+    private ProposalDetail toDetail(Proposal proposal) {
+        Opportunity opportunity =
+                opportunities.findById(proposal.opportunityId()).orElseThrow(OpportunityNotFoundException::new);
+        Map<UUID, String> names = resolveNames(Stream.of(proposal.responsiblePersonId()));
+        return ProposalDetail.from(proposal, opportunity, names);
     }
 
     private Proposal loadVisible(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {

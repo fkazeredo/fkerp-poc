@@ -37,6 +37,34 @@ export interface ProposalSourceOpportunity {
   stage: OpportunityStage;
 }
 
+/** Type of a Proposal item (commercial-offer line). */
+export type ProposalItemType = 'TRAVEL_PACKAGE' | 'CAR_RENTAL' | 'SERVICE_FEE' | 'OTHER';
+
+/** How a line discount is expressed — an absolute amount or a percentage. */
+export type DiscountType = 'AMOUNT' | 'PERCENT';
+
+/** A single commercial-offer line, with its computed line total. */
+export interface ProposalItem {
+  id: string;
+  type: ProposalItemType;
+  description: string;
+  quantity: number;
+  unitValue: number;
+  discountType: DiscountType | null;
+  discountValue: number | null;
+  lineTotal: number;
+}
+
+/** Payload to add or update a Proposal item. */
+export interface ProposalItemPayload {
+  type: ProposalItemType;
+  description: string;
+  quantity: number;
+  unitValue: number;
+  discountType?: DiscountType | null;
+  discountValue?: number | null;
+}
+
 /** Full Proposal detail. Exposes commercial-offer data only — never sale/order/booking/financial. */
 export interface ProposalDetail {
   id: string;
@@ -50,6 +78,8 @@ export interface ProposalDetail {
   notes: string | null;
   validUntil: string | null;
   commercialTerms: string | null;
+  items: ProposalItem[];
+  total: number;
   createdAt: string;
   updatedAt: string;
   sourceOpportunity: ProposalSourceOpportunity;
@@ -64,6 +94,7 @@ export interface ProposalListItem {
   responsibleId: string | null;
   responsibleName: string | null;
   unassigned: boolean;
+  total: number;
   validUntil: string | null;
   createdAt: string;
 }
@@ -80,6 +111,21 @@ export class ProposalService {
 
   detail(id: string): Observable<ProposalDetail> {
     return this.http.get<ProposalDetail>(`/api/proposals/${id}`);
+  }
+
+  /** Adds an item to a Draft Proposal; returns the refreshed detail (with the recomputed total). */
+  addItem(id: string, payload: ProposalItemPayload): Observable<ProposalDetail> {
+    return this.http.post<ProposalDetail>(`/api/proposals/${id}/items`, payload);
+  }
+
+  /** Updates an item of a Draft Proposal; returns the refreshed detail. */
+  updateItem(id: string, itemId: string, payload: ProposalItemPayload): Observable<ProposalDetail> {
+    return this.http.put<ProposalDetail>(`/api/proposals/${id}/items/${itemId}`, payload);
+  }
+
+  /** Removes an item from a Draft Proposal; returns the refreshed detail. */
+  removeItem(id: string, itemId: string): Observable<ProposalDetail> {
+    return this.http.delete<ProposalDetail>(`/api/proposals/${id}/items/${itemId}`);
   }
 
   list(page = 0, size = 20): Observable<PageResponse<ProposalListItem>> {

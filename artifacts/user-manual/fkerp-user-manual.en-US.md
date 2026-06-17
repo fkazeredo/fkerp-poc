@@ -466,13 +466,34 @@ Key rules:
 
 ### 9.2 The list and the detail
 Open **Vendas → Propostas** in the menu for the list of the proposals you may see (title, status,
-responsible, the source Opportunity, validity and creation date). Click the title to open the **detail**,
-which shows the proposal summary, the status and the **source Opportunity** (with shortcuts to the
-Opportunity and the Lead). The same **visibility rules** as Opportunities apply: a representative sees only
-their own proposals; a manager sees all.
+responsible, the source Opportunity, the **total**, validity and creation date). Click the title to open the
+**detail**, which shows the proposal summary, the status, the **source Opportunity** (with shortcuts to the
+Opportunity and the Lead) and the **items** (see below). The same **visibility rules** as Opportunities
+apply: a representative sees only their own proposals; a manager sees all.
 
-> The next steps of the Sales module (items, values, discounts, internal approval, customer acceptance and
-> the generation of a **commercial order**) will come in later releases.
+### 9.3 Proposal items
+The **Itens** (Items) card on the proposal detail lists what will be offered to the client. While the
+proposal is a **Draft** and you have permission to operate it, you can **add**, **edit** and **remove**
+items; each item contributes to the proposal **total**, shown at the bottom of the card and in the list.
+
+Each item has:
+
+- a **type** — *Pacote de viagem* (Travel package), *Locação de veículo* (Car rental), *Taxa de serviço*
+  (Service fee) or *Outro* (Other);
+- a **description**, a **quantity** (a whole number, at least 1) and a **unit value**;
+- an **optional discount**, applied per line as either a **value (R$)** or a **percentage (%)** — choose
+  *Sem desconto* (No discount), *Valor (R$)* or *Percentual (%)*.
+
+The **line total** is the unit value times the quantity, minus the discount; the **proposal total** is the
+sum of all line totals, recalculated automatically whenever you add, change or remove an item. A percentage
+discount must be between 0 and 100, and a value discount cannot exceed the line's amount.
+
+Items can be changed **only while the proposal is a Draft**. Adding or editing items **does not** reserve
+anything, check availability with suppliers, or create any sale, order, booking, financial or commission
+data — the proposal remains a commercial offer.
+
+> The next steps of the Sales module (internal approval, customer acceptance and the generation of a
+> **commercial order**) will come in later releases.
 
 ## 10. Managing reference data (*cadastros*)
 
