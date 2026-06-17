@@ -117,10 +117,11 @@ test('main journey: qualified lead → opportunity → funnel → ready for prop
   await registerActivity(page, 'Reunião', 'Aderência identificada', 'Aderência confirmada');
   await advanceStage(page);
 
-  // It is ready for a Sprint 3 Proposal — there is no further advance and no Proposal UI.
+  // It is ready for a Proposal — there is no further pipeline advance, and (Sprint 3) it now offers the
+  // "Criar proposta" action.
   await expect(page.getByText('Pronta p/ proposta').first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Avançar estágio' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Criar proposta' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Criar proposta' })).toBeVisible();
 });
 
 test('lost journey: opportunity marked lost requires a reason, leaves the default list, stays traceable', async ({

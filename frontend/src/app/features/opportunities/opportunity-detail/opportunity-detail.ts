@@ -23,6 +23,8 @@ import {
   OpportunityService,
   OpportunityStage,
 } from '../../../core/api/opportunity.service';
+import { Responsible } from '../../../core/api/lead.service';
+import { ProposalService } from '../../../core/api/proposal.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 const STAGE_LABELS: Record<OpportunityStage, string> = {
@@ -124,6 +126,7 @@ export class OpportunityDetailPage implements OnInit {
   private readonly opportunities = inject(OpportunityService);
   private readonly messages = inject(MessageService);
   private readonly auth = inject(AuthService);
+  private readonly proposals = inject(ProposalService);
 
   protected readonly opportunity = signal<OpportunityDetail | null>(null);
   protected readonly loading = signal(true);
@@ -155,6 +158,14 @@ export class OpportunityDetailPage implements OnInit {
   protected editExpectedCloseDate: Date | null = null;
   protected editProductType = '';
   protected editNotes = '';
+
+  protected readonly proposalOpen = signal(false);
+  protected readonly proposalResponsibleOptions = signal<Responsible[]>([]);
+  protected proposalTitle = '';
+  protected proposalNotes = '';
+  protected proposalValidUntil: Date | null = null;
+  protected proposalTerms = '';
+  protected proposalResponsibleTo: string | null = null;
 
   private opportunityId = '';
 
@@ -215,6 +226,15 @@ export class OpportunityDetailPage implements OnInit {
   /** Whether the user may edit the commercial details (has the update scope; any stage). */
   protected canEditDetails(): boolean {
     return this.auth.canOperateOpportunity() && this.opportunity() !== null;
+  }
+
+  /** Whether the user may create a Proposal from this Opportunity (has the scope and it is ready). */
+  protected canCreateProposal(): boolean {
+    return this.auth.canCreateProposal() && this.opportunity()?.stage === 'READY_FOR_PROPOSAL';
+  }
+
+  protected canSaveProposal(): boolean {
+    return this.proposalTitle.trim().length > 0;
   }
 
   protected activityTypeLabel(type: OpportunityActivityType): string {
@@ -321,6 +341,55 @@ export class OpportunityDetailPage implements OnInit {
       'Dados comerciais atualizados',
       this.editOpen,
     );
+  }
+
+  protected openProposal(): void {
+    const o = this.opportunity();
+    this.proposalTitle = o?.name ?? '';
+    this.proposalNotes = '';
+    this.proposalValidUntil = null;
+    this.proposalTerms = '';
+    this.proposalResponsibleTo = o?.responsibleId ?? null;
+    if (this.proposalResponsibleOptions().length === 0) {
+      this.opportunities
+        .responsibles()
+        .subscribe({ next: (list) => this.proposalResponsibleOptions.set(list) });
+    }
+    this.proposalOpen.set(true);
+  }
+
+  /** Creates a Proposal from this (ready) Opportunity and opens the new Proposal. */
+  protected confirmProposal(): void {
+    if (!this.canSaveProposal()) {
+      return;
+    }
+    this.acting.set(true);
+    this.proposals
+      .create({
+        opportunityId: this.opportunityId,
+        responsiblePersonId: this.proposalResponsibleTo,
+        title: this.proposalTitle.trim(),
+        notes: this.proposalNotes.trim() || null,
+        validUntil: toIsoDate(this.proposalValidUntil),
+        commercialTerms: this.proposalTerms.trim() || null,
+      })
+      .subscribe({
+        next: (created) => {
+          this.acting.set(false);
+          this.proposalOpen.set(false);
+          this.messages.add({ severity: 'success', summary: 'Proposta criada' });
+          this.router.navigateByUrl('/propostas/' + created.id);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.acting.set(false);
+          const body = err.error as { message?: string } | null;
+          this.messages.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: body?.message ?? 'Não foi possível criar a proposta.',
+          });
+        },
+      });
   }
 
   /** Shortcuts: a register activity, e edit details, s change stage, p lose, Esc back. */

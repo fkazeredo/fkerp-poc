@@ -93,6 +93,25 @@ export class AuthService {
   canOperateOpportunity(): boolean {
     return this.hasScope('crm:opportunity:update');
   }
+
+  /** Whether the user may create a commercial Proposal from a ready Opportunity (Sales & Proposals). */
+  canCreateProposal(): boolean {
+    return this.hasScope('sales:proposal:create');
+  }
+
+  /** Any Proposal read tier (own / pool / all) grants access to the Proposal list and detail. */
+  canSeeProposals(): boolean {
+    return (
+      this.hasScope('sales:proposal:read') ||
+      this.hasScope('sales:proposal:read:unassigned') ||
+      this.hasScope('sales:proposal:read:all')
+    );
+  }
+
+  /** Operate = act on a Proposal (review / approve / send / accept / reject). */
+  canOperateProposal(): boolean {
+    return this.hasScope('sales:proposal:update');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

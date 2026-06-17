@@ -21,6 +21,12 @@ interface NavLink {
   exact: boolean;
 }
 
+/** A navigation module: a titled group of links (the title is omitted for the top-level items). */
+interface NavGroup {
+  title?: string;
+  items: NavLink[];
+}
+
 /**
  * Authenticated shell: a sidebar for navigation, a top bar with the command palette and the
  * light/dark toggle, and global keyboard accelerators (Ctrl/Cmd+K, g-then-key, n, ?).
@@ -51,42 +57,49 @@ export class Shell {
   private goPending = false;
 
   /**
-   * Início is always available; Leads, Pendências + Indicadores only when the user can read Leads;
-   * Oportunidades only when the user can read Opportunities.
+   * The navigation, split into clear **modules** (bounded contexts): Início at the top; the **Comercial /
+   * CRM** module (Leads + Opportunities) when the user can read either; the **Vendas** module (Proposals)
+   * when the user can read Proposals. Each group only appears when it has at least one visible item.
    */
-  protected get nav(): NavLink[] {
-    const items: NavLink[] = [{ label: 'Início', icon: 'pi pi-home', link: '/', exact: true }];
+  protected get navGroups(): NavGroup[] {
+    const groups: NavGroup[] = [
+      { items: [{ label: 'Início', icon: 'pi pi-home', link: '/', exact: true }] },
+    ];
+
+    const crm: NavLink[] = [];
     if (this.auth.canSeeLeads()) {
-      items.push({ label: 'Leads', icon: 'pi pi-list', link: '/leads', exact: false });
-      items.push({ label: 'Pendências', icon: 'pi pi-flag', link: '/pendencias', exact: true });
-      items.push({
-        label: 'Indicadores',
-        icon: 'pi pi-chart-bar',
-        link: '/indicadores',
-        exact: true,
-      });
+      crm.push({ label: 'Leads', icon: 'pi pi-list', link: '/leads', exact: false });
+      crm.push({ label: 'Pendências', icon: 'pi pi-flag', link: '/pendencias', exact: true });
+      crm.push({ label: 'Indicadores', icon: 'pi pi-chart-bar', link: '/indicadores', exact: true });
     }
     if (this.auth.canSeeOpportunities()) {
-      items.push({
-        label: 'Oportunidades',
-        icon: 'pi pi-briefcase',
-        link: '/oportunidades',
-        exact: false,
-      });
-      items.push({
+      crm.push({ label: 'Oportunidades', icon: 'pi pi-briefcase', link: '/oportunidades', exact: false });
+      crm.push({
         label: 'Oportunidades pendentes',
         icon: 'pi pi-flag',
         link: '/oportunidades/pendencias',
         exact: true,
       });
-      items.push({
+      crm.push({
         label: 'Indicadores de oportunidades',
         icon: 'pi pi-chart-bar',
         link: '/oportunidades/indicadores',
         exact: true,
       });
     }
-    return items;
+    if (crm.length > 0) {
+      groups.push({ title: 'Comercial / CRM', items: crm });
+    }
+
+    const sales: NavLink[] = [];
+    if (this.auth.canSeeProposals()) {
+      sales.push({ label: 'Propostas', icon: 'pi pi-file-edit', link: '/propostas', exact: false });
+    }
+    if (sales.length > 0) {
+      groups.push({ title: 'Vendas', items: sales });
+    }
+
+    return groups;
   }
 
   protected readonly cadastros: { label: string; link: string }[] = [
@@ -112,6 +125,7 @@ export class Shell {
       icon: 'pi pi-chart-bar',
       run: () => this.go('/oportunidades/indicadores'),
     },
+    { label: 'Propostas', icon: 'pi pi-file-edit', run: () => this.go('/propostas') },
     { label: 'Início', icon: 'pi pi-home', run: () => this.go('/') },
     {
       label: 'Cadastro: Origens',

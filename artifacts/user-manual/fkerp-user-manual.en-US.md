@@ -443,7 +443,38 @@ The same **visibility rules** apply: a representative sees **only their own** nu
 value. This is an operational view, **not** an executive dashboard — no revenue, cash flow, sales
 forecast, commission or ROI, and the "Ready for proposal" indicator does **not** create a proposal.
 
-## 9. Managing reference data (*cadastros*)
+## 9. Proposals (Sales module)
+
+FKERP separates the modules in the menu: besides **Comercial / CRM** (Leads and Opportunities), there is
+now a **Vendas** (Sales) module with the **Propostas** (Proposals) screen. A **commercial proposal** is the
+formalized offer to the client, created from an Opportunity that is **Ready for Proposal**.
+
+### 9.1 Creating a proposal
+On the detail of an Opportunity that is **Ready for Proposal**, click **Criar proposta** (Create proposal).
+Enter the **client-facing title / summary** (pre-filled with the Opportunity name; you may adjust it) and,
+optionally, the **validity date**, the **commercial terms**, **notes** and the **responsible** (which
+defaults to the Opportunity's). The proposal reuses the source Opportunity's data — and, through it, the
+Lead's — **without retyping**, and starts as a **Draft**. The Opportunity is **not** changed.
+
+Key rules:
+
+- **Only a "Ready for Proposal" Opportunity** may originate a proposal — earlier stages and **lost**
+  Opportunities cannot.
+- **One active proposal per Opportunity**: while an open proposal exists, creating another for the same
+  Opportunity is blocked (a new one is allowed only once the previous is rejected, expired or cancelled).
+- Creating a proposal does **not** create a sale, order, booking or financial data — that is a future step.
+
+### 9.2 The list and the detail
+Open **Vendas → Propostas** in the menu for the list of the proposals you may see (title, status,
+responsible, the source Opportunity, validity and creation date). Click the title to open the **detail**,
+which shows the proposal summary, the status and the **source Opportunity** (with shortcuts to the
+Opportunity and the Lead). The same **visibility rules** as Opportunities apply: a representative sees only
+their own proposals; a manager sees all.
+
+> The next steps of the Sales module (items, values, discounts, internal approval, customer acceptance and
+> the generation of a **commercial order**) will come in later releases.
+
+## 10. Managing reference data (*cadastros*)
 
 Reference data are the lists that feed the lead form and future workflows. There are
 four, all managed the same way:
@@ -457,27 +488,27 @@ four, all managed the same way:
 
 Open them from **Cadastros** in the top menu or via the command palette.
 
-### 9.1 The list
+### 10.1 The list
 
 Each row shows the **code**, the **label** (what users see), the **order**, and whether
 it is **Active** or **Inactive**. By default only active records are shown; use
 **Mostrar inativos / Ocultar inativos** (Show / Hide inactive) to toggle.
 
-### 9.2 Creating a record
+### 10.2 Creating a record
 
 1. Click **Novo** (New).
 2. Fill in **Código** (a stable internal code), **Rótulo** (the display label), and
    **Ordem** (sort order, a number ≥ 0).
 3. Click **Salvar** (Save). Codes must be unique — reusing one is rejected.
 
-### 9.3 Editing a record
+### 10.3 Editing a record
 
 1. Click the **pencil** icon on the row.
 2. You can change the **label**, the **order**, and the **Active** switch. The **code**
    cannot be changed (it is the stable identifier).
 3. Click **Salvar**.
 
-### 9.4 Activating / deactivating
+### 10.4 Activating / deactivating
 
 - Click the **ban** icon to **deactivate** a record (soft delete). Inactive values stay
   for historical accuracy but **cannot be used on new leads**.
@@ -485,7 +516,7 @@ it is **Active** or **Inactive**. By default only active records are shown; use
 
 ---
 
-## 10. Messages and validation
+## 11. Messages and validation
 
 FKERP validates your input and shows clear, Portuguese-language messages:
 
@@ -496,14 +527,14 @@ FKERP validates your input and shows clear, Portuguese-language messages:
 
 ---
 
-## 11. Signing out
+## 12. Signing out
 
 Click **Sair** (Sign out) in the top-right of the menu bar. You are returned to the login
 screen and your session is closed.
 
 ---
 
-## 12. What's next
+## 13. What's next
 
 This edition covers the full **Sprint 1** lead lifecycle (registering and finding leads, the lead
 detail, assignment, interaction history with the **Contacted** rule, **qualification**, the **Lost**
@@ -514,10 +545,12 @@ Product Fit → Ready for Proposal), **registering commercial activities**, **ed
 details** (estimated value and expected closing date), the **Lost** flow with a reason, **Pending
 Opportunities** and **Opportunity indicators** — all with per-profile visibility.
 
-The next step (**Sprint 3**) will continue the pipeline from a **Ready for Proposal** Opportunity, with
-the generation of the commercial **proposal**. This manual will be updated as each ships.
+**Sprint 3 — Sales & Proposals** has begun: you can now **create a commercial proposal** from a ready
+Opportunity (the **Vendas → Propostas** module). The next steps will continue the proposal lifecycle
+(items, values, discounts, internal approval, customer acceptance) and the generation of a **commercial
+order**. This manual will be updated as each ships.
 
 ---
 
-*Document status: Sprint 1 and Sprint 2 closed (lead capture and commercial Opportunities); next step:
-Proposal (Sprint 3). Maintained alongside the product.*
+*Document status: Sprint 1 and Sprint 2 closed; Sprint 3 (Sales & Proposals) in progress — creating a
+proposal from a ready Opportunity. Maintained alongside the product.*

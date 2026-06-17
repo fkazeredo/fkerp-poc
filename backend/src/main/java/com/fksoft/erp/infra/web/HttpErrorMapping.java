@@ -25,6 +25,10 @@ import com.fksoft.erp.domain.crm.exception.ReferenceNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.error.DomainException;
 import com.fksoft.erp.domain.identity.InvalidCredentialsException;
+import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
+import com.fksoft.erp.domain.sales.exception.ProposalAccessDeniedException;
+import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunityException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
@@ -60,6 +64,10 @@ public class HttpErrorMapping {
             entry(OpportunityAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(OpportunityCannotBeMarkedLostException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(OpportunityStageTransitionException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(OpportunityNotReadyForProposalException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ProposalAlreadyExistsForOpportunityException.class, HttpStatus.CONFLICT),
+            entry(ProposalNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(ProposalAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {

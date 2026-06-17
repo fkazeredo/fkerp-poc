@@ -6,6 +6,7 @@ import { providePrimeNG } from 'primeng/config';
 import { of, throwError } from 'rxjs';
 import { OpportunityDetailPage } from './opportunity-detail';
 import { OpportunityDetail, OpportunityService } from '../../../core/api/opportunity.service';
+import { ProposalService } from '../../../core/api/proposal.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
@@ -21,10 +22,12 @@ describe('OpportunityDetailPage', () => {
     changeStage: vi.fn(),
     registerActivity: vi.fn(),
     updateDetails: vi.fn(),
+    responsibles: vi.fn(),
   };
+  const proposalService = { create: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
-  const auth = { canOperateOpportunity: vi.fn() };
+  const auth = { canOperateOpportunity: vi.fn(), canCreateProposal: vi.fn() };
 
   const sample = (over: Partial<OpportunityDetail> = {}): OpportunityDetail => ({
     id: 'o1',
@@ -69,6 +72,7 @@ describe('OpportunityDetailPage', () => {
       providers: [
         providePrimeNG(),
         { provide: OpportunityService, useValue: opportunities },
+        { provide: ProposalService, useValue: proposalService },
         { provide: Router, useValue: router },
         { provide: MessageService, useValue: messages },
         { provide: AuthService, useValue: auth },
@@ -85,12 +89,17 @@ describe('OpportunityDetailPage', () => {
       opportunities.changeStage,
       opportunities.registerActivity,
       opportunities.updateDetails,
+      opportunities.responsibles,
+      proposalService.create,
       router.navigateByUrl,
       messages.add,
       auth.canOperateOpportunity,
+      auth.canCreateProposal,
     ].forEach((fn) => fn.mockReset());
     opportunities.detail.mockReturnValue(of(sample()));
+    opportunities.responsibles.mockReturnValue(of([]));
     auth.canOperateOpportunity.mockReturnValue(true);
+    auth.canCreateProposal.mockReturnValue(true);
   });
 
   it('loads the detail on init', () => {
@@ -347,5 +356,41 @@ describe('OpportunityDetailPage', () => {
     const comp = build();
     comp['back']();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/oportunidades');
+  });
+
+  it('offers "Criar proposta" only on a ready opportunity and with the scope', () => {
+    const comp = build();
+    comp.ngOnInit(); // NEW_OPPORTUNITY
+    expect(comp['canCreateProposal']()).toBe(false);
+    comp['opportunity'].set(sample({ stage: 'READY_FOR_PROPOSAL' }));
+    expect(comp['canCreateProposal']()).toBe(true);
+    auth.canCreateProposal.mockReturnValue(false);
+    expect(comp['canCreateProposal']()).toBe(false);
+  });
+
+  it('confirmProposal creates the proposal and opens it', () => {
+    proposalService.create.mockReturnValue(of({ id: 'p1', status: 'DRAFT' }));
+    const comp = build();
+    comp.ngOnInit();
+    comp['opportunity'].set(sample({ stage: 'READY_FOR_PROPOSAL' }));
+    comp['openProposal'](); // pre-fills the title from the opportunity name
+    expect(comp['proposalTitle']).toBe('Aurora');
+
+    comp['confirmProposal']();
+
+    expect(proposalService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ opportunityId: 'o1', title: 'Aurora' }),
+    );
+    expect(comp['proposalOpen']()).toBe(false);
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/propostas/p1');
+    expect(messages.add).toHaveBeenCalled();
+  });
+
+  it('confirmProposal does nothing without a title', () => {
+    const comp = build();
+    comp.ngOnInit();
+    comp['proposalTitle'] = '   ';
+    comp['confirmProposal']();
+    expect(proposalService.create).not.toHaveBeenCalled();
   });
 });
