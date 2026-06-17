@@ -25,6 +25,7 @@ describe('ProposalList', () => {
     responsibleId: null,
     responsibleName: null,
     unassigned: true,
+    total: 2000,
     validUntil: null,
     createdAt: '2026-06-17T10:00:00Z',
   };

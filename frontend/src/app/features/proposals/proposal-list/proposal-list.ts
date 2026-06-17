@@ -1,5 +1,5 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TableModule, TableLazyLoadEvent } from 'primeng/table';
@@ -37,7 +37,7 @@ const STATUS_SEVERITY: Record<ProposalStatus, TagSeverity> = {
  */
 @Component({
   selector: 'app-proposal-list',
-  imports: [DatePipe, RouterLink, TableModule, TagModule, MessageModule],
+  imports: [CurrencyPipe, DatePipe, RouterLink, TableModule, TagModule, MessageModule],
   templateUrl: './proposal-list.html',
   styleUrl: './proposal-list.css',
 })

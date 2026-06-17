@@ -93,6 +93,22 @@ test('a ready opportunity originates a commercial proposal, reachable in the Ven
   await expect(page.getByText('Rascunho').first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Ver oportunidade de origem' })).toBeVisible();
 
+  // Add an item to the Draft Proposal and see the Total reflect it (Slice 2).
+  await expect(page.getByText('Nenhum item ainda.')).toBeVisible();
+  await page.getByRole('button', { name: 'Adicionar item' }).click();
+  const itemDialog = page.getByRole('dialog');
+  await itemDialog.locator('#idesc').fill('Pacote de viagem corporativo');
+  await itemDialog.locator('#iqty').fill('2');
+  await itemDialog.locator('#iunit').fill('1500');
+  await itemDialog.getByRole('button', { name: 'Adicionar' }).click();
+  await expect(page.getByText('Item adicionado')).toBeVisible();
+
+  // The item shows in the table and the proposal total reflects 2 × R$ 1.500 = R$ 3.000.
+  await expect(page.getByText('Pacote de viagem corporativo')).toBeVisible();
+  await expect(page.getByText('Nenhum item ainda.')).toBeHidden();
+  await expect(page.getByRole('cell', { name: 'Total da proposta' })).toBeVisible();
+  await expect(page.getByText(/3[.,]000/).first()).toBeVisible();
+
   // The Vendas module exposes "Propostas" in the menu, and the proposal shows on its list.
   await expect(page.locator('.sidebar').getByText('Vendas')).toBeVisible();
   await page.locator('.sidebar').getByRole('link', { name: 'Propostas' }).click();

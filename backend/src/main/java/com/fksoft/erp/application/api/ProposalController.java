@@ -1,11 +1,13 @@
 package com.fksoft.erp.application.api;
 
 import com.fksoft.erp.application.api.dto.ProposalCreateRequest;
+import com.fksoft.erp.application.api.dto.ProposalItemRequest;
 import com.fksoft.erp.application.api.dto.ProposalResponse;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.service.ProposalService;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
+import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalListItem;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
@@ -17,9 +19,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -88,6 +92,58 @@ public class ProposalController {
     public ProposalDetail detail(@PathVariable UUID id) {
         return proposalService.detail(
                 id, userContext.currentUserId(), canSeeAllProposals(), canSeeUnassignedProposals());
+    }
+
+    /**
+     * Adds an item to a Draft Proposal; returns the refreshed detail (with the recomputed total). Creates
+     * no Booking, Financial or Commission data and does not check external availability.
+     *
+     * @param id the proposal id
+     * @param request the item data
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/items")
+    public ProposalDetail addItem(@PathVariable UUID id, @Valid @RequestBody ProposalItemRequest request) {
+        return proposalService.addItem(
+                id, toCommand(request), userContext.currentUserId(), canSeeAllProposals(), canSeeUnassignedProposals());
+    }
+
+    /**
+     * Updates an item of a Draft Proposal; returns the refreshed detail.
+     *
+     * @param id the proposal id
+     * @param itemId the item id
+     * @param request the new item data
+     * @return the updated detail
+     */
+    @PutMapping("/{id}/items/{itemId}")
+    public ProposalDetail updateItem(
+            @PathVariable UUID id, @PathVariable UUID itemId, @Valid @RequestBody ProposalItemRequest request) {
+        return proposalService.updateItem(
+                id,
+                itemId,
+                toCommand(request),
+                userContext.currentUserId(),
+                canSeeAllProposals(),
+                canSeeUnassignedProposals());
+    }
+
+    /**
+     * Removes an item from a Draft Proposal; returns the refreshed detail.
+     *
+     * @param id the proposal id
+     * @param itemId the item id
+     * @return the updated detail
+     */
+    @DeleteMapping("/{id}/items/{itemId}")
+    public ProposalDetail removeItem(@PathVariable UUID id, @PathVariable UUID itemId) {
+        return proposalService.removeItem(
+                id, itemId, userContext.currentUserId(), canSeeAllProposals(), canSeeUnassignedProposals());
+    }
+
+    private static ProposalItemCommand toCommand(ProposalItemRequest r) {
+        return new ProposalItemCommand(
+                r.type(), r.description(), r.quantity(), r.unitValue(), r.discountType(), r.discountValue());
     }
 
     // Source-opportunity visibility for creation reuses the Opportunity read tiers.

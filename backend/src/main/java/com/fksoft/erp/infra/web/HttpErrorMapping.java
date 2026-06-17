@@ -28,6 +28,9 @@ import com.fksoft.erp.domain.identity.InvalidCredentialsException;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
 import com.fksoft.erp.domain.sales.exception.ProposalAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunityException;
+import com.fksoft.erp.domain.sales.exception.ProposalItemInvalidException;
+import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
 import java.util.Map;
 import java.util.Set;
@@ -68,6 +71,9 @@ public class HttpErrorMapping {
             entry(ProposalAlreadyExistsForOpportunityException.class, HttpStatus.CONFLICT),
             entry(ProposalNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(ProposalAccessDeniedException.class, HttpStatus.FORBIDDEN),
+            entry(ProposalNotEditableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ProposalItemNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(ProposalItemInvalidException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {
