@@ -17,10 +17,12 @@ import com.fksoft.erp.domain.crm.model.OpportunityPendingReasons;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.model.OpportunityStageChange;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
+import com.fksoft.erp.domain.crm.repository.OpportunityIndicatorQueries;
 import com.fksoft.erp.domain.crm.repository.OpportunityLastActivityRow;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
+import com.fksoft.erp.domain.crm.service.data.OpportunityIndicators;
 import com.fksoft.erp.domain.crm.service.data.OpportunityListItem;
 import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
 import com.fksoft.erp.domain.crm.service.data.PendingOpportunity;
@@ -28,6 +30,7 @@ import com.fksoft.erp.domain.crm.service.data.RecordActivityCommand;
 import com.fksoft.erp.domain.crm.service.data.UpdateOpportunityDetailsCommand;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -61,6 +64,7 @@ public class OpportunityService {
     private final UserRepository users;
     private final LeadAccessPolicy leadAccessPolicy;
     private final OpportunityAccessPolicy accessPolicy;
+    private final OpportunityIndicatorQueries indicatorQueries;
     private final ApplicationEventPublisher events;
 
     /**
@@ -200,6 +204,73 @@ public class OpportunityService {
                     lastActivityAt,
                     OpportunityPendingReasons.of(opportunity, now, today, lastActivityAt));
         });
+    }
+
+    /**
+     * Minimum commercial-pipeline indicators over the Opportunities visible to the caller. The volume
+     * figures (total, lost, by stage/origin/responsible) cover the requested period (by creation date);
+     * the pipeline figures (active, ready for proposal, overdue close, active value, value by
+     * responsible) are a current snapshot of all the visible Opportunities. Read-only; never exposes
+     * Proposal, Sale, Booking, Financial or Commission data.
+     *
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every Opportunity
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @param from inclusive lower bound on creation (or {@code null})
+     * @param to exclusive upper bound on creation (or {@code null})
+     * @return the indicators
+     */
+    @Transactional(readOnly = true)
+    public OpportunityIndicators indicators(
+            UUID userId, boolean canSeeAll, boolean canSeeUnassigned, Instant from, Instant to) {
+        Specification<Opportunity> visible = accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned);
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+
+        // Volume — over the period.
+        Map<OpportunityStage, Long> byStagePeriod = indicatorQueries.countByStage(visible, from, to);
+        long total = byStagePeriod.values().stream().mapToLong(Long::longValue).sum();
+        long lost = byStagePeriod.getOrDefault(OpportunityStage.LOST, 0L);
+        Map<String, Long> byOrigin = indicatorQueries.countByOrigin(visible, from, to);
+        Map<UUID, Long> byResponsibleId = indicatorQueries.countByResponsible(visible, from, to);
+
+        // Pipeline — current snapshot (no period).
+        Map<OpportunityStage, Long> byStageNow = indicatorQueries.countByStage(visible, null, null);
+        long active = byStageNow.entrySet().stream()
+                .filter(e -> e.getKey() != OpportunityStage.LOST)
+                .mapToLong(Map.Entry::getValue)
+                .sum();
+        long readyForProposal = byStageNow.getOrDefault(OpportunityStage.READY_FOR_PROPOSAL, 0L);
+        BigDecimal activePipelineValue = indicatorQueries.sumActivePipelineValue(visible);
+        Map<UUID, BigDecimal> valueByResponsibleId = indicatorQueries.sumActiveValueByResponsible(visible);
+        long overdueClose = indicatorQueries.countActiveOverdueClose(visible, today);
+
+        Map<UUID, String> names =
+                resolveNames(Stream.concat(byResponsibleId.keySet().stream(), valueByResponsibleId.keySet().stream()));
+
+        List<OpportunityIndicators.StageCount> stageCounts = byStagePeriod.entrySet().stream()
+                .map(e -> new OpportunityIndicators.StageCount(e.getKey(), e.getValue()))
+                .toList();
+        List<OpportunityIndicators.OriginCount> originCounts = byOrigin.entrySet().stream()
+                .map(e -> new OpportunityIndicators.OriginCount(e.getKey(), e.getValue()))
+                .toList();
+        List<OpportunityIndicators.ResponsibleCount> responsibleCounts = byResponsibleId.entrySet().stream()
+                .map(e -> new OpportunityIndicators.ResponsibleCount(nameOf(names, e.getKey()), e.getValue()))
+                .toList();
+        List<OpportunityIndicators.ResponsibleValue> responsibleValues = valueByResponsibleId.entrySet().stream()
+                .map(e -> new OpportunityIndicators.ResponsibleValue(nameOf(names, e.getKey()), e.getValue()))
+                .toList();
+
+        return new OpportunityIndicators(
+                total,
+                lost,
+                stageCounts,
+                originCounts,
+                responsibleCounts,
+                active,
+                readyForProposal,
+                overdueClose,
+                activePipelineValue,
+                responsibleValues);
     }
 
     /**
@@ -345,6 +416,13 @@ public class OpportunityService {
                 ? Map.of()
                 : users.findAllById(actorIds).stream().collect(Collectors.toMap(User::id, User::username));
         return OpportunityDetail.from(opportunity, lead, names);
+    }
+
+    private Map<UUID, String> resolveNames(Stream<UUID> ids) {
+        Set<UUID> set = ids.filter(Objects::nonNull).collect(Collectors.toSet());
+        return set.isEmpty()
+                ? Map.of()
+                : users.findAllById(set).stream().collect(Collectors.toMap(User::id, User::username));
     }
 
     private static String nameOf(Map<UUID, String> names, UUID id) {

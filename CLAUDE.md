@@ -418,7 +418,14 @@ policy narrows visibility at the query level, like the list) — it surfaces the
 need action (no recent activity / overdue next action / stuck in an early stage / ready for a proposal /
 expected close past, computed from a fixed 14-day staleness window), each tagged with its reasons. It is
 **not** an executive dashboard, has **no** notification/SLA engine, and creates no Proposal/Sale/Booking/
-Financial data; LOST Opportunities are terminal and excluded.
+Financial data; LOST Opportunities are terminal and excluded. The minimum **commercial-pipeline
+indicators** (`GET /api/opportunities/indicators`) are a read view gated by the same read tiers (the
+policy narrows visibility at the query level — a representative sees only their own numbers); they carry
+two scopes like a mainstream CRM — **volume in the period** (total, lost, by stage/origin/responsible,
+by creation date) plus a **current pipeline snapshot** (active, ready for proposal, overdue close, active
+pipeline value, value by responsible). They expose commercial pipeline data only — never Proposal, Sale,
+Sales Order, Booking, Financial or Commission data — and are not an executive dashboard (no
+revenue/forecast/ROI).
 
 ## 11. Observability & performance
 
