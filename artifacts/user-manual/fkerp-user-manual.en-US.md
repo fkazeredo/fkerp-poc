@@ -507,17 +507,17 @@ screen and your session is closed.
 
 This edition covers the full **Sprint 1** lead lifecycle (registering and finding leads, the lead
 detail, assignment, interaction history with the **Contacted** rule, **qualification**, the **Lost**
-flow, visibility by profile, the **Pendências** worklist and the **Indicadores** view) plus the start
-of **Sprint 2 — Opportunities**: creating a commercial Opportunity from a qualified lead and the
-**operational Opportunity list** with stage filtering and per-profile visibility.
+flow, visibility by profile, the **Pendências** worklist and the **Indicadores** view) and the now
+complete **Sprint 2 — Opportunities**: creating an Opportunity from a qualified lead, the **operational
+list** with filters, the **Opportunity detail**, moving it **through the stages** (New → Discovery →
+Product Fit → Ready for Proposal), **registering commercial activities**, **editing the commercial
+details** (estimated value and expected closing date), the **Lost** flow with a reason, **Pending
+Opportunities** and **Opportunity indicators** — all with per-profile visibility.
 
-The next releases will continue the commercial pipeline: opening an **Opportunity's detail**, moving
-it **through the stages** (Descoberta, Aderência, Pronta para proposta), **registering commercial
-activities** (which will fill the *last activity* and *next action* columns), Opportunity
-**indicators**, and preparing the Opportunity for the generation of a **proposal**. This manual will
-be updated as each ships.
+The next step (**Sprint 3**) will continue the pipeline from a **Ready for Proposal** Opportunity, with
+the generation of the commercial **proposal**. This manual will be updated as each ships.
 
 ---
 
-*Document status: Sprint 1 closed; Sprint 2 in progress (Opportunity creation + operational list).
-Maintained alongside the product.*
+*Document status: Sprint 1 and Sprint 2 closed (lead capture and commercial Opportunities); next step:
+Proposal (Sprint 3). Maintained alongside the product.*
