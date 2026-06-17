@@ -467,13 +467,34 @@ Regras importantes:
 
 ### 9.2 A lista e o detalhe
 Abra **Vendas → Propostas** no menu para a lista das propostas que você pode ver (com título, status,
-responsável, a Oportunidade de origem, validade e data de criação). Clique no título para abrir o
-**detalhe**, que mostra o resumo da proposta, o status e a **Oportunidade de origem** (com atalhos para a
-Oportunidade e o Lead). Valem as mesmas **regras de visibilidade** das Oportunidades: o representante vê
-apenas as próprias propostas; o gerente vê todas.
+responsável, a Oportunidade de origem, o **total**, validade e data de criação). Clique no título para abrir
+o **detalhe**, que mostra o resumo da proposta, o status, a **Oportunidade de origem** (com atalhos para a
+Oportunidade e o Lead) e os **itens** (veja a seguir). Valem as mesmas **regras de visibilidade** das
+Oportunidades: o representante vê apenas as próprias propostas; o gerente vê todas.
 
-> As próximas etapas do módulo Vendas (itens, valores, descontos, aprovação interna, aceite do cliente e a
-> geração de um **pedido comercial**) virão nas próximas versões.
+### 9.3 Itens da proposta
+O card **Itens** no detalhe da proposta lista o que será ofertado ao cliente. Enquanto a proposta estiver em
+**Rascunho** e você tiver permissão para operá-la, é possível **adicionar**, **editar** e **remover** itens;
+cada item compõe o **total** da proposta, exibido no rodapé do card e na lista.
+
+Cada item tem:
+
+- um **tipo** — *Pacote de viagem*, *Locação de veículo*, *Taxa de serviço* ou *Outro*;
+- uma **descrição**, uma **quantidade** (número inteiro, pelo menos 1) e um **valor unitário**;
+- um **desconto opcional**, aplicado por linha como **valor (R$)** ou **percentual (%)** — escolha
+  *Sem desconto*, *Valor (R$)* ou *Percentual (%)*.
+
+O **total da linha** é o valor unitário multiplicado pela quantidade, menos o desconto; o **total da
+proposta** é a soma de todos os totais de linha, recalculado automaticamente sempre que você adiciona, altera
+ou remove um item. Um desconto percentual deve ficar entre 0 e 100, e um desconto em valor não pode
+ultrapassar o valor da linha.
+
+Os itens só podem ser alterados **enquanto a proposta estiver em Rascunho**. Adicionar ou editar itens
+**não** reserva nada, não verifica disponibilidade com fornecedores e **não** cria venda, pedido, reserva,
+financeiro nem comissão — a proposta continua sendo uma oferta comercial.
+
+> As próximas etapas do módulo Vendas (aprovação interna, aceite do cliente e a geração de um
+> **pedido comercial**) virão nas próximas versões.
 
 ## 10. Gerenciando cadastros
 

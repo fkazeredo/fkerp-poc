@@ -28,6 +28,7 @@
         <th>Status</th>
         <th>Responsável</th>
         <th>Oportunidade</th>
+        <th class="num">Total</th>
         <th>Validade</th>
         <th>Criada em</th>
       </tr>
@@ -48,13 +49,14 @@
         <td>
           <a [routerLink]="['/oportunidades', p.opportunityId]" class="proposal-link">Ver oportunidade</a>
         </td>
+        <td class="num">{{ p.total | currency: 'BRL' }}</td>
         <td>{{ p.validUntil ? (p.validUntil | date: 'shortDate') : '—' }}</td>
         <td>{{ p.createdAt | date: 'short' }}</td>
       </tr>
     </ng-template>
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="6" class="muted empty">Nenhuma proposta ainda.</td>
+        <td colspan="7" class="muted empty">Nenhuma proposta ainda.</td>
       </tr>
     </ng-template>
   </p-table>

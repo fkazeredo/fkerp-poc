@@ -51,4 +51,181 @@
       </div>
     </p-card>
   </div>
+
+  <p-card header="Itens" styleClass="items-card">
+    <div class="items-head">
+      <p class="muted items-hint">O que será ofertado ao cliente — cada item compõe o total da proposta.</p>
+      @if (canManageItems()) {
+        <p-button label="Adicionar item" icon="pi pi-plus" size="small" (onClick)="openAddItem()" />
+      }
+    </div>
+
+    <p-table [value]="p.items" styleClass="p-datatable-sm items-table" [tableStyle]="{ 'min-width': '44rem' }">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Tipo</th>
+          <th>Descrição</th>
+          <th class="num">Qtd</th>
+          <th class="num">Valor unit.</th>
+          <th class="num">Desconto</th>
+          <th class="num">Total da linha</th>
+          @if (canManageItems()) {
+            <th class="num">Ações</th>
+          }
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-item>
+        <tr>
+          <td>{{ itemTypeLabel(item.type) }}</td>
+          <td>{{ item.description }}</td>
+          <td class="num">{{ item.quantity }}</td>
+          <td class="num">{{ item.unitValue | currency: 'BRL' }}</td>
+          <td class="num">
+            @if (item.discountType === 'AMOUNT') {
+              {{ item.discountValue | currency: 'BRL' }}
+            } @else if (item.discountType === 'PERCENT') {
+              {{ item.discountValue }}%
+            } @else {
+              —
+            }
+          </td>
+          <td class="num">{{ item.lineTotal | currency: 'BRL' }}</td>
+          @if (canManageItems()) {
+            <td class="num row-actions">
+              <p-button
+                icon="pi pi-pencil"
+                [text]="true"
+                size="small"
+                severity="secondary"
+                ariaLabel="Editar item"
+                (onClick)="openEditItem(item)"
+              />
+              <p-button
+                icon="pi pi-trash"
+                [text]="true"
+                size="small"
+                severity="danger"
+                ariaLabel="Remover item"
+                [loading]="acting()"
+                (onClick)="removeItem(item)"
+              />
+            </td>
+          }
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td [attr.colspan]="canManageItems() ? 7 : 6" class="muted empty">Nenhum item ainda.</td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="footer">
+        <tr>
+          <td [attr.colspan]="canManageItems() ? 5 : 4" class="num total-label">Total da proposta</td>
+          <td class="num total-value">{{ p.total | currency: 'BRL' }}</td>
+          @if (canManageItems()) {
+            <td></td>
+          }
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+
+  <p-dialog
+    [header]="editingItemId ? 'Editar item' : 'Adicionar item'"
+    [(visible)]="itemOpen"
+    [modal]="true"
+    [style]="{ width: '34rem' }"
+  >
+    <div class="field">
+      <label for="itype">Tipo <span class="req">*</span></label>
+      <p-select
+        inputId="itype"
+        [options]="itemTypeOptions"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="itemType"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="idesc">Descrição <span class="req">*</span></label>
+      <input pInputText id="idesc" [(ngModel)]="itemDescription" maxlength="500" class="w-full" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="iqty">Quantidade <span class="req">*</span></label>
+        <p-inputNumber
+          inputId="iqty"
+          [(ngModel)]="itemQuantity"
+          [min]="1"
+          [showButtons]="true"
+          styleClass="w-full"
+        />
+      </div>
+      <div class="field">
+        <label for="iunit">Valor unitário <span class="req">*</span></label>
+        <p-inputNumber
+          inputId="iunit"
+          [(ngModel)]="itemUnitValue"
+          mode="currency"
+          currency="BRL"
+          [min]="0"
+          placeholder="—"
+          styleClass="w-full"
+        />
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="idmode">Desconto</label>
+        <p-select
+          inputId="idmode"
+          [options]="discountModeOptions"
+          optionLabel="label"
+          optionValue="value"
+          [(ngModel)]="itemDiscountMode"
+          styleClass="w-full"
+          appendTo="body"
+        />
+      </div>
+      @if (itemDiscountMode !== 'NONE') {
+        <div class="field">
+          <label for="idval">
+            {{ itemDiscountMode === 'PERCENT' ? 'Percentual' : 'Valor do desconto' }}
+            <span class="req">*</span>
+          </label>
+          @if (itemDiscountMode === 'PERCENT') {
+            <p-inputNumber
+              inputId="idval"
+              [(ngModel)]="itemDiscountValue"
+              suffix=" %"
+              [min]="0"
+              [max]="100"
+              styleClass="w-full"
+            />
+          } @else {
+            <p-inputNumber
+              inputId="idval"
+              [(ngModel)]="itemDiscountValue"
+              mode="currency"
+              currency="BRL"
+              [min]="0"
+              styleClass="w-full"
+            />
+          }
+        </div>
+      }
+    </div>
+    <div class="actions">
+      <p-button
+        [label]="editingItemId ? 'Salvar' : 'Adicionar'"
+        icon="pi pi-check"
+        [disabled]="!canSaveItem()"
+        [loading]="acting()"
+        (onClick)="confirmItem()"
+      />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="itemOpen.set(false)" />
+    </div>
+  </p-dialog>
 }

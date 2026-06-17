@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 import { of, throwError } from 'rxjs';
 import { ProposalDetailPage } from './proposal-detail';
-import { ProposalDetail, ProposalService } from '../../../core/api/proposal.service';
+import { ProposalDetail, ProposalItem, ProposalService } from '../../../core/api/proposal.service';
+import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
   observe() {}
@@ -13,8 +15,14 @@ import { ProposalDetail, ProposalService } from '../../../core/api/proposal.serv
 };
 
 describe('ProposalDetailPage', () => {
-  const proposals = { detail: vi.fn() };
+  const proposals = {
+    detail: vi.fn(),
+    addItem: vi.fn(),
+    updateItem: vi.fn(),
+    removeItem: vi.fn(),
+  };
   const router = { navigateByUrl: vi.fn() };
+  const auth = { canOperateProposal: vi.fn() };
 
   const sample: ProposalDetail = {
     id: 'p1',
@@ -28,18 +36,35 @@ describe('ProposalDetailPage', () => {
     notes: 'detalhes',
     validUntil: '2026-12-31',
     commercialTerms: 'termos',
+    items: [],
+    total: 0,
     createdAt: '2026-06-17T10:00:00Z',
     updatedAt: '2026-06-17T10:00:00Z',
     sourceOpportunity: { id: 'o1', name: 'Aurora', stage: 'READY_FOR_PROPOSAL' },
   };
+
+  const item: ProposalItem = {
+    id: 'i1',
+    type: 'TRAVEL_PACKAGE',
+    description: 'Pacote Caribe',
+    quantity: 2,
+    unitValue: 1000,
+    discountType: null,
+    discountValue: null,
+    lineTotal: 2000,
+  };
+
+  const withItem: ProposalDetail = { ...sample, items: [item], total: 2000 };
 
   function build() {
     TestBed.configureTestingModule({
       imports: [ProposalDetailPage],
       providers: [
         providePrimeNG(),
+        MessageService,
         { provide: ProposalService, useValue: proposals },
         { provide: Router, useValue: router },
+        { provide: AuthService, useValue: auth },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'p1' } } } },
       ],
     });
@@ -48,6 +73,11 @@ describe('ProposalDetailPage', () => {
 
   beforeEach(() => {
     proposals.detail.mockReset();
+    proposals.addItem.mockReset();
+    proposals.updateItem.mockReset();
+    proposals.removeItem.mockReset();
+    auth.canOperateProposal.mockReset();
+    auth.canOperateProposal.mockReturnValue(true);
     proposals.detail.mockReturnValue(of(sample));
   });
 
@@ -65,6 +95,7 @@ describe('ProposalDetailPage', () => {
     expect(comp['statusLabel']('ACCEPTED')).toBe('Aceita');
     expect(comp['statusSeverity']('DRAFT')).toBe('secondary');
     expect(comp['stageLabel']('READY_FOR_PROPOSAL')).toBe('Pronta p/ proposta');
+    expect(comp['itemTypeLabel']('TRAVEL_PACKAGE')).toBe('Pacote de viagem');
   });
 
   it('shows a permission message on 403', () => {
@@ -79,5 +110,111 @@ describe('ProposalDetailPage', () => {
     const comp = build();
     comp.ngOnInit();
     expect(comp['error']()).toContain('não encontrada');
+  });
+
+  it('gates item management by the operate scope and the Draft status', () => {
+    const comp = build();
+    comp.ngOnInit();
+
+    auth.canOperateProposal.mockReturnValue(true);
+    expect(comp['canManageItems']()).toBe(true);
+
+    auth.canOperateProposal.mockReturnValue(false);
+    expect(comp['canManageItems']()).toBe(false);
+
+    auth.canOperateProposal.mockReturnValue(true);
+    comp['proposal'].set({ ...sample, status: 'SENT' });
+    expect(comp['canManageItems']()).toBe(false);
+  });
+
+  it('adds an item, refreshing the detail and closing the dialog', () => {
+    proposals.addItem.mockReturnValue(of(withItem));
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['openAddItem']();
+    expect(comp['itemOpen']()).toBe(true);
+    comp['itemType'] = 'TRAVEL_PACKAGE';
+    comp['itemDescription'] = 'Pacote Caribe';
+    comp['itemQuantity'] = 2;
+    comp['itemUnitValue'] = 1000;
+    expect(comp['canSaveItem']()).toBe(true);
+
+    comp['confirmItem']();
+
+    expect(proposals.addItem).toHaveBeenCalledWith('p1', {
+      type: 'TRAVEL_PACKAGE',
+      description: 'Pacote Caribe',
+      quantity: 2,
+      unitValue: 1000,
+      discountType: null,
+      discountValue: null,
+    });
+    expect(comp['proposal']()).toEqual(withItem);
+    expect(comp['proposal']()!.total).toBe(2000);
+    expect(comp['itemOpen']()).toBe(false);
+  });
+
+  it('sends a percent discount when that mode is selected', () => {
+    proposals.addItem.mockReturnValue(of(withItem));
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['openAddItem']();
+    comp['itemDescription'] = 'Com desconto';
+    comp['itemUnitValue'] = 1000;
+    comp['itemDiscountMode'] = 'PERCENT';
+    comp['itemDiscountValue'] = 10;
+    comp['confirmItem']();
+
+    expect(proposals.addItem).toHaveBeenCalledWith(
+      'p1',
+      expect.objectContaining({ discountType: 'PERCENT', discountValue: 10 }),
+    );
+  });
+
+  it('requires a discount value once a discount mode is chosen', () => {
+    const comp = build();
+    comp.ngOnInit();
+    comp['openAddItem']();
+    comp['itemDescription'] = 'X';
+    comp['itemUnitValue'] = 100;
+    comp['itemDiscountMode'] = 'AMOUNT';
+    comp['itemDiscountValue'] = null;
+    expect(comp['canSaveItem']()).toBe(false);
+    comp['itemDiscountValue'] = 20;
+    expect(comp['canSaveItem']()).toBe(true);
+  });
+
+  it('edits an item through updateItem', () => {
+    proposals.detail.mockReturnValue(of(withItem));
+    proposals.updateItem.mockReturnValue(of(withItem));
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['openEditItem'](item);
+    expect(comp['editingItemId']).toBe('i1');
+    expect(comp['itemDescription']).toBe('Pacote Caribe');
+    comp['itemQuantity'] = 3;
+    comp['confirmItem']();
+
+    expect(proposals.updateItem).toHaveBeenCalledWith(
+      'p1',
+      'i1',
+      expect.objectContaining({ quantity: 3 }),
+    );
+    expect(comp['itemOpen']()).toBe(false);
+  });
+
+  it('removes an item through removeItem', () => {
+    proposals.detail.mockReturnValue(of(withItem));
+    proposals.removeItem.mockReturnValue(of(sample));
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['removeItem'](item);
+
+    expect(proposals.removeItem).toHaveBeenCalledWith('p1', 'i1');
+    expect(comp['proposal']()).toEqual(sample);
   });
 });

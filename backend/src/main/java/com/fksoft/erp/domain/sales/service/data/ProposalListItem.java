@@ -2,14 +2,16 @@ package com.fksoft.erp.domain.sales.service.data;
 
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
 /**
  * Proposal list item (read model) for the Sales module's operational list. {@code unassigned} flags
- * Proposals with no responsible; {@code opportunityId} links back to the source Opportunity. Exposes
- * commercial-offer data only — never Sale, Sales Order, Booking or Financial data.
+ * Proposals with no responsible; {@code opportunityId} links back to the source Opportunity; {@code total}
+ * is the sum of the Proposal's items. Exposes commercial-offer data only — never Sale, Sales Order,
+ * Booking or Financial data.
  */
 public record ProposalListItem(
         UUID id,
@@ -19,6 +21,7 @@ public record ProposalListItem(
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,
+        BigDecimal total,
         LocalDate validUntil,
         Instant createdAt) {
 
@@ -38,6 +41,7 @@ public record ProposalListItem(
                 p.responsiblePersonId(),
                 responsibleName,
                 p.responsiblePersonId() == null,
+                p.total(),
                 p.validUntil(),
                 p.createdAt());
     }

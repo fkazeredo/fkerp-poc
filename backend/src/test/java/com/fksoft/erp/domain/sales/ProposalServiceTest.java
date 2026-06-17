@@ -23,11 +23,14 @@ import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunity
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalCreated;
+import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.ProposalAccessPolicy;
 import com.fksoft.erp.domain.sales.service.ProposalService;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
+import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -183,5 +186,30 @@ class ProposalServiceTest {
 
         assertThatThrownBy(() -> service.detail(id, ACTOR, false, false))
                 .isInstanceOf(ProposalAccessDeniedException.class);
+    }
+
+    @Test
+    void addItemThrowsWhenTheProposalIsMissing() {
+        UUID id = UUID.randomUUID();
+        when(proposals.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.addItem(id, itemCommand(), ACTOR, true, false))
+                .isInstanceOf(ProposalNotFoundException.class);
+        verify(proposals, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void addItemThrowsWhenTheProposalIsNotVisible() {
+        UUID id = UUID.randomUUID();
+        when(proposals.findById(id)).thenReturn(Optional.of(mock(Proposal.class)));
+        when(accessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.addItem(id, itemCommand(), ACTOR, false, false))
+                .isInstanceOf(ProposalAccessDeniedException.class);
+        verify(proposals, never()).saveAndFlush(any());
+    }
+
+    private ProposalItemCommand itemCommand() {
+        return new ProposalItemCommand(ProposalItemType.OTHER, "linha", 1, new BigDecimal("10.00"), null, null);
     }
 }

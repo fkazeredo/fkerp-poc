@@ -63,3 +63,69 @@
 .back {
   margin-top: 1rem;
 }
+
+.items-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.items-hint {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.items-table .num {
+  text-align: right;
+}
+
+.row-actions {
+  white-space: nowrap;
+}
+
+.total-label {
+  font-weight: 600;
+}
+
+.total-value {
+  font-weight: 700;
+}
+
+.empty {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.field > label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.field-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.field-row .field {
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.req {
+  color: var(--p-red-500, #ef4444);
+}

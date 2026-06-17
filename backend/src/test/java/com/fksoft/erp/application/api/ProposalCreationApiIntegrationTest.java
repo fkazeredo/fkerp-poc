@@ -234,6 +234,8 @@ class ProposalCreationApiIntegrationTest extends AbstractIntegrationTest {
                         "notes",
                         "validUntil",
                         "commercialTerms",
+                        "items",
+                        "total",
                         "createdAt",
                         "updatedAt",
                         "sourceOpportunity");
