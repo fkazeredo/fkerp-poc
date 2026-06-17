@@ -602,8 +602,19 @@ the goal - high coverage with weak assertions is not quality.
   public `GET /api/version` and **displayed in the UI** (login screen + sidebar footer). **Bump it on
   EVERY delivered change** (part of the Definition of Done): each slice/change merged to
   `develop`/`main` increments the version per SemVer — **MINOR** for a new feature, **PATCH** for a
-  fix/small change **or a purely internal refactor** (no API/behavior/schema/UI change). Keep
-  `.env`/`.env.example` in sync. The version bump is **independent of the release note** (below).
+  fix/small change **or a purely internal refactor** (no API/behavior/schema/UI change). The version bump is
+  **independent of the release note** (below). **Version-source split (owner decision):** the agent bumps the
+  defaults in `application.yml` and `compose.yaml`; the **displayed** version comes from `.env` `APP_VERSION`,
+  which is **owner-controlled** (the agent cannot read/edit `.env`). The **owner bumps `.env` `APP_VERSION`
+  each slice**, and the agent MUST **remind the owner** of the new version in the end-of-slice report so the
+  footer/`/api/version` reflects it after the dev stack is recreated.
+- **Continuous local delivery — rebuild the dev stack each slice (owner decision):** at the **end of every
+  slice**, after the merge, the agent rebuilds and recreates the local dev stack so `localhost:4200` reflects
+  the merged code (Flyway applies the new migrations forward): `docker compose up -d --build frontend backend`
+  (non-destructive — the Postgres volume/data persists; do NOT use `-v`/`down -v`). Verify backend health and
+  that migrations applied before reporting done. After the owner bumps `.env`, a plain `docker compose up -d`
+  recreates the container so the new `APP_VERSION` is picked up. (Note: `localhost:4201` is the throwaway E2E
+  stack, separate from the dev stack on `4200`.)
 - **Release notes (delivery document, customer-facing) — only at the end of a COMPLETE delivery:** a
   release note is written **once per finished delivery (a sprint / milestone), NOT per slice** — it
   summarizes everything shipped in that delivery. Do **not** create a release note per intermediate
