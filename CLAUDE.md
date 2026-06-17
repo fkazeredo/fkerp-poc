@@ -597,24 +597,23 @@ the goal - high coverage with weak assertions is not quality.
   production. Add libraries conservatively; isolate risky dependencies.
 - **Versioning & releases (SemVer):** the application carries a **Semantic Version**
   `MAJOR.MINOR.PATCH` - **MAJOR** = backward-incompatible change; **MINOR** = new backward-compatible
-  feature; **PATCH** = backward-compatible bug fix. The version lives in **`APP_VERSION`**
-  (`.env`/`.env.example`, wired through `compose.yaml`, bound to `app.version`), is served by the
-  public `GET /api/version` and **displayed in the UI** (login screen + sidebar footer). **Bump it on
-  EVERY delivered change** (part of the Definition of Done): each slice/change merged to
-  `develop`/`main` increments the version per SemVer — **MINOR** for a new feature, **PATCH** for a
-  fix/small change **or a purely internal refactor** (no API/behavior/schema/UI change). The version bump is
-  **independent of the release note** (below). **Version-source split (owner decision):** the agent bumps the
-  defaults in `application.yml` and `compose.yaml`; the **displayed** version comes from `.env` `APP_VERSION`,
-  which is **owner-controlled** (the agent cannot read/edit `.env`). The **owner bumps `.env` `APP_VERSION`
-  each slice**, and the agent MUST **remind the owner** of the new version in the end-of-slice report so the
-  footer/`/api/version` reflects it after the dev stack is recreated.
+  feature; **PATCH** = backward-compatible bug fix. **The backend is the single source of truth for the
+  version (owner decision):** it lives in **`app.version`** in `backend/.../application.yml`
+  (`${APP_VERSION:<x.y.z>}` — the default IS the real version), is served by the public `GET /api/version`
+  and **displayed in the UI** (login screen + sidebar footer); the frontend reads it from that endpoint.
+  `compose.yaml` **does NOT inject `APP_VERSION`** into the backend (so nothing overrides the
+  `application.yml` value), and the `.env` `APP_VERSION` is **unused/legacy** for versioning. **Bump it on
+  EVERY delivered change** (part of the Definition of Done) by editing the `application.yml` default — each
+  slice/change merged to `develop`/`main` increments the version per SemVer (**MINOR** for a new feature,
+  **PATCH** for a fix/small change **or a purely internal refactor**); after the end-of-slice rebuild the
+  footer/`/api/version` reflects it **automatically**, no `.env` edit needed. The version bump is
+  **independent of the release note** (below).
 - **Continuous local delivery — rebuild the dev stack each slice (owner decision):** at the **end of every
   slice**, after the merge, the agent rebuilds and recreates the local dev stack so `localhost:4200` reflects
   the merged code (Flyway applies the new migrations forward): `docker compose up -d --build frontend backend`
   (non-destructive — the Postgres volume/data persists; do NOT use `-v`/`down -v`). Verify backend health and
-  that migrations applied before reporting done. After the owner bumps `.env`, a plain `docker compose up -d`
-  recreates the container so the new `APP_VERSION` is picked up. (Note: `localhost:4201` is the throwaway E2E
-  stack, separate from the dev stack on `4200`.)
+  that migrations applied before reporting done. (Note: `localhost:4201` is the throwaway E2E stack, separate
+  from the dev stack on `4200`.)
 - **Release notes (delivery document, customer-facing) — only at the end of a COMPLETE delivery:** a
   release note is written **once per finished delivery (a sprint / milestone), NOT per slice** — it
   summarizes everything shipped in that delivery. Do **not** create a release note per intermediate
