@@ -507,17 +507,17 @@ sessão é encerrada.
 
 Esta edição cobre todo o ciclo de vida de Leads da **Sprint 1** (cadastrar e encontrar Leads, o
 detalhe, atribuição, histórico de interações com a regra de **Em contato**, **qualificação**, fluxo de
-**Perda**, visibilidade por perfil, **Pendências**, **Indicadores** e deduplicação) e o início da
-**Sprint 2 — Oportunidades**: criar uma Oportunidade comercial a partir de um Lead qualificado e a
-**lista operacional de Oportunidades**, com filtro por estágio e visibilidade por perfil.
+**Perda**, visibilidade por perfil, **Pendências**, **Indicadores** e deduplicação) e a **Sprint 2 —
+Oportunidades** já completa: criar uma Oportunidade a partir de um Lead qualificado, a **lista
+operacional** com filtros, o **detalhe da Oportunidade**, a movimentação **pelas etapas** (Nova →
+Descoberta → Aderência → Pronta para proposta), o **registro de atividades comerciais**, a **edição dos
+dados comerciais** (valor estimado e previsão de fechamento), o fluxo de **Perda** com motivo, as
+**Oportunidades pendentes** e os **Indicadores de oportunidades** — tudo com visibilidade por perfil.
 
-As próximas versões darão sequência ao pipeline comercial: abrir o **detalhe da Oportunidade**,
-movimentá-la **pelas etapas** (Descoberta, Aderência, Pronta para proposta), **registrar atividades
-comerciais** (que vão preencher as colunas de *última atividade* e *próxima ação*), **indicadores** de
-Oportunidades e preparar a Oportunidade para a geração de uma **proposta**. Este manual será atualizado
-a cada lançamento.
+A próxima etapa (**Sprint 3**) dará sequência ao pipeline a partir de uma Oportunidade **Pronta para
+proposta**, com a geração da **proposta** comercial. Este manual será atualizado a cada lançamento.
 
 ---
 
-*Status do documento: Sprint 1 concluída; Sprint 2 em andamento (criação de Oportunidade + lista
-operacional). Mantido junto com o produto.*
+*Status do documento: Sprint 1 e Sprint 2 concluídas (captação de Leads e Oportunidades comerciais);
+próxima etapa: Proposta (Sprint 3). Mantido junto com o produto.*
