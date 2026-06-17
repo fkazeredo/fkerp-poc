@@ -484,14 +484,31 @@ Cada item tem:
 - um **desconto opcional**, aplicado por linha como **valor (R$)** ou **percentual (%)** — escolha
   *Sem desconto*, *Valor (R$)* ou *Percentual (%)*.
 
-O **total da linha** é o valor unitário multiplicado pela quantidade, menos o desconto; o **total da
-proposta** é a soma de todos os totais de linha, recalculado automaticamente sempre que você adiciona, altera
-ou remove um item. Um desconto percentual deve ficar entre 0 e 100, e um desconto em valor não pode
-ultrapassar o valor da linha.
+O **total da linha** é o valor unitário multiplicado pela quantidade, menos o desconto da linha. Um desconto
+percentual deve ficar entre 0 e 100, e um desconto em valor não pode ultrapassar o valor da linha.
 
 Os itens só podem ser alterados **enquanto a proposta estiver em Rascunho**. Adicionar ou editar itens
 **não** reserva nada, não verifica disponibilidade com fornecedores e **não** cria venda, pedido, reserva,
 financeiro nem comissão — a proposta continua sendo uma oferta comercial.
+
+### 9.4 Totais, desconto e validade
+Abaixo dos itens, a proposta mostra um resumo claro de **totais**:
+
+- **Subtotal** — a soma dos totais de linha de todos os itens;
+- **Desconto da proposta** — um desconto opcional sobre a proposta inteira (em **valor (R$)** ou
+  **percentual (%)**), exibido apenas quando houver;
+- **Total** — o subtotal menos o desconto da proposta. O total **nunca é negativo**: um desconto em valor é
+  limitado ao subtotal.
+
+Use **Editar dados comerciais** — disponível enquanto a proposta está em Rascunho e você pode operá-la — para
+informar a **validade**, os **termos comerciais**, as **notas de pagamento** (texto descritivo apenas — **não**
+cria nenhum registro financeiro ou de recebível) e o **desconto da proposta**. O total é recalculado
+automaticamente.
+
+Quando a oferta estiver pronta, use **Enviar para revisão**. A proposta precisa ter **ao menos um item** e um
+**total maior que zero**; ela então sai de *Rascunho* e passa a *Pronta para revisão*, e a partir daí seus
+itens e dados não podem mais ser editados. (A validade só se torna obrigatória na etapa futura de *envio ao
+cliente*.)
 
 > As próximas etapas do módulo Vendas (aprovação interna, aceite do cliente e a geração de um
 > **pedido comercial**) virão nas próximas versões.
@@ -546,6 +563,28 @@ O FKERP valida o que você digita e mostra mensagens claras, em português:
 - **Campos obrigatórios** são marcados com um asterisco (`*`).
 - O sistema nunca mostra erros técnicos crus; se algo inesperado acontecer, você recebe uma mensagem
   curta e segura e pode tentar de novo.
+- **Alterações não salvas são protegidas.** Se você começar a preencher um formulário ou um diálogo de edição
+  e tentar sair da página — por um link, por um atalho de teclado ou fechando a aba do navegador — o sistema
+  pede confirmação antes de descartar as alterações (**Descartar** para sair, **Continuar editando** para
+  ficar).
+
+---
+
+## 11.1 Atalhos de teclado
+
+O menu é organizado em **módulos** claros — **Comercial / CRM**, **Vendas** e **Cadastros** — cada um em seu
+próprio bloco na barra lateral. Tudo também é acessível pelo teclado:
+
+- **`Ctrl`/`Cmd` + `K`** — a **paleta de comandos**: busque e vá para qualquer tela ou ação de qualquer lugar.
+- **`?`** — mostra a ajuda completa de atalhos a qualquer momento.
+- **Ir para (tecle `g`, depois uma letra):** `g i` Início · `g l` Leads · `g o` Oportunidades · `g p`
+  Propostas · `g c` Cadastros. **`n`** cria um novo lead.
+- **Em um lead:** `i` registrar interação · `q` qualificar · `o` criar oportunidade · `p` marcar perdido ·
+  `r` reatribuir · `Esc` voltar.
+- **Em uma oportunidade:** `a` registrar atividade · `e` editar dados · `s` avançar estágio · `p` marcar
+  perdida · `Esc` voltar.
+- **Em uma proposta:** `i` adicionar item · `e` editar dados comerciais · `s` enviar para revisão · `Esc`
+  voltar.
 
 ---
 

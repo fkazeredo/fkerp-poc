@@ -60,6 +60,9 @@ MUST be recorded in this file and MUST NOT become a new default unless the owner
   after; if impossible, explain why.
 - Flyway migration when the schema changes. OpenAPI/docs updated when contracts change.
 - i18n messages added for any user-facing text; global error handling respected.
+- **Frontend feature parity (§12):** any new user-facing feature ships its **keyboard access**
+  (command-palette entry + a shortcut for primary destinations/actions, listed in the `?` overlay)
+  and, for any form/edit surface, its **unsaved-changes protection** (route guard + dialog/`beforeunload`).
 - Build and tests executed when possible. Never hide a failed command or a skipped check.
 - Final response reports: files changed, behavior implemented, tests, migrations, contract
   impacts, commands executed, verification result, risks, pending items.
@@ -457,16 +460,33 @@ aggregate (`@OneToMany`, cascade + `orphanRemoval`, mirroring `OpportunityActivi
 (integer ≥ 1), a **unit value** (≥ 0) and an **optional discount** expressed as either an **amount**
 (`AMOUNT`, in R$, 0–subtotal) or a **percentage** (`PERCENT`, 0–100) — both null = no discount; an invalid
 discount throws `proposal.item-invalid` (**422**). Each item's **line total** = `unitValue × quantity −
-discount`; the Proposal **total** = the sum of the line totals — **persisted/denormalized** on the
-aggregate and **recomputed inside the aggregate on every item change** (no N+1 for the list), all in
-`BigDecimal` scale 2, `HALF_UP`. Items are added/edited/removed **only while the Proposal is `DRAFT`** (the
-aggregate's `requireDraft()` guard → `proposal.not-editable`, **422**); an unknown item id →
-`proposal.item-not-found` (**404**). Managing items **never** creates a Booking, checks external
+discount`; the items **subtotal** = the sum of the line totals (see the totals block below) —
+**persisted/denormalized** on the aggregate and **recomputed inside the aggregate on every item change** (no
+N+1 for the list), all in `BigDecimal` scale 2, `HALF_UP`. Items are added/edited/removed **only while the
+Proposal is `DRAFT`** (the aggregate's `requireDraft()` guard → `proposal.not-editable`, **422**); an unknown
+item id → `proposal.item-not-found` (**404**). Managing items **never** creates a Booking, checks external
 availability, or creates Financial/Commission/supplier-cost/margin/tax/invoice data, and never touches the
 source Opportunity or Lead. Endpoints `POST/PUT/DELETE /api/proposals/{id}/items[/{itemId}]` are each gated
-by `sales:proposal:update` and return the refreshed `ProposalDetail` (its `items` + `total`); the list and
+by `sales:proposal:update` and return the refreshed `ProposalDetail` (its `items` + totals); the list and
 detail expose the **total** alongside the existing commercial-offer fields — still never Sale / Sales Order
 / Booking / Financial / Commission data.
+
+**Proposal totals, discounts, validity & submit-for-review (normative — Sales & Proposals).** A Proposal
+exposes a **`subtotal`** (the sum of its items' line totals) and an optional **Proposal-level discount**
+(`discountType` ∈ {`AMOUNT`,`PERCENT`} + `discountValue`, both null = none) applied to the subtotal, giving
+the **`total`** (`total = subtotal − discount`, **never negative** — the effective discount is capped at the
+subtotal so removing items can't drive it below zero). The discount range rules live on the **`DiscountType`**
+enum (`amountOf`/`isValid`) and are **reused** by both the item-level and the Proposal-level discount; an
+invalid Proposal discount throws `proposal.discount-invalid` (**422**). The Proposal also carries descriptive
+**`paymentNotes`** (free text only — **never** a Financial/Payment/Receivable record). Editing these
+commercial details (validity, commercial terms, payment notes, discount) is **`DRAFT`-only**
+(`requireDraft()` → `proposal.not-editable`, **422**) via `PUT /api/proposals/{id}` (gated by
+`sales:proposal:update`), returning the refreshed `ProposalDetail` (subtotal/discount/total recomputed in the
+aggregate). **Submit for review** (`POST /api/proposals/{id}/submit`, gated by `sales:proposal:update`) moves
+`DRAFT → READY_FOR_REVIEW` and **requires at least one item and a positive total** (else
+`proposal.no-items` / `proposal.total-required`, **422**); the **validity date** is editable now and becomes
+mandatory only at the future *send* step (not enforced this slice). None of this creates Receivable, Payment,
+Booking, Commission, tax or margin data; the rest of the lifecycle (Approve/Send/Accept…) is a later slice.
 
 ## 11. Observability & performance
 
@@ -513,7 +533,21 @@ feature-specific code MUST stay inside the feature.
   services translate technical events into UI behavior. Components never handle raw protocol
   messages.
 - **UI & styling:** the component library owns component internals; Tailwind owns layout and
-  custom widgets. All user-facing text goes through the i18n layer.
+  custom widgets. All user-facing text goes through the i18n layer. The sidebar groups navigation
+  into **visually distinct module blocks** (Comercial / CRM, Vendas, Cadastros) — each with its own
+  icon/accent — so the bounded contexts read as separate modules.
+- **Keyboard access (normative, every feature):** every feature MUST be reachable by keyboard. The
+  **command palette** (`Ctrl/Cmd+K`, in the shell) is the universal index and MUST list every route +
+  primary action; primary destinations get a `g`-leader shortcut (`g i/l/o/p/c`) and detail pages get
+  context keys (e.g. proposal: `i` add item, `e` edit details, `s` submit, `Esc` back). The `?` help
+  overlay is the single source of truth listing the current set. A new feature ships its palette entry
+  + shortcut as part of the Definition of Done (§3).
+- **Unsaved-changes protection (normative, every form/action):** leaving a form/edit with in-progress
+  changes MUST warn before the data is lost — **including navigation via keyboard shortcuts**. Use the
+  central `unsavedChangesGuard` (`CanDeactivate`, driven by the component's `hasUnsavedChanges()`) on
+  every form route, the shell's `<p-confirmDialog>` + `UnsavedChangesService.confirmDiscard()` for the
+  prompt, and a `beforeunload` warning (fed by `UnsavedChangesService.dirty`) for tab close/reload. New
+  forms/dialogs wire this as part of the Definition of Done (§3).
 
 ## 13. Testing
 

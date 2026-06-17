@@ -1,4 +1,5 @@
 <p-toast />
+<p-confirmDialog />
 
 <div class="shell" [class.sidebar-open]="sidebarOpen()">
   <div class="scrim" (click)="sidebarOpen.set(false)"></div>
@@ -8,7 +9,7 @@
       <span class="brand-mark">FK</span>
       <div class="brand-text">
         <span class="brand">FKERP</span>
-        <span class="brand-sub">Comercial / CRM</span>
+        <span class="brand-sub">Gestão comercial</span>
       </div>
     </div>
 
@@ -20,32 +21,22 @@
 
     <nav class="nav">
       @for (group of navGroups; track group.title) {
-        @if (group.title) {
-          <span class="nav-group">{{ group.title }}</span>
-        }
-        @for (item of group.items; track item.link) {
-          <a
-            class="nav-item"
-            [routerLink]="item.link"
-            routerLinkActive="active"
-            [routerLinkActiveOptions]="{ exact: item.exact }"
-            (click)="sidebarOpen.set(false)"
-          >
-            <i [class]="item.icon"></i><span>{{ item.label }}</span>
-          </a>
-        }
-      }
-
-      <span class="nav-group">Cadastros</span>
-      @for (item of cadastros; track item.link) {
-        <a
-          class="nav-item sub"
-          [routerLink]="item.link"
-          routerLinkActive="active"
-          (click)="sidebarOpen.set(false)"
-        >
-          <i class="pi pi-angle-right"></i><span>{{ item.label }}</span>
-        </a>
+        <div class="nav-module" [class.no-title]="!group.title">
+          @if (group.title) {
+            <span class="nav-group"><i [class]="group.icon"></i>{{ group.title }}</span>
+          }
+          @for (item of group.items; track item.link) {
+            <a
+              class="nav-item"
+              [routerLink]="item.link"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: item.exact }"
+              (click)="sidebarOpen.set(false)"
+            >
+              <i [class]="item.icon"></i><span>{{ item.label }}</span>
+            </a>
+          }
+        </div>
       }
     </nav>
 
@@ -123,20 +114,37 @@
   [style]="{ width: '30rem' }"
 >
   <ul class="shortcuts">
-    <li><span class="kbd">Ctrl</span> <span class="kbd">K</span> Paleta de comandos</li>
+    <li class="sep">Global</li>
+    <li><span class="kbd">Ctrl</span> <span class="kbd">K</span> Paleta de comandos (todas as telas)</li>
     <li><span class="kbd">n</span> Novo lead</li>
-    <li><span class="kbd">g</span> depois <span class="kbd">l</span> Ir para Leads</li>
-    <li><span class="kbd">g</span> depois <span class="kbd">i</span> Ir para o Início</li>
-    <li><span class="kbd">g</span> depois <span class="kbd">o</span> Ir para Origens</li>
     <li><span class="kbd">?</span> Esta ajuda</li>
-    <li class="sep">No detalhe de um lead:</li>
-    <li><span class="kbd">i</span> Registrar interação</li>
-    <li><span class="kbd">o</span> Criar oportunidade (lead qualificado)</li>
+    <li class="sep">Navegação (<span class="kbd">g</span> depois…)</li>
+    <li><span class="kbd">g</span> <span class="kbd">i</span> Início</li>
+    <li><span class="kbd">g</span> <span class="kbd">l</span> Leads</li>
+    <li><span class="kbd">g</span> <span class="kbd">o</span> Oportunidades</li>
+    <li><span class="kbd">g</span> <span class="kbd">p</span> Propostas</li>
+    <li><span class="kbd">g</span> <span class="kbd">c</span> Cadastros</li>
+    <li class="sep">No detalhe de um lead</li>
+    <li><span class="kbd">i</span> Registrar interação &middot; <span class="kbd">q</span> Qualificar</li>
     <li>
-      <span class="kbd">q</span> Qualificar &middot; <span class="kbd">p</span> Marcar perdido
+      <span class="kbd">o</span> Criar oportunidade &middot; <span class="kbd">p</span> Marcar perdido
     </li>
     <li>
       <span class="kbd">r</span> Reatribuir / Assumir &middot; <span class="kbd">Esc</span> Voltar
+    </li>
+    <li class="sep">No detalhe de uma oportunidade</li>
+    <li>
+      <span class="kbd">a</span> Registrar atividade &middot; <span class="kbd">e</span> Editar dados
+    </li>
+    <li>
+      <span class="kbd">s</span> Avançar estágio &middot; <span class="kbd">p</span> Marcar perdida
+    </li>
+    <li class="sep">No detalhe de uma proposta</li>
+    <li>
+      <span class="kbd">i</span> Adicionar item &middot; <span class="kbd">e</span> Editar dados comerciais
+    </li>
+    <li>
+      <span class="kbd">s</span> Enviar para revisão &middot; <span class="kbd">Esc</span> Voltar
     </li>
   </ul>
 </p-dialog>

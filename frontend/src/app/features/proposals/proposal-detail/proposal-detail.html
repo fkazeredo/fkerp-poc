@@ -18,6 +18,26 @@
       <h1>{{ p.title }}</h1>
       <p-tag [value]="statusLabel(p.status)" [severity]="statusSeverity(p.status)" />
     </div>
+    @if (canManageItems()) {
+      <div class="head-actions">
+        <p-button
+          label="Editar dados comerciais"
+          icon="pi pi-pencil"
+          severity="secondary"
+          [outlined]="true"
+          size="small"
+          (onClick)="openEditDetails()"
+        />
+        <p-button
+          label="Enviar para revisão"
+          icon="pi pi-send"
+          size="small"
+          [disabled]="!canSubmit()"
+          [loading]="acting()"
+          (onClick)="submitForReview()"
+        />
+      </div>
+    }
   </header>
 
   <div class="grid">
@@ -29,6 +49,8 @@
         <dd>{{ p.validUntil ? (p.validUntil | date: 'shortDate') : '—' }}</dd>
         <dt>Termos comerciais</dt>
         <dd>{{ p.commercialTerms ?? '—' }}</dd>
+        <dt>Notas de pagamento</dt>
+        <dd>{{ p.paymentNotes ?? '—' }}</dd>
         <dt>Anotações</dt>
         <dd>{{ p.notes ?? '—' }}</dd>
         <dt>Criada em</dt>
@@ -118,16 +140,23 @@
           <td [attr.colspan]="canManageItems() ? 7 : 6" class="muted empty">Nenhum item ainda.</td>
         </tr>
       </ng-template>
-      <ng-template pTemplate="footer">
-        <tr>
-          <td [attr.colspan]="canManageItems() ? 5 : 4" class="num total-label">Total da proposta</td>
-          <td class="num total-value">{{ p.total | currency: 'BRL' }}</td>
-          @if (canManageItems()) {
-            <td></td>
-          }
-        </tr>
-      </ng-template>
     </p-table>
+
+    <dl class="totals">
+      <dt>Subtotal</dt>
+      <dd class="num">{{ p.subtotal | currency: 'BRL' }}</dd>
+      @if (p.discountType) {
+        <dt>
+          Desconto da proposta
+          @if (p.discountType === 'PERCENT') {
+            ({{ p.discountValue }}%)
+          }
+        </dt>
+        <dd class="num discount">−{{ p.subtotal - p.total | currency: 'BRL' }}</dd>
+      }
+      <dt class="grand">Total</dt>
+      <dd class="num grand">{{ p.total | currency: 'BRL' }}</dd>
+    </dl>
   </p-card>
 
   <p-dialog
@@ -226,6 +255,84 @@
         (onClick)="confirmItem()"
       />
       <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="itemOpen.set(false)" />
+    </div>
+  </p-dialog>
+
+  <p-dialog
+    header="Editar dados comerciais"
+    [(visible)]="detailsOpen"
+    [modal]="true"
+    [style]="{ width: '34rem' }"
+  >
+    <div class="field">
+      <label for="dvalid">Validade</label>
+      <p-datepicker
+        inputId="dvalid"
+        [(ngModel)]="detailsValidUntil"
+        dateFormat="dd/mm/yy"
+        [showButtonBar]="true"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="dterms">Termos comerciais</label>
+      <textarea pTextarea id="dterms" [(ngModel)]="detailsCommercialTerms" rows="2" maxlength="4000" class="w-full"></textarea>
+    </div>
+    <div class="field">
+      <label for="dpay">Notas de pagamento</label>
+      <textarea pTextarea id="dpay" [(ngModel)]="detailsPaymentNotes" rows="2" maxlength="4000" class="w-full"></textarea>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="ddmode">Desconto da proposta</label>
+        <p-select
+          inputId="ddmode"
+          [options]="discountModeOptions"
+          optionLabel="label"
+          optionValue="value"
+          [(ngModel)]="detailsDiscountMode"
+          styleClass="w-full"
+          appendTo="body"
+        />
+      </div>
+      @if (detailsDiscountMode !== 'NONE') {
+        <div class="field">
+          <label for="ddval">
+            {{ detailsDiscountMode === 'PERCENT' ? 'Percentual' : 'Valor do desconto' }}
+            <span class="req">*</span>
+          </label>
+          @if (detailsDiscountMode === 'PERCENT') {
+            <p-inputNumber
+              inputId="ddval"
+              [(ngModel)]="detailsDiscountValue"
+              suffix=" %"
+              [min]="0"
+              [max]="100"
+              styleClass="w-full"
+            />
+          } @else {
+            <p-inputNumber
+              inputId="ddval"
+              [(ngModel)]="detailsDiscountValue"
+              mode="currency"
+              currency="BRL"
+              [min]="0"
+              styleClass="w-full"
+            />
+          }
+        </div>
+      }
+    </div>
+    <div class="actions">
+      <p-button
+        label="Salvar"
+        icon="pi pi-check"
+        [disabled]="!canSaveDetails()"
+        [loading]="acting()"
+        (onClick)="confirmEditDetails()"
+      />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="detailsOpen.set(false)" />
     </div>
   </p-dialog>
 }

@@ -21,7 +21,11 @@ import java.util.UUID;
  * — never Sale, Sales Order, Booking, Financial, Payment, Commission or Customer data.
  *
  * @param items the commercial-offer lines (oldest first), each with its computed line total
- * @param total the Proposal total (sum of the items' line totals)
+ * @param subtotal the items subtotal (sum of the items' line totals)
+ * @param discountType the optional Proposal-level discount type (null when there is none)
+ * @param discountValue the optional Proposal-level discount value (null when there is none)
+ * @param total the Proposal total (subtotal minus the Proposal-level discount; never negative)
+ * @param paymentNotes descriptive payment notes (free text only — not a Financial record)
  * @param sourceOpportunity the source Opportunity (kept traceable; still the system of record)
  */
 public record ProposalDetail(
@@ -36,7 +40,11 @@ public record ProposalDetail(
         String notes,
         LocalDate validUntil,
         String commercialTerms,
+        String paymentNotes,
         List<Item> items,
+        BigDecimal subtotal,
+        DiscountType discountType,
+        BigDecimal discountValue,
         BigDecimal total,
         Instant createdAt,
         Instant updatedAt,
@@ -67,7 +75,11 @@ public record ProposalDetail(
                 p.notes(),
                 p.validUntil(),
                 p.commercialTerms(),
+                p.paymentNotes(),
                 items,
+                p.subtotal(),
+                p.discountType(),
+                p.discountValue(),
                 p.total(),
                 p.createdAt(),
                 p.updatedAt(),

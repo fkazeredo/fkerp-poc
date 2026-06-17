@@ -3,12 +3,14 @@ package com.fksoft.erp.application.api;
 import com.fksoft.erp.application.api.dto.ProposalCreateRequest;
 import com.fksoft.erp.application.api.dto.ProposalItemRequest;
 import com.fksoft.erp.application.api.dto.ProposalResponse;
+import com.fksoft.erp.application.api.dto.ProposalUpdateRequest;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.service.ProposalService;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalListItem;
+import com.fksoft.erp.domain.sales.service.data.UpdateProposalCommand;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
@@ -91,6 +93,40 @@ public class ProposalController {
     @GetMapping("/{id}")
     public ProposalDetail detail(@PathVariable UUID id) {
         return proposalService.detail(
+                id, userContext.currentUserId(), canSeeAllProposals(), canSeeUnassignedProposals());
+    }
+
+    /**
+     * Edits a Draft Proposal's commercial details (validity, terms, payment notes, Proposal-level discount);
+     * returns the refreshed detail (with the recomputed subtotal/total). Creates no Financial, Receivable,
+     * Payment, Booking or Commission data.
+     *
+     * @param id the proposal id
+     * @param request the new commercial details
+     * @return the updated detail
+     */
+    @PutMapping("/{id}")
+    public ProposalDetail update(@PathVariable UUID id, @Valid @RequestBody ProposalUpdateRequest request) {
+        UpdateProposalCommand command = new UpdateProposalCommand(
+                request.validUntil(),
+                request.commercialTerms(),
+                request.paymentNotes(),
+                request.discountType(),
+                request.discountValue());
+        return proposalService.updateDetails(
+                id, command, userContext.currentUserId(), canSeeAllProposals(), canSeeUnassignedProposals());
+    }
+
+    /**
+     * Submits a Draft Proposal for review (Draft → Ready for review); returns the refreshed detail. Requires
+     * at least one item and a positive total. Creates no Sale, Order, Booking, Financial or Commission data.
+     *
+     * @param id the proposal id
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/submit")
+    public ProposalDetail submit(@PathVariable UUID id) {
+        return proposalService.submitForReview(
                 id, userContext.currentUserId(), canSeeAllProposals(), canSeeUnassignedProposals());
     }
 
