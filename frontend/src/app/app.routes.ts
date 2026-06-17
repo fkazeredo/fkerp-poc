@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { crmReadGuard } from './core/auth/crm-read.guard';
 import { opportunityReadGuard } from './core/auth/opportunity-read.guard';
+import { proposalReadGuard } from './core/auth/proposal-read.guard';
 
 export const routes: Routes = [
   {
@@ -75,6 +76,20 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/opportunities/opportunity-detail/opportunity-detail').then(
             (m) => m.OpportunityDetailPage,
+          ),
+      },
+      {
+        path: 'propostas',
+        canActivate: [proposalReadGuard],
+        loadComponent: () =>
+          import('./features/proposals/proposal-list/proposal-list').then((m) => m.ProposalList),
+      },
+      {
+        path: 'propostas/:id',
+        canActivate: [proposalReadGuard],
+        loadComponent: () =>
+          import('./features/proposals/proposal-detail/proposal-detail').then(
+            (m) => m.ProposalDetailPage,
           ),
       },
       {

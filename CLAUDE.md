@@ -427,6 +427,28 @@ pipeline value, value by responsible). They expose commercial pipeline data only
 Sales Order, Booking, Financial or Commission data — and are not an executive dashboard (no
 revenue/forecast/ROI).
 
+**Proposal authorization model (normative — Sales & Proposals).** The **Sales & Proposals** bounded
+context lives in `domain.sales` (same layout as `domain.crm`: `model`/`repository`/`service`/
+`service.data`/`exception`) and owns Commercial **Proposals** (and, later, Proposal items, approval,
+acceptance and Commercial Orders). Its scopes use the **`sales:`** prefix (the first non-`crm:` context):
+the same two orthogonal axes as Opportunity — escalating read tiers `sales:proposal:read` (own only) →
+also `sales:proposal:read:unassigned` (the unassigned pool) → `sales:proposal:read:all` (all); any read
+tier passes the GET gate and `ProposalAccessPolicy` (a query Specification on `responsiblePersonId`)
+narrows the list, the single-record detail applying the same `canSee` check. Operation
+`sales:proposal:create` gates creating a Proposal from an Opportunity that is **`READY_FOR_PROPOSAL`**
+(the creator must also be allowed to **see the source Opportunity**, via the Opportunity read tiers);
+`sales:proposal:update` will gate the future lifecycle transitions. A Proposal **preserves** its source
+Opportunity (`opportunityId`, never modified) and the source **Lead reference** (`leadId`), defaults the
+responsible from the Opportunity, and starts as **`DRAFT`**. An Opportunity has **at most one open
+Proposal at a time** (the service returns a friendly 409; a partial unique index is the last-resort guard;
+a new Proposal is allowed once the previous is `REJECTED`/`EXPIRED`/`CANCELLED`). Creating a Proposal
+creates **no** Sale, Sales Order, Booking, Customer, Financial, Payment or Commission data, and never
+modifies the Opportunity or Lead. Profile → scopes: Admin/Manager = read:all + create + update; Sellers =
+read + read:unassigned + create + update; Representatives = read + create + update (own only);
+Board/Director = read:all (consultation); Finance/HR/IT = none. The **frontend separates the modules
+visually** — the sidebar groups **Comercial / CRM** (Leads + Opportunities) and **Vendas** (Proposals) as
+distinct menus, each gated by its read scopes; the backend stays the only authority.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST
