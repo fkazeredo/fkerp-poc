@@ -13,6 +13,7 @@ import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
 import com.fksoft.erp.domain.crm.service.data.OpportunityListItem;
 import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
+import com.fksoft.erp.domain.crm.service.data.PendingOpportunity;
 import com.fksoft.erp.domain.crm.service.data.RecordActivityCommand;
 import com.fksoft.erp.domain.crm.service.data.UpdateOpportunityDetailsCommand;
 import com.fksoft.erp.infra.security.UserContextProvider;
@@ -109,6 +110,26 @@ public class OpportunityController {
         return PageResponse.from(
                 opportunityService.list(
                         criteria,
+                        pageable,
+                        userContext.currentUserId(),
+                        canSeeAllOpportunities(),
+                        canSeeUnassignedOpportunities()),
+                item -> item);
+    }
+
+    /**
+     * Operational pending-items worklist of the Opportunities visible to the caller that need action
+     * (no recent activity, overdue next action, stuck in NEW/DISCOVERY, ready for a proposal, or past
+     * the expected closing date), each with its reasons. Read-only; LOST Opportunities are excluded.
+     *
+     * @param pageable page, size and sort (default: createdAt desc, size 20)
+     * @return a page of pending Opportunity items
+     */
+    @GetMapping("/pending")
+    public PageResponse<PendingOpportunity> pending(
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return PageResponse.from(
+                opportunityService.pending(
                         pageable,
                         userContext.currentUserId(),
                         canSeeAllOpportunities(),

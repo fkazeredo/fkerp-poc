@@ -1,0 +1,71 @@
+<header class="page-head">
+  <div>
+    <h1>Oportunidades pendentes</h1>
+    <p class="sub muted">
+      Oportunidades que precisam de ação — para a negociação não estagnar silenciosamente.
+    </p>
+  </div>
+</header>
+
+@if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+}
+
+<div class="surface table-wrap">
+  <p-table
+    [value]="items()"
+    [lazy]="true"
+    (onLazyLoad)="onLazyLoad($event)"
+    [paginator]="true"
+    [rows]="rows"
+    [totalRecords]="total()"
+    [first]="firstRow"
+    [loading]="loading()"
+    styleClass="p-datatable-sm"
+    [tableStyle]="{ 'min-width': '70rem' }"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Título</th>
+        <th>Estágio</th>
+        <th>Responsável</th>
+        <th>Valor</th>
+        <th>Fechamento</th>
+        <th>Próxima ação</th>
+        <th>Última atividade</th>
+        <th>Pendências</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-opp>
+      <tr>
+        <td>
+          <a [routerLink]="['/oportunidades', opp.id]" class="opp-link">{{ opp.name }}</a>
+        </td>
+        <td><p-tag [value]="stageLabel(opp.stage)" [severity]="stageSeverity(opp.stage)" /></td>
+        <td>
+          @if (opp.unassigned) {
+            <span class="unassigned">Sem responsável</span>
+          } @else {
+            {{ opp.responsibleName ?? '—' }}
+          }
+        </td>
+        <td>{{ opp.estimatedValue != null ? (opp.estimatedValue | currency: 'BRL') : '—' }}</td>
+        <td>{{ opp.expectedCloseDate ? (opp.expectedCloseDate | date: 'shortDate') : '—' }}</td>
+        <td>{{ opp.nextActionDate ? (opp.nextActionDate | date: 'shortDate') : '—' }}</td>
+        <td>{{ opp.lastActivityAt ? (opp.lastActivityAt | date: 'short') : '—' }}</td>
+        <td>
+          <div class="reasons">
+            @for (reason of opp.reasons; track reason) {
+              <p-tag [value]="reasonLabel(reason)" [severity]="reasonSeverity(reason)" />
+            }
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="8" class="muted empty">Nenhuma oportunidade pendente. Tudo em dia! 🎉</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

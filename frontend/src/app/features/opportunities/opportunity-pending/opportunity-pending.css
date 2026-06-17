@@ -1,0 +1,29 @@
+.table-wrap {
+  overflow: hidden;
+}
+
+.opp-link {
+  font-weight: 600;
+  color: var(--p-primary-color, #4f46e5);
+  text-decoration: none;
+}
+
+.opp-link:hover {
+  text-decoration: underline;
+}
+
+.reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.unassigned {
+  font-style: italic;
+  color: var(--app-muted);
+}
+
+.empty {
+  text-align: center;
+  padding: 2rem 1.5rem;
+}

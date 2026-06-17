@@ -412,7 +412,13 @@ the caller must also be allowed to see it. Profile → scopes: Admin/Manager = r
 read:unassigned + create +
 update; Representatives = read + create + update (own only); Board/Director = read:all (consultation);
 Finance/HR/IT = none. The list and detail expose commercial pipeline data only — never Proposal, Sale,
-Sales Order, Booking, Financial or Commission data.
+Sales Order, Booking, Financial or Commission data. The **operational pending-items worklist**
+(`GET /api/opportunities/pending`) is a read view gated by the same read tiers (any tier passes; the
+policy narrows visibility at the query level, like the list) — it surfaces the visible Opportunities that
+need action (no recent activity / overdue next action / stuck in an early stage / ready for a proposal /
+expected close past, computed from a fixed 14-day staleness window), each tagged with its reasons. It is
+**not** an executive dashboard, has **no** notification/SLA engine, and creates no Proposal/Sale/Booking/
+Financial data; LOST Opportunities are terminal and excluded.
 
 ## 11. Observability & performance
 

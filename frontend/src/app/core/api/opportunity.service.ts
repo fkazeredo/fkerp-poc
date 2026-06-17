@@ -159,6 +159,34 @@ export interface OpportunityDetail {
   nextActionDate: string | null;
 }
 
+export type OpportunityPendingReason =
+  | 'WITHOUT_RECENT_ACTIVITY'
+  | 'OVERDUE_NEXT_ACTION'
+  | 'STUCK_IN_NEW'
+  | 'STUCK_IN_DISCOVERY'
+  | 'READY_FOR_PROPOSAL'
+  | 'EXPECTED_CLOSE_OVERDUE';
+
+/**
+ * Pending Opportunity item (operational worklist). {@code reasons} are stable codes the UI localizes;
+ * {@code unassigned} flags Opportunities with no responsible. Commercial pipeline data only.
+ */
+export interface PendingOpportunity {
+  id: string;
+  leadId: string;
+  name: string;
+  stage: OpportunityStage;
+  responsibleId: string | null;
+  responsibleName: string | null;
+  unassigned: boolean;
+  estimatedValue: number | null;
+  expectedCloseDate: string | null;
+  nextActionDate: string | null;
+  createdAt: string;
+  lastActivityAt: string | null;
+  reasons: OpportunityPendingReason[];
+}
+
 /**
  * Operational Opportunity-list filters. Empty {@code stage} excludes LOST (it shows only when chosen).
  * {@code responsible} is a user id or the literal `unassigned`; the date bounds are ISO `yyyy-MM-dd`.
@@ -195,6 +223,12 @@ export class OpportunityService {
 
   detail(id: string): Observable<OpportunityDetail> {
     return this.http.get<OpportunityDetail>(`/api/opportunities/${id}`);
+  }
+
+  /** Operational worklist of Opportunities that need action, each tagged with the reasons why. */
+  pending(page = 0, size = 20): Observable<PageResponse<PendingOpportunity>> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return this.http.get<PageResponse<PendingOpportunity>>('/api/opportunities/pending', { params });
   }
 
   lose(id: string, reason: OpportunityLossReason, note: string | null): Observable<OpportunityDetail> {

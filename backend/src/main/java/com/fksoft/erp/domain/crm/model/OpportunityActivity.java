@@ -31,6 +31,11 @@ public class OpportunityActivity {
     @Id
     private UUID id;
 
+    // Read-only mapping of the owning FK (written by the parent Opportunity's @OneToMany @JoinColumn);
+    // lets queries reference the opportunity id (e.g. the "without recent activity" pending predicate).
+    @Column(name = "opportunity_id", insertable = false, updatable = false)
+    private UUID opportunityId;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
