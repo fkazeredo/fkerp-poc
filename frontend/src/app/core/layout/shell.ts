@@ -79,6 +79,12 @@ export class Shell {
         link: '/oportunidades/pendencias',
         exact: true,
       });
+      items.push({
+        label: 'Indicadores de oportunidades',
+        icon: 'pi pi-chart-bar',
+        link: '/oportunidades/indicadores',
+        exact: true,
+      });
     }
     return items;
   }
@@ -100,6 +106,11 @@ export class Shell {
       label: 'Oportunidades pendentes',
       icon: 'pi pi-flag',
       run: () => this.go('/oportunidades/pendencias'),
+    },
+    {
+      label: 'Indicadores de oportunidades',
+      icon: 'pi pi-chart-bar',
+      run: () => this.go('/oportunidades/indicadores'),
     },
     { label: 'Início', icon: 'pi pi-home', run: () => this.go('/') },
     {

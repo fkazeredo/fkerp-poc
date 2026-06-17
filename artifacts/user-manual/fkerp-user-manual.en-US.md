@@ -426,6 +426,23 @@ manager sees all. **Lost** Opportunities never appear here (they are terminal). 
 view, not an executive dashboard — there are no notifications, e-mail alerts or deadline targets (SLAs),
 and no proposal, sale, booking or financial data.
 
+### 8.5 Opportunity indicators
+
+Open **Opportunity indicators** in the sidebar (or from the command palette, `Ctrl K`) for a minimum view
+of the commercial pipeline. The screen has **two blocks**, like a mainstream CRM:
+
+- **Volume in the period** (filtered by creation date; default = current month): **Total** and **Lost**,
+  plus the breakdowns **By stage**, **By origin** and **By responsible** (counts). Adjust the period with
+  the **Created from / to** fields, or click **All time** to see the whole history.
+- **Current pipeline** (a snapshot of today, **independent of the period**): **Active** (open, not lost),
+  **Ready for proposal**, **Closing date overdue** (open with the expected closing date already past), the
+  **active pipeline value** and the **value by responsible**.
+
+The same **visibility rules** apply: a representative sees **only their own** numbers; a manager sees all.
+**Lost** Opportunities are counted in the volume (and in "Lost"), but never in the active pipeline or its
+value. This is an operational view, **not** an executive dashboard — no revenue, cash flow, sales
+forecast, commission or ROI, and the "Ready for proposal" indicator does **not** create a proposal.
+
 ## 9. Managing reference data (*cadastros*)
 
 Reference data are the lists that feed the lead form and future workflows. There are

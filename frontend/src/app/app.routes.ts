@@ -62,6 +62,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'oportunidades/indicadores',
+        canActivate: [opportunityReadGuard],
+        loadComponent: () =>
+          import('./features/opportunities/opportunity-indicators/opportunity-indicators').then(
+            (m) => m.OpportunityIndicatorsPage,
+          ),
+      },
+      {
         path: 'oportunidades/:id',
         canActivate: [opportunityReadGuard],
         loadComponent: () =>
