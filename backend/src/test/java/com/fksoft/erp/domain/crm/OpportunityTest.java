@@ -9,10 +9,10 @@ import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostExceptio
 import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadStatus;
-import com.fksoft.erp.domain.crm.model.LossReason;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivityResult;
 import com.fksoft.erp.domain.crm.model.OpportunityActivityType;
+import com.fksoft.erp.domain.crm.model.OpportunityLossReason;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
@@ -28,7 +28,7 @@ class OpportunityTest {
     private static final UUID CREATOR = UUID.randomUUID();
     private static final UUID RESPONSIBLE = UUID.randomUUID();
     private final Origin origin = Origin.create("WEBSITE", "Website", 1);
-    private final LossReason reason = LossReason.create("NO_RESPONSE", "Sem resposta", 1);
+    private final OpportunityLossReason reason = OpportunityLossReason.NO_RESPONSE;
 
     private Opportunity newOpportunity() {
         Lead lead = mock(Lead.class);

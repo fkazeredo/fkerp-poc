@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fksoft.erp.AbstractIntegrationTest;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
-import com.fksoft.erp.domain.crm.repository.LossReasonRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
 import com.fksoft.erp.domain.identity.AuthenticatedUser;
@@ -46,9 +45,6 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
     private OriginRepository origins;
 
     @Autowired
-    private LossReasonRepository lossReasons;
-
-    @Autowired
     private TokenService tokens;
 
     @Autowired
@@ -56,8 +52,6 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
 
     private UUID originId;
     private String originLabel;
-    private UUID lossReasonId;
-    private String lossReasonLabel;
     private int phoneSeq;
 
     private UUID managerOpp;
@@ -71,9 +65,6 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
         var origin = origins.findByActiveTrueOrderBySortOrderAsc().get(0);
         originId = origin.id();
         originLabel = origin.label();
-        var reason = lossReasons.findByActiveTrueOrderBySortOrderAsc().get(0);
-        lossReasonId = reason.id();
-        lossReasonLabel = reason.label();
         phoneSeq = 0;
         managerOpp = insertOpportunity("Aurora", OpportunityStage.NEW_OPPORTUNITY, MANAGER, new BigDecimal("5000.00"));
         repOpp = insertOpportunity("Beta", OpportunityStage.NEW_OPPORTUNITY, REPRESENTANTE, new BigDecimal("1500.00"));
@@ -141,14 +132,14 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void marksAsLostWithAReasonAndShowsLoss() throws Exception {
-        String body = "{\"lossReasonId\":\"%s\",\"note\":\"Cliente fechou com concorrente\"}".formatted(lossReasonId);
+        String body = "{\"reason\":\"COMPETITOR_CHOSEN\",\"note\":\"Cliente fechou com concorrente\"}";
         mvc.perform(post("/api/opportunities/" + managerOpp + "/lose")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body)
                         .header("Authorization", "Bearer " + manager()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stage").value("LOST"))
-                .andExpect(jsonPath("$.loss.reason").value(lossReasonLabel))
+                .andExpect(jsonPath("$.loss.reason").value("COMPETITOR_CHOSEN"))
                 .andExpect(jsonPath("$.loss.lostBy").value("comercial"))
                 .andExpect(jsonPath("$.loss.lostAt").value(notNullValue()))
                 .andExpect(jsonPath("$.loss.note").value("Cliente fechou com concorrente"));
@@ -156,24 +147,21 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void rejectsLosingAnAlreadyLostOpportunity() throws Exception {
-        String body = "{\"lossReasonId\":\"%s\"}".formatted(lossReasonId);
         mvc.perform(post("/api/opportunities/" + lostOpp + "/lose")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body)
+                        .content("{\"reason\":\"NO_BUDGET\"}")
                         .header("Authorization", "Bearer " + manager()))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("opportunity.cannot-mark-lost"));
     }
 
     @Test
-    void rejectsLoseWithUnknownReason() throws Exception {
-        String body = "{\"lossReasonId\":\"%s\"}".formatted(UUID.randomUUID());
+    void rejectsLoseWithUnknownReasonValue() throws Exception {
         mvc.perform(post("/api/opportunities/" + managerOpp + "/lose")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body)
+                        .content("{\"reason\":\"BOGUS\"}")
                         .header("Authorization", "Bearer " + manager()))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.code").value("lead.loss-reason-not-available"));
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -189,10 +177,9 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
     void rejectsLoseWithoutTheUpdateScope() throws Exception {
         // diretor (board) consults every Opportunity but holds no operation scope → 403 at the gate.
         String dir = login("diretor", "diretor123");
-        String body = "{\"lossReasonId\":\"%s\"}".formatted(lossReasonId);
         mvc.perform(post("/api/opportunities/" + managerOpp + "/lose")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body)
+                        .content("{\"reason\":\"OTHER\"}")
                         .header("Authorization", "Bearer " + dir))
                 .andExpect(status().isForbidden());
     }
@@ -201,10 +188,9 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
     void representativeCannotLoseAnotherUsersOpportunity() throws Exception {
         // The representative holds crm:opportunity:update but cannot see the manager's Opportunity.
         String rep = login("representante", "representante123");
-        String body = "{\"lossReasonId\":\"%s\"}".formatted(lossReasonId);
         mvc.perform(post("/api/opportunities/" + managerOpp + "/lose")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body)
+                        .content("{\"reason\":\"OTHER\"}")
                         .header("Authorization", "Bearer " + rep))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("opportunity.access-denied"));
@@ -216,10 +202,10 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
         jdbc.update(
                 """
                 INSERT INTO opportunities (id, version, lead_id, name, origin_id, responsible_person_id,
-                                           main_interest, stage, estimated_value, loss_reason_id,
+                                           main_interest, stage, estimated_value, loss_reason,
                                            created_by, updated_by)
                 VALUES (cast(? as uuid), 0, cast(? as uuid), ?, cast(? as uuid), cast(? as uuid),
-                        ?, ?, ?, cast(? as uuid), cast(? as uuid), cast(? as uuid))
+                        ?, ?, ?, ?, cast(? as uuid), cast(? as uuid))
                 """,
                 id.toString(),
                 leadId.toString(),
@@ -229,7 +215,7 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
                 "Interesse " + name,
                 stage.name(),
                 value,
-                stage == OpportunityStage.LOST ? lossReasonId.toString() : null,
+                stage == OpportunityStage.LOST ? "OTHER" : null,
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;
