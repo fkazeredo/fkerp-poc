@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, effect, inject, signal, computed, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -12,6 +12,7 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 import { ReferenceItem, ReferenceService } from '../../../core/api/reference.service';
+import { HasUnsavedChanges, UnsavedChangesService } from '../../../core/forms/unsaved-changes.service';
 
 /** Generic CRUD screen for a CRM reference-data cadastro, driven by route data {title, path}. */
 @Component({
@@ -30,11 +31,12 @@ import { ReferenceItem, ReferenceService } from '../../../core/api/reference.ser
   templateUrl: './reference-list.html',
   styleUrl: './reference-list.css',
 })
-export class ReferenceList {
+export class ReferenceList implements OnDestroy, HasUnsavedChanges {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(ReferenceService);
   private readonly fb = inject(FormBuilder);
   private readonly messages = inject(MessageService);
+  private readonly unsaved = inject(UnsavedChangesService);
 
   protected readonly title = signal('');
   private readonly path = signal('');
@@ -63,6 +65,17 @@ export class ReferenceList {
       this.path.set(data['path'] ?? '');
       this.reload();
     });
+    // Keep the global unsaved flag (tab-close warning) in sync with the create/edit dialog state.
+    effect(() => this.unsaved.set(this.dialogOpen()));
+  }
+
+  ngOnDestroy(): void {
+    this.unsaved.set(false);
+  }
+
+  /** Whether the create/edit dialog is open with modified fields (route guard + tab-close warning). */
+  hasUnsavedChanges(): boolean {
+    return this.dialogOpen() && this.form.dirty;
   }
 
   protected reload(): void {

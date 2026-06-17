@@ -28,10 +28,13 @@ import com.fksoft.erp.domain.identity.InvalidCredentialsException;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
 import com.fksoft.erp.domain.sales.exception.ProposalAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunityException;
+import com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException;
+import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
+import com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
@@ -74,6 +77,9 @@ public class HttpErrorMapping {
             entry(ProposalNotEditableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalItemNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(ProposalItemInvalidException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ProposalDiscountInvalidException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ProposalHasNoItemsException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ProposalTotalRequiredException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {

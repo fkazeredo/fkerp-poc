@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, signal, OnInit } from '@angular/core';
+import { Component, HostListener, effect, inject, signal, OnDestroy, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -18,6 +18,7 @@ import { LeadDetail, LeadService, LeadStatus, Responsible } from '../../../core/
 import { ReferenceItem, ReferenceService } from '../../../core/api/reference.service';
 import { CreateOpportunity, OpportunityService } from '../../../core/api/opportunity.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { HasUnsavedChanges, UnsavedChangesService } from '../../../core/forms/unsaved-changes.service';
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
   NEW: 'Novo',
@@ -47,7 +48,7 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'dan
   templateUrl: './lead-detail.html',
   styleUrl: './lead-detail.css',
 })
-export class LeadDetailPage implements OnInit {
+export class LeadDetailPage implements OnInit, OnDestroy, HasUnsavedChanges {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly leads = inject(LeadService);
@@ -55,6 +56,27 @@ export class LeadDetailPage implements OnInit {
   private readonly messages = inject(MessageService);
   private readonly auth = inject(AuthService);
   private readonly opportunities = inject(OpportunityService);
+  private readonly unsaved = inject(UnsavedChangesService);
+
+  constructor() {
+    // An open edit dialog means an in-progress edit; keep the global flag in sync for the tab-close warning.
+    effect(() => this.unsaved.set(this.hasUnsavedChanges()));
+  }
+
+  /** Whether an edit dialog is open (used by the route guard and the tab-close warning). */
+  hasUnsavedChanges(): boolean {
+    return (
+      this.qualifyOpen() ||
+      this.loseOpen() ||
+      this.reassignOpen() ||
+      this.interactionOpen() ||
+      this.opportunityOpen()
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.unsaved.set(false);
+  }
 
   protected readonly lead = signal<LeadDetail | null>(null);
   protected readonly loading = signal(true);

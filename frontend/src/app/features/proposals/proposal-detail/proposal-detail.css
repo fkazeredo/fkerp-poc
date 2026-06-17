@@ -82,6 +82,46 @@
   text-align: right;
 }
 
+.head-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.3rem 1.5rem;
+  margin: 0.9rem 0 0;
+  margin-left: auto;
+  max-width: 22rem;
+}
+
+.totals dt {
+  color: var(--p-text-muted-color, #6b7280);
+}
+
+.totals dd {
+  margin: 0;
+}
+
+.totals .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.totals .discount {
+  color: var(--p-red-500, #ef4444);
+}
+
+.totals .grand {
+  font-weight: 700;
+  font-size: 1.05rem;
+  border-top: 1px solid var(--app-border, #e5e7eb);
+  padding-top: 0.4rem;
+  margin-top: 0.2rem;
+}
+
 .row-actions {
   white-space: nowrap;
 }

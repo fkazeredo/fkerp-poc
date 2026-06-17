@@ -7,7 +7,7 @@ import {
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import Aura from '@primeuix/themes/aura';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 import { catchError, firstValueFrom, of } from 'rxjs';
 import { routes } from './app.routes';
@@ -29,6 +29,7 @@ export const appConfig: ApplicationConfig = {
       },
     }),
     MessageService,
+    ConfirmationService,
     // Restore the session on startup using the httpOnly refresh cookie (ignore if absent).
     provideAppInitializer(() => {
       const auth = inject(AuthService);

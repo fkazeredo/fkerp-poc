@@ -6,7 +6,9 @@ import {
   AfterViewInit,
   ElementRef,
   OnInit,
+  OnDestroy,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -17,6 +19,7 @@ import { SelectModule } from 'primeng/select';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { CreateLead, LeadService, Origin, Responsible } from '../../../core/api/lead.service';
+import { HasUnsavedChanges, UnsavedChangesService } from '../../../core/forms/unsaved-changes.service';
 
 /** Reactive form to register a new lead, including the optional first note and responsible person. */
 @Component({
@@ -32,11 +35,15 @@ import { CreateLead, LeadService, Origin, Responsible } from '../../../core/api/
   templateUrl: './lead-create.html',
   styleUrl: './lead-create.css',
 })
-export class LeadCreate implements OnInit, AfterViewInit {
+export class LeadCreate implements OnInit, AfterViewInit, OnDestroy, HasUnsavedChanges {
   private readonly fb = inject(FormBuilder);
   private readonly leads = inject(LeadService);
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
+  private readonly unsaved = inject(UnsavedChangesService);
+
+  // Set when the user is intentionally leaving (cancel or successful submit), so the guard does not prompt.
+  private leaving = false;
 
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
 
@@ -56,6 +63,13 @@ export class LeadCreate implements OnInit, AfterViewInit {
     initialNote: [''],
   });
 
+  constructor() {
+    // Keep the global unsaved flag (used by the tab-close warning) in sync with the form's dirty state.
+    this.form.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.unsaved.set(this.hasUnsavedChanges()));
+  }
+
   ngOnInit(): void {
     this.leads.origins().subscribe({
       next: (list) => this.origins.set(list),
@@ -66,6 +80,15 @@ export class LeadCreate implements OnInit, AfterViewInit {
     });
   }
 
+  ngOnDestroy(): void {
+    this.unsaved.set(false);
+  }
+
+  /** Whether the form has unsaved edits (used by the route guard and the tab-close warning). */
+  hasUnsavedChanges(): boolean {
+    return !this.leaving && this.form.dirty;
+  }
+
   ngAfterViewInit(): void {
     queueMicrotask(() => this.nameInput()?.nativeElement.focus());
   }
@@ -74,8 +97,10 @@ export class LeadCreate implements OnInit, AfterViewInit {
     return this.fieldErrors()[name] ?? null;
   }
 
-  /** Discards the entry and returns to the home screen. */
+  /** Discards the entry and returns to the home screen (explicit cancel — no unsaved-changes prompt). */
   protected cancel(): void {
+    this.leaving = true;
+    this.unsaved.set(false);
     this.router.navigateByUrl('/');
   }
 
@@ -101,6 +126,8 @@ export class LeadCreate implements OnInit, AfterViewInit {
 
     this.leads.create(payload).subscribe({
       next: (created) => {
+        this.leaving = true;
+        this.unsaved.set(false);
         this.messages.add({
           severity: 'success',
           summary: 'Lead criado',

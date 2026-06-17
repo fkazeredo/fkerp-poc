@@ -103,11 +103,32 @@ test('a ready opportunity originates a commercial proposal, reachable in the Ven
   await itemDialog.getByRole('button', { name: 'Adicionar' }).click();
   await expect(page.getByText('Item adicionado')).toBeVisible();
 
-  // The item shows in the table and the proposal total reflects 2 × R$ 1.500 = R$ 3.000.
+  // The item shows in the table; the subtotal and total reflect 2 × R$ 1.500 = R$ 3.000 (Slice 2).
   await expect(page.getByText('Pacote de viagem corporativo')).toBeVisible();
   await expect(page.getByText('Nenhum item ainda.')).toBeHidden();
-  await expect(page.getByRole('cell', { name: 'Total da proposta' })).toBeVisible();
+  await expect(page.getByText('Subtotal')).toBeVisible();
   await expect(page.getByText(/3[.,]000/).first()).toBeVisible();
+
+  // Edit the commercial details: a 10% proposal discount drops the total to R$ 2.700 (Slice 3).
+  await page.getByRole('button', { name: 'Editar dados comerciais' }).click();
+  const detailsDialog = page.getByRole('dialog');
+  await detailsDialog.getByText('Sem desconto').click();
+  await page.getByRole('option', { name: 'Percentual (%)' }).click();
+  const ddval = detailsDialog.locator('#ddval');
+  await ddval.waitFor({ state: 'visible' });
+  await ddval.click();
+  await ddval.fill('10');
+  await ddval.blur();
+  const saveDetails = detailsDialog.getByRole('button', { name: 'Salvar' });
+  await expect(saveDetails).toBeEnabled();
+  await saveDetails.click();
+  await expect(page.getByText('Dados atualizados')).toBeVisible();
+  await expect(page.getByText(/2[.,]700/).first()).toBeVisible();
+
+  // Submit the proposal for review (Slice 3): it leaves Draft and becomes "Pronta para revisão".
+  await page.getByRole('button', { name: 'Enviar para revisão' }).click();
+  await expect(page.getByText('Proposta enviada para revisão')).toBeVisible();
+  await expect(page.getByText('Pronta para revisão').first()).toBeVisible();
 
   // The Vendas module exposes "Propostas" in the menu, and the proposal shows on its list.
   await expect(page.locator('.sidebar').getByText('Vendas')).toBeVisible();

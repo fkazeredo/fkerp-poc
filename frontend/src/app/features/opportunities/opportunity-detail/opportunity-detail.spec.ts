@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 import { of, throwError } from 'rxjs';
 import { OpportunityDetailPage } from './opportunity-detail';
@@ -71,6 +71,7 @@ describe('OpportunityDetailPage', () => {
       imports: [OpportunityDetailPage],
       providers: [
         providePrimeNG(),
+        ConfirmationService,
         { provide: OpportunityService, useValue: opportunities },
         { provide: ProposalService, useValue: proposalService },
         { provide: Router, useValue: router },

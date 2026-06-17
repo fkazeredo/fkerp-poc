@@ -1,12 +1,14 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DialogModule } from 'primeng/dialog';
 import { ListboxModule } from 'primeng/listbox';
 import { ToastModule } from 'primeng/toast';
 import { AuthService } from '../auth/auth.service';
 import { ThemeService } from '../theme/theme.service';
 import { VersionService } from '../api/version.service';
+import { UnsavedChangesService } from '../forms/unsaved-changes.service';
 
 interface Command {
   label: string;
@@ -21,9 +23,10 @@ interface NavLink {
   exact: boolean;
 }
 
-/** A navigation module: a titled group of links (the title is omitted for the top-level items). */
+/** A navigation module: a titled group of links (the title/icon are omitted for the top-level items). */
 interface NavGroup {
   title?: string;
+  icon?: string;
   items: NavLink[];
 }
 
@@ -41,6 +44,7 @@ interface NavGroup {
     ListboxModule,
     ButtonModule,
     ToastModule,
+    ConfirmDialogModule,
   ],
   templateUrl: './shell.html',
   styleUrl: './shell.css',
@@ -50,6 +54,7 @@ export class Shell {
   protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
   protected readonly version = inject(VersionService);
+  protected readonly unsaved = inject(UnsavedChangesService);
 
   protected readonly paletteOpen = signal(false);
   protected readonly helpOpen = signal(false);
@@ -57,9 +62,10 @@ export class Shell {
   private goPending = false;
 
   /**
-   * The navigation, split into clear **modules** (bounded contexts): Início at the top; the **Comercial /
-   * CRM** module (Leads + Opportunities) when the user can read either; the **Vendas** module (Proposals)
-   * when the user can read Proposals. Each group only appears when it has at least one visible item.
+   * The navigation, split into clear **modules** (bounded contexts), each rendered as a distinct block with
+   * its own icon and accent: Início at the top; the **Comercial / CRM** module (Leads + Opportunities) when
+   * the user can read either; the **Vendas** module (Proposals) when the user can read Proposals; and the
+   * **Cadastros** module. Each group only appears when it has at least one visible item.
    */
   protected get navGroups(): NavGroup[] {
     const groups: NavGroup[] = [
@@ -88,7 +94,7 @@ export class Shell {
       });
     }
     if (crm.length > 0) {
-      groups.push({ title: 'Comercial / CRM', items: crm });
+      groups.push({ title: 'Comercial / CRM', icon: 'pi pi-briefcase', items: crm });
     }
 
     const sales: NavLink[] = [];
@@ -96,17 +102,24 @@ export class Shell {
       sales.push({ label: 'Propostas', icon: 'pi pi-file-edit', link: '/propostas', exact: false });
     }
     if (sales.length > 0) {
-      groups.push({ title: 'Vendas', items: sales });
+      groups.push({ title: 'Vendas', icon: 'pi pi-shopping-cart', items: sales });
     }
+
+    groups.push({ title: 'Cadastros', icon: 'pi pi-database', items: this.cadastros });
 
     return groups;
   }
 
-  protected readonly cadastros: { label: string; link: string }[] = [
-    { label: 'Origens', link: '/cadastros/origens' },
-    { label: 'Motivos de perda', link: '/cadastros/motivos-perda' },
-    { label: 'Tipos de interação', link: '/cadastros/tipos-interacao' },
-    { label: 'Resultados de interação', link: '/cadastros/resultados-interacao' },
+  private readonly cadastros: NavLink[] = [
+    { label: 'Origens', icon: 'pi pi-angle-right', link: '/cadastros/origens', exact: false },
+    { label: 'Motivos de perda', icon: 'pi pi-angle-right', link: '/cadastros/motivos-perda', exact: false },
+    { label: 'Tipos de interação', icon: 'pi pi-angle-right', link: '/cadastros/tipos-interacao', exact: false },
+    {
+      label: 'Resultados de interação',
+      icon: 'pi pi-angle-right',
+      link: '/cadastros/resultados-interacao',
+      exact: false,
+    },
   ];
 
   protected readonly commands: Command[] = [
@@ -182,6 +195,15 @@ export class Shell {
     this.router.navigateByUrl(url);
   }
 
+  /** Warns before closing the tab / reloading while there is an in-progress edit. */
+  @HostListener('window:beforeunload', ['$event'])
+  protected onBeforeUnload(event: BeforeUnloadEvent): void {
+    if (this.unsaved.dirty()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  }
+
   @HostListener('document:keydown', ['$event'])
   protected onKeydown(event: KeyboardEvent): void {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
@@ -202,7 +224,9 @@ export class Shell {
       if (event.key === 'i') this.go('/');
       else if (event.key === 'l') this.go('/leads');
       else if (event.key === 'n') this.go('/leads/new');
-      else if (event.key === 'o') this.go('/cadastros/origens');
+      else if (event.key === 'o') this.go('/oportunidades');
+      else if (event.key === 'p') this.go('/propostas');
+      else if (event.key === 'c') this.go('/cadastros/origens');
       return;
     }
     if (event.key === 'g') {

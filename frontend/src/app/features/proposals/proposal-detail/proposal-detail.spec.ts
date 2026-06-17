@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 import { of, throwError } from 'rxjs';
 import { ProposalDetailPage } from './proposal-detail';
@@ -20,6 +20,8 @@ describe('ProposalDetailPage', () => {
     addItem: vi.fn(),
     updateItem: vi.fn(),
     removeItem: vi.fn(),
+    updateDetails: vi.fn(),
+    submitForReview: vi.fn(),
   };
   const router = { navigateByUrl: vi.fn() };
   const auth = { canOperateProposal: vi.fn() };
@@ -36,7 +38,11 @@ describe('ProposalDetailPage', () => {
     notes: 'detalhes',
     validUntil: '2026-12-31',
     commercialTerms: 'termos',
+    paymentNotes: null,
     items: [],
+    subtotal: 0,
+    discountType: null,
+    discountValue: null,
     total: 0,
     createdAt: '2026-06-17T10:00:00Z',
     updatedAt: '2026-06-17T10:00:00Z',
@@ -54,7 +60,7 @@ describe('ProposalDetailPage', () => {
     lineTotal: 2000,
   };
 
-  const withItem: ProposalDetail = { ...sample, items: [item], total: 2000 };
+  const withItem: ProposalDetail = { ...sample, items: [item], subtotal: 2000, total: 2000 };
 
   function build() {
     TestBed.configureTestingModule({
@@ -62,6 +68,7 @@ describe('ProposalDetailPage', () => {
       providers: [
         providePrimeNG(),
         MessageService,
+        ConfirmationService,
         { provide: ProposalService, useValue: proposals },
         { provide: Router, useValue: router },
         { provide: AuthService, useValue: auth },
@@ -73,6 +80,8 @@ describe('ProposalDetailPage', () => {
 
   beforeEach(() => {
     proposals.detail.mockReset();
+    proposals.updateDetails.mockReset();
+    proposals.submitForReview.mockReset();
     proposals.addItem.mockReset();
     proposals.updateItem.mockReset();
     proposals.removeItem.mockReset();
@@ -216,5 +225,84 @@ describe('ProposalDetailPage', () => {
 
     expect(proposals.removeItem).toHaveBeenCalledWith('p1', 'i1');
     expect(comp['proposal']()).toEqual(sample);
+  });
+
+  it('edits the commercial details, sending the validity and a proposal discount', () => {
+    const discounted: ProposalDetail = {
+      ...withItem,
+      discountType: 'AMOUNT',
+      discountValue: 200,
+      total: 1800,
+      paymentNotes: '50% na reserva',
+    };
+    proposals.detail.mockReturnValue(of(withItem));
+    proposals.updateDetails.mockReturnValue(of(discounted));
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['openEditDetails']();
+    expect(comp['detailsOpen']()).toBe(true);
+    comp['detailsValidUntil'] = new Date('2026-12-31T00:00:00');
+    comp['detailsPaymentNotes'] = '50% na reserva';
+    comp['detailsDiscountMode'] = 'AMOUNT';
+    comp['detailsDiscountValue'] = 200;
+    comp['confirmEditDetails']();
+
+    expect(proposals.updateDetails).toHaveBeenCalledWith(
+      'p1',
+      expect.objectContaining({
+        validUntil: '2026-12-31',
+        paymentNotes: '50% na reserva',
+        discountType: 'AMOUNT',
+        discountValue: 200,
+      }),
+    );
+    expect(comp['proposal']()!.total).toBe(1800);
+    expect(comp['detailsOpen']()).toBe(false);
+  });
+
+  it('only allows submitting for review with items, a positive total, the scope and Draft status', () => {
+    auth.canOperateProposal.mockReturnValue(true);
+    proposals.detail.mockReturnValue(of(sample)); // no items, total 0
+    const comp = build();
+    comp.ngOnInit();
+    expect(comp['canSubmit']()).toBe(false); // no items
+
+    comp['proposal'].set(withItem); // items + total 2000
+    expect(comp['canSubmit']()).toBe(true);
+
+    comp['proposal'].set({ ...withItem, status: 'READY_FOR_REVIEW' });
+    expect(comp['canSubmit']()).toBe(false); // not a Draft anymore
+
+    auth.canOperateProposal.mockReturnValue(false);
+    comp['proposal'].set(withItem);
+    expect(comp['canSubmit']()).toBe(false); // missing scope
+  });
+
+  it('submits for review and reflects the returned status', () => {
+    const reviewing: ProposalDetail = { ...withItem, status: 'READY_FOR_REVIEW' };
+    proposals.detail.mockReturnValue(of(withItem));
+    proposals.submitForReview.mockReturnValue(of(reviewing));
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['submitForReview']();
+
+    expect(proposals.submitForReview).toHaveBeenCalledWith('p1');
+    expect(comp['proposal']()!.status).toBe('READY_FOR_REVIEW');
+  });
+
+  it('reports unsaved changes while an edit dialog is open', () => {
+    proposals.detail.mockReturnValue(of(withItem));
+    const comp = build();
+    comp.ngOnInit();
+    expect(comp.hasUnsavedChanges()).toBe(false);
+
+    comp['openEditDetails']();
+    expect(comp.hasUnsavedChanges()).toBe(true);
+
+    comp['detailsOpen'].set(false);
+    comp['openAddItem']();
+    expect(comp.hasUnsavedChanges()).toBe(true);
   });
 });
