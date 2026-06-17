@@ -21,9 +21,10 @@ test('the indicators page shows the top-of-funnel after a lead is created', asyn
   await page.getByRole('button', { name: 'Salvar lead' }).click();
   await expect(page.getByText('Lead criado')).toBeVisible();
 
-  // Open Indicadores from the sidebar.
-  await page.locator('.sidebar').getByRole('link', { name: 'Indicadores' }).click();
-  await expect(page.getByRole('heading', { name: 'Indicadores' })).toBeVisible();
+  // Open Indicadores (Leads) from the sidebar — match by href so it is unambiguous next to the
+  // "Indicadores de oportunidades" item (whose label also contains "Indicadores").
+  await page.locator('.sidebar a[href="/indicadores"]').click();
+  await expect(page.getByRole('heading', { name: 'Indicadores', exact: true })).toBeVisible();
 
   // The KPI cards render with numbers; Total is at least 1 (the lead we just created).
   const total = page.locator('.kpi', { hasText: 'Total' });
