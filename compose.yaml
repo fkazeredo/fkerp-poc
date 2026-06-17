@@ -29,7 +29,7 @@ services:
       APP_JWT_SECRET: ${APP_JWT_SECRET}
       APP_CORS_ORIGIN: ${APP_CORS_ORIGIN}
       APP_COOKIE_SECURE: ${APP_COOKIE_SECURE}
-      APP_VERSION: ${APP_VERSION:-0.23.1}
+      APP_VERSION: ${APP_VERSION:-0.23.2}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
