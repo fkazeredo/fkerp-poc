@@ -23,7 +23,10 @@ test('a new unassigned lead shows up in the pending worklist with its reasons', 
   await page.getByRole('button', { name: 'Salvar lead' }).click();
   await expect(page.getByText('Lead criado')).toBeVisible();
 
-  // Open Pendências from the sidebar (newest first, so the lead is on page 1).
+  // Open Pendências from the sidebar (newest first, so the lead is on page 1). The accordion shows only
+  // the active module's sub-menu, so open the Comercial / CRM module first.
+  await page.locator('.sidebar').getByRole('link', { name: 'Comercial / CRM' }).click();
+  await expect(page).toHaveURL(/\/crm$/);
   await page.locator('.sidebar').getByRole('link', { name: 'Pendências' }).click();
   await expect(page.getByRole('heading', { name: 'Pendências' })).toBeVisible();
 

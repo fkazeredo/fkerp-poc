@@ -22,12 +22,11 @@ test('the indicators page shows the top-of-funnel after a lead is created', asyn
   await expect(page.getByText('Lead criado')).toBeVisible();
 
   // Open Indicadores (Leads) from the sidebar. Only the active module's sub-menu is shown (accordion),
-  // and after creating a lead we are on the system home — so expand the Comercial / CRM section first,
-  // then match the link by href (unambiguous next to "Indicadores de oportunidades").
-  await page
-    .locator('.sidebar')
-    .getByRole('button', { name: /Comercial \/ CRM/ })
-    .click();
+  // and after creating a lead we are on the system home — so open the Comercial / CRM module first
+  // (deterministically expands it), then match the link by href (unambiguous next to
+  // "Indicadores de oportunidades").
+  await page.locator('.sidebar').getByRole('link', { name: 'Comercial / CRM' }).click();
+  await expect(page).toHaveURL(/\/crm$/);
   await page.locator('.sidebar a[href="/indicadores"]').click();
   await expect(page.getByRole('heading', { name: 'Indicadores', exact: true })).toBeVisible();
 
