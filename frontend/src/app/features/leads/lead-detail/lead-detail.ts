@@ -99,6 +99,22 @@ export class LeadDetailPage implements OnInit, OnDestroy, HasUnsavedChanges {
     open.set(false);
   }
 
+  /** Closes whichever edit dialog is open, via the guarded path (used by the Esc shortcut). */
+  private closeOpenDialog(): void {
+    for (const open of [
+      this.qualifyOpen,
+      this.loseOpen,
+      this.reassignOpen,
+      this.interactionOpen,
+      this.opportunityOpen,
+    ]) {
+      if (open()) {
+        void this.requestClose(open);
+        return;
+      }
+    }
+  }
+
   ngOnDestroy(): void {
     this.unsaved.set(false);
   }
@@ -221,6 +237,12 @@ export class LeadDetailPage implements OnInit, OnDestroy, HasUnsavedChanges {
   /** Contextual shortcuts on the detail screen: i interaction, q qualify, p lose, r reassign/claim, Esc back. */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
+    // Esc always closes the open dialog through the unsaved-changes guard — even from a focused field
+    // (the dialogs disable PrimeNG's own Esc close so it can't bypass the guard).
+    if (event.key === 'Escape' && this.anyDialogOpen()) {
+      this.closeOpenDialog();
+      return;
+    }
     const target = event.target as HTMLElement | null;
     const typing =
       !!target &&
@@ -229,7 +251,7 @@ export class LeadDetailPage implements OnInit, OnDestroy, HasUnsavedChanges {
       return;
     }
     if (this.anyDialogOpen()) {
-      return; // let PrimeNG handle Esc/typing while a dialog is open
+      return; // other keys do nothing while a dialog is open
     }
     switch (event.key) {
       case 'i':

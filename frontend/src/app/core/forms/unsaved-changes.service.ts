@@ -27,6 +27,9 @@ export class UnsavedChangesService {
    */
   readonly dirty = signal(false);
 
+  /** True while a confirmation dialog is already showing — prevents stacking a second one. */
+  private pending = false;
+
   /** Updates the app-wide unsaved-edits flag. */
   set(value: boolean): void {
     this.dirty.set(value);
@@ -34,9 +37,15 @@ export class UnsavedChangesService {
 
   /**
    * Asks the user to confirm discarding unsaved changes. Resolves to {@code true} when the user chooses to
-   * discard and leave, {@code false} when they choose to keep editing.
+   * discard and leave, {@code false} when they choose to keep editing. Re-entrant calls while a
+   * confirmation is already on screen (e.g. Esc pressed twice) resolve to {@code false} without stacking a
+   * second dialog.
    */
   confirmDiscard(): Promise<boolean> {
+    if (this.pending) {
+      return Promise.resolve(false);
+    }
+    this.pending = true;
     return new Promise((resolve) => {
       this.confirmation.confirm({
         header: 'Descartar alterações?',
@@ -47,8 +56,14 @@ export class UnsavedChangesService {
         acceptButtonStyleClass: 'p-button-danger',
         rejectButtonStyleClass: 'p-button-text',
         defaultFocus: 'reject',
-        accept: () => resolve(true),
-        reject: () => resolve(false),
+        accept: () => {
+          this.pending = false;
+          resolve(true);
+        },
+        reject: () => {
+          this.pending = false;
+          resolve(false);
+        },
       });
     });
   }

@@ -72,3 +72,26 @@ test('canceling a changed dialog warns; Descartar closes it', async ({ page }) =
   await page.getByRole('button', { name: 'Descartar' }).click();
   await expect(dialog).toBeHidden();
 });
+
+test('Escape exits the cadastro dialog — immediately when clean, warning when changed', async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto('/cadastros/origens');
+
+  // Esc on a clean dialog closes it right away (the "exit cadastros" shortcut).
+  await page.locator('main').getByRole('button', { name: 'Novo' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
+  // Esc on a CHANGED dialog warns before discarding (the guard is not bypassed by the shortcut).
+  await page.locator('main').getByRole('button', { name: 'Novo' }).click();
+  await expect(dialog).toBeVisible();
+  await dialog.locator('#code').fill('ESC_E2E');
+  await page.keyboard.press('Escape');
+  await expect(page.getByText(/alterações não salvas/)).toBeVisible();
+  await page.getByRole('button', { name: 'Descartar' }).click();
+  await expect(dialog).toBeHidden();
+});

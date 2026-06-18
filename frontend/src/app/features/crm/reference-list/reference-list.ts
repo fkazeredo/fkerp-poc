@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal, computed, OnDestroy } from '@angular/core';
+import { Component, HostListener, effect, inject, signal, computed, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -114,6 +114,17 @@ export class ReferenceList implements OnDestroy, HasUnsavedChanges {
       return;
     }
     this.dialogOpen.set(false);
+  }
+
+  /**
+   * Esc closes the create/edit dialog through the same guarded path as the Cancel button (warns first if
+   * the form was changed). The dialog disables PrimeNG's own Esc close so it cannot bypass that guard.
+   */
+  @HostListener('document:keydown.escape')
+  protected onEscape(): void {
+    if (this.dialogOpen()) {
+      void this.closeDialog();
+    }
   }
 
   protected openEdit(item: ReferenceItem): void {
