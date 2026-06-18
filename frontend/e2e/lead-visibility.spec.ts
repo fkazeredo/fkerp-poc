@@ -5,7 +5,7 @@ async function login(page: Page, username: string, password: string): Promise<vo
   await page.locator('#username').fill(username);
   await page.locator('#password').fill(password);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: 'Comercial / CRM' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 }
 
 async function logout(page: Page): Promise<void> {
@@ -43,12 +43,12 @@ test('a director consults a lead read-only — no actions, no Novo lead', async 
 test('a finance user has no access to the Lead module', async ({ page }) => {
   await login(page, 'financeiro', 'financeiro123');
 
-  // No Leads navigation, and the home shows a no-access notice.
+  // No Comercial / CRM module: no module card on the home and no Leads link in the sidebar.
+  await expect(page.getByRole('link', { name: 'Comercial / CRM' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Leads' })).toHaveCount(0);
-  await expect(page.getByText('Você não tem acesso ao módulo Comercial / CRM.')).toBeVisible();
 
-  // Navigating to /leads is blocked by the guard (redirected back home).
+  // Navigating to /leads is blocked by the guard (redirected back to the system home).
   await page.goto('/leads');
   await expect(page).not.toHaveURL(/\/leads$/);
-  await expect(page.getByText('Você não tem acesso ao módulo Comercial / CRM.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 });

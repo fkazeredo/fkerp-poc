@@ -1,55 +1,28 @@
 <header class="page-head">
   <div>
-    <h1>Comercial / CRM</h1>
-    <p class="sub muted">Cadastre e organize os leads da equipe comercial.</p>
+    <h1>Bem-vindo ao FKERP</h1>
+    <p class="sub muted">Escolha um módulo para começar.</p>
   </div>
 </header>
 
-@if (!auth.canSeeLeads()) {
+@if (modules.length === 0) {
   <div class="notice surface">
     <i class="pi pi-lock"></i>
-    <span>Você não tem acesso ao módulo Comercial / CRM. Fale com o administrador.</span>
+    <span>Você ainda não tem acesso a nenhum módulo. Fale com o administrador.</span>
   </div>
 }
 
 <div class="home-grid">
-  @if (auth.canSeeLeads()) {
-    <a class="tile surface" routerLink="/leads">
-      <span class="tile-icon leads"><i class="pi pi-list"></i></span>
-      <span class="tile-title">Leads</span>
-      <span class="tile-desc muted">Veja, busque e filtre os leads que você pode trabalhar.</span>
-    </a>
-
-    <a class="tile surface" routerLink="/pendencias">
-      <span class="tile-icon pending"><i class="pi pi-flag"></i></span>
-      <span class="tile-title">Pendências</span>
-      <span class="tile-desc muted">Leads que precisam de ação para não perder oportunidades.</span>
-    </a>
-
-    <a class="tile surface" routerLink="/indicadores">
-      <span class="tile-icon indicators"><i class="pi pi-chart-bar"></i></span>
-      <span class="tile-title">Indicadores</span>
-      <span class="tile-desc muted">O topo do funil: total, por status, origem e responsável.</span>
+  @for (m of modules; track m.id) {
+    <a class="tile surface" [routerLink]="m.home">
+      <span class="tile-icon" [class]="m.accent"><i [class]="m.icon"></i></span>
+      <span class="tile-title">{{ m.title }}</span>
+      <span class="tile-desc muted">{{ m.desc }}</span>
     </a>
   }
-
-  @if (auth.canCreateLead()) {
-    <a class="tile surface" routerLink="/leads/new">
-      <span class="tile-icon new"><i class="pi pi-user-plus"></i></span>
-      <span class="tile-title">Novo lead</span>
-      <span class="tile-desc muted">Registre um novo interessado e a primeira anotação.</span>
-    </a>
-  }
-
-  <a class="tile surface" routerLink="/cadastros/origens">
-    <span class="tile-icon ref"><i class="pi pi-database"></i></span>
-    <span class="tile-title">Cadastros</span>
-    <span class="tile-desc muted">Origens, motivos de perda e tipos/resultados de interação.</span>
-  </a>
 </div>
 
 <p class="muted home-hint">
-  Dica: pressione <span class="kbd">Ctrl</span> <span class="kbd">K</span> para abrir os comandos,
-  <span class="kbd">n</span> para um novo lead ou <span class="kbd">?</span> para ver todos os
-  atalhos.
+  Dica: pressione <span class="kbd">Ctrl</span> <span class="kbd">K</span> para abrir os comandos
+  ou <span class="kbd">?</span> para ver todos os atalhos.
 </p>

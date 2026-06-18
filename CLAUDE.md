@@ -56,8 +56,9 @@ MUST be recorded in this file and MUST NOT become a new default unless the owner
 ## 3. Definition of Done (every meaningful change)
 
 - Code matches the agreed requirement; this file updated if a rule changed.
-- Tests created/updated. A bug fix MUST add a regression test that fails before and passes
-  after; if impossible, explain why.
+- Tests created/updated **test-first (TDD, §13)**, covering the happy path AND all plausible sad paths in
+  every relevant category; no fake/assertion-free tests. A bug fix MUST add a regression test that fails
+  before and passes after; if impossible, explain why.
 - Flyway migration when the schema changes. OpenAPI/docs updated when contracts change.
 - i18n messages added for any user-facing text; global error handling respected.
 - **Frontend feature parity (§12):** any new user-facing feature ships its **keyboard access**
@@ -533,9 +534,15 @@ feature-specific code MUST stay inside the feature.
   services translate technical events into UI behavior. Components never handle raw protocol
   messages.
 - **UI & styling:** the component library owns component internals; Tailwind owns layout and
-  custom widgets. All user-facing text goes through the i18n layer. The sidebar groups navigation
-  into **visually distinct module blocks** (Comercial / CRM, Vendas, Cadastros) — each with its own
-  icon/accent — so the bounded contexts read as separate modules.
+  custom widgets. All user-facing text goes through the i18n layer.
+- **Module-oriented navigation (normative):** a **single navigation config** (`core/navigation`,
+  `NavigationService`) is the source of truth for the sidebar, the system home and the per-module homes — the
+  three never drift. The **system home** (`/`) shows a **card per accessible module** (Comercial / CRM, Vendas,
+  Cadastros) leading to each **module home** (`/crm`, `/vendas`, `/cadastros`), which lists that module's
+  destinations as tiles. The **sidebar** renders each module as a **collapsible accordion section** (header
+  links to the module home; a chevron toggles, collapse state persisted in `localStorage`) so it scales as the
+  ERP grows. Visibility mirrors the backend authority; the backend stays the only guard. A new module/feature
+  is added in the nav config, which updates the sidebar + homes + command palette at once.
 - **Keyboard access (normative, every feature):** every feature MUST be reachable by keyboard. The
   **command palette** (`Ctrl/Cmd+K`, in the shell) is the universal index and MUST list every route +
   primary action; primary destinations get a `g`-leader shortcut (`g i/l/o/p/c`) and detail pages get
@@ -554,6 +561,14 @@ feature-specific code MUST stay inside the feature.
 Tests protect behavior, prevent regressions and make refactoring safe. Coverage is a signal, not
 the goal - high coverage with weak assertions is not quality.
 
+- **TDD by default (normative, owner mandate).** Write the **failing test first**, then the implementation.
+  Every behavior MUST cover the **happy path AND all plausible sad paths** (auth `401`, missing scope `403`,
+  validation `400`, not-found `404`, conflict `409`, business rule `422`, boundary/edge values, visibility and
+  idempotency edges) across **all categories** (unit, integration, architecture, frontend component/service/
+  guard/interceptor, E2E). **No fake tests** - no assertion-free tests, no `status`-only checks, no filler.
+  This is a Definition-of-Done item (§3). **Coverage tooling** is wired and reporting-only (never a gate that is
+  weakened): backend **JaCoCo** (`./mvnw verify` → `target/site/jacoco`), frontend **vitest v8**
+  (`ng test --coverage` → `coverage/`); the latest audit lives in `artifacts/test-reports/`.
 - **Unit** tests cover domain/application logic without infrastructure.
 - **Integration** tests cover persistence, transactions, APIs, messaging - use Testcontainers
   when infrastructure behavior matters. Share ONE container across the suite: a
@@ -598,12 +613,12 @@ the goal - high coverage with weak assertions is not quality.
 - **Versioning & releases (SemVer):** the application carries a **Semantic Version**
   `MAJOR.MINOR.PATCH` - **MAJOR** = backward-incompatible change; **MINOR** = new backward-compatible
   feature; **PATCH** = backward-compatible bug fix. **The backend is the single source of truth for the
-  version (owner decision):** it lives in **`app.version`** in `backend/.../application.yml`
-  (`${APP_VERSION:<x.y.z>}` — the default IS the real version), is served by the public `GET /api/version`
+  version (owner decision):** it lives as a **hardcoded literal** `app.version` in
+  `backend/.../application.yml` (e.g. `version: 0.26.0`), is served by the public `GET /api/version`
   and **displayed in the UI** (login screen + sidebar footer); the frontend reads it from that endpoint.
-  `compose.yaml` **does NOT inject `APP_VERSION`** into the backend (so nothing overrides the
-  `application.yml` value), and the `.env` `APP_VERSION` is **unused/legacy** for versioning. **Bump it on
-  EVERY delivered change** (part of the Definition of Done) by editing the `application.yml` default — each
+  `compose.yaml` **does NOT inject `APP_VERSION`**, and `.env`/`.env.example` no longer carry it (owner
+  removed it — legacy/unused for versioning). **Bump it on
+  EVERY delivered change** (part of the Definition of Done) by editing the `application.yml` literal — each
   slice/change merged to `develop`/`main` increments the version per SemVer (**MINOR** for a new feature,
   **PATCH** for a fix/small change **or a purely internal refactor**); after the end-of-slice rebuild the
   footer/`/api/version` reflects it **automatically**, no `.env` edit needed. The version bump is

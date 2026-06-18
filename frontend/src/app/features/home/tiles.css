@@ -42,6 +42,10 @@
   background: color-mix(in srgb, #10b981 16%, transparent);
   color: #10b981;
 }
+.tile-icon.sales {
+  background: color-mix(in srgb, #0ea5e9 16%, transparent);
+  color: #0284c7;
+}
 .tile-icon.ref {
   background: color-mix(in srgb, #f59e0b 16%, transparent);
   color: #d97706;
