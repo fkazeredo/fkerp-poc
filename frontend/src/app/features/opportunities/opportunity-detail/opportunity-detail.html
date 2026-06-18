@@ -172,6 +172,9 @@
     header="Marcar como perdida"
     [(visible)]="loseOpen"
     [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
     [style]="{ width: '28rem' }"
   >
     <div class="field">
@@ -201,7 +204,7 @@
         [loading]="acting()"
         (onClick)="confirmLose()"
       />
-      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="loseOpen.set(false)" />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestClose(loseOpen)" />
     </div>
   </p-dialog>
 
@@ -228,7 +231,7 @@
         [loading]="acting()"
         (onClick)="confirmStage()"
       />
-      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="stageOpen.set(false)" />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestClose(stageOpen)" />
     </div>
   </p-dialog>
 
@@ -236,6 +239,9 @@
     header="Registrar atividade"
     [(visible)]="activityOpen"
     [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
     [style]="{ width: '32rem' }"
   >
     <div class="field">
@@ -303,7 +309,7 @@
         label="Cancelar"
         severity="secondary"
         [text]="true"
-        (onClick)="activityOpen.set(false)"
+        (onClick)="requestClose(activityOpen)"
       />
     </div>
   </p-dialog>
@@ -312,6 +318,9 @@
     header="Editar dados comerciais"
     [(visible)]="editOpen"
     [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
     [style]="{ width: '32rem' }"
   >
     <div class="field">
@@ -347,7 +356,7 @@
     </div>
     <div class="actions">
       <p-button label="Salvar" icon="pi pi-check" [loading]="acting()" (onClick)="confirmEdit()" />
-      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="editOpen.set(false)" />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestClose(editOpen)" />
     </div>
   </p-dialog>
 
@@ -402,7 +411,7 @@
         [loading]="acting()"
         (onClick)="confirmProposal()"
       />
-      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="proposalOpen.set(false)" />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestClose(proposalOpen)" />
     </div>
   </p-dialog>
 }

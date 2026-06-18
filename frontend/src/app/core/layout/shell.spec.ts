@@ -8,7 +8,7 @@ import { Shell } from './shell';
 import { AuthService } from '../auth/auth.service';
 
 describe('Shell keyboard shortcuts', () => {
-  const router = { navigateByUrl: vi.fn() };
+  const router = { navigateByUrl: vi.fn(), events: of(), url: '/' };
   const auth = {
     logout: vi.fn(() => of(undefined)),
     canSeeLeads: vi.fn(() => false),
@@ -85,20 +85,33 @@ describe('Shell keyboard shortcuts', () => {
     expect(shell['helpOpen']()).toBe(true);
   });
 
-  it('collapses/expands a sidebar module section and persists the choice', () => {
+  it('opens one module sub-menu at a time (accordion); the others stay collapsed', () => {
     const shell = build();
-    expect(shell['isCollapsed']('crm')).toBe(false);
+    // No module is active on the system home, so the menu starts compact (nothing open).
+    expect(shell['isOpen']('crm')).toBe(false);
+    expect(shell['isOpen']('vendas')).toBe(false);
 
     shell['toggleSection']('crm');
-    expect(shell['isCollapsed']('crm')).toBe(true);
-    expect(JSON.parse(localStorage.getItem('fkerp.sidebar.collapsed')!)).toContain('crm');
+    expect(shell['isOpen']('crm')).toBe(true);
 
-    // A freshly-built shell restores the persisted collapsed set.
-    expect(build()['isCollapsed']('crm')).toBe(true);
+    // Opening another closes the first (only one sub-menu open at a time = short menu).
+    shell['toggleSection']('vendas');
+    expect(shell['isOpen']('vendas')).toBe(true);
+    expect(shell['isOpen']('crm')).toBe(false);
 
-    shell['toggleSection']('crm');
-    expect(shell['isCollapsed']('crm')).toBe(false);
-    expect(JSON.parse(localStorage.getItem('fkerp.sidebar.collapsed')!)).not.toContain('crm');
+    // Toggling the open one closes it.
+    shell['toggleSection']('vendas');
+    expect(shell['isOpen']('vendas')).toBe(false);
+  });
+
+  it('auto-opens the module matching the current route so the menu shows where you are', () => {
+    auth.canSeeProposals.mockReturnValue(true);
+    router.url = '/propostas/p1' as never;
+    const shell = build();
+    expect(shell['isOpen']('vendas')).toBe(true);
+    expect(shell['isOpen']('crm')).toBe(false);
+    router.url = '/' as never;
+    auth.canSeeProposals.mockReturnValue(false);
   });
 
   it('ignores single-letter shortcuts while typing in a field', () => {
@@ -184,9 +197,10 @@ describe('Shell keyboard shortcuts', () => {
       expect(el.querySelector('.sidebar')).not.toBeNull();
       expect(el.textContent).toContain('FKERP');
       expect(el.textContent).toContain('Início');
+      // Module HEADERS are always shown (short menu); their sub-menus are collapsed on the system home.
       expect(el.textContent).toContain('Vendas'); // proposals visible
-      expect(el.textContent).toContain('Propostas');
       expect(el.textContent).toContain('Cadastros'); // always present
+      expect(el.querySelectorAll('.nav-section-items.collapsed').length).toBeGreaterThan(0);
       // CRM module hidden (no lead/opportunity scopes in this build).
       expect(el.textContent).not.toContain('Leads');
       auth.canSeeProposals.mockReturnValue(false);

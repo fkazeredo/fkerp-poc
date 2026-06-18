@@ -108,8 +108,11 @@ export class ReferenceList implements OnDestroy, HasUnsavedChanges {
     this.dialogOpen.set(true);
   }
 
-  /** Closes the create/edit dialog without saving. */
-  protected closeDialog(): void {
+  /** Closes the create/edit dialog: if the form was changed, confirms before discarding. */
+  protected async closeDialog(): Promise<void> {
+    if (this.form.dirty && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
     this.dialogOpen.set(false);
   }
 

@@ -38,8 +38,8 @@ test('rejects login with wrong credentials', async ({ page }) => {
   await expect(page.getByText('Usuário ou senha inválidos.')).toBeVisible();
 });
 
-// Regression: Cancel on the lead form must take the user back to the home screen.
-test('cancel on the lead form returns to home', async ({ page }) => {
+// Regression: Cancel on a CHANGED lead form warns before discarding, then (Descartar) returns home.
+test('cancel on a changed lead form warns, then Descartar returns home', async ({ page }) => {
   await page.goto('/login');
   await page.locator('#username').fill('comercial');
   await page.locator('#password').fill('comercial123');
@@ -49,6 +49,10 @@ test('cancel on the lead form returns to home', async ({ page }) => {
   await page.goto('/leads/new');
   await page.locator('#name').fill('Para descartar');
   await page.getByRole('button', { name: 'Cancelar' }).click();
+
+  // The form is dirty, so canceling must warn before losing the data (requested behaviour).
+  await expect(page.getByText(/alterações não salvas/)).toBeVisible();
+  await page.getByRole('button', { name: 'Descartar' }).click();
 
   await expect(page).not.toHaveURL(/leads\/new/);
   await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();

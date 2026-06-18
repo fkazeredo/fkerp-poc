@@ -1,5 +1,7 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DialogModule } from 'primeng/dialog';
@@ -38,8 +40,6 @@ interface Command {
   styleUrl: './shell.css',
 })
 export class Shell {
-  private static readonly COLLAPSE_KEY = 'fkerp.sidebar.collapsed';
-
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
@@ -50,42 +50,46 @@ export class Shell {
   protected readonly paletteOpen = signal(false);
   protected readonly helpOpen = signal(false);
   protected readonly sidebarOpen = signal(false);
-  // Ids of the sidebar modules whose section is collapsed (persisted across sessions).
-  protected readonly collapsed = signal<Set<string>>(this.loadCollapsed());
+  // The module whose section is open in the sidebar. Defaults to the one matching the current route, so the
+  // menu stays short (only the active module's sub-menu is shown); clicking another module switches it.
+  protected readonly openModule = signal<string | null>(null);
   private goPending = false;
+
+  constructor() {
+    this.openModule.set(this.activeModuleId());
+    this.router.events
+      .pipe(
+        filter((e) => e instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => this.openModule.set(this.activeModuleId()));
+  }
 
   /** The modules the user can navigate (single source of truth, shared with the homes). */
   protected get modules() {
     return this.nav.modules();
   }
 
-  protected isCollapsed(id: string): boolean {
-    return this.collapsed().has(id);
+  /** Whether a module's sub-menu is open (only one at a time — the selected/active module). */
+  protected isOpen(id: string): boolean {
+    return this.openModule() === id;
   }
 
-  /** Expands/collapses a sidebar module section and persists the choice. */
+  /** Opens a module's sub-menu (accordion: opening one closes the others); toggles the active one shut. */
   protected toggleSection(id: string): void {
-    const next = new Set(this.collapsed());
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
-    }
-    this.collapsed.set(next);
-    try {
-      localStorage.setItem(Shell.COLLAPSE_KEY, JSON.stringify([...next]));
-    } catch {
-      // Ignore storage failures (private mode); the in-memory state still works for the session.
-    }
+    this.openModule.update((cur) => (cur === id ? null : id));
   }
 
-  private loadCollapsed(): Set<string> {
-    try {
-      const raw = localStorage.getItem(Shell.COLLAPSE_KEY);
-      return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-    } catch {
-      return new Set();
+  /** The module whose home/section matches the current route, or null on the system home. */
+  private activeModuleId(): string | null {
+    const url = this.router.url.split('?')[0].split('#')[0];
+    const matches = (link: string) => url === link || url.startsWith(link + '/');
+    for (const m of this.nav.modules()) {
+      if (matches(m.home) || m.items.some((i) => matches(i.link)) || m.actions.some((a) => matches(a.link))) {
+        return m.id;
+      }
     }
+    return null;
   }
 
   /** The command palette, derived from the navigation config plus the global actions. */
