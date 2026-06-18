@@ -7,6 +7,7 @@ import { of, throwError } from 'rxjs';
 import { LeadDetailPage } from './lead-detail';
 import { LeadService } from '../../../core/api/lead.service';
 import { ReferenceService } from '../../../core/api/reference.service';
+import { OpportunityService } from '../../../core/api/opportunity.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
@@ -25,6 +26,7 @@ describe('LeadDetailPage', () => {
     responsibles: vi.fn(),
   };
   const references = { list: vi.fn() };
+  const opportunities = { create: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
   const auth = { hasScope: vi.fn(), userId: vi.fn(), canOperateLead: vi.fn() };
@@ -58,6 +60,7 @@ describe('LeadDetailPage', () => {
         ConfirmationService,
         { provide: LeadService, useValue: leads },
         { provide: ReferenceService, useValue: references },
+        { provide: OpportunityService, useValue: opportunities },
         { provide: Router, useValue: router },
         { provide: MessageService, useValue: messages },
         { provide: AuthService, useValue: auth },
@@ -76,6 +79,7 @@ describe('LeadDetailPage', () => {
       leads.recordInteraction,
       leads.responsibles,
       references.list,
+      opportunities.create,
       router.navigateByUrl,
       messages.add,
       auth.hasScope,
@@ -359,5 +363,68 @@ describe('LeadDetailPage', () => {
     comp['onShortcut'](new KeyboardEvent('keydown', { key: 'q' }));
 
     expect(comp['qualifyOpen']()).toBe(false);
+  });
+
+  it('opens the create-opportunity dialog, pre-filling the responsible and loading the options', () => {
+    leads.detail.mockReturnValue(of(sample({ status: 'QUALIFIED', responsibleId: 'u1' })));
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['openOpportunity']();
+
+    expect(comp['opportunityOpen']()).toBe(true);
+    expect(comp['oppResponsibleTo']).toBe('u1');
+    expect(leads.responsibles).toHaveBeenCalled();
+  });
+
+  it('creates an opportunity from the qualified lead, closes the dialog and toasts', () => {
+    leads.detail.mockReturnValue(of(sample({ status: 'QUALIFIED' })));
+    opportunities.create.mockReturnValue(of({ id: 'o1', stage: 'NEW_OPPORTUNITY' }));
+    const comp = build();
+    comp.ngOnInit();
+    comp['openOpportunity']();
+    comp['oppProductType'] = 'Pacote';
+    comp['oppEstimatedValue'] = 5000;
+    comp['oppNote'] = 'interesse alto';
+
+    comp['confirmOpportunity']();
+
+    expect(opportunities.create).toHaveBeenCalledWith(
+      expect.objectContaining({ leadId: 'l1', productType: 'Pacote', estimatedValue: 5000, initialNote: 'interesse alto' }),
+    );
+    expect(comp['opportunityOpen']()).toBe(false);
+    expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
+  });
+
+  it('shows an error toast and keeps the dialog open when creating the opportunity fails', () => {
+    leads.detail.mockReturnValue(of(sample({ status: 'QUALIFIED' })));
+    opportunities.create.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 422, error: { message: 'Falhou' } })),
+    );
+    const comp = build();
+    comp.ngOnInit();
+    comp['openOpportunity']();
+
+    comp['confirmOpportunity']();
+
+    expect(comp['opportunityOpen']()).toBe(true);
+    expect(comp['acting']()).toBe(false);
+    expect(messages.add).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'error', detail: 'Falhou' }),
+    );
+  });
+
+  it('shows an error toast and keeps the dialog open when qualifying fails (sad path)', () => {
+    leads.qualify.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 422 })));
+    const comp = build();
+    comp.ngOnInit();
+    comp['qualifyOpen'].set(true);
+    comp['qualifyMainInterest'] = 'Pacote';
+
+    comp['confirmQualify']();
+
+    expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error' }));
+    expect(comp['acting']()).toBe(false);
+    expect(comp['qualifyOpen']()).toBe(true); // act() does not close the dialog on error
   });
 });

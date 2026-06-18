@@ -57,7 +57,8 @@
 - **Docs:** `CLAUDE.md` §3/§12/§13/§14, manual en-US + pt-BR (§4 navegação), test report, este relatório.
 
 ## 5. Testes / validações
-- **Frontend:** 24→**32 arquivos**, 167→**184 testes**, 0 falhas; `ng build` verde.
+- **Frontend:** 24→**32 arquivos**, 167→**199 testes**, 0 falhas; `ng build` verde. Cobertura de **lógica
+  `.ts` 85,6%** (templates `.html` 16% puxam o número global p/ 38% — split verificado no test report).
 - **Backend:** `./mvnw verify` verde (**≈364 testes**) + relatório JaCoCo gerado (96.8% instr).
 - **E2E:** ripple do heading da home resolvido em 16 specs; suíte completa re-executada na stack isolada
   (resultado registrado na verificação de entrega).
