@@ -56,6 +56,27 @@ test('canceling a changed form warns before discarding (Continuar editando keeps
   await expect(page).toHaveURL(/\/$/);
 });
 
+test('Escape exits the Novo lead screen — closes the dropdown first, then warns when changed', async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto('/leads/new');
+
+  // With the origin dropdown open, Esc closes the dropdown — it must NOT leave the screen.
+  await page.getByText('Selecione a origem').click();
+  await expect(page.getByRole('option').first()).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('option')).toHaveCount(0); // dropdown closed
+  await expect(page).toHaveURL(/\/leads\/new$/); // still on the form
+
+  // Esc on the changed form warns before discarding; Descartar leaves to the home.
+  await page.locator('#name').fill('Rascunho via Esc');
+  await page.keyboard.press('Escape');
+  await expect(page.getByText(/alterações não salvas/)).toBeVisible();
+  await page.getByRole('button', { name: 'Descartar' }).click();
+  await expect(page).toHaveURL(/\/$/);
+});
+
 test('canceling a changed dialog warns; Descartar closes it', async ({ page }) => {
   await login(page);
   await page.goto('/cadastros/origens');

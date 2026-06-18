@@ -1,5 +1,6 @@
 import {
   Component,
+  HostListener,
   inject,
   signal,
   viewChild,
@@ -95,6 +96,22 @@ export class LeadCreate implements OnInit, AfterViewInit, OnDestroy, HasUnsavedC
 
   protected fieldError(name: string): string | null {
     return this.fieldErrors()[name] ?? null;
+  }
+
+  /**
+   * Esc cancels the screen through the same guard as the Cancel button, so the keyboard works on full-page
+   * forms too — not only in modals. When a PrimeNG overlay (e.g. the origin dropdown) is open, Esc closes
+   * that first instead of leaving the screen.
+   */
+  @HostListener('document:keydown.escape', ['$event'])
+  protected onEscape(event: Event): void {
+    const overlayOpen = document.querySelector(
+      '.p-select-overlay, .p-datepicker-panel, .p-autocomplete-overlay, .p-multiselect-overlay',
+    );
+    if (event.defaultPrevented || overlayOpen) {
+      return;
+    }
+    void this.cancel();
   }
 
   /** Cancels: if the form has edits, confirms before discarding; otherwise returns to the home screen. */
