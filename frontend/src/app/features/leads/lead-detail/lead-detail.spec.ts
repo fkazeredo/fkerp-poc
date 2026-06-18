@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 import { LeadDetailPage } from './lead-detail';
 import { LeadService } from '../../../core/api/lead.service';
 import { ReferenceService } from '../../../core/api/reference.service';
@@ -29,7 +29,12 @@ describe('LeadDetailPage', () => {
   const opportunities = { create: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
-  const auth = { hasScope: vi.fn(), userId: vi.fn(), canOperateLead: vi.fn() };
+  const auth = {
+    hasScope: vi.fn(),
+    userId: vi.fn(),
+    canOperateLead: vi.fn(),
+    canCreateOpportunity: vi.fn(() => false),
+  };
 
   const sample = (over: Record<string, unknown> = {}) => ({
     id: 'l1',
@@ -52,7 +57,8 @@ describe('LeadDetailPage', () => {
     ...over,
   });
 
-  function build() {
+  function configure() {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [LeadDetailPage],
       providers: [
@@ -67,7 +73,20 @@ describe('LeadDetailPage', () => {
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'l1' } } } },
       ],
     });
+  }
+
+  function build() {
+    configure();
     return TestBed.createComponent(LeadDetailPage).componentInstance;
+  }
+
+  /** Renders the component to the DOM after init and returns the host element. */
+  function render() {
+    configure();
+    const fixture = TestBed.createComponent(LeadDetailPage);
+    fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
   }
 
   beforeEach(() => {
@@ -426,5 +445,45 @@ describe('LeadDetailPage', () => {
     expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error' }));
     expect(comp['acting']()).toBe(false);
     expect(comp['qualifyOpen']()).toBe(true); // act() does not close the dialog on error
+  });
+
+  describe('DOM rendering', () => {
+    it('renders the loading state while the lead is in flight', () => {
+      leads.detail.mockReturnValue(NEVER);
+      expect(render().textContent).toContain('Carregando');
+    });
+
+    it('renders the error state on 403', () => {
+      leads.detail.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
+      const el = render();
+      expect(el.textContent).toContain('permissão');
+      expect(el.querySelector('p-message')).not.toBeNull();
+    });
+
+    it('renders the loaded lead with the operate actions and the history cards', () => {
+      leads.detail.mockReturnValue(
+        of(sample({ status: 'CONTACTED', responsibleId: 'u1', responsibleName: 'comercial', unassigned: false })),
+      );
+      auth.canOperateLead.mockReturnValue(true);
+      const el = render();
+
+      expect(el.querySelector('h1')?.textContent).toContain('Alpha');
+      expect(el.textContent).toContain('Registrar interação');
+      expect(el.textContent).toContain('Marcar como perdido');
+      expect(el.textContent).toContain('Histórico de interações');
+    });
+
+    it('hides every action for a consultation-only user', () => {
+      leads.detail.mockReturnValue(
+        of(sample({ status: 'CONTACTED', responsibleId: 'u1', responsibleName: 'comercial', unassigned: false })),
+      );
+      auth.canOperateLead.mockReturnValue(false);
+      const el = render();
+
+      expect(el.querySelector('h1')?.textContent).toContain('Alpha');
+      expect(el.textContent).not.toContain('Registrar interação');
+      expect(el.textContent).not.toContain('Qualificar');
+      expect(el.textContent).not.toContain('Marcar como perdido');
+    });
   });
 });

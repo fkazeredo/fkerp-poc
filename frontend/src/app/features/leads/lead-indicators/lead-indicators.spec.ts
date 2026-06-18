@@ -32,12 +32,25 @@ describe('LeadIndicators', () => {
     ],
   };
 
-  function build() {
+  function configure() {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [LeadIndicatorsPage],
       providers: [providePrimeNG(), { provide: LeadService, useValue: leads }],
     });
+  }
+
+  function build() {
+    configure();
     return TestBed.createComponent(LeadIndicatorsPage).componentInstance;
+  }
+
+  function render() {
+    configure();
+    const fixture = TestBed.createComponent(LeadIndicatorsPage);
+    fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
   }
 
   beforeEach(() => {
@@ -103,5 +116,25 @@ describe('LeadIndicators', () => {
     const comp = build();
     comp.ngOnInit();
     expect(comp['error']()).toContain('indicadores');
+  });
+
+  describe('DOM rendering', () => {
+    it('renders the KPI cards and the responsible bars', () => {
+      leads.indicators.mockReturnValue(of(stub));
+      const el = render();
+      expect(el.textContent).toContain('7'); // total KPI
+      expect(el.textContent).toContain('comercial'); // responsible bar
+      expect(el.textContent).toContain('Website'); // origin
+    });
+
+    it('renders the empty state for a period with no leads', () => {
+      leads.indicators.mockReturnValue(of({ ...stub, total: 0, byOrigin: [], byResponsible: [] }));
+      expect(render().textContent).toMatch(/Nenhum lead|sem dados|nenhum/i);
+    });
+
+    it('renders the error message when the load fails', () => {
+      leads.indicators.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+      expect(render().textContent).toContain('indicadores');
+    });
   });
 });

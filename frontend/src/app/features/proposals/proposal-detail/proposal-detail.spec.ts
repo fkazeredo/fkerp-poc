@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 import { ProposalDetailPage } from './proposal-detail';
 import { ProposalDetail, ProposalItem, ProposalService } from '../../../core/api/proposal.service';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -62,7 +62,8 @@ describe('ProposalDetailPage', () => {
 
   const withItem: ProposalDetail = { ...sample, items: [item], subtotal: 2000, total: 2000 };
 
-  function build() {
+  function configure() {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [ProposalDetailPage],
       providers: [
@@ -75,7 +76,20 @@ describe('ProposalDetailPage', () => {
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'p1' } } } },
       ],
     });
+  }
+
+  function build() {
+    configure();
     return TestBed.createComponent(ProposalDetailPage).componentInstance;
+  }
+
+  /** Renders the component to the DOM after init and returns the host element. */
+  function render() {
+    configure();
+    const fixture = TestBed.createComponent(ProposalDetailPage);
+    fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
   }
 
   beforeEach(() => {
@@ -304,5 +318,47 @@ describe('ProposalDetailPage', () => {
     comp['detailsOpen'].set(false);
     comp['openAddItem']();
     expect(comp.hasUnsavedChanges()).toBe(true);
+  });
+
+  describe('DOM rendering', () => {
+    it('renders the loading state while the detail is in flight', () => {
+      proposals.detail.mockReturnValue(NEVER); // never emits -> loading stays true
+      const el = render();
+      expect(el.textContent).toContain('Carregando');
+    });
+
+    it('renders the error state with a back button on 403', () => {
+      proposals.detail.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
+      const el = render();
+      expect(el.textContent).toContain('permissão');
+      expect(el.querySelector('p-message')).not.toBeNull();
+      expect(el.textContent).toContain('Voltar');
+    });
+
+    it('renders the loaded proposal: title, status, items table, totals and the operate actions', () => {
+      proposals.detail.mockReturnValue(of(withItem));
+      auth.canOperateProposal.mockReturnValue(true);
+      const el = render();
+
+      expect(el.querySelector('h1')?.textContent).toContain('Proposta corporativa');
+      expect(el.textContent).toContain('Rascunho'); // status tag
+      expect(el.textContent).toContain('Pacote Caribe'); // item row
+      expect(el.textContent).toContain('Subtotal');
+      expect(el.textContent).toContain('Total');
+      // DRAFT + operate scope -> the management actions are present.
+      expect(el.textContent).toContain('Editar dados comerciais');
+      expect(el.textContent).toContain('Enviar para revisão');
+      expect(el.textContent).toContain('Adicionar item');
+    });
+
+    it('renders the empty-items state and hides the actions for a consultation-only user', () => {
+      proposals.detail.mockReturnValue(of(sample)); // no items
+      auth.canOperateProposal.mockReturnValue(false);
+      const el = render();
+
+      expect(el.textContent).toContain('Nenhum item ainda.');
+      expect(el.textContent).not.toContain('Adicionar item');
+      expect(el.textContent).not.toContain('Enviar para revisão');
+    });
   });
 });
