@@ -139,6 +139,54 @@ describe('LeadCreate', () => {
     expect(leads.create).not.toHaveBeenCalled();
   });
 
+  // The Esc key must exit a full-page form too (not only modals), via the same guard as Cancel.
+  it('cancels the screen on Escape (navigates home) when nothing is open and the form is clean', () => {
+    const comp = build();
+
+    comp['onEscape'](new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/');
+  });
+
+  it('warns before leaving on Escape when the form was changed, and stays on reject', async () => {
+    const comp = build();
+    comp['form'].patchValue({ name: 'Rascunho' });
+    comp['form'].markAsDirty();
+    const confirmation = TestBed.inject(ConfirmationService);
+    const confirm = vi.spyOn(confirmation, 'confirm').mockImplementation((opts) => {
+      opts.reject?.(); // "Continuar editando"
+      return confirmation;
+    });
+
+    await comp['cancel']();
+
+    expect(confirm).toHaveBeenCalled();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('does not leave on Escape while a dropdown overlay is open', () => {
+    const comp = build();
+    const overlay = document.createElement('div');
+    overlay.className = 'p-select-overlay';
+    document.body.appendChild(overlay);
+    try {
+      comp['onEscape'](new KeyboardEvent('keydown', { key: 'Escape' }));
+      expect(router.navigateByUrl).not.toHaveBeenCalled();
+    } finally {
+      overlay.remove();
+    }
+  });
+
+  it('ignores Escape already consumed by another control (defaultPrevented)', () => {
+    const comp = build();
+    const event = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true });
+    event.preventDefault();
+
+    comp['onEscape'](event);
+
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
   describe('DOM rendering', () => {
     it('renders the lead form with its required fields and the submit button', () => {
       const el = render();
