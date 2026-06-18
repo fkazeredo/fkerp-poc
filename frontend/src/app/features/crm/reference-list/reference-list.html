@@ -90,7 +90,9 @@
   [header]="dialogTitle()"
   [(visible)]="dialogOpen"
   [modal]="true"
-  [dismissableMask]="true"
+  [closable]="false"
+  [closeOnEscape]="false"
+  [dismissableMask]="false"
   [style]="{ width: '28rem' }"
 >
   <form [formGroup]="form" (ngSubmit)="save()">

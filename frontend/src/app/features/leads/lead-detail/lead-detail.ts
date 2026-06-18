@@ -59,19 +59,44 @@ export class LeadDetailPage implements OnInit, OnDestroy, HasUnsavedChanges {
   private readonly unsaved = inject(UnsavedChangesService);
 
   constructor() {
-    // An open edit dialog means an in-progress edit; keep the global flag in sync for the tab-close warning.
-    effect(() => this.unsaved.set(this.hasUnsavedChanges()));
+    // Keep the app-wide flag (tab-close warning) in sync with whether a dialog is open.
+    effect(() => this.unsaved.set(this.anyDialogOpen()));
   }
 
-  /** Whether an edit dialog is open (used by the route guard and the tab-close warning). */
+  // Snapshot of the open dialog's fields, captured when a dialog opens, to detect real edits.
+  private editSnapshot = '';
+
+  private liveSnapshot(): string {
+    return JSON.stringify([
+      this.qualifyMainInterest,
+      this.qualifyNote,
+      this.lossReasonId,
+      this.lossNote,
+      this.reassignTo,
+      this.interactionTypeId,
+      this.interactionResultId,
+      this.interactionDescription,
+      this.interactionOccurredAt,
+      this.interactionNextContactAt,
+      this.oppProductType,
+      this.oppEstimatedValue,
+      this.oppExpectedCloseDate,
+      this.oppResponsibleTo,
+      this.oppNote,
+    ]);
+  }
+
+  /** Whether a dialog is open AND its fields were changed since it opened (guard + tab-close warning). */
   hasUnsavedChanges(): boolean {
-    return (
-      this.qualifyOpen() ||
-      this.loseOpen() ||
-      this.reassignOpen() ||
-      this.interactionOpen() ||
-      this.opportunityOpen()
-    );
+    return this.anyDialogOpen() && this.editSnapshot !== this.liveSnapshot();
+  }
+
+  /** Closes an edit dialog, confirming first if it has unsaved edits. */
+  protected async requestClose(open: { set: (v: boolean) => void }): Promise<void> {
+    if (this.hasUnsavedChanges() && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
+    open.set(false);
   }
 
   ngOnDestroy(): void {
@@ -246,6 +271,7 @@ export class LeadDetailPage implements OnInit, OnDestroy, HasUnsavedChanges {
     this.qualifyMainInterest = '';
     this.qualifyNote = '';
     this.qualifyOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
   }
 
   protected openLose(): void {
@@ -257,6 +283,7 @@ export class LeadDetailPage implements OnInit, OnDestroy, HasUnsavedChanges {
         .subscribe({ next: (list) => this.lossReasons.set(list) });
     }
     this.loseOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
   }
 
   protected openReassign(): void {
@@ -265,6 +292,7 @@ export class LeadDetailPage implements OnInit, OnDestroy, HasUnsavedChanges {
       this.leads.responsibles().subscribe({ next: (list) => this.responsibleOptions.set(list) });
     }
     this.reassignOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
   }
 
   protected confirmQualify(): void {
@@ -323,6 +351,7 @@ export class LeadDetailPage implements OnInit, OnDestroy, HasUnsavedChanges {
         .subscribe({ next: (list) => this.interactionResults.set(list) });
     }
     this.interactionOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
   }
 
   protected canSaveInteraction(): boolean {
@@ -363,6 +392,7 @@ export class LeadDetailPage implements OnInit, OnDestroy, HasUnsavedChanges {
       this.leads.responsibles().subscribe({ next: (list) => this.responsibleOptions.set(list) });
     }
     this.opportunityOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
   }
 
   /** Creates the Opportunity from this qualified lead. Does not change the lead (kept separate). */

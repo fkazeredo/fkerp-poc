@@ -147,11 +147,18 @@
   border-left: 2px solid color-mix(in srgb, var(--app-sidebar-bg) 60%, #fff 14%);
   overflow: hidden;
   max-height: 30rem;
+  visibility: visible;
   transition: max-height 0.22s ease;
 }
 
+/* A collapsed section is fully hidden — not merely clipped — so its links leave the tab order and the
+   accessibility tree (visibility flips only after the height animation finishes). */
 .nav-section-items.collapsed {
   max-height: 0;
+  visibility: hidden;
+  transition:
+    max-height 0.22s ease,
+    visibility 0s 0.22s;
 }
 
 .nav-item {

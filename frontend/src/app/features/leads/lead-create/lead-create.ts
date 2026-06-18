@@ -97,8 +97,11 @@ export class LeadCreate implements OnInit, AfterViewInit, OnDestroy, HasUnsavedC
     return this.fieldErrors()[name] ?? null;
   }
 
-  /** Discards the entry and returns to the home screen (explicit cancel — no unsaved-changes prompt). */
-  protected cancel(): void {
+  /** Cancels: if the form has edits, confirms before discarding; otherwise returns to the home screen. */
+  protected async cancel(): Promise<void> {
+    if (this.form.dirty && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
     this.leaving = true;
     this.unsaved.set(false);
     this.router.navigateByUrl('/');

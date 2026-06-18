@@ -177,6 +177,9 @@
     header="Qualificar lead"
     [(visible)]="qualifyOpen"
     [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
     [style]="{ width: '28rem' }"
   >
     <div class="field">
@@ -199,7 +202,7 @@
         label="Cancelar"
         severity="secondary"
         [text]="true"
-        (onClick)="qualifyOpen.set(false)"
+        (onClick)="requestClose(qualifyOpen)"
       />
     </div>
   </p-dialog>
@@ -208,6 +211,9 @@
     header="Marcar como perdido"
     [(visible)]="loseOpen"
     [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
     [style]="{ width: '28rem' }"
   >
     <div class="field">
@@ -241,7 +247,7 @@
         label="Cancelar"
         severity="secondary"
         [text]="true"
-        (onClick)="loseOpen.set(false)"
+        (onClick)="requestClose(loseOpen)"
       />
     </div>
   </p-dialog>
@@ -250,6 +256,9 @@
     header="Reatribuir responsável"
     [(visible)]="reassignOpen"
     [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
     [style]="{ width: '28rem' }"
   >
     <div class="field">
@@ -278,7 +287,7 @@
         label="Cancelar"
         severity="secondary"
         [text]="true"
-        (onClick)="reassignOpen.set(false)"
+        (onClick)="requestClose(reassignOpen)"
       />
     </div>
   </p-dialog>
@@ -287,6 +296,9 @@
     header="Registrar interação"
     [(visible)]="interactionOpen"
     [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
     [style]="{ width: '32rem' }"
   >
     <div class="field">
@@ -360,7 +372,7 @@
         label="Cancelar"
         severity="secondary"
         [text]="true"
-        (onClick)="interactionOpen.set(false)"
+        (onClick)="requestClose(interactionOpen)"
       />
     </div>
   </p-dialog>
@@ -369,6 +381,9 @@
     header="Criar oportunidade"
     [(visible)]="opportunityOpen"
     [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
     [style]="{ width: '32rem' }"
   >
     <p class="muted dialog-hint">
@@ -431,7 +446,7 @@
         label="Cancelar"
         severity="secondary"
         [text]="true"
-        (onClick)="opportunityOpen.set(false)"
+        (onClick)="requestClose(opportunityOpen)"
       />
     </div>
   </p-dialog>
