@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 import { providePrimeNG } from 'primeng/config';
 import type { TableLazyLoadEvent } from 'primeng/table';
 import { of, throwError } from 'rxjs';
@@ -39,12 +40,26 @@ describe('ProposalList', () => {
     last: true,
   });
 
-  function build() {
+  function configure() {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [ProposalList],
-      providers: [providePrimeNG(), { provide: ProposalService, useValue: proposals }],
+      providers: [providePrimeNG(), provideRouter([]), { provide: ProposalService, useValue: proposals }],
     });
+  }
+
+  function build() {
+    configure();
     return TestBed.createComponent(ProposalList).componentInstance;
+  }
+
+  /** Renders the list to the DOM after a lazy load and returns the host element. */
+  function render() {
+    configure();
+    const fixture = TestBed.createComponent(ProposalList);
+    fixture.componentInstance['onLazyLoad'](lazy(0));
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
   }
 
   beforeEach(() => {
@@ -71,5 +86,26 @@ describe('ProposalList', () => {
     const comp = build();
     comp['onLazyLoad'](lazy(0));
     expect(comp['error']()).toContain('propostas');
+  });
+
+  describe('DOM rendering', () => {
+    it('renders the table headers and a proposal row', () => {
+      proposals.list.mockReturnValue(of(pageOf([item])));
+      const el = render();
+      expect(el.textContent).toContain('Título');
+      expect(el.textContent).toContain('Total');
+      expect(el.textContent).toContain('Proposta corporativa');
+      expect(el.textContent).toContain('Rascunho'); // status tag
+    });
+
+    it('renders the empty state when there are no proposals', () => {
+      proposals.list.mockReturnValue(of(pageOf([])));
+      expect(render().textContent).toContain('Nenhuma proposta ainda.');
+    });
+
+    it('renders the error message when the load fails', () => {
+      proposals.list.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+      expect(render().textContent).toContain('propostas');
+    });
   });
 });

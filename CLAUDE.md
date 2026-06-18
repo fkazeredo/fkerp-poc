@@ -30,6 +30,16 @@ the backend and Angular on the frontend; the base package is `com.fksoft`.
    incomplete implementations; no `@Data`/`@Setter` on JPA entities (Lombok
    `@Getter`/`@RequiredArgsConstructor`/`@Slf4j` welcome for boilerplate); no `*Impl` naming;
    constructor injection only.
+7. **Tests come first - quality, not a report (owner mandate, highest priority).** Treat tests as
+   **more important than the code itself**: the code exists to make the tests pass, not the other way
+   round. Work **TDD** - write the failing test first, then the implementation. Every behavior is covered
+   on its **happy path AND all plausible sad paths**, in **every** category (domain/unit, integration with
+   real infra, architecture, frontend **component DOM-state**, service/guard/interceptor, E2E). Tests
+   assert **real behavior and visible state**, never just a status or a render-happened. A "test is not a
+   report, it is quality" - coverage is improved by writing **real** tests (including rendering each
+   screen's loading / empty / error / permission-denied / success states), never by gaming the number or
+   by explaining it away. No fake/assertion-free/skipped tests. This invariant outranks delivery speed:
+   when in doubt, write the test. (Enforced through §3 and §13.)
 
 ## 2. Decision protocol
 

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { providePrimeNG } from 'primeng/config';
 import type { TableLazyLoadEvent } from 'primeng/table';
 import { of } from 'rxjs';
@@ -43,6 +43,7 @@ describe('LeadList', () => {
   });
 
   function build() {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [LeadList],
       providers: [
@@ -52,6 +53,20 @@ describe('LeadList', () => {
       ],
     });
     return TestBed.createComponent(LeadList).componentInstance;
+  }
+
+  /** Renders the list to the DOM (real router for the row links) and returns the host element. */
+  function render() {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [LeadList],
+      providers: [providePrimeNG(), provideRouter([]), { provide: LeadService, useValue: leads }],
+    });
+    const fixture = TestBed.createComponent(LeadList);
+    fixture.componentInstance.ngOnInit();
+    fixture.componentInstance['onLazyLoad'](lazy(0));
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
   }
 
   beforeEach(() => {
@@ -119,5 +134,19 @@ describe('LeadList', () => {
     expect(comp['statusLabel']('LOST')).toBe('Perdido');
     expect(comp['statusLabel']('NEW')).toBe('Novo');
     expect(comp['statusLabel']('CONTACTED')).toBe('Em contato');
+  });
+
+  describe('DOM rendering', () => {
+    it('renders the filters and a lead row', () => {
+      leads.list.mockReturnValue(of(pageOf([sampleItem])));
+      const el = render();
+      expect(el.textContent).toContain('Alpha');
+      expect(el.textContent).toContain('Novo'); // status tag
+    });
+
+    it('renders the empty state when there are no leads', () => {
+      leads.list.mockReturnValue(of(pageOf([])));
+      expect(render().textContent).toMatch(/Nenhum lead/i);
+    });
   });
 });

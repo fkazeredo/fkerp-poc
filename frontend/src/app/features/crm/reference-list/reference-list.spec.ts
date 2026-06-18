@@ -25,7 +25,8 @@ describe('ReferenceList', () => {
     ...over,
   });
 
-  function build() {
+  function configure() {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [ReferenceList],
       providers: [
@@ -36,7 +37,18 @@ describe('ReferenceList', () => {
         { provide: ActivatedRoute, useValue: { data: of({ title: 'Origens', path: 'origins' }) } },
       ],
     });
+  }
+
+  function build() {
+    configure();
     return TestBed.createComponent(ReferenceList).componentInstance;
+  }
+
+  function render() {
+    configure();
+    const fixture = TestBed.createComponent(ReferenceList);
+    fixture.detectChanges();
+    return { el: fixture.nativeElement as HTMLElement, comp: fixture.componentInstance, fixture };
   }
 
   beforeEach(() => {
@@ -95,5 +107,20 @@ describe('ReferenceList', () => {
 
     expect(comp['dialogOpen']()).toBe(false);
     expect(api.create).not.toHaveBeenCalled();
+  });
+
+  describe('DOM rendering', () => {
+    it('renders the cadastro title and a row', () => {
+      api.list.mockReturnValue(of([item()]));
+      const { el } = render();
+      expect(el.querySelector('h1')?.textContent).toContain('Origens');
+      expect(el.textContent).toContain('WEBSITE'); // code
+      expect(el.textContent).toContain('Website'); // label
+    });
+
+    it('renders the empty state when the cadastro has no records', () => {
+      api.list.mockReturnValue(of([]));
+      expect(render().el.textContent).toMatch(/Nenhum/i);
+    });
   });
 });

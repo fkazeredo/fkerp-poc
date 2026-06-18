@@ -40,12 +40,25 @@ describe('OpportunityIndicators', () => {
     ],
   };
 
-  function build() {
+  function configure() {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [OpportunityIndicatorsPage],
       providers: [providePrimeNG(), { provide: OpportunityService, useValue: opportunities }],
     });
+  }
+
+  function build() {
+    configure();
     return TestBed.createComponent(OpportunityIndicatorsPage).componentInstance;
+  }
+
+  function render() {
+    configure();
+    const fixture = TestBed.createComponent(OpportunityIndicatorsPage);
+    fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
   }
 
   beforeEach(() => {
@@ -109,5 +122,19 @@ describe('OpportunityIndicators', () => {
     const comp = build();
     comp.ngOnInit();
     expect(comp['error']()).toContain('indicadores');
+  });
+
+  describe('DOM rendering', () => {
+    it('renders the volume and pipeline KPI cards and the responsible bars', () => {
+      opportunities.indicators.mockReturnValue(of(stub));
+      const el = render();
+      expect(el.textContent).toContain('comercial');
+      expect(el.textContent).toMatch(/18[.,]000/); // active pipeline value (BRL)
+    });
+
+    it('renders the error message when the load fails', () => {
+      opportunities.indicators.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+      expect(render().textContent).toContain('indicadores');
+    });
   });
 });

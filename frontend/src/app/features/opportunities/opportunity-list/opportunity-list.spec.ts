@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { providePrimeNG } from 'primeng/config';
 import type { TableLazyLoadEvent } from 'primeng/table';
 import { of } from 'rxjs';
@@ -40,12 +41,27 @@ describe('OpportunityList', () => {
     last: true,
   });
 
-  function build() {
+  function configure() {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [OpportunityList],
-      providers: [providePrimeNG(), { provide: OpportunityService, useValue: opportunities }],
+      providers: [providePrimeNG(), provideRouter([]), { provide: OpportunityService, useValue: opportunities }],
     });
+  }
+
+  function build() {
+    configure();
     return TestBed.createComponent(OpportunityList).componentInstance;
+  }
+
+  /** Renders the list to the DOM after init + a lazy load and returns the host element. */
+  function render() {
+    configure();
+    const fixture = TestBed.createComponent(OpportunityList);
+    fixture.componentInstance.ngOnInit();
+    fixture.componentInstance['onLazyLoad'](lazy(0));
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
   }
 
   beforeEach(() => {
@@ -148,6 +164,20 @@ describe('OpportunityList', () => {
     expect(comp['stageLabel']('NEW_OPPORTUNITY')).toBe('Nova');
     expect(comp['stageLabel']('READY_FOR_PROPOSAL')).toBe('Pronta p/ proposta');
     expect(comp['stageLabel']('LOST')).toBe('Perdida');
+  });
+
+  describe('DOM rendering', () => {
+    it('renders an opportunity row', () => {
+      opportunities.list.mockReturnValue(of(pageOf([sampleItem])));
+      const el = render();
+      expect(el.textContent).toContain('Alpha');
+      expect(el.textContent).toContain('Nova'); // stage tag
+    });
+
+    it('renders the empty state when there are no opportunities', () => {
+      opportunities.list.mockReturnValue(of(pageOf([])));
+      expect(render().textContent).toMatch(/Nenhuma oportunidade/i);
+    });
   });
 
   it('surfaces a friendly error when the list request fails', () => {
