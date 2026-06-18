@@ -9,7 +9,13 @@ import { AuthService } from '../auth/auth.service';
 
 describe('Shell keyboard shortcuts', () => {
   const router = { navigateByUrl: vi.fn() };
-  const auth = { logout: vi.fn(() => of(undefined)) };
+  const auth = {
+    logout: vi.fn(() => of(undefined)),
+    canSeeLeads: vi.fn(() => false),
+    canCreateLead: vi.fn(() => false),
+    canSeeOpportunities: vi.fn(() => false),
+    canSeeProposals: vi.fn(() => false),
+  };
 
   function build(): Shell {
     // Reset first so a test can build a second shell (e.g. to verify persisted sidebar state is restored).
@@ -102,5 +108,57 @@ describe('Shell keyboard shortcuts', () => {
     Object.defineProperty(event, 'target', { value: input });
     shell['onKeydown'](event);
     expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('derives the command palette from the navigation config plus the global actions', () => {
+    auth.canSeeProposals.mockReturnValue(true);
+    const labels = build()['commands'].map((c) => c.label);
+    // Always: Início + the global actions; Vendas (proposals visible) + Cadastros (always).
+    expect(labels).toContain('Início');
+    expect(labels).toContain('Vendas');
+    expect(labels).toContain('Propostas');
+    expect(labels).toContain('Cadastros');
+    expect(labels).toContain('Sair');
+    expect(labels).not.toContain('Leads'); // no lead access in this build
+    auth.canSeeProposals.mockReturnValue(false);
+  });
+
+  it('runs a command and closes the palette', () => {
+    const shell = build();
+    const run = vi.fn();
+    shell['paletteOpen'].set(true);
+    shell['runCommand']({ label: 'X', icon: '', run });
+    expect(run).toHaveBeenCalled();
+    expect(shell['paletteOpen']()).toBe(false);
+  });
+
+  it('opens the palette and toggles the mobile sidebar', () => {
+    const shell = build();
+    shell['openPalette']();
+    expect(shell['paletteOpen']()).toBe(true);
+    expect(shell['sidebarOpen']()).toBe(false);
+    shell['toggleSidebar']();
+    expect(shell['sidebarOpen']()).toBe(true);
+  });
+
+  it('logs out and returns to the login screen', () => {
+    const shell = build();
+    shell['logout']();
+    expect(auth.logout).toHaveBeenCalled();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
+  });
+
+  it('blocks tab close only while there is an in-progress edit', () => {
+    const shell = build();
+    const clean = { preventDefault: vi.fn(), returnValue: undefined } as unknown as BeforeUnloadEvent;
+    shell['onBeforeUnload'](clean);
+    expect(clean.preventDefault).not.toHaveBeenCalled();
+
+    shell['unsaved'].set(true);
+    const dirty = { preventDefault: vi.fn(), returnValue: undefined } as unknown as BeforeUnloadEvent;
+    shell['onBeforeUnload'](dirty);
+    expect(dirty.preventDefault).toHaveBeenCalled();
+    expect(dirty.returnValue).toBe('');
+    shell['unsaved'].set(false);
   });
 });
