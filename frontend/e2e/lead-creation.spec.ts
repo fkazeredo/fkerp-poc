@@ -8,7 +8,7 @@ test('signs in and registers a lead', async ({ page }) => {
   await page.locator('#password').fill('comercial123');
   await page.getByRole('button', { name: 'Entrar' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Comercial / CRM' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 
   // --- New lead form ---
   await page.goto('/leads/new');
@@ -26,7 +26,7 @@ test('signs in and registers a lead', async ({ page }) => {
 
   // Success feedback (toast) and return to the home screen.
   await expect(page.getByText('Lead criado')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Comercial / CRM' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 });
 
 test('rejects login with wrong credentials', async ({ page }) => {
@@ -44,12 +44,12 @@ test('cancel on the lead form returns to home', async ({ page }) => {
   await page.locator('#username').fill('comercial');
   await page.locator('#password').fill('comercial123');
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: 'Comercial / CRM' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 
   await page.goto('/leads/new');
   await page.locator('#name').fill('Para descartar');
   await page.getByRole('button', { name: 'Cancelar' }).click();
 
   await expect(page).not.toHaveURL(/leads\/new/);
-  await expect(page.getByRole('heading', { name: 'Comercial / CRM' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 });

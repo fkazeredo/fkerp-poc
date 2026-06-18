@@ -79,36 +79,79 @@
   gap: 0.15rem;
 }
 
+/* A module is a collapsible accordion section: a header (link to the module home + chevron toggle) and an
+   indented list of destinations that animates open/closed. */
 .nav-module {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  margin-top: 0.6rem;
-  padding-left: 0.5rem;
-  border-left: 2px solid color-mix(in srgb, var(--app-sidebar-bg) 60%, #fff 16%);
+  margin-top: 0.5rem;
 }
 
-.nav-module.no-title {
-  margin-top: 0;
-  padding-left: 0;
-  border-left: none;
-}
-
-.nav-group {
+.nav-section {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  margin: 0.5rem 0.5rem 0.3rem;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--app-sidebar-muted);
+  gap: 0.25rem;
 }
 
-.nav-group i {
-  font-size: 0.85rem;
+.nav-section-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.55rem;
+  color: var(--app-sidebar-text);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.nav-section-link i {
+  font-size: 0.9rem;
   color: var(--p-primary-color, #818cf8);
+}
+
+.nav-section-link:hover,
+.nav-section-link.active {
+  background: color-mix(in srgb, var(--app-sidebar-bg) 80%, #fff 14%);
+  color: #fff;
+}
+
+.nav-section-toggle {
+  display: grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--app-sidebar-muted);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.nav-section-toggle:hover {
+  background: color-mix(in srgb, var(--app-sidebar-bg) 80%, #fff 14%);
+}
+
+.nav-section-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding-left: 0.5rem;
+  margin-left: 0.6rem;
+  border-left: 2px solid color-mix(in srgb, var(--app-sidebar-bg) 60%, #fff 14%);
+  overflow: hidden;
+  max-height: 30rem;
+  transition: max-height 0.22s ease;
+}
+
+.nav-section-items.collapsed {
+  max-height: 0;
 }
 
 .nav-item {

@@ -5,7 +5,7 @@ async function login(page: Page): Promise<void> {
   await page.locator('#username').fill('comercial');
   await page.locator('#password').fill('comercial123');
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: 'Comercial / CRM' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 }
 
 test('global keyboard shortcuts navigate the app', async ({ page }) => {
@@ -17,7 +17,7 @@ test('global keyboard shortcuts navigate the app', async ({ page }) => {
 
   // g then l -> leads list
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Comercial / CRM' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
   await page.keyboard.press('g');
   await page.keyboard.press('l');
   await expect(page).toHaveURL(/\/leads$/);

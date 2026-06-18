@@ -9,6 +9,7 @@ import { AuthService } from '../auth/auth.service';
 import { ThemeService } from '../theme/theme.service';
 import { VersionService } from '../api/version.service';
 import { UnsavedChangesService } from '../forms/unsaved-changes.service';
+import { NavigationService } from '../navigation/navigation';
 
 interface Command {
   label: string;
@@ -16,23 +17,10 @@ interface Command {
   run: () => void;
 }
 
-interface NavLink {
-  label: string;
-  icon: string;
-  link: string;
-  exact: boolean;
-}
-
-/** A navigation module: a titled group of links (the title/icon are omitted for the top-level items). */
-interface NavGroup {
-  title?: string;
-  icon?: string;
-  items: NavLink[];
-}
-
 /**
- * Authenticated shell: a sidebar for navigation, a top bar with the command palette and the
- * light/dark toggle, and global keyboard accelerators (Ctrl/Cmd+K, g-then-key, n, ?).
+ * Authenticated shell: a module-oriented sidebar (collapsible accordion sections, persisted), a top bar with
+ * the command palette and the light/dark toggle, and global keyboard accelerators (Ctrl/Cmd+K, g-then-key,
+ * n, ?). The sidebar, command palette and home pages are all driven by the single {@link NavigationService}.
  */
 @Component({
   selector: 'app-shell',
@@ -50,124 +38,72 @@ interface NavGroup {
   styleUrl: './shell.css',
 })
 export class Shell {
+  private static readonly COLLAPSE_KEY = 'fkerp.sidebar.collapsed';
+
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
   protected readonly version = inject(VersionService);
   protected readonly unsaved = inject(UnsavedChangesService);
+  protected readonly nav = inject(NavigationService);
 
   protected readonly paletteOpen = signal(false);
   protected readonly helpOpen = signal(false);
   protected readonly sidebarOpen = signal(false);
+  // Ids of the sidebar modules whose section is collapsed (persisted across sessions).
+  protected readonly collapsed = signal<Set<string>>(this.loadCollapsed());
   private goPending = false;
 
-  /**
-   * The navigation, split into clear **modules** (bounded contexts), each rendered as a distinct block with
-   * its own icon and accent: Início at the top; the **Comercial / CRM** module (Leads + Opportunities) when
-   * the user can read either; the **Vendas** module (Proposals) when the user can read Proposals; and the
-   * **Cadastros** module. Each group only appears when it has at least one visible item.
-   */
-  protected get navGroups(): NavGroup[] {
-    const groups: NavGroup[] = [
-      { items: [{ label: 'Início', icon: 'pi pi-home', link: '/', exact: true }] },
-    ];
-
-    const crm: NavLink[] = [];
-    if (this.auth.canSeeLeads()) {
-      crm.push({ label: 'Leads', icon: 'pi pi-list', link: '/leads', exact: false });
-      crm.push({ label: 'Pendências', icon: 'pi pi-flag', link: '/pendencias', exact: true });
-      crm.push({ label: 'Indicadores', icon: 'pi pi-chart-bar', link: '/indicadores', exact: true });
-    }
-    if (this.auth.canSeeOpportunities()) {
-      crm.push({ label: 'Oportunidades', icon: 'pi pi-briefcase', link: '/oportunidades', exact: false });
-      crm.push({
-        label: 'Oportunidades pendentes',
-        icon: 'pi pi-flag',
-        link: '/oportunidades/pendencias',
-        exact: true,
-      });
-      crm.push({
-        label: 'Indicadores de oportunidades',
-        icon: 'pi pi-chart-bar',
-        link: '/oportunidades/indicadores',
-        exact: true,
-      });
-    }
-    if (crm.length > 0) {
-      groups.push({ title: 'Comercial / CRM', icon: 'pi pi-briefcase', items: crm });
-    }
-
-    const sales: NavLink[] = [];
-    if (this.auth.canSeeProposals()) {
-      sales.push({ label: 'Propostas', icon: 'pi pi-file-edit', link: '/propostas', exact: false });
-    }
-    if (sales.length > 0) {
-      groups.push({ title: 'Vendas', icon: 'pi pi-shopping-cart', items: sales });
-    }
-
-    groups.push({ title: 'Cadastros', icon: 'pi pi-database', items: this.cadastros });
-
-    return groups;
+  /** The modules the user can navigate (single source of truth, shared with the homes). */
+  protected get modules() {
+    return this.nav.modules();
   }
 
-  private readonly cadastros: NavLink[] = [
-    { label: 'Origens', icon: 'pi pi-angle-right', link: '/cadastros/origens', exact: false },
-    { label: 'Motivos de perda', icon: 'pi pi-angle-right', link: '/cadastros/motivos-perda', exact: false },
-    { label: 'Tipos de interação', icon: 'pi pi-angle-right', link: '/cadastros/tipos-interacao', exact: false },
-    {
-      label: 'Resultados de interação',
-      icon: 'pi pi-angle-right',
-      link: '/cadastros/resultados-interacao',
-      exact: false,
-    },
-  ];
+  protected isCollapsed(id: string): boolean {
+    return this.collapsed().has(id);
+  }
 
-  protected readonly commands: Command[] = [
-    { label: 'Leads', icon: 'pi pi-list', run: () => this.go('/leads') },
-    { label: 'Novo Lead', icon: 'pi pi-user-plus', run: () => this.go('/leads/new') },
-    { label: 'Pendências', icon: 'pi pi-flag', run: () => this.go('/pendencias') },
-    { label: 'Indicadores', icon: 'pi pi-chart-bar', run: () => this.go('/indicadores') },
-    { label: 'Oportunidades', icon: 'pi pi-briefcase', run: () => this.go('/oportunidades') },
-    {
-      label: 'Oportunidades pendentes',
-      icon: 'pi pi-flag',
-      run: () => this.go('/oportunidades/pendencias'),
-    },
-    {
-      label: 'Indicadores de oportunidades',
-      icon: 'pi pi-chart-bar',
-      run: () => this.go('/oportunidades/indicadores'),
-    },
-    { label: 'Propostas', icon: 'pi pi-file-edit', run: () => this.go('/propostas') },
-    { label: 'Início', icon: 'pi pi-home', run: () => this.go('/') },
-    {
-      label: 'Cadastro: Origens',
-      icon: 'pi pi-database',
-      run: () => this.go('/cadastros/origens'),
-    },
-    {
-      label: 'Cadastro: Motivos de perda',
-      icon: 'pi pi-database',
-      run: () => this.go('/cadastros/motivos-perda'),
-    },
-    {
-      label: 'Cadastro: Tipos de interação',
-      icon: 'pi pi-database',
-      run: () => this.go('/cadastros/tipos-interacao'),
-    },
-    {
-      label: 'Cadastro: Resultados de interação',
-      icon: 'pi pi-database',
-      run: () => this.go('/cadastros/resultados-interacao'),
-    },
-    { label: 'Alternar tema claro/escuro', icon: 'pi pi-moon', run: () => this.theme.toggle() },
-    {
-      label: 'Atalhos do teclado',
-      icon: 'pi pi-question-circle',
-      run: () => this.helpOpen.set(true),
-    },
-    { label: 'Sair', icon: 'pi pi-sign-out', run: () => this.logout() },
-  ];
+  /** Expands/collapses a sidebar module section and persists the choice. */
+  protected toggleSection(id: string): void {
+    const next = new Set(this.collapsed());
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    this.collapsed.set(next);
+    try {
+      localStorage.setItem(Shell.COLLAPSE_KEY, JSON.stringify([...next]));
+    } catch {
+      // Ignore storage failures (private mode); the in-memory state still works for the session.
+    }
+  }
+
+  private loadCollapsed(): Set<string> {
+    try {
+      const raw = localStorage.getItem(Shell.COLLAPSE_KEY);
+      return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  /** The command palette, derived from the navigation config plus the global actions. */
+  protected get commands(): Command[] {
+    const navCommands: Command[] = [{ label: 'Início', icon: 'pi pi-home', run: () => this.go('/') }];
+    for (const m of this.modules) {
+      navCommands.push({ label: m.title, icon: m.icon, run: () => this.go(m.home) });
+      for (const item of [...m.items, ...m.actions]) {
+        navCommands.push({ label: item.label, icon: item.icon, run: () => this.go(item.link) });
+      }
+    }
+    return [
+      ...navCommands,
+      { label: 'Alternar tema claro/escuro', icon: 'pi pi-moon', run: () => this.theme.toggle() },
+      { label: 'Atalhos do teclado', icon: 'pi pi-question-circle', run: () => this.helpOpen.set(true) },
+      { label: 'Sair', icon: 'pi pi-sign-out', run: () => this.logout() },
+    ];
+  }
 
   protected openPalette(): void {
     this.paletteOpen.set(true);
@@ -226,7 +162,7 @@ export class Shell {
       else if (event.key === 'n') this.go('/leads/new');
       else if (event.key === 'o') this.go('/oportunidades');
       else if (event.key === 'p') this.go('/propostas');
-      else if (event.key === 'c') this.go('/cadastros/origens');
+      else if (event.key === 'c') this.go('/cadastros');
       return;
     }
     if (event.key === 'g') {

@@ -1,14 +1,18 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { AuthService } from '../../core/auth/auth.service';
+import { NavigationService } from '../../core/navigation/navigation';
 
-/** Landing page: quick entry points (gated by the user's access) and the keyboard-shortcut hint. */
+/** System landing page: a card per business module the user can access, leading to each module's home. */
 @Component({
   selector: 'app-home',
   imports: [RouterLink],
   templateUrl: './home.html',
-  styleUrl: './home.css',
+  styleUrls: ['./tiles.css'],
 })
 export class Home {
-  protected readonly auth = inject(AuthService);
+  private readonly nav = inject(NavigationService);
+
+  protected get modules() {
+    return this.nav.modules();
+  }
 }

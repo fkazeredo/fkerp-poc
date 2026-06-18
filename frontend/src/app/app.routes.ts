@@ -17,6 +17,21 @@ export const routes: Routes = [
     children: [
       { path: '', loadComponent: () => import('./features/home/home').then((m) => m.Home) },
       {
+        path: 'crm',
+        data: { module: 'crm' },
+        loadComponent: () => import('./features/home/module-home').then((m) => m.ModuleHome),
+      },
+      {
+        path: 'vendas',
+        data: { module: 'vendas' },
+        loadComponent: () => import('./features/home/module-home').then((m) => m.ModuleHome),
+      },
+      {
+        path: 'cadastros',
+        data: { module: 'cadastros' },
+        loadComponent: () => import('./features/home/module-home').then((m) => m.ModuleHome),
+      },
+      {
         path: 'pendencias',
         canActivate: [crmReadGuard],
         loadComponent: () =>
