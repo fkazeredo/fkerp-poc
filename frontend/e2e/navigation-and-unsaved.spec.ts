@@ -81,7 +81,7 @@ test('canceling a changed dialog warns; Descartar closes it', async ({ page }) =
   await login(page);
   await page.goto('/cadastros/origens');
 
-  // Scope to the page content so this matches the cadastro "Novo" button, not the sidebar "Novo lead" CTA.
+  // Scope to the page content (the cadastro "Novo" button lives in the page header).
   await page.locator('main').getByRole('button', { name: 'Novo' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();

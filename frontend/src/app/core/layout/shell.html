@@ -13,12 +13,6 @@
       </div>
     </div>
 
-    @if (auth.canCreateLead()) {
-      <button class="cta" routerLink="/leads/new" (click)="sidebarOpen.set(false)">
-        <i class="pi pi-plus"></i><span>Novo lead</span>
-      </button>
-    }
-
     <nav class="nav">
       <a
         class="nav-item"

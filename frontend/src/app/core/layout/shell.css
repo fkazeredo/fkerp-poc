@@ -52,27 +52,6 @@
   color: var(--app-sidebar-muted);
 }
 
-.cta {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin: 0.25rem 0.25rem 0.75rem;
-  padding: 0.6rem 0.75rem;
-  border: none;
-  border-radius: 0.6rem;
-  background: var(--p-primary-color, #6366f1);
-  color: var(--p-primary-contrast-color, #fff);
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: filter 0.15s ease;
-}
-
-.cta:hover {
-  filter: brightness(1.08);
-}
-
 .nav {
   display: flex;
   flex-direction: column;
