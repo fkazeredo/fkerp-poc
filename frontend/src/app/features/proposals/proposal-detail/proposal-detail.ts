@@ -334,6 +334,16 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
   /** Shortcuts on the proposal detail: i add item, e edit commercial details, s submit for review, Esc back. */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
+    // Esc always closes the open dialog through the unsaved-changes guard — even from a focused field
+    // (the dialogs disable PrimeNG's own Esc close so it can't bypass the guard).
+    if (event.key === 'Escape' && (this.itemOpen() || this.detailsOpen())) {
+      if (this.itemOpen()) {
+        void this.requestCloseItem();
+      } else {
+        void this.requestCloseDetails();
+      }
+      return;
+    }
     const target = event.target as HTMLElement | null;
     const typing =
       !!target &&

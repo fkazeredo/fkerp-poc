@@ -179,6 +179,22 @@ export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChang
     open.set(false);
   }
 
+  /** Closes whichever edit dialog is open, via the guarded path (used by the Esc shortcut). */
+  private closeOpenDialog(): void {
+    for (const open of [
+      this.loseOpen,
+      this.stageOpen,
+      this.activityOpen,
+      this.editOpen,
+      this.proposalOpen,
+    ]) {
+      if (open()) {
+        void this.requestClose(open);
+        return;
+      }
+    }
+  }
+
   ngOnDestroy(): void {
     this.unsaved.set(false);
   }
@@ -455,20 +471,17 @@ export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChang
   /** Shortcuts: a register activity, e edit details, s change stage, p lose, Esc back. */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
+    // Esc always closes the open dialog through the unsaved-changes guard — even from a focused field
+    // (the dialogs disable PrimeNG's own Esc close so it can't bypass the guard).
+    if (event.key === 'Escape' && this.anyDialogOpen()) {
+      this.closeOpenDialog();
+      return;
+    }
     const target = event.target as HTMLElement | null;
     const typing =
       !!target &&
       (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
-    if (
-      typing ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.altKey ||
-      this.loseOpen() ||
-      this.stageOpen() ||
-      this.activityOpen() ||
-      this.editOpen()
-    ) {
+    if (typing || event.ctrlKey || event.metaKey || event.altKey || this.anyDialogOpen()) {
       return;
     }
     if (event.key === 'a' && this.canRegisterActivity()) {

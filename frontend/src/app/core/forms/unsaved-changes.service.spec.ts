@@ -40,4 +40,27 @@ describe('UnsavedChangesService', () => {
     captured.reject!();
     await expect(result).resolves.toBe(false);
   });
+
+  it('does not stack a second confirmation while one is already on screen', async () => {
+    const first = service.confirmDiscard();
+    const second = service.confirmDiscard(); // e.g. Esc pressed twice
+
+    // Only one dialog is shown; the re-entrant call resolves false (keep editing) without stacking.
+    expect(confirmation.confirm).toHaveBeenCalledTimes(1);
+    await expect(second).resolves.toBe(false);
+
+    captured.accept!();
+    await expect(first).resolves.toBe(true);
+  });
+
+  it('shows a fresh dialog again after the previous one is resolved', async () => {
+    const first = service.confirmDiscard();
+    captured.reject!();
+    await expect(first).resolves.toBe(false);
+
+    const second = service.confirmDiscard();
+    expect(confirmation.confirm).toHaveBeenCalledTimes(2);
+    captured.accept!();
+    await expect(second).resolves.toBe(true);
+  });
 });

@@ -384,6 +384,17 @@ describe('LeadDetailPage', () => {
     expect(comp['qualifyOpen']()).toBe(false);
   });
 
+  it('closes the open dialog with the Escape shortcut (no edits → no confirm)', () => {
+    const comp = build();
+    comp.ngOnInit();
+    comp['onShortcut'](new KeyboardEvent('keydown', { key: 'i' })); // open the interaction dialog
+    expect(comp['interactionOpen']()).toBe(true);
+
+    comp['onShortcut'](new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(comp['interactionOpen']()).toBe(false);
+  });
+
   it('opens the create-opportunity dialog, pre-filling the responsible and loading the options', () => {
     leads.detail.mockReturnValue(of(sample({ status: 'QUALIFIED', responsibleId: 'u1' })));
     const comp = build();

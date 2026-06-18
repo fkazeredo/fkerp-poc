@@ -343,6 +343,18 @@ describe('ProposalDetailPage', () => {
     expect(comp['itemOpen']()).toBe(true);
   });
 
+  it('closes the open dialog with the Escape shortcut (no edits → no confirm)', () => {
+    proposals.detail.mockReturnValue(of(withItem));
+    const comp = build();
+    comp.ngOnInit();
+    comp['openAddItem']();
+    expect(comp['itemOpen']()).toBe(true);
+
+    comp['onShortcut'](new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(comp['itemOpen']()).toBe(false);
+  });
+
   describe('DOM rendering', () => {
     it('renders the loading state while the detail is in flight', () => {
       proposals.detail.mockReturnValue(NEVER); // never emits -> loading stays true
