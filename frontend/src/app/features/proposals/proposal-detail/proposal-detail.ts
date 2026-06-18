@@ -153,9 +153,56 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     this.unsaved.set(false);
   }
 
-  /** Whether an edit dialog (item or commercial details) is open — route guard + tab-close warning. */
+  // Snapshot of the open dialog's fields, captured when it opens, to detect real edits.
+  private editSnapshot = '';
+
+  private liveSnapshot(): string {
+    if (this.itemOpen()) {
+      return JSON.stringify([
+        this.itemType,
+        this.itemDescription,
+        this.itemQuantity,
+        this.itemUnitValue,
+        this.itemDiscountMode,
+        this.itemDiscountValue,
+      ]);
+    }
+    if (this.detailsOpen()) {
+      return JSON.stringify([
+        this.detailsValidUntil,
+        this.detailsCommercialTerms,
+        this.detailsPaymentNotes,
+        this.detailsDiscountMode,
+        this.detailsDiscountValue,
+      ]);
+    }
+    return '';
+  }
+
+  /** Whether an edit dialog is open AND its fields were changed since it opened. */
+  private dialogDirty(): boolean {
+    return (this.itemOpen() || this.detailsOpen()) && this.editSnapshot !== this.liveSnapshot();
+  }
+
+  /** Used by the route guard and the tab-close warning: warns only when there are real edits. */
   hasUnsavedChanges(): boolean {
-    return this.itemOpen() || this.detailsOpen();
+    return this.dialogDirty();
+  }
+
+  /** Closes the item dialog, confirming first if it has unsaved edits. */
+  protected async requestCloseItem(): Promise<void> {
+    if (this.dialogDirty() && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
+    this.itemOpen.set(false);
+  }
+
+  /** Closes the commercial-details dialog, confirming first if it has unsaved edits. */
+  protected async requestCloseDetails(): Promise<void> {
+    if (this.dialogDirty() && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
+    this.detailsOpen.set(false);
   }
 
   protected statusLabel(status: ProposalStatus): string {
@@ -192,6 +239,7 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     this.itemDiscountMode = 'NONE';
     this.itemDiscountValue = null;
     this.itemOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
   }
 
   protected openEditItem(item: ProposalItem): void {
@@ -203,6 +251,7 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     this.itemDiscountMode = item.discountType ?? 'NONE';
     this.itemDiscountValue = item.discountValue;
     this.itemOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
   }
 
   protected canSaveItem(): boolean {
@@ -248,6 +297,7 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     this.detailsDiscountMode = p.discountType ?? 'NONE';
     this.detailsDiscountValue = p.discountValue;
     this.detailsOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
   }
 
   protected canSaveDetails(): boolean {

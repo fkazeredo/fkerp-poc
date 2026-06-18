@@ -306,18 +306,41 @@ describe('ProposalDetailPage', () => {
     expect(comp['proposal']()!.status).toBe('READY_FOR_REVIEW');
   });
 
-  it('reports unsaved changes while an edit dialog is open', () => {
+  it('reports unsaved changes only after a field is actually changed in an open dialog', () => {
     proposals.detail.mockReturnValue(of(withItem));
     const comp = build();
     comp.ngOnInit();
     expect(comp.hasUnsavedChanges()).toBe(false);
 
-    comp['openEditDetails']();
-    expect(comp.hasUnsavedChanges()).toBe(true);
+    comp['openAddItem'](); // dialog open, nothing typed yet
+    expect(comp.hasUnsavedChanges()).toBe(false);
 
-    comp['detailsOpen'].set(false);
-    comp['openAddItem']();
+    comp['itemDescription'] = 'Algo novo'; // user types
     expect(comp.hasUnsavedChanges()).toBe(true);
+  });
+
+  it('asks to confirm before closing a dirty dialog, and closes immediately when clean', async () => {
+    proposals.detail.mockReturnValue(of(withItem));
+    const comp = build();
+    comp.ngOnInit();
+
+    // Clean dialog -> closes without asking.
+    comp['openAddItem']();
+    await comp['requestCloseItem']();
+    expect(comp['itemOpen']()).toBe(false);
+
+    // Dirty dialog -> asks; if the user keeps editing (false), it stays open.
+    comp['openAddItem']();
+    comp['itemDescription'] = 'mudou';
+    const confirm = vi
+      .spyOn(TestBed.inject(ConfirmationService), 'confirm')
+      .mockImplementation((opts) => {
+        opts.reject?.();
+        return TestBed.inject(ConfirmationService);
+      });
+    await comp['requestCloseItem']();
+    expect(confirm).toHaveBeenCalled();
+    expect(comp['itemOpen']()).toBe(true);
   });
 
   describe('DOM rendering', () => {

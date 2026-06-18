@@ -27,7 +27,7 @@
         [routerLinkActiveOptions]="{ exact: true }"
         (click)="sidebarOpen.set(false)"
       >
-        <i class="pi pi-home"></i><span>Início</span>
+        <i class="pi pi-home" aria-hidden="true"></i><span>Início</span>
       </a>
 
       @for (m of modules; track m.id) {
@@ -40,23 +40,24 @@
               [routerLinkActiveOptions]="{ exact: true }"
               (click)="sidebarOpen.set(false)"
             >
-              <i [class]="m.icon"></i><span>{{ m.title }}</span>
+              <i [class]="m.icon" aria-hidden="true"></i><span>{{ m.title }}</span>
             </a>
             <button
               class="nav-section-toggle"
               type="button"
               (click)="toggleSection(m.id)"
-              [attr.aria-expanded]="!isCollapsed(m.id)"
-              [attr.aria-label]="(isCollapsed(m.id) ? 'Expandir ' : 'Recolher ') + m.title"
+              [attr.aria-expanded]="isOpen(m.id)"
+              [attr.aria-label]="(isOpen(m.id) ? 'Recolher ' : 'Expandir ') + m.title"
             >
               <i
                 class="pi"
-                [class.pi-chevron-down]="!isCollapsed(m.id)"
-                [class.pi-chevron-right]="isCollapsed(m.id)"
+                aria-hidden="true"
+                [class.pi-chevron-down]="isOpen(m.id)"
+                [class.pi-chevron-right]="!isOpen(m.id)"
               ></i>
             </button>
           </div>
-          <div class="nav-section-items" [class.collapsed]="isCollapsed(m.id)">
+          <div class="nav-section-items" [class.collapsed]="!isOpen(m.id)">
             @for (item of m.items; track item.link) {
               <a
                 class="nav-item"
@@ -65,7 +66,7 @@
                 [routerLinkActiveOptions]="{ exact: item.exact }"
                 (click)="sidebarOpen.set(false)"
               >
-                <i [class]="item.icon"></i><span>{{ item.label }}</span>
+                <i [class]="item.icon" aria-hidden="true"></i><span>{{ item.label }}</span>
               </a>
             }
           </div>

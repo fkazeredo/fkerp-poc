@@ -163,6 +163,9 @@
     [header]="editingItemId ? 'Editar item' : 'Adicionar item'"
     [(visible)]="itemOpen"
     [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
     [style]="{ width: '34rem' }"
   >
     <div class="field">
@@ -254,7 +257,7 @@
         [loading]="acting()"
         (onClick)="confirmItem()"
       />
-      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="itemOpen.set(false)" />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestCloseItem()" />
     </div>
   </p-dialog>
 
@@ -262,6 +265,9 @@
     header="Editar dados comerciais"
     [(visible)]="detailsOpen"
     [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
     [style]="{ width: '34rem' }"
   >
     <div class="field">
@@ -332,7 +338,7 @@
         [loading]="acting()"
         (onClick)="confirmEditDetails()"
       />
-      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="detailsOpen.set(false)" />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestCloseDetails()" />
     </div>
   </p-dialog>
 }

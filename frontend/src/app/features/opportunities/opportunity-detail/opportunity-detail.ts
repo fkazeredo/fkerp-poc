@@ -131,15 +131,52 @@ export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChang
   private readonly unsaved = inject(UnsavedChangesService);
 
   constructor() {
-    // An open edit dialog means an in-progress edit; keep the global flag in sync for the tab-close warning.
-    effect(() => this.unsaved.set(this.hasUnsavedChanges()));
+    // Keep the app-wide flag (tab-close warning) in sync with whether a dialog is open.
+    effect(() => this.unsaved.set(this.anyDialogOpen()));
   }
 
-  /** Whether an edit dialog is open (used by the route guard and the tab-close warning). */
-  hasUnsavedChanges(): boolean {
+  // Snapshot of the open dialog's fields, captured when a dialog opens, to detect real edits.
+  private editSnapshot = '';
+
+  private anyDialogOpen(): boolean {
     return (
       this.loseOpen() || this.stageOpen() || this.activityOpen() || this.editOpen() || this.proposalOpen()
     );
+  }
+
+  private liveSnapshot(): string {
+    return JSON.stringify([
+      this.lossReason,
+      this.lossNote,
+      this.targetStage,
+      this.activityType,
+      this.activityResult,
+      this.activityDescription,
+      this.activityOccurredAt,
+      this.activityNextActionDate,
+      this.editEstimatedValue,
+      this.editExpectedCloseDate,
+      this.editProductType,
+      this.editNotes,
+      this.proposalTitle,
+      this.proposalNotes,
+      this.proposalValidUntil,
+      this.proposalTerms,
+      this.proposalResponsibleTo,
+    ]);
+  }
+
+  /** Whether a dialog is open AND its fields were changed since it opened (guard + tab-close warning). */
+  hasUnsavedChanges(): boolean {
+    return this.anyDialogOpen() && this.editSnapshot !== this.liveSnapshot();
+  }
+
+  /** Closes an edit dialog, confirming first if it has unsaved edits. */
+  protected async requestClose(open: { set: (v: boolean) => void }): Promise<void> {
+    if (this.hasUnsavedChanges() && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
+    open.set(false);
   }
 
   ngOnDestroy(): void {
@@ -275,6 +312,7 @@ export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChang
     this.lossReason = null;
     this.lossNote = '';
     this.loseOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
   }
 
   protected confirmLose(): void {
@@ -291,6 +329,7 @@ export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChang
   protected openStage(): void {
     this.targetStage = this.nextStage();
     this.stageOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
   }
 
   protected confirmStage(): void {
@@ -311,6 +350,7 @@ export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChang
     this.activityOccurredAt = new Date();
     this.activityNextActionDate = null;
     this.activityOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
   }
 
   protected canSaveActivity(): boolean {
@@ -346,6 +386,7 @@ export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChang
     this.editProductType = o?.productType ?? '';
     this.editNotes = o?.notes ?? '';
     this.editOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
   }
 
   protected confirmEdit(): void {
@@ -374,6 +415,7 @@ export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChang
         .subscribe({ next: (list) => this.proposalResponsibleOptions.set(list) });
     }
     this.proposalOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
   }
 
   /** Creates a Proposal from this (ready) Opportunity and opens the new Proposal. */
