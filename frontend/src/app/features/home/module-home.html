@@ -1,0 +1,30 @@
+@if (module; as m) {
+  <header class="page-head">
+    <div>
+      <h1>{{ m.title }}</h1>
+      <p class="sub muted">{{ m.desc }}</p>
+    </div>
+  </header>
+
+  <div class="home-grid">
+    @for (item of m.items; track item.link) {
+      <a class="tile surface" [routerLink]="item.link">
+        <span class="tile-icon" [class]="item.accent"><i [class]="item.icon"></i></span>
+        <span class="tile-title">{{ item.label }}</span>
+        <span class="tile-desc muted">{{ item.desc }}</span>
+      </a>
+    }
+    @for (action of m.actions; track action.link) {
+      <a class="tile surface" [routerLink]="action.link">
+        <span class="tile-icon" [class]="action.accent"><i [class]="action.icon"></i></span>
+        <span class="tile-title">{{ action.label }}</span>
+        <span class="tile-desc muted">{{ action.desc }}</span>
+      </a>
+    }
+  </div>
+} @else {
+  <div class="notice surface">
+    <i class="pi pi-lock"></i>
+    <span>Você não tem acesso a este módulo. Fale com o administrador.</span>
+  </div>
+}

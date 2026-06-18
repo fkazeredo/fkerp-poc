@@ -12,7 +12,7 @@ async function login(page: Page, username: string, password: string): Promise<vo
   await page.locator('#username').fill(username);
   await page.locator('#password').fill(password);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: 'Comercial / CRM' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 }
 
 interface NewLead {

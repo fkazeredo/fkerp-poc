@@ -122,14 +122,18 @@ palette) to switch between light and dark mode. Your choice is remembered on the
 
 ---
 
-## 4. Home
+## 4. Home and module navigation
 
-The home screen summarizes the Commercial / CRM area and offers quick links to:
+When you sign in you land on the **system home**, which shows a **card for each module** you can access —
+**Comercial / CRM**, **Vendas** (Sales) and **Cadastros** (Reference data). Clicking a card opens that
+**module's home**, with the shortcuts to its screens (for example, the Comercial / CRM home offers Leads,
+Pending, Indicators, Opportunities and New lead).
 
-- **Novo lead** (New lead) — open the lead registration form.
-- **Cadastros** (Reference data) — manage the supporting lists.
+The **sidebar** mirrors this: each module is a **collapsible section** (accordion). Click the **module title**
+to open its home, or the **chevron** to collapse/expand the section — the app remembers which sections you left
+collapsed, so the menu stays tidy as the system grows. **Início** (Home) at the top returns to the system home.
 
-A reminder of the main keyboard shortcuts is shown at the bottom.
+A reminder of the main keyboard shortcuts is shown at the bottom (press `?` for the full list).
 
 ---
 
@@ -571,8 +575,9 @@ FKERP validates your input and shows clear, Portuguese-language messages:
 
 ## 11.1 Keyboard shortcuts
 
-The menu is organized into clear **modules** — **Comercial / CRM**, **Vendas** and **Cadastros** — each its
-own block in the sidebar. Everything is also reachable by keyboard:
+The menu is organized into clear **modules** — **Comercial / CRM**, **Vendas** and **Cadastros** — each a
+collapsible section in the sidebar with its own **home** (see section 4). Everything is also reachable by
+keyboard:
 
 - **`Ctrl`/`Cmd` + `K`** — the **command palette**: search and jump to any screen or action from anywhere.
 - **`?`** — show the full shortcut help at any time.

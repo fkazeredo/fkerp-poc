@@ -20,22 +20,55 @@
     }
 
     <nav class="nav">
-      @for (group of navGroups; track group.title) {
-        <div class="nav-module" [class.no-title]="!group.title">
-          @if (group.title) {
-            <span class="nav-group"><i [class]="group.icon"></i>{{ group.title }}</span>
-          }
-          @for (item of group.items; track item.link) {
+      <a
+        class="nav-item"
+        routerLink="/"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        (click)="sidebarOpen.set(false)"
+      >
+        <i class="pi pi-home"></i><span>Início</span>
+      </a>
+
+      @for (m of modules; track m.id) {
+        <div class="nav-module">
+          <div class="nav-section">
             <a
-              class="nav-item"
-              [routerLink]="item.link"
+              class="nav-section-link"
+              [routerLink]="m.home"
               routerLinkActive="active"
-              [routerLinkActiveOptions]="{ exact: item.exact }"
+              [routerLinkActiveOptions]="{ exact: true }"
               (click)="sidebarOpen.set(false)"
             >
-              <i [class]="item.icon"></i><span>{{ item.label }}</span>
+              <i [class]="m.icon"></i><span>{{ m.title }}</span>
             </a>
-          }
+            <button
+              class="nav-section-toggle"
+              type="button"
+              (click)="toggleSection(m.id)"
+              [attr.aria-expanded]="!isCollapsed(m.id)"
+              [attr.aria-label]="(isCollapsed(m.id) ? 'Expandir ' : 'Recolher ') + m.title"
+            >
+              <i
+                class="pi"
+                [class.pi-chevron-down]="!isCollapsed(m.id)"
+                [class.pi-chevron-right]="isCollapsed(m.id)"
+              ></i>
+            </button>
+          </div>
+          <div class="nav-section-items" [class.collapsed]="isCollapsed(m.id)">
+            @for (item of m.items; track item.link) {
+              <a
+                class="nav-item"
+                [routerLink]="item.link"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="{ exact: item.exact }"
+                (click)="sidebarOpen.set(false)"
+              >
+                <i [class]="item.icon"></i><span>{{ item.label }}</span>
+              </a>
+            }
+          </div>
         </div>
       }
     </nav>

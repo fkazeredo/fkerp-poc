@@ -12,6 +12,8 @@ describe('Shell keyboard shortcuts', () => {
   const auth = { logout: vi.fn(() => of(undefined)) };
 
   function build(): Shell {
+    // Reset first so a test can build a second shell (e.g. to verify persisted sidebar state is restored).
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
@@ -28,6 +30,7 @@ describe('Shell keyboard shortcuts', () => {
   beforeEach(() => {
     router.navigateByUrl.mockReset();
     auth.logout.mockClear();
+    localStorage.clear();
   });
 
   function key(init: KeyboardEventInit): KeyboardEvent {
@@ -63,10 +66,33 @@ describe('Shell keyboard shortcuts', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/propostas');
   });
 
+  it('navigates to the Cadastros module home on "g" then "c"', () => {
+    const shell = build();
+    shell['onKeydown'](key({ key: 'g' }));
+    shell['onKeydown'](key({ key: 'c' }));
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/cadastros');
+  });
+
   it('opens the shortcut help on "?"', () => {
     const shell = build();
     shell['onKeydown'](key({ key: '?' }));
     expect(shell['helpOpen']()).toBe(true);
+  });
+
+  it('collapses/expands a sidebar module section and persists the choice', () => {
+    const shell = build();
+    expect(shell['isCollapsed']('crm')).toBe(false);
+
+    shell['toggleSection']('crm');
+    expect(shell['isCollapsed']('crm')).toBe(true);
+    expect(JSON.parse(localStorage.getItem('fkerp.sidebar.collapsed')!)).toContain('crm');
+
+    // A freshly-built shell restores the persisted collapsed set.
+    expect(build()['isCollapsed']('crm')).toBe(true);
+
+    shell['toggleSection']('crm');
+    expect(shell['isCollapsed']('crm')).toBe(false);
+    expect(JSON.parse(localStorage.getItem('fkerp.sidebar.collapsed')!)).not.toContain('crm');
   });
 
   it('ignores single-letter shortcuts while typing in a field', () => {

@@ -119,14 +119,19 @@ para alternar entre os modos claro e escuro. Sua escolha fica salva no dispositi
 
 ---
 
-## 4. Início
+## 4. Início e navegação por módulos
 
-A tela inicial resume a área Comercial / CRM e oferece atalhos rápidos para:
+Ao entrar, você vê a **tela inicial do sistema**, que apresenta um **card para cada módulo** ao qual você tem
+acesso — **Comercial / CRM**, **Vendas** e **Cadastros**. Clicar em um card abre a **home daquele módulo**, com
+os atalhos para suas telas (por exemplo, a home de Comercial / CRM traz Leads, Pendências, Indicadores,
+Oportunidades e Novo lead).
 
-- **Novo lead** — abre o formulário de cadastro de Lead.
-- **Cadastros** — gerenciar as listas de apoio.
+O **menu lateral** acompanha essa organização: cada módulo é uma **seção recolhível** (acordeão). Clique no
+**título do módulo** para ir à home dele, ou na **setinha** para recolher/expandir a seção — o sistema lembra
+quais seções você deixou recolhidas. Assim o menu continua organizado mesmo quando o sistema cresce. No topo,
+**Início** volta para a tela inicial do sistema.
 
-Um lembrete dos principais atalhos de teclado é exibido no rodapé.
+Um lembrete dos principais atalhos de teclado é exibido no rodapé (e a tecla `?` mostra todos).
 
 ---
 
@@ -572,8 +577,8 @@ O FKERP valida o que você digita e mostra mensagens claras, em português:
 
 ## 11.1 Atalhos de teclado
 
-O menu é organizado em **módulos** claros — **Comercial / CRM**, **Vendas** e **Cadastros** — cada um em seu
-próprio bloco na barra lateral. Tudo também é acessível pelo teclado:
+O menu é organizado em **módulos** claros — **Comercial / CRM**, **Vendas** e **Cadastros** — cada um uma seção
+recolhível na barra lateral, com uma **home própria** (veja a seção 4). Tudo também é acessível pelo teclado:
 
 - **`Ctrl`/`Cmd` + `K`** — a **paleta de comandos**: busque e vá para qualquer tela ou ação de qualquer lugar.
 - **`?`** — mostra a ajuda completa de atalhos a qualquer momento.
