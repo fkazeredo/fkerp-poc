@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 import { OpportunityDetailPage } from './opportunity-detail';
 import { OpportunityDetail, OpportunityService } from '../../../core/api/opportunity.service';
 import { ProposalService } from '../../../core/api/proposal.service';
@@ -66,7 +66,8 @@ describe('OpportunityDetailPage', () => {
       loss: { reason: 'NO_RESPONSE', lostAt: '2026-06-16T10:00:00Z', lostBy: 'comercial', note: 'sumiu' },
     });
 
-  function build() {
+  function configure() {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [OpportunityDetailPage],
       providers: [
@@ -80,7 +81,20 @@ describe('OpportunityDetailPage', () => {
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'o1' } } } },
       ],
     });
+  }
+
+  function build() {
+    configure();
     return TestBed.createComponent(OpportunityDetailPage).componentInstance;
+  }
+
+  /** Renders the component to the DOM after init and returns the host element. */
+  function render() {
+    configure();
+    const fixture = TestBed.createComponent(OpportunityDetailPage);
+    fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
   }
 
   beforeEach(() => {
@@ -393,5 +407,50 @@ describe('OpportunityDetailPage', () => {
     comp['proposalTitle'] = '   ';
     comp['confirmProposal']();
     expect(proposalService.create).not.toHaveBeenCalled();
+  });
+
+  describe('DOM rendering', () => {
+    it('renders the loading state while the detail is in flight', () => {
+      opportunities.detail.mockReturnValue(NEVER);
+      expect(render().textContent).toContain('Carregando');
+    });
+
+    it('renders the error state on 404', () => {
+      opportunities.detail.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
+      const el = render();
+      expect(el.textContent).toContain('não encontrada');
+      expect(el.querySelector('p-message')).not.toBeNull();
+    });
+
+    it('renders the loaded opportunity: name, source lead and the operate actions', () => {
+      opportunities.detail.mockReturnValue(of(sample({ stage: 'DISCOVERY' })));
+      auth.canOperateOpportunity.mockReturnValue(true);
+      auth.canCreateProposal.mockReturnValue(false);
+      const el = render();
+
+      expect(el.querySelector('h1')?.textContent).toContain('Aurora');
+      expect(el.textContent).toContain('Lead de origem');
+      expect(el.textContent).toContain('Registrar atividade');
+      expect(el.textContent).toContain('Avançar estágio');
+      expect(el.textContent).toContain('Editar dados comerciais');
+    });
+
+    it('hides the operate actions for a consultation-only user', () => {
+      opportunities.detail.mockReturnValue(of(sample({ stage: 'DISCOVERY' })));
+      auth.canOperateOpportunity.mockReturnValue(false);
+      auth.canCreateProposal.mockReturnValue(false);
+      const el = render();
+
+      expect(el.querySelector('h1')?.textContent).toContain('Aurora');
+      expect(el.textContent).not.toContain('Registrar atividade');
+      expect(el.textContent).not.toContain('Avançar estágio');
+    });
+
+    it('shows "Criar proposta" only when the opportunity is ready and the user may create one', () => {
+      opportunities.detail.mockReturnValue(of(sample({ stage: 'READY_FOR_PROPOSAL' })));
+      auth.canOperateOpportunity.mockReturnValue(true);
+      auth.canCreateProposal.mockReturnValue(true);
+      expect(render().textContent).toContain('Criar proposta');
+    });
   });
 });

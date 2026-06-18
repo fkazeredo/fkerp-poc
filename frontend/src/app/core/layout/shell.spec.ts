@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { ConfirmationService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { of } from 'rxjs';
 import { Shell } from './shell';
 import { AuthService } from '../auth/auth.service';
@@ -160,5 +160,36 @@ describe('Shell keyboard shortcuts', () => {
     expect(dirty.preventDefault).toHaveBeenCalled();
     expect(dirty.returnValue).toBe('');
     shell['unsaved'].set(false);
+  });
+
+  describe('DOM rendering', () => {
+    it('renders the module-oriented sidebar with the accessible modules and the brand', () => {
+      auth.canSeeProposals.mockReturnValue(true);
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [Shell],
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          ConfirmationService,
+          MessageService,
+          provideRouter([]),
+          { provide: AuthService, useValue: auth },
+        ],
+      });
+      const fixture = TestBed.createComponent(Shell);
+      fixture.detectChanges();
+      const el = fixture.nativeElement as HTMLElement;
+
+      expect(el.querySelector('.sidebar')).not.toBeNull();
+      expect(el.textContent).toContain('FKERP');
+      expect(el.textContent).toContain('Início');
+      expect(el.textContent).toContain('Vendas'); // proposals visible
+      expect(el.textContent).toContain('Propostas');
+      expect(el.textContent).toContain('Cadastros'); // always present
+      // CRM module hidden (no lead/opportunity scopes in this build).
+      expect(el.textContent).not.toContain('Leads');
+      auth.canSeeProposals.mockReturnValue(false);
+    });
   });
 });

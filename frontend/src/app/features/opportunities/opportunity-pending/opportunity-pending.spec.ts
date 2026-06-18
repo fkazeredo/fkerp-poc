@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 import { providePrimeNG } from 'primeng/config';
 import type { TableLazyLoadEvent } from 'primeng/table';
 import { of, throwError } from 'rxjs';
@@ -42,12 +43,25 @@ describe('OpportunityPending', () => {
     last: true,
   });
 
-  function build() {
+  function configure() {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [OpportunityPending],
-      providers: [providePrimeNG(), { provide: OpportunityService, useValue: opportunities }],
+      providers: [providePrimeNG(), provideRouter([]), { provide: OpportunityService, useValue: opportunities }],
     });
+  }
+
+  function build() {
+    configure();
     return TestBed.createComponent(OpportunityPending).componentInstance;
+  }
+
+  function render() {
+    configure();
+    const fixture = TestBed.createComponent(OpportunityPending);
+    fixture.componentInstance['onLazyLoad'](lazy(0));
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
   }
 
   beforeEach(() => {
@@ -76,5 +90,19 @@ describe('OpportunityPending', () => {
     const comp = build();
     comp['onLazyLoad'](lazy(0));
     expect(comp['error']()).toContain('pendências');
+  });
+
+  describe('DOM rendering', () => {
+    it('renders a pending opportunity row with its reason tags', () => {
+      opportunities.pending.mockReturnValue(of(pageOf([item])));
+      const el = render();
+      expect(el.textContent).toContain('Alpha');
+      expect(el.textContent).toContain('Sem atividade recente'); // a reason label
+    });
+
+    it('renders the empty state when nothing is pending', () => {
+      opportunities.pending.mockReturnValue(of(pageOf([])));
+      expect(render().textContent).toMatch(/Nenhuma|nenhum|pend/i);
+    });
   });
 });

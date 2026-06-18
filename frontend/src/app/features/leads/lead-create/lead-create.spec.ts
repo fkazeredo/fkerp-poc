@@ -18,7 +18,8 @@ describe('LeadCreate', () => {
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
 
-  function build() {
+  function configure() {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [LeadCreate],
       providers: [
@@ -29,7 +30,19 @@ describe('LeadCreate', () => {
         { provide: MessageService, useValue: messages },
       ],
     });
+  }
+
+  function build() {
+    configure();
     return TestBed.createComponent(LeadCreate).componentInstance;
+  }
+
+  function render() {
+    configure();
+    const fixture = TestBed.createComponent(LeadCreate);
+    fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
   }
 
   beforeEach(() => {
@@ -124,5 +137,25 @@ describe('LeadCreate', () => {
 
     expect(router.navigateByUrl).toHaveBeenCalledWith('/');
     expect(leads.create).not.toHaveBeenCalled();
+  });
+
+  describe('DOM rendering', () => {
+    it('renders the lead form with its required fields and the submit button', () => {
+      const el = render();
+      expect(el.querySelector('h1')?.textContent).toContain('Novo lead');
+      expect(el.querySelector('#name')).not.toBeNull();
+      expect(el.querySelector('#phone')).not.toBeNull();
+      expect(el.textContent).toContain('Salvar lead');
+      expect(el.textContent).toContain('Cancelar');
+    });
+
+    it('shows a server-side field error in the DOM', () => {
+      configure();
+      const fixture = TestBed.createComponent(LeadCreate);
+      fixture.componentInstance.ngOnInit();
+      fixture.componentInstance['fieldErrors'].set({ phone: 'Telefone inválido' });
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Telefone inválido');
+    });
   });
 });
