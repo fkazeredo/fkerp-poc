@@ -271,6 +271,17 @@ describe('OpportunityDetailPage', () => {
     expect(comp['activityDescription']).toBe('');
   });
 
+  it('closes the open dialog with the Escape shortcut (no edits → no confirm)', () => {
+    const comp = build();
+    comp.ngOnInit();
+    comp['openActivity']();
+    expect(comp['activityOpen']()).toBe(true);
+
+    comp['onShortcut'](new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(comp['activityOpen']()).toBe(false);
+  });
+
   it('confirmActivity registers the activity, refreshes the detail and closes the dialog', () => {
     const withActivity = sample({
       activities: [

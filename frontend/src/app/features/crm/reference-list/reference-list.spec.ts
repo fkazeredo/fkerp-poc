@@ -109,6 +109,62 @@ describe('ReferenceList', () => {
     expect(api.create).not.toHaveBeenCalled();
   });
 
+  // Regression: Esc closes the create/edit dialog (the cadastro "exit" shortcut).
+  it('closes the dialog on Escape when there are no changes', () => {
+    const comp = build();
+    comp['openCreate']();
+    expect(comp['dialogOpen']()).toBe(true);
+
+    comp['onEscape']();
+
+    expect(comp['dialogOpen']()).toBe(false);
+    expect(api.create).not.toHaveBeenCalled();
+  });
+
+  it('ignores Escape when no dialog is open', () => {
+    const comp = build();
+    expect(comp['dialogOpen']()).toBe(false);
+
+    expect(() => comp['onEscape']()).not.toThrow();
+    expect(comp['dialogOpen']()).toBe(false);
+  });
+
+  it('warns before discarding on Escape when the form was changed, and keeps the dialog open on reject', async () => {
+    const comp = build();
+    comp['openCreate']();
+    comp['form'].patchValue({ code: 'TIKTOK', label: 'TikTok' });
+    comp['form'].markAsDirty();
+
+    const confirmation = TestBed.inject(ConfirmationService);
+    const confirm = vi.spyOn(confirmation, 'confirm').mockImplementation((opts) => {
+      opts.reject?.(); // user chooses "Continuar editando"
+      return confirmation;
+    });
+
+    await comp['closeDialog']();
+
+    expect(confirm).toHaveBeenCalled();
+    expect(comp['dialogOpen']()).toBe(true); // stays open — nothing discarded
+  });
+
+  it('discards and closes on Escape when the user confirms', async () => {
+    const comp = build();
+    comp['openCreate']();
+    comp['form'].patchValue({ code: 'TIKTOK', label: 'TikTok' });
+    comp['form'].markAsDirty();
+
+    const confirmation = TestBed.inject(ConfirmationService);
+    vi.spyOn(confirmation, 'confirm').mockImplementation((opts) => {
+      opts.accept?.(); // user chooses "Descartar"
+      return confirmation;
+    });
+
+    await comp['closeDialog']();
+
+    expect(comp['dialogOpen']()).toBe(false);
+    expect(api.create).not.toHaveBeenCalled();
+  });
+
   describe('DOM rendering', () => {
     it('renders the cadastro title and a row', () => {
       api.list.mockReturnValue(of([item()]));
