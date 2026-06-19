@@ -5,6 +5,127 @@
   </div>
 </header>
 
+<div class="filters surface pad">
+  <div class="filter grow">
+    <label for="q">Buscar</label>
+    <input
+      pInputText
+      id="q"
+      [(ngModel)]="search"
+      (ngModelChange)="onSearchInput()"
+      placeholder="Título ou oportunidade"
+      class="w-full"
+    />
+  </div>
+  <div class="filter">
+    <label>Status</label>
+    <p-multiSelect
+      [options]="statusOptions"
+      optionLabel="label"
+      optionValue="value"
+      [(ngModel)]="status"
+      (ngModelChange)="applyFilters()"
+      placeholder="Ativas"
+      [showClear]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Responsável</label>
+    <p-select
+      [options]="responsibleOptions()"
+      optionLabel="name"
+      optionValue="id"
+      [(ngModel)]="responsible"
+      (ngModelChange)="applyFilters()"
+      placeholder="Todos"
+      [showClear]="true"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Criada de</label>
+    <p-datepicker
+      [(ngModel)]="createdFrom"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Criada até</label>
+    <p-datepicker
+      [(ngModel)]="createdTo"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Validade de</label>
+    <p-datepicker
+      [(ngModel)]="validFrom"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Validade até</label>
+    <p-datepicker
+      [(ngModel)]="validTo"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label for="totalMin">Valor mín.</label>
+    <p-inputNumber
+      inputId="totalMin"
+      [(ngModel)]="totalMin"
+      (ngModelChange)="applyFilters()"
+      mode="currency"
+      currency="BRL"
+      [min]="0"
+      placeholder="0,00"
+      styleClass="w-full"
+    />
+  </div>
+  <div class="filter">
+    <label for="totalMax">Valor máx.</label>
+    <p-inputNumber
+      inputId="totalMax"
+      [(ngModel)]="totalMax"
+      (ngModelChange)="applyFilters()"
+      mode="currency"
+      currency="BRL"
+      [min]="0"
+      placeholder="0,00"
+      styleClass="w-full"
+    />
+  </div>
+  <p-button
+    label="Limpar"
+    icon="pi pi-filter-slash"
+    severity="secondary"
+    [text]="true"
+    size="small"
+    (onClick)="clearFilters()"
+  />
+</div>
+
 @if (error()) {
   <p-message severity="error" [text]="error()!" styleClass="w-full" />
 }
@@ -20,7 +141,7 @@
     [first]="firstRow"
     [loading]="loading()"
     styleClass="p-datatable-sm"
-    [tableStyle]="{ 'min-width': '56rem' }"
+    [tableStyle]="{ 'min-width': '64rem' }"
   >
     <ng-template pTemplate="header">
       <tr>
@@ -31,6 +152,7 @@
         <th class="num">Total</th>
         <th>Validade</th>
         <th>Criada em</th>
+        <th>Atualizada em</th>
       </tr>
     </ng-template>
     <ng-template pTemplate="body" let-p>
@@ -47,16 +169,19 @@
           }
         </td>
         <td>
-          <a [routerLink]="['/oportunidades', p.opportunityId]" class="proposal-link">Ver oportunidade</a>
+          <a [routerLink]="['/oportunidades', p.opportunityId]" class="proposal-link">
+            {{ p.opportunityName ?? 'Ver oportunidade' }}
+          </a>
         </td>
         <td class="num">{{ p.total | currency: 'BRL' }}</td>
         <td>{{ p.validUntil ? (p.validUntil | date: 'shortDate') : '—' }}</td>
         <td>{{ p.createdAt | date: 'short' }}</td>
+        <td>{{ p.updatedAt | date: 'short' }}</td>
       </tr>
     </ng-template>
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="7" class="muted empty">Nenhuma proposta ainda.</td>
+        <td colspan="8" class="muted empty">Nenhuma proposta ainda.</td>
       </tr>
     </ng-template>
   </p-table>

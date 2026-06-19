@@ -282,6 +282,26 @@ describe('OpportunityDetailPage', () => {
     expect(comp['activityOpen']()).toBe(false);
   });
 
+  // Regression: Esc must NOT silently discard an edited dialog — it warns through the guard.
+  it('warns before closing a changed dialog with the Escape shortcut, and keeps it open on reject', () => {
+    const comp = build();
+    comp.ngOnInit();
+    comp['openActivity']();
+    comp['activityDescription'] = 'rascunho não salvo'; // user types -> dirty
+
+    const confirm = vi
+      .spyOn(TestBed.inject(ConfirmationService), 'confirm')
+      .mockImplementation((opts) => {
+        opts.reject?.(); // "Continuar editando"
+        return TestBed.inject(ConfirmationService);
+      });
+
+    comp['onShortcut'](new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(confirm).toHaveBeenCalled();
+    expect(comp['activityOpen']()).toBe(true);
+  });
+
   it('confirmActivity registers the activity, refreshes the detail and closes the dialog', () => {
     const withActivity = sample({
       activities: [
