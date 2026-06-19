@@ -22,9 +22,11 @@ describe('ProposalDetailPage', () => {
     removeItem: vi.fn(),
     updateDetails: vi.fn(),
     submitForReview: vi.fn(),
+    approve: vi.fn(),
+    reject: vi.fn(),
   };
   const router = { navigateByUrl: vi.fn() };
-  const auth = { canOperateProposal: vi.fn() };
+  const auth = { canOperateProposal: vi.fn(), canApproveProposal: vi.fn() };
 
   const sample: ProposalDetail = {
     id: 'p1',
@@ -56,6 +58,8 @@ describe('ProposalDetailPage', () => {
       status: 'QUALIFIED',
     },
     statusHistory: [],
+    rejectionReason: null,
+    rejectionNote: null,
   };
 
   const item: ProposalItem = {
@@ -108,8 +112,12 @@ describe('ProposalDetailPage', () => {
     proposals.addItem.mockReset();
     proposals.updateItem.mockReset();
     proposals.removeItem.mockReset();
+    proposals.approve.mockReset();
+    proposals.reject.mockReset();
     auth.canOperateProposal.mockReset();
     auth.canOperateProposal.mockReturnValue(true);
+    auth.canApproveProposal.mockReset();
+    auth.canApproveProposal.mockReturnValue(false);
     proposals.detail.mockReturnValue(of(sample));
   });
 
@@ -321,6 +329,63 @@ describe('ProposalDetailPage', () => {
     expect(comp['proposal']()!.status).toBe('READY_FOR_REVIEW');
   });
 
+  it('only allows approve/reject with the approve authority while Ready for Review', () => {
+    const reviewing: ProposalDetail = { ...withItem, status: 'READY_FOR_REVIEW' };
+    proposals.detail.mockReturnValue(of(reviewing));
+    auth.canApproveProposal.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+    expect(comp['canApprove']()).toBe(true);
+
+    comp['proposal'].set(withItem); // a Draft
+    expect(comp['canApprove']()).toBe(false);
+
+    comp['proposal'].set({ ...withItem, status: 'APPROVED' });
+    expect(comp['canApprove']()).toBe(false);
+
+    comp['proposal'].set(reviewing);
+    auth.canApproveProposal.mockReturnValue(false);
+    expect(comp['canApprove']()).toBe(false); // missing approve authority
+  });
+
+  it('approves a Proposal under review and reflects the returned status', () => {
+    const reviewing: ProposalDetail = { ...withItem, status: 'READY_FOR_REVIEW' };
+    proposals.detail.mockReturnValue(of(reviewing));
+    proposals.approve.mockReturnValue(of({ ...withItem, status: 'APPROVED' }));
+    auth.canApproveProposal.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['approve']();
+
+    expect(proposals.approve).toHaveBeenCalledWith('p1');
+    expect(comp['proposal']()!.status).toBe('APPROVED');
+  });
+
+  it('requires a reason to confirm a rejection, then calls the service with the reason and note', () => {
+    const reviewing: ProposalDetail = { ...withItem, status: 'READY_FOR_REVIEW' };
+    proposals.detail.mockReturnValue(of(reviewing));
+    proposals.reject.mockReturnValue(
+      of({ ...withItem, status: 'REJECTED', rejectionReason: 'PRICE_TOO_HIGH', rejectionNote: 'caro' }),
+    );
+    auth.canApproveProposal.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['openReject']();
+    expect(comp['canConfirmReject']()).toBe(false); // no reason yet
+    comp['confirmReject']();
+    expect(proposals.reject).not.toHaveBeenCalled();
+
+    comp['rejectReason'] = 'PRICE_TOO_HIGH';
+    comp['rejectNote'] = 'caro';
+    expect(comp['canConfirmReject']()).toBe(true);
+    comp['confirmReject']();
+
+    expect(proposals.reject).toHaveBeenCalledWith('p1', 'PRICE_TOO_HIGH', 'caro');
+    expect(comp['proposal']()!.status).toBe('REJECTED');
+  });
+
   it('reports unsaved changes only after a field is actually changed in an open dialog', () => {
     proposals.detail.mockReturnValue(of(withItem));
     const comp = build();
@@ -472,6 +537,41 @@ describe('ProposalDetailPage', () => {
       expect(history?.textContent).toContain('Pronta para revisão'); // to label
       expect(history?.textContent).toContain('comercial'); // actor
       expect(el.textContent).not.toContain('Sem alterações de status registradas ainda.');
+    });
+
+    it('shows the approve/reject actions for an approver on a Proposal under review', () => {
+      proposals.detail.mockReturnValue(of({ ...withItem, status: 'READY_FOR_REVIEW' } as ProposalDetail));
+      auth.canApproveProposal.mockReturnValue(true);
+      const el = render();
+
+      expect(el.textContent).toContain('Aprovar');
+      expect(el.textContent).toContain('Rejeitar');
+    });
+
+    it('hides the approve/reject actions for a non-approver', () => {
+      proposals.detail.mockReturnValue(of({ ...withItem, status: 'READY_FOR_REVIEW' } as ProposalDetail));
+      auth.canApproveProposal.mockReturnValue(false);
+      const el = render();
+
+      expect(el.textContent).not.toContain('Aprovar');
+      expect(el.textContent).not.toContain('Rejeitar');
+    });
+
+    it('shows the rejection reason and note on a rejected Proposal', () => {
+      proposals.detail.mockReturnValue(
+        of({
+          ...withItem,
+          status: 'REJECTED',
+          rejectionReason: 'PRICE_TOO_HIGH',
+          rejectionNote: 'acima do orçamento',
+        } as ProposalDetail),
+      );
+      auth.canApproveProposal.mockReturnValue(false);
+      const el = render();
+
+      expect(el.textContent).toContain('Motivo da rejeição');
+      expect(el.textContent).toContain('Preço muito alto');
+      expect(el.textContent).toContain('acima do orçamento');
     });
   });
 });

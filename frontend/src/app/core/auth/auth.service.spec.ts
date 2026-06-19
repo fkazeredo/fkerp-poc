@@ -80,6 +80,14 @@ describe('AuthService', () => {
     expect(service.canSeeLeads()).toBe(false);
   });
 
+  it('grants Proposal approval only with the approve authority (not update)', () => {
+    service.accessToken.set(jwt({ sub: 'u', scope: 'sales:proposal:approve' }));
+    expect(service.canApproveProposal()).toBe(true);
+
+    service.accessToken.set(jwt({ sub: 'u', scope: 'sales:proposal:update' }));
+    expect(service.canApproveProposal()).toBe(false); // update is not approve
+  });
+
   it('exposes no scopes and a null subject when there is no token', () => {
     expect(service.scopes()).toEqual([]);
     expect(service.userId()).toBeNull();

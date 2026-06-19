@@ -533,9 +533,22 @@ item**, um **total maior que zero**, uma **data de validade** e um **responsáve
 fica desabilitado e um aviso lista o que falta (a validade você ajusta em **Editar dados comerciais**). Ao
 enviar, ela sai de *Rascunho* e passa a *Pronta para revisão*, e a partir daí seus itens e dados não podem
 mais ser editados. Enviar para revisão **não** envia a proposta ao cliente nem cria pedido, reserva,
-financeiro ou comissão — apenas muda o status para a etapa interna de aprovação (uma etapa futura).
+financeiro ou comissão — apenas muda o status para a etapa interna de aprovação.
 
-> As próximas etapas do módulo Vendas (aprovação interna, aceite do cliente e a geração de um
+### 9.5 Aprovar ou rejeitar (revisão interna)
+Uma proposta em *Pronta para revisão* passa pela **aprovação interna**: o **gerente** (perfil com a permissão
+de aprovação) vê os botões **Aprovar** e **Rejeitar** no topo do detalhe.
+
+- **Aprovar** muda a proposta para *Aprovada* e registra **quem aprovou e quando** no Histórico de status.
+- **Rejeitar** abre um diálogo onde você escolhe um **motivo** (lista fixa) e, opcionalmente, uma **anotação**;
+  a proposta passa a *Rejeitada*, o motivo fica visível no resumo e a transição (quem/quando) entra no
+  Histórico. Uma proposta rejeitada **não** é enviada ao cliente; para revisar a oferta, crie uma **nova
+  proposta** a partir da mesma Oportunidade (a rejeitada libera a Oportunidade).
+
+Quem não é aprovador (vendedores, representantes) **não** vê esses botões e não pode aprovar — nem as próprias
+propostas. Aprovar ou rejeitar **não** cria pedido comercial, reserva, financeiro nem comissão.
+
+> As próximas etapas do módulo Vendas (envio ao cliente, aceite do cliente e a geração de um
 > **pedido comercial**) virão nas próximas versões.
 
 ## 10. Gerenciando cadastros
