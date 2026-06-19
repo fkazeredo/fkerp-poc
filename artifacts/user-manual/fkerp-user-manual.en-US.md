@@ -484,10 +484,15 @@ appear unless you select them in the status filter. Use the **filters** at the t
 - **Valor mín. / máx.** (Amount min/max) — total range;
 - **Limpar** (Clear) — resets every filter.
 
-Click the title to open the **detail**, which shows the proposal summary, the status, the **source
-Opportunity** (with shortcuts to the Opportunity and the Lead) and the **items** (see below). The same
+Click the title to open the **detail**, to review everything before acting. It brings together: the
+proposal **summary** (responsible, validity, commercial terms, payment notes, internal notes, dates), the
+current **status**, the **source Opportunity** card (with a shortcut to the Opportunity), the **source
+Lead** card with the **client's contacts** (name, phone, WhatsApp, e-mail) and a shortcut to the Lead, the
+**items** with **subtotal / discount / total** (see below) and the **status history** — a timeline of the
+status changes (from → to, when and by whom). As the proposal lifecycle advances, this history also starts
+recording the **approval**, the **sending** and the **customer decision** (who and when). The same
 **visibility rules** as Opportunities apply: a representative sees only their own proposals; a manager sees
-all. The list exposes commercial data only — never booking, payment or commission data.
+all. The detail exposes commercial data only — never booking, payment, receivable or commission data.
 
 ### 9.3 Proposal items
 The **Itens** (Items) card on the proposal detail lists what will be offered to the client. While the

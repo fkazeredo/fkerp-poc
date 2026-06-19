@@ -485,10 +485,15 @@ aparecem, a menos que você as escolha no filtro de status. Use os **filtros** n
 - **Valor mín. / máx.** — faixa de total;
 - **Limpar** — zera todos os filtros.
 
-Clique no título para abrir o **detalhe**, que mostra o resumo da proposta, o status, a **Oportunidade de
-origem** (com atalhos para a Oportunidade e o Lead) e os **itens** (veja a seguir). Valem as mesmas **regras
-de visibilidade** das Oportunidades: o representante vê apenas as próprias propostas; o gerente vê todas. A
-lista expõe apenas dados comerciais — nunca reserva, pagamento ou comissão.
+Clique no título para abrir o **detalhe**, para revisar tudo antes de agir. Ele reúne: o **resumo** da
+proposta (responsável, validade, termos comerciais, notas de pagamento, anotações internas, datas), o
+**status** atual, o card da **Oportunidade de origem** (com atalho para a Oportunidade), o card do **Lead de
+origem** com os **contatos do cliente** (nome, telefone, WhatsApp, e-mail) e atalho para o Lead, os **itens**
+com **subtotal / desconto / total** (veja a seguir) e o **Histórico de status** — uma linha do tempo das
+mudanças de status (de → para, quando e por quem). Conforme o ciclo de vida da proposta avança, esse
+histórico também passa a registrar a **aprovação**, o **envio** e a **decisão do cliente** (quem e quando).
+Valem as mesmas **regras de visibilidade** das Oportunidades: o representante vê apenas as próprias propostas;
+o gerente vê todas. O detalhe expõe apenas dados comerciais — nunca reserva, pagamento, recebível ou comissão.
 
 ### 9.3 Itens da proposta
 O card **Itens** no detalhe da proposta lista o que será ofertado ao cliente. Enquanto a proposta estiver em

@@ -37,6 +37,24 @@ export interface ProposalSourceOpportunity {
   stage: OpportunityStage;
 }
 
+/** The source Lead, kept traceable from the Proposal (the contact's system of record). */
+export interface ProposalSourceLead {
+  id: string;
+  name: string;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  status: string;
+}
+
+/** A single Proposal status-change entry (from → to, when, by whom). Newest first in the detail. */
+export interface ProposalStatusChange {
+  from: ProposalStatus;
+  to: ProposalStatus;
+  at: string;
+  by: string | null;
+}
+
 /** Type of a Proposal item (commercial-offer line). */
 export type ProposalItemType = 'TRAVEL_PACKAGE' | 'CAR_RENTAL' | 'SERVICE_FEE' | 'OTHER';
 
@@ -96,6 +114,8 @@ export interface ProposalDetail {
   createdAt: string;
   updatedAt: string;
   sourceOpportunity: ProposalSourceOpportunity;
+  sourceLead: ProposalSourceLead;
+  statusHistory: ProposalStatusChange[];
 }
 
 /** Proposal list item (operational list of the Sales module). */

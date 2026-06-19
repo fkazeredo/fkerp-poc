@@ -220,7 +220,8 @@ class ProposalCreationApiIntegrationTest extends AbstractIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         Map<String, Object> detail = JsonPath.read(body, "$");
-        // The contract is exactly these fields — no Sale / Sales Order / Booking / Financial / Commission.
+        // The contract is exactly these fields — no Sale / Sales Order / Booking / Payment / Receivable /
+        // Commission.
         org.assertj.core.api.Assertions.assertThat(detail.keySet())
                 .containsExactlyInAnyOrder(
                         "id",
@@ -242,7 +243,9 @@ class ProposalCreationApiIntegrationTest extends AbstractIntegrationTest {
                         "total",
                         "createdAt",
                         "updatedAt",
-                        "sourceOpportunity");
+                        "sourceOpportunity",
+                        "sourceLead",
+                        "statusHistory");
     }
 
     private ResultActions createProposal(String token, UUID opportunityId, String title) throws Exception {

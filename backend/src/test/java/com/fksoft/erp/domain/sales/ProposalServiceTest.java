@@ -14,6 +14,7 @@ import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
+import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.OpportunityAccessPolicy;
 import com.fksoft.erp.domain.identity.UserRepository;
@@ -56,6 +57,9 @@ class ProposalServiceTest {
 
     @Mock
     private OpportunityAccessPolicy opportunityAccessPolicy;
+
+    @Mock
+    private LeadRepository leads;
 
     @Mock
     private UserRepository users;
