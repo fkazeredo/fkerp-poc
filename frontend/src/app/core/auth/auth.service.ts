@@ -108,9 +108,14 @@ export class AuthService {
     );
   }
 
-  /** Operate = act on a Proposal (review / approve / send / accept / reject). */
+  /** Operate = edit/items/submit a Proposal (Draft management and submit for review). */
   canOperateProposal(): boolean {
     return this.hasScope('sales:proposal:update');
+  }
+
+  /** Whether the user may approve or reject a Proposal under internal review (a separate authority). */
+  canApproveProposal(): boolean {
+    return this.hasScope('sales:proposal:approve');
   }
 }
 

@@ -534,9 +534,24 @@ something is missing the button stays disabled and a hint lists what's missing (
 **Editar dados comerciais**). On submit it leaves *Rascunho* (Draft) and becomes *Pronta para revisão* (Ready
 for review), after which its items and details are no longer editable. Submitting for review does **not** send
 the proposal to the client and creates no order, booking, finance or commission data — it only moves the
-status to the internal approval step (a later stage).
+status to the internal approval step.
 
-> The next steps of the Sales module (internal approval, customer acceptance and the generation of a
+### 9.5 Approve or reject (internal review)
+A proposal in *Pronta para revisão* (Ready for review) goes through **internal approval**: the **manager**
+(the profile with the approval permission) sees the **Aprovar** (Approve) and **Rejeitar** (Reject) buttons at
+the top of the detail.
+
+- **Approve** moves the proposal to *Aprovada* (Approved) and records **who approved and when** in the status
+  history.
+- **Reject** opens a dialog where you pick a **reason** (a fixed list) and, optionally, a **note**; the proposal
+  becomes *Rejeitada* (Rejected), the reason shows on the summary, and the transition (who/when) is recorded in
+  the history. A rejected proposal is **not** sent to the client; to revise the offer, create a **new proposal**
+  from the same Opportunity (the rejected one frees the Opportunity).
+
+Non-approvers (sellers, representatives) do **not** see these buttons and cannot approve — not even their own
+proposals. Approving or rejecting creates no commercial order, booking, finance or commission data.
+
+> The next steps of the Sales module (sending to the client, customer acceptance and the generation of a
 > **commercial order**) will come in later releases.
 
 ## 10. Managing reference data (*cadastros*)

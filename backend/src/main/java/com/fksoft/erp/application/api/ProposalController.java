@@ -5,6 +5,7 @@ import com.fksoft.erp.application.api.dto.ProposalItemRequest;
 import com.fksoft.erp.application.api.dto.ProposalListParams;
 import com.fksoft.erp.application.api.dto.ProposalResponse;
 import com.fksoft.erp.application.api.dto.ProposalUpdateRequest;
+import com.fksoft.erp.application.api.dto.RejectProposalRequest;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.service.ProposalService;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
@@ -160,6 +161,40 @@ public class ProposalController {
     public ProposalDetail submit(@PathVariable UUID id) {
         return proposalService.submitForReview(
                 id, userContext.currentUserId(), canSeeAllProposals(), canSeeUnassignedProposals());
+    }
+
+    /**
+     * Approves a Proposal under review (Ready for review → Approved); returns the refreshed detail. Requires
+     * the {@code sales:proposal:approve} authority. Does not send the Proposal to the client and creates no
+     * Sale, Order, Booking, Financial or Commission data.
+     *
+     * @param id the proposal id
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/approve")
+    public ProposalDetail approve(@PathVariable UUID id) {
+        return proposalService.approve(
+                id, userContext.currentUserId(), canSeeAllProposals(), canSeeUnassignedProposals());
+    }
+
+    /**
+     * Rejects a Proposal under review (Ready for review → Rejected) with a reason; returns the refreshed
+     * detail. Requires the {@code sales:proposal:approve} authority. Does not send the Proposal to the client
+     * and creates no Sale, Order, Booking, Financial or Commission data.
+     *
+     * @param id the proposal id
+     * @param request the rejection reason and optional note
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/reject")
+    public ProposalDetail reject(@PathVariable UUID id, @Valid @RequestBody RejectProposalRequest request) {
+        return proposalService.reject(
+                id,
+                request.reason(),
+                request.note(),
+                userContext.currentUserId(),
+                canSeeAllProposals(),
+                canSeeUnassignedProposals());
     }
 
     /**

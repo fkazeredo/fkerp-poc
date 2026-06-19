@@ -61,6 +61,16 @@ export type ProposalItemType = 'TRAVEL_PACKAGE' | 'CAR_RENTAL' | 'SERVICE_FEE' |
 /** How a line discount is expressed — an absolute amount or a percentage. */
 export type DiscountType = 'AMOUNT' | 'PERCENT';
 
+/** The fixed set of internal-review rejection reasons. */
+export type ProposalRejectionReason =
+  | 'PRICE_TOO_HIGH'
+  | 'DISCOUNT_OUT_OF_POLICY'
+  | 'INCOMPLETE_INFORMATION'
+  | 'TERMS_NOT_ACCEPTABLE'
+  | 'VALIDITY_TOO_SHORT'
+  | 'DUPLICATE'
+  | 'OTHER';
+
 /** A single commercial-offer line, with its computed line total. */
 export interface ProposalItem {
   id: string;
@@ -116,6 +126,8 @@ export interface ProposalDetail {
   sourceOpportunity: ProposalSourceOpportunity;
   sourceLead: ProposalSourceLead;
   statusHistory: ProposalStatusChange[];
+  rejectionReason: ProposalRejectionReason | null;
+  rejectionNote: string | null;
 }
 
 /** Proposal list item (operational list of the Sales module). */
@@ -180,6 +192,20 @@ export class ProposalService {
   /** Submits a Draft Proposal for review (requires items and a positive total); returns the detail. */
   submitForReview(id: string): Observable<ProposalDetail> {
     return this.http.post<ProposalDetail>(`/api/proposals/${id}/submit`, {});
+  }
+
+  /** Approves a Proposal under review (Ready for review → Approved); returns the detail. */
+  approve(id: string): Observable<ProposalDetail> {
+    return this.http.post<ProposalDetail>(`/api/proposals/${id}/approve`, {});
+  }
+
+  /** Rejects a Proposal under review with a reason (and optional note); returns the detail. */
+  reject(
+    id: string,
+    reason: ProposalRejectionReason,
+    note: string | null,
+  ): Observable<ProposalDetail> {
+    return this.http.post<ProposalDetail>(`/api/proposals/${id}/reject`, { reason, note });
   }
 
   /** Adds an item to a Draft Proposal; returns the refreshed detail (with the recomputed total). */

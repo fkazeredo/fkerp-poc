@@ -21,6 +21,7 @@ import {
   ProposalDetail,
   ProposalItem,
   ProposalItemType,
+  ProposalRejectionReason,
   ProposalService,
   ProposalStatus,
   UpdateProposal,
@@ -52,6 +53,16 @@ const ITEM_TYPE_LABELS: Record<ProposalItemType, string> = {
   TRAVEL_PACKAGE: 'Pacote de viagem',
   CAR_RENTAL: 'Locação de veículo',
   SERVICE_FEE: 'Taxa de serviço',
+  OTHER: 'Outro',
+};
+
+const REJECTION_REASON_LABELS: Record<ProposalRejectionReason, string> = {
+  PRICE_TOO_HIGH: 'Preço muito alto',
+  DISCOUNT_OUT_OF_POLICY: 'Desconto fora da política',
+  INCOMPLETE_INFORMATION: 'Informações incompletas',
+  TERMS_NOT_ACCEPTABLE: 'Termos comerciais inadequados',
+  VALIDITY_TOO_SHORT: 'Validade muito curta',
+  DUPLICATE: 'Proposta duplicada',
   OTHER: 'Outro',
 };
 
@@ -142,6 +153,14 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
   protected detailsDiscountMode: DiscountMode = 'NONE';
   protected detailsDiscountValue: number | null = null;
 
+  // Reject dialog (internal review): a required reason + an optional note.
+  protected readonly rejectOpen = signal(false);
+  protected rejectReason: ProposalRejectionReason | null = null;
+  protected rejectNote = '';
+  protected readonly rejectReasonOptions = (Object.keys(REJECTION_REASON_LABELS) as ProposalRejectionReason[]).map(
+    (value) => ({ value, label: REJECTION_REASON_LABELS[value] }),
+  );
+
   private proposalId = '';
 
   ngOnInit(): void {
@@ -176,12 +195,18 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
         this.detailsDiscountValue,
       ]);
     }
+    if (this.rejectOpen()) {
+      return JSON.stringify([this.rejectReason, this.rejectNote]);
+    }
     return '';
   }
 
   /** Whether an edit dialog is open AND its fields were changed since it opened. */
   private dialogDirty(): boolean {
-    return (this.itemOpen() || this.detailsOpen()) && this.editSnapshot !== this.liveSnapshot();
+    return (
+      (this.itemOpen() || this.detailsOpen() || this.rejectOpen()) &&
+      this.editSnapshot !== this.liveSnapshot()
+    );
   }
 
   /** Used by the route guard and the tab-close warning: warns only when there are real edits. */
@@ -203,6 +228,18 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
       return;
     }
     this.detailsOpen.set(false);
+  }
+
+  /** Closes the reject dialog, confirming first if it has unsaved edits. */
+  protected async requestCloseReject(): Promise<void> {
+    if (this.dialogDirty() && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
+    this.rejectOpen.set(false);
+  }
+
+  protected rejectionReasonLabel(reason: ProposalRejectionReason): string {
+    return REJECTION_REASON_LABELS[reason];
   }
 
   protected statusLabel(status: ProposalStatus): string {
@@ -342,16 +379,57 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     this.act(this.proposals.submitForReview(this.proposalId), 'Proposta enviada para revisão');
   }
 
-  /** Shortcuts on the proposal detail: i add item, e edit commercial details, s submit for review, Esc back. */
+  /** Whether the user may approve/reject this Proposal (has the approve authority and it is under review). */
+  protected canApprove(): boolean {
+    return this.auth.canApproveProposal() && this.proposal()?.status === 'READY_FOR_REVIEW';
+  }
+
+  protected approve(): void {
+    if (!this.canApprove()) {
+      return;
+    }
+    this.act(this.proposals.approve(this.proposalId), 'Proposta aprovada');
+  }
+
+  protected openReject(): void {
+    this.rejectReason = null;
+    this.rejectNote = '';
+    this.rejectOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
+  }
+
+  /** Whether the reject dialog can be confirmed (a reason was chosen). */
+  protected canConfirmReject(): boolean {
+    return !!this.rejectReason;
+  }
+
+  protected confirmReject(): void {
+    if (!this.rejectReason) {
+      return;
+    }
+    this.act(
+      this.proposals.reject(this.proposalId, this.rejectReason, this.rejectNote.trim() || null),
+      'Proposta rejeitada',
+      this.rejectOpen,
+    );
+  }
+
+  /**
+   * Shortcuts on the proposal detail: i add item, e edit commercial details, s submit for review,
+   * a approve, r reject, Esc back.
+   */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
+    const anyDialogOpen = this.itemOpen() || this.detailsOpen() || this.rejectOpen();
     // Esc always closes the open dialog through the unsaved-changes guard — even from a focused field
     // (the dialogs disable PrimeNG's own Esc close so it can't bypass the guard).
-    if (event.key === 'Escape' && (this.itemOpen() || this.detailsOpen())) {
+    if (event.key === 'Escape' && anyDialogOpen) {
       if (this.itemOpen()) {
         void this.requestCloseItem();
-      } else {
+      } else if (this.detailsOpen()) {
         void this.requestCloseDetails();
+      } else {
+        void this.requestCloseReject();
       }
       return;
     }
@@ -359,7 +437,7 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     const typing =
       !!target &&
       (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
-    if (typing || event.ctrlKey || event.metaKey || event.altKey || this.itemOpen() || this.detailsOpen()) {
+    if (typing || event.ctrlKey || event.metaKey || event.altKey || anyDialogOpen) {
       return;
     }
     if (event.key === 'i' && this.canManageItems()) {
@@ -368,6 +446,10 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
       this.openEditDetails();
     } else if (event.key === 's' && this.canSubmit()) {
       this.submitForReview();
+    } else if (event.key === 'a' && this.canApprove()) {
+      this.approve();
+    } else if (event.key === 'r' && this.canApprove()) {
+      this.openReject();
     } else if (event.key === 'Escape') {
       this.back();
     }
