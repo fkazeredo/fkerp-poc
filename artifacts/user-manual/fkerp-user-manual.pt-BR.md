@@ -548,8 +548,24 @@ de aprovação) vê os botões **Aprovar** e **Rejeitar** no topo do detalhe.
 Quem não é aprovador (vendedores, representantes) **não** vê esses botões e não pode aprovar — nem as próprias
 propostas. Aprovar ou rejeitar **não** cria pedido comercial, reserva, financeiro nem comissão.
 
-> As próximas etapas do módulo Vendas (envio ao cliente, aceite do cliente e a geração de um
-> **pedido comercial**) virão nas próximas versões.
+### 9.6 Marcar como enviada ao cliente
+Depois de **aprovada**, a proposta pode ser **registrada como enviada/apresentada ao cliente**, para a empresa
+acompanhar a decisão dele. No detalhe de uma proposta *Aprovada*, quem **opera** a proposta (vendedores,
+representantes e o gerente) vê o botão **Marcar como enviada** (atalho **`m`**).
+
+- Ao confirmar, é possível registrar **opcionalmente** o **canal de envio** — *E-mail*, *WhatsApp*,
+  *Apresentação por telefone*, *Apresentação presencial* ou *Outro* — ou deixar em branco.
+- A proposta passa a *Enviada*; o canal (quando informado) aparece no resumo como **Canal de envio**, e a
+  transição **quem/quando** entra no Histórico de status. A proposta *Enviada* **continua disponível** para a
+  decisão do cliente.
+
+Marcar como enviada é apenas um **registro**: o sistema **não** dispara e-mail, WhatsApp ou ligação reais, não
+gera PDF nem assinatura, e **não** cria aceite do cliente, pedido comercial, reserva, financeiro nem comissão.
+Apenas propostas *Aprovadas* podem ser marcadas como enviadas (uma proposta em rascunho, em revisão ou
+rejeitada não pode).
+
+> As próximas etapas do módulo Vendas (o aceite do cliente e a geração de um **pedido comercial**) virão nas
+> próximas versões.
 
 ## 10. Gerenciando cadastros
 
@@ -644,10 +660,11 @@ Descoberta → Aderência → Pronta para proposta), o **registro de atividades 
 dados comerciais** (valor estimado e previsão de fechamento), o fluxo de **Perda** com motivo, as
 **Oportunidades pendentes** e os **Indicadores de oportunidades** — tudo com visibilidade por perfil.
 
-A **Sprint 3 — Vendas & Propostas** começou: já é possível **criar uma proposta comercial** a partir de
-uma Oportunidade pronta (módulo **Vendas → Propostas**). As próximas etapas darão sequência ao ciclo da
-proposta (itens, valores, descontos, aprovação interna, aceite do cliente) e a geração de um **pedido
-comercial**. Este manual será atualizado a cada lançamento.
+A **Sprint 3 — Vendas & Propostas** está em andamento: a partir de uma Oportunidade pronta já é possível
+**criar uma proposta comercial** (módulo **Vendas → Propostas**), gerir seus **itens, valores e descontos**,
+**enviá-la para revisão interna**, **aprovar ou rejeitar** e **marcar uma proposta aprovada como enviada** ao
+cliente. As próximas etapas darão sequência ao ciclo da proposta (aceite do cliente) e a geração de um
+**pedido comercial**. Este manual será atualizado a cada lançamento.
 
 ---
 

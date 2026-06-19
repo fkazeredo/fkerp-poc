@@ -11,6 +11,7 @@ import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
+import com.fksoft.erp.domain.sales.model.SendingChannel;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -35,6 +36,7 @@ import java.util.UUID;
  * @param statusHistory the lifecycle status-change history (newest first); empty until the first transition
  * @param rejectionReason the rejection reason (present only when the Proposal was rejected at review)
  * @param rejectionNote the optional rejection note (present only when the Proposal was rejected)
+ * @param sendingChannel the optional channel the Proposal was sent through (present only once it was sent)
  */
 public record ProposalDetail(
         UUID id,
@@ -60,7 +62,8 @@ public record ProposalDetail(
         SourceLead sourceLead,
         List<StatusChange> statusHistory,
         ProposalRejectionReason rejectionReason,
-        String rejectionNote) {
+        String rejectionNote,
+        SendingChannel sendingChannel) {
 
     /**
      * Assembles the detail from the Proposal, its source Opportunity and Lead, and the resolved user names.
@@ -104,7 +107,8 @@ public record ProposalDetail(
                 new SourceLead(lead.id(), lead.name(), lead.phone(), lead.whatsapp(), lead.email(), lead.status()),
                 statusHistory,
                 p.rejectionReason(),
-                p.rejectionNote());
+                p.rejectionNote(),
+                p.sendingChannel());
     }
 
     private static String nameOf(Map<UUID, String> names, UUID id) {

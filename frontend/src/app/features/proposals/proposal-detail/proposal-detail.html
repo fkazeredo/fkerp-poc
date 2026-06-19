@@ -58,6 +58,18 @@
         />
       </div>
     }
+    @if (canSend()) {
+      <div class="head-actions">
+        <p-button
+          label="Marcar como enviada"
+          icon="pi pi-send"
+          severity="success"
+          size="small"
+          [loading]="acting()"
+          (onClick)="openSend()"
+        />
+      </div>
+    }
   </header>
 
   @if (canManageItems() && !canSubmit()) {
@@ -85,6 +97,10 @@
             {{ rejectionReasonLabel(p.rejectionReason)
             }}{{ p.rejectionNote ? ' — ' + p.rejectionNote : '' }}
           </dd>
+        }
+        @if (p.sendingChannel) {
+          <dt>Canal de envio</dt>
+          <dd class="sending-channel">{{ sendingChannelLabel(p.sendingChannel) }}</dd>
         }
         <dt>Criada em</dt>
         <dd>{{ p.createdAt | date: 'short' }}</dd>
@@ -442,6 +458,45 @@
         (onClick)="confirmReject()"
       />
       <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestCloseReject()" />
+    </div>
+  </p-dialog>
+
+  <p-dialog
+    header="Marcar como enviada"
+    [(visible)]="sendOpen"
+    [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
+    [style]="{ width: '30rem' }"
+  >
+    <p class="muted send-hint">
+      Registra que a proposta aprovada foi enviada/apresentada ao cliente. Não dispara e-mail, WhatsApp ou
+      ligação reais.
+    </p>
+    <div class="field">
+      <label for="schannel">Canal de envio (opcional)</label>
+      <p-select
+        inputId="schannel"
+        [options]="sendChannelOptions"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="sendChannel"
+        placeholder="Selecione"
+        [showClear]="true"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="actions">
+      <p-button
+        label="Marcar como enviada"
+        icon="pi pi-send"
+        severity="success"
+        [loading]="acting()"
+        (onClick)="confirmSend()"
+      />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestCloseSend()" />
     </div>
   </p-dialog>
 }
