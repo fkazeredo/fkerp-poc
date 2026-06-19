@@ -1,10 +1,13 @@
 package com.fksoft.erp.domain.sales.service;
 
+import com.fksoft.erp.domain.crm.exception.LeadNotFoundException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
+import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
+import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.OpportunityAccessPolicy;
 import com.fksoft.erp.domain.identity.User;
@@ -16,6 +19,7 @@ import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalCreated;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
+import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
@@ -54,6 +58,7 @@ public class ProposalService {
     private final ProposalAccessPolicy accessPolicy;
     private final OpportunityRepository opportunities;
     private final OpportunityAccessPolicy opportunityAccessPolicy;
+    private final LeadRepository leads;
     private final UserRepository users;
     private final ApplicationEventPublisher events;
 
@@ -283,8 +288,11 @@ public class ProposalService {
     private ProposalDetail toDetail(Proposal proposal) {
         Opportunity opportunity =
                 opportunities.findById(proposal.opportunityId()).orElseThrow(OpportunityNotFoundException::new);
-        Map<UUID, String> names = resolveNames(Stream.of(proposal.responsiblePersonId()));
-        return ProposalDetail.from(proposal, opportunity, names);
+        Lead lead = leads.findById(proposal.leadId()).orElseThrow(LeadNotFoundException::new);
+        Map<UUID, String> names = resolveNames(Stream.concat(
+                Stream.of(proposal.responsiblePersonId()),
+                proposal.statusChanges().stream().map(ProposalStatusChange::changedBy)));
+        return ProposalDetail.from(proposal, opportunity, lead, names);
     }
 
     private Proposal loadVisible(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {

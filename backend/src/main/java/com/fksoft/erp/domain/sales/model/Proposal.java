@@ -103,6 +103,11 @@ public class Proposal {
     @JoinColumn(name = "proposal_id", nullable = false)
     private List<ProposalItem> items = new ArrayList<>();
 
+    // The status-change history (part of the aggregate): every lifecycle transition is kept for the record.
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "proposal_id", nullable = false)
+    private List<ProposalStatusChange> statusChanges = new ArrayList<>();
+
     // An optional Proposal-level discount applied to the items subtotal (in addition to per-line discounts).
     @Enumerated(EnumType.STRING)
     @Column(name = "discount_type")
@@ -304,8 +309,15 @@ public class Proposal {
         if (total.signum() <= 0) {
             throw new ProposalTotalRequiredException();
         }
+        recordStatusChange(status, ProposalStatus.READY_FOR_REVIEW, byUser);
         status = ProposalStatus.READY_FOR_REVIEW;
         updatedBy = byUser;
+    }
+
+    // Appends a lifecycle transition to the status history (the initial DRAFT is not recorded — the history
+    // stays empty until the first transition). Future transitions (approve/send/accept/reject) reuse this.
+    private void recordStatusChange(ProposalStatus from, ProposalStatus to, UUID byUser) {
+        statusChanges.add(ProposalStatusChange.of(from, to, byUser));
     }
 
     private void requireDraft() {
