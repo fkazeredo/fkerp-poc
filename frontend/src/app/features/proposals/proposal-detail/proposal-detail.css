@@ -103,6 +103,11 @@
   margin-top: 1rem;
 }
 
+.submit-hint {
+  margin: -0.5rem 0 1rem;
+  font-size: 0.85rem;
+}
+
 .items-head {
   display: flex;
   align-items: center;

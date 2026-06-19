@@ -528,10 +528,12 @@ informar a **validade**, os **termos comerciais**, as **notas de pagamento** (te
 cria nenhum registro financeiro ou de recebível) e o **desconto da proposta**. O total é recalculado
 automaticamente.
 
-Quando a oferta estiver pronta, use **Enviar para revisão**. A proposta precisa ter **ao menos um item** e um
-**total maior que zero**; ela então sai de *Rascunho* e passa a *Pronta para revisão*, e a partir daí seus
-itens e dados não podem mais ser editados. (A validade só se torna obrigatória na etapa futura de *envio ao
-cliente*.)
+Quando a oferta estiver pronta, use **Enviar para revisão**. Para enviar, a proposta precisa ter **ao menos um
+item**, um **total maior que zero**, uma **data de validade** e um **responsável** — se faltar algo, o botão
+fica desabilitado e um aviso lista o que falta (a validade você ajusta em **Editar dados comerciais**). Ao
+enviar, ela sai de *Rascunho* e passa a *Pronta para revisão*, e a partir daí seus itens e dados não podem
+mais ser editados. Enviar para revisão **não** envia a proposta ao cliente nem cria pedido, reserva,
+financeiro ou comissão — apenas muda o status para a etapa interna de aprovação (uma etapa futura).
 
 > As próximas etapas do módulo Vendas (aprovação interna, aceite do cliente e a geração de um
 > **pedido comercial**) virão nas próximas versões.

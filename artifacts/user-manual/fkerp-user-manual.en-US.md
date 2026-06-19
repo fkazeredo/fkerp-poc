@@ -528,10 +528,13 @@ may operate it — to set the **validity date**, the **commercial terms**, the *
 text only — it does **not** create any financial or receivable record) and the **proposal discount**. The
 total recalculates automatically.
 
-When the offer is ready, use **Enviar para revisão** (Submit for review). The proposal must have **at least
-one item** and a **total greater than zero**; it then leaves *Rascunho* (Draft) and becomes *Pronta para
-revisão* (Ready for review), after which its items and details are no longer editable. (The validity date
-becomes mandatory only at the later *send to client* step.)
+When the offer is ready, use **Enviar para revisão** (Submit for review). To submit, the proposal must have
+**at least one item**, a **total greater than zero**, a **validity date** and a **responsible person** — if
+something is missing the button stays disabled and a hint lists what's missing (you set the validity in
+**Editar dados comerciais**). On submit it leaves *Rascunho* (Draft) and becomes *Pronta para revisão* (Ready
+for review), after which its items and details are no longer editable. Submitting for review does **not** send
+the proposal to the client and creates no order, booking, finance or commission data — it only moves the
+status to the internal approval step (a later stage).
 
 > The next steps of the Sales module (internal approval, customer acceptance and the generation of a
 > **commercial order**) will come in later releases.
