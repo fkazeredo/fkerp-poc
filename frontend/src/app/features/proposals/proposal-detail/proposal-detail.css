@@ -108,6 +108,10 @@
   font-size: 0.85rem;
 }
 
+.rejection {
+  color: var(--p-red-500, #ef4444);
+}
+
 .items-head {
   display: flex;
   align-items: center;

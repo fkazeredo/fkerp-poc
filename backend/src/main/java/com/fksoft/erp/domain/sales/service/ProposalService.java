@@ -18,6 +18,7 @@ import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunity
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalCreated;
+import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
@@ -252,6 +253,58 @@ public class ProposalService {
     public ProposalDetail submitForReview(UUID proposalId, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
         proposal.submitForReview(userId);
+        return toDetail(proposals.saveAndFlush(proposal));
+    }
+
+    /**
+     * Approves a Proposal under review the caller is allowed to see (Ready for Review → Approved), and returns
+     * the refreshed detail. The action is gated by the {@code sales:proposal:approve} authority at the
+     * delivery boundary. Creates no Sale, Order, Booking, Financial or Commission data.
+     *
+     * @param proposalId the proposal id
+     * @param userId the approving user
+     * @param canSeeAll whether the caller may see every Proposal
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws ProposalNotFoundException if the Proposal does not exist
+     * @throws ProposalAccessDeniedException if the caller may not see it
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException if it is not Ready for Review
+     */
+    @Transactional
+    public ProposalDetail approve(UUID proposalId, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
+        proposal.approve(userId);
+        return toDetail(proposals.saveAndFlush(proposal));
+    }
+
+    /**
+     * Rejects a Proposal under review the caller is allowed to see (Ready for Review → Rejected) with a
+     * reason, and returns the refreshed detail. The action is gated by the {@code sales:proposal:approve}
+     * authority at the delivery boundary. Does not send the Proposal to the client and creates no Sale,
+     * Order, Booking, Financial or Commission data.
+     *
+     * @param proposalId the proposal id
+     * @param reason the rejection reason (required)
+     * @param note an optional free-text note
+     * @param userId the approving user
+     * @param canSeeAll whether the caller may see every Proposal
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws ProposalNotFoundException if the Proposal does not exist
+     * @throws ProposalAccessDeniedException if the caller may not see it
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException if it is not Ready for Review
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException if no reason is given
+     */
+    @Transactional
+    public ProposalDetail reject(
+            UUID proposalId,
+            ProposalRejectionReason reason,
+            String note,
+            UUID userId,
+            boolean canSeeAll,
+            boolean canSeeUnassigned) {
+        Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
+        proposal.reject(userId, reason, note);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 

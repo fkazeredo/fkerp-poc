@@ -143,10 +143,17 @@ test('a ready opportunity originates a commercial proposal, reachable in the Ven
   await expect(page.locator('.history')).toContainText('Pronta para revisão');
   await expect(page.getByText('Lead de origem', { exact: true })).toBeVisible();
 
+  // Slice 7 — the manager (an approver) approves the Proposal under review → Aprovada, recorded in history.
+  await page.getByRole('button', { name: 'Aprovar' }).click();
+  await expect(page.getByText('Proposta aprovada')).toBeVisible();
+  await expect(page.getByText('Aprovada').first()).toBeVisible();
+  await expect(page.locator('.history')).toContainText('Aprovada');
+
   // The Vendas module exposes "Propostas" in the menu, and the proposal shows on its list. The row now
   // carries both a title link (→ the proposal) and a source-opportunity link, so match the proposal one.
   await expect(page.locator('.sidebar').getByText('Vendas')).toBeVisible();
   await page.locator('.sidebar').getByRole('link', { name: 'Propostas' }).click();
   await expect(page.getByRole('heading', { name: 'Propostas' })).toBeVisible();
+  await page.locator('#q').fill(name); // search so it is found regardless of pagination
   await expect(page.locator('a[href^="/propostas/"]').filter({ hasText: name })).toBeVisible();
 });

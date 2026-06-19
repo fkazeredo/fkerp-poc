@@ -7,6 +7,8 @@ import com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
+import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalResponsibleRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalValidityRequiredException;
@@ -128,6 +130,16 @@ public class Proposal {
     @NotNull
     @Column(nullable = false)
     private BigDecimal total = BigDecimal.ZERO;
+
+    // Set when the Proposal is rejected at internal review: the structured reason and an optional note (the
+    // "why"). The who/when of the rejection lives in the status-change history.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "rejection_reason")
+    private ProposalRejectionReason rejectionReason;
+
+    @Size(max = 2000)
+    @Column(name = "rejection_note")
+    private String rejectionNote;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -325,10 +337,55 @@ public class Proposal {
         updatedBy = byUser;
     }
 
+    /**
+     * Approves a Proposal under review (Ready for Review → {@link ProposalStatus#APPROVED}), recording who and
+     * when in the status history. This does not send the Proposal to the client, and creates no Sale, Order,
+     * Booking, Financial or Commission data.
+     *
+     * @param byUser id of the approver
+     * @throws ProposalNotUnderReviewException if the Proposal is not Ready for Review
+     */
+    public void approve(UUID byUser) {
+        requireUnderReview();
+        recordStatusChange(status, ProposalStatus.APPROVED, byUser);
+        status = ProposalStatus.APPROVED;
+        updatedBy = byUser;
+    }
+
+    /**
+     * Rejects a Proposal under review (Ready for Review → {@link ProposalStatus#REJECTED}) with a reason,
+     * recording who and when in the status history and keeping the structured reason and optional note. The
+     * rejected Proposal is terminal (it frees the Opportunity for a new Proposal); it is not sent to the
+     * client and creates no Sale, Order, Booking, Financial or Commission data.
+     *
+     * @param byUser id of the approver
+     * @param reason the rejection reason (required)
+     * @param note an optional free-text note
+     * @throws ProposalNotUnderReviewException if the Proposal is not Ready for Review
+     * @throws ProposalRejectionReasonRequiredException if no reason is given
+     */
+    public void reject(UUID byUser, ProposalRejectionReason reason, String note) {
+        requireUnderReview();
+        if (reason == null) {
+            throw new ProposalRejectionReasonRequiredException();
+        }
+        rejectionReason = reason;
+        rejectionNote = emptyToNull(note);
+        recordStatusChange(status, ProposalStatus.REJECTED, byUser);
+        status = ProposalStatus.REJECTED;
+        updatedBy = byUser;
+    }
+
     // Appends a lifecycle transition to the status history (the initial DRAFT is not recorded — the history
     // stays empty until the first transition). Future transitions (approve/send/accept/reject) reuse this.
     private void recordStatusChange(ProposalStatus from, ProposalStatus to, UUID byUser) {
         statusChanges.add(ProposalStatusChange.of(from, to, byUser));
+    }
+
+    private void requireUnderReview() {
+        if (status != ProposalStatus.READY_FOR_REVIEW) {
+            throw new ProposalNotUnderReviewException();
+        }
     }
 
     private void requireDraft() {

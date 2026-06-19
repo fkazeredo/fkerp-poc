@@ -125,6 +125,8 @@ public class SecurityConfig {
                         .hasAuthority("SCOPE_sales:proposal:update")
                         .requestMatchers(HttpMethod.POST, "/api/proposals/*/submit")
                         .hasAuthority("SCOPE_sales:proposal:update")
+                        .requestMatchers(HttpMethod.POST, "/api/proposals/*/approve", "/api/proposals/*/reject")
+                        .hasAuthority("SCOPE_sales:proposal:approve")
                         .requestMatchers(HttpMethod.PUT, "/api/proposals/*")
                         .hasAuthority("SCOPE_sales:proposal:update")
                         .requestMatchers(HttpMethod.GET, "/api/proposals", "/api/proposals/**")

@@ -8,6 +8,7 @@ import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItem;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
+import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import java.math.BigDecimal;
@@ -32,6 +33,8 @@ import java.util.UUID;
  * @param sourceOpportunity the source Opportunity (kept traceable; still the system of record)
  * @param sourceLead the source Lead (kept traceable; still the system of record for the contact)
  * @param statusHistory the lifecycle status-change history (newest first); empty until the first transition
+ * @param rejectionReason the rejection reason (present only when the Proposal was rejected at review)
+ * @param rejectionNote the optional rejection note (present only when the Proposal was rejected)
  */
 public record ProposalDetail(
         UUID id,
@@ -55,7 +58,9 @@ public record ProposalDetail(
         Instant updatedAt,
         SourceOpportunity sourceOpportunity,
         SourceLead sourceLead,
-        List<StatusChange> statusHistory) {
+        List<StatusChange> statusHistory,
+        ProposalRejectionReason rejectionReason,
+        String rejectionNote) {
 
     /**
      * Assembles the detail from the Proposal, its source Opportunity and Lead, and the resolved user names.
@@ -97,7 +102,9 @@ public record ProposalDetail(
                 p.updatedAt(),
                 new SourceOpportunity(opportunity.id(), opportunity.name(), opportunity.stage()),
                 new SourceLead(lead.id(), lead.name(), lead.phone(), lead.whatsapp(), lead.email(), lead.status()),
-                statusHistory);
+                statusHistory,
+                p.rejectionReason(),
+                p.rejectionNote());
     }
 
     private static String nameOf(Map<UUID, String> names, UUID id) {

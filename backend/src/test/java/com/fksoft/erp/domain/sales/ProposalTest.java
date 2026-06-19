@@ -8,8 +8,11 @@ import static org.mockito.Mockito.when;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
+import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
+import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
@@ -92,6 +95,60 @@ class ProposalTest {
         assertThat(change.toStatus()).isEqualTo(ProposalStatus.READY_FOR_REVIEW);
         assertThat(change.changedBy()).isEqualTo(submitter);
         assertThat(change.changedAt()).isNotNull();
+    }
+
+    @Test
+    void approveMovesAReviewedProposalToApprovedAndRecordsTheTransition() {
+        Proposal p = submittedProposal();
+        UUID approver = UUID.randomUUID();
+
+        p.approve(approver);
+
+        assertThat(p.status()).isEqualTo(ProposalStatus.APPROVED);
+        ProposalStatusChange last = p.statusChanges().get(p.statusChanges().size() - 1);
+        assertThat(last.fromStatus()).isEqualTo(ProposalStatus.READY_FOR_REVIEW);
+        assertThat(last.toStatus()).isEqualTo(ProposalStatus.APPROVED);
+        assertThat(last.changedBy()).isEqualTo(approver);
+    }
+
+    @Test
+    void rejectMovesAReviewedProposalToRejectedWithReasonAndRecordsTheTransition() {
+        Proposal p = submittedProposal();
+        UUID approver = UUID.randomUUID();
+
+        p.reject(approver, ProposalRejectionReason.PRICE_TOO_HIGH, "acima do orçamento");
+
+        assertThat(p.status()).isEqualTo(ProposalStatus.REJECTED);
+        assertThat(p.isOpen()).isFalse(); // terminal — frees the Opportunity for a new Proposal
+        assertThat(p.rejectionReason()).isEqualTo(ProposalRejectionReason.PRICE_TOO_HIGH);
+        assertThat(p.rejectionNote()).isEqualTo("acima do orçamento");
+        ProposalStatusChange last = p.statusChanges().get(p.statusChanges().size() - 1);
+        assertThat(last.toStatus()).isEqualTo(ProposalStatus.REJECTED);
+        assertThat(last.changedBy()).isEqualTo(approver);
+    }
+
+    @Test
+    void rejectRequiresAReason() {
+        Proposal p = submittedProposal();
+        assertThatThrownBy(() -> p.reject(CREATOR, null, "sem motivo"))
+                .isInstanceOf(ProposalRejectionReasonRequiredException.class);
+    }
+
+    @Test
+    void approveAndRejectRequireReadyForReview() {
+        Proposal draft = readyDraft(); // still a DRAFT (not submitted)
+        assertThatThrownBy(() -> draft.approve(CREATOR)).isInstanceOf(ProposalNotUnderReviewException.class);
+        assertThatThrownBy(() -> draft.reject(CREATOR, ProposalRejectionReason.OTHER, null))
+                .isInstanceOf(ProposalNotUnderReviewException.class);
+    }
+
+    private Proposal submittedProposal() {
+        Proposal p = readyDraft(); // command() already carries a validity date and a responsible
+        p.addItem(
+                new ProposalItemCommand(ProposalItemType.OTHER, "linha", 1, new BigDecimal("10.00"), null, null),
+                CREATOR);
+        p.submitForReview(CREATOR);
+        return p;
     }
 
     private Proposal readyDraft() {
