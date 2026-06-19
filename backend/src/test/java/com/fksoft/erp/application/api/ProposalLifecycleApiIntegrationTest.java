@@ -107,9 +107,15 @@ class ProposalLifecycleApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void submitsForReviewWhenItHasItemsAndAPositiveTotal() throws Exception {
+    void submitsForReviewWhenItHasItemsAPositiveTotalValidityAndResponsible() throws Exception {
         String mgr = manager();
         addItem(mgr, mgrProposal, "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":500.00}");
+        // A validity date is required to submit (the proposal already has a responsible).
+        mvc.perform(put("/api/proposals/" + mgrProposal)
+                        .header("Authorization", "Bearer " + mgr)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"validUntil\":\"2026-12-31\"}"))
+                .andExpect(status().isOk());
 
         // The submit response is the refreshed detail: the transition is recorded in the status history
         // (from → to, by whom) and the source Lead reference is present.
@@ -123,6 +129,36 @@ class ProposalLifecycleApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.statusHistory[0].at").value(notNullValue()))
                 .andExpect(jsonPath("$.sourceLead.name").value("Lead Mgr"))
                 .andExpect(jsonPath("$.sourceLead.phone").value(notNullValue()));
+    }
+
+    @Test
+    void rejectsSubmittingForReviewWithoutAValidityDate() throws Exception {
+        String mgr = manager();
+        // mgrProposal has a responsible (MANAGER) but no validity date.
+        addItem(mgr, mgrProposal, "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00}");
+
+        mvc.perform(post("/api/proposals/" + mgrProposal + "/submit").header("Authorization", "Bearer " + mgr))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("proposal.validity-required"));
+    }
+
+    @Test
+    void rejectsSubmittingForReviewWithoutAResponsible() throws Exception {
+        String mgr = manager();
+        // A Proposal with no responsible (created from an unassigned source), with item + validity set.
+        UUID lead = insertLead("Unassigned", null);
+        UUID opp = insertOpportunity("Unassigned", OpportunityStage.READY_FOR_PROPOSAL, MANAGER, lead);
+        UUID unassigned = insertProposal(opp, lead, null);
+        addItem(mgr, unassigned, "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00}");
+        mvc.perform(put("/api/proposals/" + unassigned)
+                        .header("Authorization", "Bearer " + mgr)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"validUntil\":\"2026-12-31\"}"))
+                .andExpect(status().isOk());
+
+        mvc.perform(post("/api/proposals/" + unassigned + "/submit").header("Authorization", "Bearer " + mgr))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("proposal.responsible-required"));
     }
 
     @Test

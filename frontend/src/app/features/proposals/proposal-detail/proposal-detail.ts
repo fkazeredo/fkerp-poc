@@ -318,10 +318,21 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     this.act(this.proposals.updateDetails(this.proposalId, payload), 'Dados atualizados', this.detailsOpen);
   }
 
-  /** Whether the Proposal can be submitted for review (operable Draft with items and a positive total). */
+  /**
+   * Whether the Proposal can be submitted for review: an operable Draft with at least one item, a positive
+   * total, a validity date and a responsible person. The backend re-validates each of these (defense in
+   * depth); this only gives the user immediate feedback.
+   */
   protected canSubmit(): boolean {
     const p = this.proposal();
-    return this.canManageItems() && !!p && p.items.length > 0 && p.total > 0;
+    return (
+      this.canManageItems() &&
+      !!p &&
+      p.items.length > 0 &&
+      p.total > 0 &&
+      !!p.validUntil &&
+      !p.unassigned
+    );
   }
 
   protected submitForReview(): void {

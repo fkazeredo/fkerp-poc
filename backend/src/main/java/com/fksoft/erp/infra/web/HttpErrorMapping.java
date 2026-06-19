@@ -34,7 +34,9 @@ import com.fksoft.erp.domain.sales.exception.ProposalItemInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
+import com.fksoft.erp.domain.sales.exception.ProposalResponsibleRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException;
+import com.fksoft.erp.domain.sales.exception.ProposalValidityRequiredException;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
@@ -80,6 +82,8 @@ public class HttpErrorMapping {
             entry(ProposalDiscountInvalidException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalHasNoItemsException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalTotalRequiredException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ProposalValidityRequiredException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ProposalResponsibleRequiredException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {

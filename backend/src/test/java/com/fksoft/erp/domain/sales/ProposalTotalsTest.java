@@ -10,7 +10,9 @@ import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
+import com.fksoft.erp.domain.sales.exception.ProposalResponsibleRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException;
+import com.fksoft.erp.domain.sales.exception.ProposalValidityRequiredException;
 import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
@@ -18,6 +20,7 @@ import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -119,6 +122,7 @@ class ProposalTotalsTest {
     @Test
     void submittingForReviewMovesADraftToReadyForReview() {
         Proposal p = proposalWithSubtotal("100.00", 1);
+        p.updateCommercialDetails(LocalDate.of(2026, 12, 31), null, null, null, null, ACTOR); // validity
         p.submitForReview(ACTOR);
         assertThat(p.status()).isEqualTo(ProposalStatus.READY_FOR_REVIEW);
     }
@@ -133,6 +137,26 @@ class ProposalTotalsTest {
     void rejectsSubmittingForReviewWhenTheTotalIsNotPositive() {
         Proposal p = proposalWithSubtotal("0.00", 1); // subtotal 0, total 0
         assertThatThrownBy(() -> p.submitForReview(ACTOR)).isInstanceOf(ProposalTotalRequiredException.class);
+    }
+
+    @Test
+    void rejectsSubmittingForReviewWithoutAValidityDate() {
+        Proposal p = proposalWithSubtotal("100.00", 1); // has item + positive total, but no validity
+        assertThatThrownBy(() -> p.submitForReview(ACTOR)).isInstanceOf(ProposalValidityRequiredException.class);
+    }
+
+    @Test
+    void rejectsSubmittingForReviewWithoutAResponsible() {
+        Opportunity opportunity = mock(Opportunity.class);
+        when(opportunity.stage()).thenReturn(OpportunityStage.READY_FOR_PROPOSAL);
+        when(opportunity.id()).thenReturn(UUID.randomUUID());
+        when(opportunity.leadId()).thenReturn(UUID.randomUUID());
+        CreateProposalCommand command = new CreateProposalCommand(null, null, "Proposta", null, null, null);
+        Proposal p = Proposal.createFromOpportunity(opportunity, null, command, ACTOR); // no responsible
+        p.addItem(item("100.00", 1), ACTOR);
+        p.updateCommercialDetails(LocalDate.of(2026, 12, 31), null, null, null, null, ACTOR); // validity set
+
+        assertThatThrownBy(() -> p.submitForReview(ACTOR)).isInstanceOf(ProposalResponsibleRequiredException.class);
     }
 
     @Test
