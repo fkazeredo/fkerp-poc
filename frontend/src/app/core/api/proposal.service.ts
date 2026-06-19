@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { PageResponse } from './lead.service';
+import { PageResponse, Responsible } from './lead.service';
 import { OpportunityStage } from './opportunity.service';
 
 /** The 8-state commercial Proposal lifecycle. A new Proposal starts at DRAFT. */
@@ -102,6 +102,7 @@ export interface ProposalDetail {
 export interface ProposalListItem {
   id: string;
   opportunityId: string;
+  opportunityName: string | null;
   title: string;
   status: ProposalStatus;
   responsibleId: string | null;
@@ -110,12 +111,37 @@ export interface ProposalListItem {
   total: number;
   validUntil: string | null;
   createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Operational Proposal-list filters. Empty {@code status} excludes the terminal-negative outcomes
+ * (REJECTED/EXPIRED/CANCELLED); include them to see inactive Proposals. {@code responsible} is a user id
+ * or the literal `unassigned`; the date bounds are ISO `yyyy-MM-dd`. {@code q} searches the Proposal title
+ * and the source Opportunity name.
+ */
+export interface ProposalFilters {
+  status?: ProposalStatus[];
+  responsible?: string | null;
+  opportunityId?: string | null;
+  createdFrom?: string | null;
+  createdTo?: string | null;
+  validFrom?: string | null;
+  validTo?: string | null;
+  totalMin?: number | null;
+  totalMax?: number | null;
+  q?: string | null;
 }
 
 /** API client for the commercial Proposal endpoints (Sales & Proposals). */
 @Injectable({ providedIn: 'root' })
 export class ProposalService {
   private readonly http = inject(HttpClient);
+
+  /** The selectable responsible people (shared with the CRM module). */
+  responsibles(): Observable<Responsible[]> {
+    return this.http.get<Responsible[]>('/api/crm/responsibles');
+  }
 
   /** Creates a Proposal from a READY_FOR_PROPOSAL Opportunity. */
   create(payload: CreateProposal): Observable<ProposalCreated> {
@@ -151,8 +177,43 @@ export class ProposalService {
     return this.http.delete<ProposalDetail>(`/api/proposals/${id}/items/${itemId}`);
   }
 
-  list(page = 0, size = 20): Observable<PageResponse<ProposalListItem>> {
-    const params = new HttpParams().set('page', page).set('size', size);
+  /** Operational, paginated Proposal list filtered by the given criteria and the caller's visibility. */
+  list(
+    filters: ProposalFilters,
+    page = 0,
+    size = 20,
+  ): Observable<PageResponse<ProposalListItem>> {
+    let params = new HttpParams().set('page', page).set('size', size);
+    for (const status of filters.status ?? []) {
+      params = params.append('status', status);
+    }
+    if (filters.responsible) {
+      params = params.set('responsible', filters.responsible);
+    }
+    if (filters.opportunityId) {
+      params = params.set('opportunityId', filters.opportunityId);
+    }
+    if (filters.createdFrom) {
+      params = params.set('createdFrom', filters.createdFrom);
+    }
+    if (filters.createdTo) {
+      params = params.set('createdTo', filters.createdTo);
+    }
+    if (filters.validFrom) {
+      params = params.set('validFrom', filters.validFrom);
+    }
+    if (filters.validTo) {
+      params = params.set('validTo', filters.validTo);
+    }
+    if (filters.totalMin != null) {
+      params = params.set('totalMin', filters.totalMin);
+    }
+    if (filters.totalMax != null) {
+      params = params.set('totalMax', filters.totalMax);
+    }
+    if (filters.q && filters.q.trim().length > 0) {
+      params = params.set('q', filters.q.trim());
+    }
     return this.http.get<PageResponse<ProposalListItem>>('/api/proposals', { params });
   }
 }

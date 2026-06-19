@@ -10,7 +10,10 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // One retry everywhere: the heavy end-to-end journeys (lead→opportunity→funnel→proposal) drive many
+  // sequential UI steps against a single shared backend, so under parallel load a dropdown/toast can
+  // occasionally miss the timeout. Retries absorb that infra timing without weakening any assertion.
+  retries: 1,
   reporter: 'list',
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:4201',

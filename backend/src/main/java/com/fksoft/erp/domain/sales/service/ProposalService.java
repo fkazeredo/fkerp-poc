@@ -21,6 +21,7 @@ import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalListItem;
+import com.fksoft.erp.domain.sales.service.data.ProposalSearchCriteria;
 import com.fksoft.erp.domain.sales.service.data.UpdateProposalCommand;
 import java.util.Map;
 import java.util.Objects;
@@ -47,8 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProposalService {
 
     // Statuses for which a Proposal is still "open" — at most one open Proposal per Opportunity.
-    private static final Set<ProposalStatus> OPEN_STATUSES =
-            Stream.of(ProposalStatus.values()).filter(ProposalStatus::isOpen).collect(Collectors.toUnmodifiableSet());
+    private static final Set<ProposalStatus> OPEN_STATUSES = ProposalStatus.openStatuses();
 
     private final ProposalRepository proposals;
     private final ProposalAccessPolicy accessPolicy;
@@ -251,8 +251,12 @@ public class ProposalService {
     }
 
     /**
-     * Operational, paginated Proposal list filtered by the caller's visibility.
+     * Operational, paginated Proposal list, filtered by the given criteria and restricted to the caller's
+     * visibility. Terminal-negative Proposals (REJECTED/EXPIRED/CANCELLED) are excluded unless the status
+     * filter explicitly includes them. Enriches each item with the responsible's and the source
+     * Opportunity's resolved names. Exposes commercial-offer data only.
      *
+     * @param criteria the optional filters and search term
      * @param pageable page, size and sort
      * @param userId the calling user
      * @param canSeeAll whether the caller may see every Proposal
@@ -260,11 +264,20 @@ public class ProposalService {
      * @return a page of Proposal list items
      */
     @Transactional(readOnly = true)
-    public Page<ProposalListItem> list(Pageable pageable, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
-        Specification<Proposal> spec = accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned);
+    public Page<ProposalListItem> list(
+            ProposalSearchCriteria criteria,
+            Pageable pageable,
+            UUID userId,
+            boolean canSeeAll,
+            boolean canSeeUnassigned) {
+        Specification<Proposal> spec = ProposalSpecifications.matching(criteria)
+                .and(accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned));
         Page<Proposal> page = proposals.findAll(spec, pageable);
         Map<UUID, String> names = resolveNames(page.getContent().stream().map(Proposal::responsiblePersonId));
-        return page.map(p -> ProposalListItem.from(p, nameOf(names, p.responsiblePersonId())));
+        Map<UUID, String> opportunityNames =
+                resolveOpportunityNames(page.getContent().stream().map(Proposal::opportunityId));
+        return page.map(p -> ProposalListItem.from(
+                p, nameOf(names, p.responsiblePersonId()), opportunityNames.get(p.opportunityId())));
     }
 
     private ProposalDetail toDetail(Proposal proposal) {
@@ -287,6 +300,13 @@ public class ProposalService {
         return set.isEmpty()
                 ? Map.of()
                 : users.findAllById(set).stream().collect(Collectors.toMap(User::id, User::username));
+    }
+
+    private Map<UUID, String> resolveOpportunityNames(Stream<UUID> ids) {
+        Set<UUID> set = ids.filter(Objects::nonNull).collect(Collectors.toSet());
+        return set.isEmpty()
+                ? Map.of()
+                : opportunities.findAllById(set).stream().collect(Collectors.toMap(Opportunity::id, Opportunity::name));
     }
 
     private static String nameOf(Map<UUID, String> names, UUID id) {

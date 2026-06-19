@@ -471,11 +471,24 @@ Regras importantes:
 - Criar uma proposta **não** cria venda, pedido, reserva nem dado financeiro — isso é etapa futura.
 
 ### 9.2 A lista e o detalhe
-Abra **Vendas → Propostas** no menu para a lista das propostas que você pode ver (com título, status,
-responsável, a Oportunidade de origem, o **total**, validade e data de criação). Clique no título para abrir
-o **detalhe**, que mostra o resumo da proposta, o status, a **Oportunidade de origem** (com atalhos para a
-Oportunidade e o Lead) e os **itens** (veja a seguir). Valem as mesmas **regras de visibilidade** das
-Oportunidades: o representante vê apenas as próprias propostas; o gerente vê todas.
+Abra **Vendas → Propostas** no menu para a lista operacional das propostas que você pode ver. Cada linha
+mostra o **título**, o **status**, o **responsável**, a **Oportunidade de origem** (pelo nome, com atalho
+para a Oportunidade), o **total**, a **validade**, a **data de criação** e a **data da última atualização**.
+
+Por padrão a lista mostra apenas as propostas **ativas** — as **rejeitadas, expiradas e canceladas** não
+aparecem, a menos que você as escolha no filtro de status. Use os **filtros** no topo para refinar:
+
+- **Buscar** — por trecho do título da proposta ou do nome da Oportunidade de origem;
+- **Status** — uma ou mais situações (inclua Rejeitada/Expirada/Cancelada para ver as inativas);
+- **Responsável** — uma pessoa ou "Sem responsável";
+- **Criada de / até** e **Validade de / até** — períodos;
+- **Valor mín. / máx.** — faixa de total;
+- **Limpar** — zera todos os filtros.
+
+Clique no título para abrir o **detalhe**, que mostra o resumo da proposta, o status, a **Oportunidade de
+origem** (com atalhos para a Oportunidade e o Lead) e os **itens** (veja a seguir). Valem as mesmas **regras
+de visibilidade** das Oportunidades: o representante vê apenas as próprias propostas; o gerente vê todas. A
+lista expõe apenas dados comerciais — nunca reserva, pagamento ou comissão.
 
 ### 9.3 Itens da proposta
 O card **Itens** no detalhe da proposta lista o que será ofertado ao cliente. Enquanto a proposta estiver em
