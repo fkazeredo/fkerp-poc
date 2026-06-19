@@ -7,7 +7,9 @@ import com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
+import com.fksoft.erp.domain.sales.exception.ProposalResponsibleRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException;
+import com.fksoft.erp.domain.sales.exception.ProposalValidityRequiredException;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.sales.service.data.UpdateProposalCommand;
@@ -294,12 +296,15 @@ public class Proposal {
 
     /**
      * Submits the Proposal for review (Draft → {@link ProposalStatus#READY_FOR_REVIEW}). The offer must have
-     * at least one item and a positive total. Creates no Sale, Order, Booking, Financial or Commission data.
+     * at least one item, a positive total, a validity date and a responsible person. This action does not
+     * send the Proposal to the client, and creates no Sale, Order, Booking, Financial or Commission data.
      *
      * @param byUser id of the user submitting the Proposal
      * @throws ProposalNotEditableException if the Proposal is not a Draft
      * @throws ProposalHasNoItemsException if the Proposal has no items
      * @throws ProposalTotalRequiredException if the Proposal total is not positive
+     * @throws ProposalValidityRequiredException if the Proposal has no validity date
+     * @throws ProposalResponsibleRequiredException if the Proposal has no responsible person
      */
     public void submitForReview(UUID byUser) {
         requireDraft();
@@ -308,6 +313,12 @@ public class Proposal {
         }
         if (total.signum() <= 0) {
             throw new ProposalTotalRequiredException();
+        }
+        if (validUntil == null) {
+            throw new ProposalValidityRequiredException();
+        }
+        if (responsiblePersonId == null) {
+            throw new ProposalResponsibleRequiredException();
         }
         recordStatusChange(status, ProposalStatus.READY_FOR_REVIEW, byUser);
         status = ProposalStatus.READY_FOR_REVIEW;

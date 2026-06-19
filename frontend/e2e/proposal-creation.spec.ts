@@ -109,9 +109,15 @@ test('a ready opportunity originates a commercial proposal, reachable in the Ven
   await expect(page.getByText('Subtotal')).toBeVisible();
   await expect(page.getByText(/3[.,]000/).first()).toBeVisible();
 
-  // Edit the commercial details: a 10% proposal discount drops the total to R$ 2.700 (Slice 3).
+  // Edit the commercial details: set a validity date (required to submit — Slice 6) and a 10% proposal
+  // discount that drops the total to R$ 2.700 (Slice 3).
   await page.getByRole('button', { name: 'Editar dados comerciais' }).click();
   const detailsDialog = page.getByRole('dialog');
+  const dvalid = detailsDialog.locator('#dvalid');
+  await dvalid.click();
+  await dvalid.pressSequentially('31/12/2026'); // real key events so PrimeNG parses the typed date
+  await dvalid.press('Enter');
+  await expect(dvalid).toHaveValue('31/12/2026');
   await detailsDialog.getByText('Sem desconto').click();
   await page.getByRole('option', { name: 'Percentual (%)' }).click();
   const ddval = detailsDialog.locator('#ddval');

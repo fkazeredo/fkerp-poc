@@ -40,6 +40,12 @@
     }
   </header>
 
+  @if (canManageItems() && !canSubmit()) {
+    <p class="muted submit-hint">
+      Para enviar para revisão: ao menos um item, total positivo, data de validade e responsável.
+    </p>
+  }
+
   <div class="grid">
     <p-card header="Resumo da proposta">
       <dl class="data">

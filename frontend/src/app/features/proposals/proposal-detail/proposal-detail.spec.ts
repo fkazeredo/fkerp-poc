@@ -291,8 +291,14 @@ describe('ProposalDetailPage', () => {
     comp.ngOnInit();
     expect(comp['canSubmit']()).toBe(false); // no items
 
-    comp['proposal'].set(withItem); // items + total 2000
+    comp['proposal'].set(withItem); // items + total + validity + responsible
     expect(comp['canSubmit']()).toBe(true);
+
+    comp['proposal'].set({ ...withItem, validUntil: null });
+    expect(comp['canSubmit']()).toBe(false); // no validity date
+
+    comp['proposal'].set({ ...withItem, unassigned: true, responsibleId: null });
+    expect(comp['canSubmit']()).toBe(false); // no responsible
 
     comp['proposal'].set({ ...withItem, status: 'READY_FOR_REVIEW' });
     expect(comp['canSubmit']()).toBe(false); // not a Draft anymore
