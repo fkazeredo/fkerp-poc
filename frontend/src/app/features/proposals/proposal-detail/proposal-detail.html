@@ -69,6 +69,21 @@
       </dl>
       <div class="trace">
         <a class="link" [routerLink]="['/oportunidades', p.opportunityId]">Ver oportunidade de origem</a>
+      </div>
+    </p-card>
+
+    <p-card header="Lead de origem">
+      <dl class="data">
+        <dt>Nome</dt>
+        <dd>{{ p.sourceLead.name }}</dd>
+        <dt>Telefone</dt>
+        <dd>{{ p.sourceLead.phone ?? '—' }}</dd>
+        <dt>WhatsApp</dt>
+        <dd>{{ p.sourceLead.whatsapp ?? '—' }}</dd>
+        <dt>E-mail</dt>
+        <dd>{{ p.sourceLead.email ?? '—' }}</dd>
+      </dl>
+      <div class="trace">
         <a class="link" [routerLink]="['/leads', p.leadId]">Ver lead de origem</a>
       </div>
     </p-card>
@@ -157,6 +172,22 @@
       <dt class="grand">Total</dt>
       <dd class="num grand">{{ p.total | currency: 'BRL' }}</dd>
     </dl>
+  </p-card>
+
+  <p-card header="Histórico de status" styleClass="section">
+    @if (p.statusHistory.length === 0) {
+      <p class="muted">Sem alterações de status registradas ainda.</p>
+    } @else {
+      <ul class="history">
+        @for (s of p.statusHistory; track s.at) {
+          <li>
+            <span class="when">{{ s.at | date: 'short' }}</span>
+            <span class="what">{{ statusLabel(s.from) }} → {{ statusLabel(s.to) }}</span>
+            <span class="who muted">{{ s.by ?? '' }}</span>
+          </li>
+        }
+      </ul>
+    }
   </p-card>
 
   <p-dialog

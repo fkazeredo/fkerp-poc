@@ -47,6 +47,15 @@ describe('ProposalDetailPage', () => {
     createdAt: '2026-06-17T10:00:00Z',
     updatedAt: '2026-06-17T10:00:00Z',
     sourceOpportunity: { id: 'o1', name: 'Aurora', stage: 'READY_FOR_PROPOSAL' },
+    sourceLead: {
+      id: 'l1',
+      name: 'Cliente Aurora',
+      phone: '11999998888',
+      whatsapp: null,
+      email: 'cliente@aurora.com',
+      status: 'QUALIFIED',
+    },
+    statusHistory: [],
   };
 
   const item: ProposalItem = {
@@ -415,6 +424,48 @@ describe('ProposalDetailPage', () => {
       expect(el.textContent).toContain('Nenhum item ainda.');
       expect(el.textContent).not.toContain('Adicionar item');
       expect(el.textContent).not.toContain('Enviar para revisão');
+    });
+
+    it('renders the source Lead card with the contact details and a link', () => {
+      proposals.detail.mockReturnValue(of(sample));
+      auth.canOperateProposal.mockReturnValue(false);
+      const el = render();
+
+      expect(el.textContent).toContain('Lead de origem');
+      expect(el.textContent).toContain('Cliente Aurora'); // lead name
+      expect(el.textContent).toContain('11999998888'); // phone
+      expect(el.textContent).toContain('cliente@aurora.com'); // email
+      expect(el.textContent).toContain('Ver lead de origem'); // link to the source Lead
+    });
+
+    it('renders the status-history empty state when there are no transitions', () => {
+      proposals.detail.mockReturnValue(of(sample)); // statusHistory: []
+      auth.canOperateProposal.mockReturnValue(false);
+      const el = render();
+
+      expect(el.textContent).toContain('Histórico de status');
+      expect(el.textContent).toContain('Sem alterações de status registradas ainda.');
+    });
+
+    it('renders the status-history timeline with the recorded transition (from → to, by whom)', () => {
+      proposals.detail.mockReturnValue(
+        of({
+          ...sample,
+          status: 'READY_FOR_REVIEW',
+          statusHistory: [
+            { from: 'DRAFT', to: 'READY_FOR_REVIEW', at: '2026-06-18T09:00:00Z', by: 'comercial' },
+          ],
+        } as ProposalDetail),
+      );
+      auth.canOperateProposal.mockReturnValue(false);
+      const el = render();
+
+      const history = el.querySelector('.history');
+      expect(history).not.toBeNull();
+      expect(history?.textContent).toContain('Rascunho'); // from label
+      expect(history?.textContent).toContain('Pronta para revisão'); // to label
+      expect(history?.textContent).toContain('comercial'); // actor
+      expect(el.textContent).not.toContain('Sem alterações de status registradas ainda.');
     });
   });
 });

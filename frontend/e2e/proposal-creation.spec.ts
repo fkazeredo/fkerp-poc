@@ -130,6 +130,13 @@ test('a ready opportunity originates a commercial proposal, reachable in the Ven
   await expect(page.getByText('Proposta enviada para revisão')).toBeVisible();
   await expect(page.getByText('Pronta para revisão').first()).toBeVisible();
 
+  // Slice 5 — the detail consultation: the status history records the submit transition, and the source
+  // Lead card is shown (name + contacts), alongside the source Opportunity.
+  await expect(page.getByText('Histórico de status')).toBeVisible();
+  await expect(page.locator('.history')).toContainText('Rascunho');
+  await expect(page.locator('.history')).toContainText('Pronta para revisão');
+  await expect(page.getByText('Lead de origem', { exact: true })).toBeVisible();
+
   // The Vendas module exposes "Propostas" in the menu, and the proposal shows on its list. The row now
   // carries both a title link (→ the proposal) and a source-opportunity link, so match the proposal one.
   await expect(page.locator('.sidebar').getByText('Vendas')).toBeVisible();

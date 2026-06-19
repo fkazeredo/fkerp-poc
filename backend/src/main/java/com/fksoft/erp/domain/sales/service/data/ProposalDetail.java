@@ -1,5 +1,7 @@
 package com.fksoft.erp.domain.sales.service.data;
 
+import com.fksoft.erp.domain.crm.model.Lead;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.model.DiscountType;
@@ -7,6 +9,7 @@ import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItem;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
+import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -27,6 +30,8 @@ import java.util.UUID;
  * @param total the Proposal total (subtotal minus the Proposal-level discount; never negative)
  * @param paymentNotes descriptive payment notes (free text only — not a Financial record)
  * @param sourceOpportunity the source Opportunity (kept traceable; still the system of record)
+ * @param sourceLead the source Lead (kept traceable; still the system of record for the contact)
+ * @param statusHistory the lifecycle status-change history (newest first); empty until the first transition
  */
 public record ProposalDetail(
         UUID id,
@@ -48,20 +53,27 @@ public record ProposalDetail(
         BigDecimal total,
         Instant createdAt,
         Instant updatedAt,
-        SourceOpportunity sourceOpportunity) {
+        SourceOpportunity sourceOpportunity,
+        SourceLead sourceLead,
+        List<StatusChange> statusHistory) {
 
     /**
-     * Assembles the detail from the Proposal, its source Opportunity and the resolved user names.
+     * Assembles the detail from the Proposal, its source Opportunity and Lead, and the resolved user names.
      *
-     * @param p the proposal aggregate (with its items loaded)
+     * @param p the proposal aggregate (with its items and status history loaded)
      * @param opportunity the source Opportunity (loaded for traceability)
-     * @param names map of user id → display name for the responsible
+     * @param lead the source Lead (loaded for the contact reference)
+     * @param names map of user id → display name for the responsible and the history actors
      * @return the detail read model
      */
-    public static ProposalDetail from(Proposal p, Opportunity opportunity, Map<UUID, String> names) {
+    public static ProposalDetail from(Proposal p, Opportunity opportunity, Lead lead, Map<UUID, String> names) {
         List<Item> items = p.items().stream()
                 .sorted(Comparator.comparing(ProposalItem::createdAt))
                 .map(Item::from)
+                .toList();
+        List<StatusChange> statusHistory = p.statusChanges().stream()
+                .sorted(Comparator.comparing(ProposalStatusChange::changedAt).reversed())
+                .map(c -> new StatusChange(c.fromStatus(), c.toStatus(), c.changedAt(), nameOf(names, c.changedBy())))
                 .toList();
         return new ProposalDetail(
                 p.id(),
@@ -83,7 +95,9 @@ public record ProposalDetail(
                 p.total(),
                 p.createdAt(),
                 p.updatedAt(),
-                new SourceOpportunity(opportunity.id(), opportunity.name(), opportunity.stage()));
+                new SourceOpportunity(opportunity.id(), opportunity.name(), opportunity.stage()),
+                new SourceLead(lead.id(), lead.name(), lead.phone(), lead.whatsapp(), lead.email(), lead.status()),
+                statusHistory);
     }
 
     private static String nameOf(Map<UUID, String> names, UUID id) {
@@ -92,6 +106,12 @@ public record ProposalDetail(
 
     /** The source Opportunity, kept traceable from the Proposal. */
     public record SourceOpportunity(UUID id, String name, OpportunityStage stage) {}
+
+    /** The source Lead, kept traceable from the Proposal (the contact's system of record). */
+    public record SourceLead(UUID id, String name, String phone, String whatsapp, String email, LeadStatus status) {}
+
+    /** A single Proposal status-change entry (from → to, when, by whom). */
+    public record StatusChange(ProposalStatus from, ProposalStatus to, Instant at, String by) {}
 
     /** A single commercial-offer line, with its computed line total. */
     public record Item(

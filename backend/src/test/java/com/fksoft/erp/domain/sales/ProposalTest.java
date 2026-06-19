@@ -9,8 +9,12 @@ import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
 import com.fksoft.erp.domain.sales.model.Proposal;
+import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
+import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
+import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -64,5 +68,36 @@ class ProposalTest {
 
         assertThatThrownBy(() -> Proposal.createFromOpportunity(o, RESPONSIBLE, command(), CREATOR))
                 .isInstanceOf(OpportunityNotReadyForProposalException.class);
+    }
+
+    @Test
+    void aFreshDraftHasNoStatusHistory() {
+        assertThat(readyDraft().statusChanges()).isEmpty();
+    }
+
+    @Test
+    void submitForReviewRecordsTheStatusChangeWithTheActor() {
+        Proposal proposal = readyDraft();
+        proposal.addItem(
+                new ProposalItemCommand(ProposalItemType.OTHER, "linha", 1, new BigDecimal("10.00"), null, null),
+                CREATOR);
+        UUID submitter = UUID.randomUUID();
+
+        proposal.submitForReview(submitter);
+
+        assertThat(proposal.status()).isEqualTo(ProposalStatus.READY_FOR_REVIEW);
+        assertThat(proposal.statusChanges()).hasSize(1);
+        ProposalStatusChange change = proposal.statusChanges().get(0);
+        assertThat(change.fromStatus()).isEqualTo(ProposalStatus.DRAFT);
+        assertThat(change.toStatus()).isEqualTo(ProposalStatus.READY_FOR_REVIEW);
+        assertThat(change.changedBy()).isEqualTo(submitter);
+        assertThat(change.changedAt()).isNotNull();
+    }
+
+    private Proposal readyDraft() {
+        Opportunity o = opportunity(OpportunityStage.READY_FOR_PROPOSAL);
+        when(o.id()).thenReturn(OPP_ID);
+        when(o.leadId()).thenReturn(LEAD_ID);
+        return Proposal.createFromOpportunity(o, RESPONSIBLE, command(), CREATOR);
     }
 }

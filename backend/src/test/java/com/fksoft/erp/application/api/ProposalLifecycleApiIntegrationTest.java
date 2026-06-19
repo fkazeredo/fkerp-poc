@@ -1,5 +1,7 @@
 package com.fksoft.erp.application.api;
 
+import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -109,9 +111,28 @@ class ProposalLifecycleApiIntegrationTest extends AbstractIntegrationTest {
         String mgr = manager();
         addItem(mgr, mgrProposal, "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":500.00}");
 
+        // The submit response is the refreshed detail: the transition is recorded in the status history
+        // (from → to, by whom) and the source Lead reference is present.
         mvc.perform(post("/api/proposals/" + mgrProposal + "/submit").header("Authorization", "Bearer " + mgr))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("READY_FOR_REVIEW"));
+                .andExpect(jsonPath("$.status").value("READY_FOR_REVIEW"))
+                .andExpect(jsonPath("$.statusHistory.length()").value(1))
+                .andExpect(jsonPath("$.statusHistory[0].from").value("DRAFT"))
+                .andExpect(jsonPath("$.statusHistory[0].to").value("READY_FOR_REVIEW"))
+                .andExpect(jsonPath("$.statusHistory[0].by").value("comercial"))
+                .andExpect(jsonPath("$.statusHistory[0].at").value(notNullValue()))
+                .andExpect(jsonPath("$.sourceLead.name").value("Lead Mgr"))
+                .andExpect(jsonPath("$.sourceLead.phone").value(notNullValue()));
+    }
+
+    @Test
+    void freshDraftDetailShowsTheSourceLeadAndAnEmptyStatusHistory() throws Exception {
+        mvc.perform(get("/api/proposals/" + mgrProposal).header("Authorization", "Bearer " + manager()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.statusHistory.length()").value(0))
+                .andExpect(jsonPath("$.sourceLead.name").value("Lead Mgr"))
+                .andExpect(jsonPath("$.sourceLead.phone").value(notNullValue()));
     }
 
     @Test
