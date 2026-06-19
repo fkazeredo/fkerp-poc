@@ -395,6 +395,26 @@ describe('LeadDetailPage', () => {
     expect(comp['interactionOpen']()).toBe(false);
   });
 
+  // Regression: Esc must NOT silently discard an edited dialog — it warns through the guard.
+  it('warns before closing a changed dialog with the Escape shortcut, and keeps it open on reject', () => {
+    const comp = build();
+    comp.ngOnInit();
+    comp['onShortcut'](new KeyboardEvent('keydown', { key: 'i' })); // open the interaction dialog
+    comp['interactionDescription'] = 'rascunho não salvo'; // user types -> dirty
+
+    const confirm = vi
+      .spyOn(TestBed.inject(ConfirmationService), 'confirm')
+      .mockImplementation((opts) => {
+        opts.reject?.(); // "Continuar editando"
+        return TestBed.inject(ConfirmationService);
+      });
+
+    comp['onShortcut'](new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(confirm).toHaveBeenCalled();
+    expect(comp['interactionOpen']()).toBe(true);
+  });
+
   it('opens the create-opportunity dialog, pre-filling the responsible and loading the options', () => {
     leads.detail.mockReturnValue(of(sample({ status: 'QUALIFIED', responsibleId: 'u1' })));
     const comp = build();

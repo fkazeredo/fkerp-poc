@@ -70,12 +70,59 @@ describe('ProposalService', () => {
     del.flush({});
   });
 
-  it('lists proposals with paging params', () => {
-    service.list(2, 10).subscribe();
+  it('builds the list query with page/size, repeated status and a trimmed search', () => {
+    service.list({ status: ['DRAFT', 'CANCELLED'], q: '  acme  ' }, 1, 10).subscribe();
+
     const req = http.expectOne((r) => r.url === '/api/proposals');
     expect(req.request.method).toBe('GET');
-    expect(req.request.params.get('page')).toBe('2');
+    expect(req.request.params.get('page')).toBe('1');
     expect(req.request.params.get('size')).toBe('10');
-    req.flush({ content: [], page: 2, size: 10, totalElements: 0, totalPages: 0, first: false, last: true });
+    expect(req.request.params.getAll('status')).toEqual(['DRAFT', 'CANCELLED']);
+    expect(req.request.params.get('q')).toBe('acme');
+    req.flush({ content: [], page: 1, size: 10, totalElements: 0, totalPages: 0, first: false, last: true });
+  });
+
+  it('omits the search param when blank and defaults page/size', () => {
+    service.list({ q: '   ' }).subscribe();
+
+    const req = http.expectOne((r) => r.url === '/api/proposals');
+    expect(req.request.params.get('page')).toBe('0');
+    expect(req.request.params.get('size')).toBe('20');
+    expect(req.request.params.has('q')).toBe(false);
+    expect(req.request.params.has('status')).toBe(false);
+    req.flush({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0, first: true, last: true });
+  });
+
+  it('sets every list filter when provided (responsible, opportunity, dates, total bounds)', () => {
+    service
+      .list({
+        responsible: 'unassigned',
+        opportunityId: 'o1',
+        createdFrom: '2026-06-01',
+        createdTo: '2026-06-30',
+        validFrom: '2026-07-01',
+        validTo: '2026-07-31',
+        totalMin: 100,
+        totalMax: 5000,
+      })
+      .subscribe();
+    const req = http.expectOne((r) => r.url === '/api/proposals');
+    const p = req.request.params;
+    expect(p.get('responsible')).toBe('unassigned');
+    expect(p.get('opportunityId')).toBe('o1');
+    expect(p.get('createdFrom')).toBe('2026-06-01');
+    expect(p.get('createdTo')).toBe('2026-06-30');
+    expect(p.get('validFrom')).toBe('2026-07-01');
+    expect(p.get('validTo')).toBe('2026-07-31');
+    expect(p.get('totalMin')).toBe('100');
+    expect(p.get('totalMax')).toBe('5000');
+    req.flush({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0, first: true, last: true });
+  });
+
+  it('fetches the responsibles from the CRM endpoint', () => {
+    service.responsibles().subscribe();
+    const req = http.expectOne('/api/crm/responsibles');
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
   });
 });

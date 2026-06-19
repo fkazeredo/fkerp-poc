@@ -469,11 +469,25 @@ Key rules:
 - Creating a proposal does **not** create a sale, order, booking or financial data — that is a future step.
 
 ### 9.2 The list and the detail
-Open **Vendas → Propostas** in the menu for the list of the proposals you may see (title, status,
-responsible, the source Opportunity, the **total**, validity and creation date). Click the title to open the
-**detail**, which shows the proposal summary, the status, the **source Opportunity** (with shortcuts to the
-Opportunity and the Lead) and the **items** (see below). The same **visibility rules** as Opportunities
-apply: a representative sees only their own proposals; a manager sees all.
+Open **Vendas → Propostas** in the menu for the operational list of the proposals you may see. Each row
+shows the **title**, the **status**, the **responsible**, the **source Opportunity** (by name, with a
+shortcut to the Opportunity), the **total**, the **validity**, the **creation date** and the **last update
+date**.
+
+By default the list shows only the **active** proposals — **rejected, expired and cancelled** ones do not
+appear unless you select them in the status filter. Use the **filters** at the top to narrow it down:
+
+- **Buscar** (Search) — by part of the proposal title or the source Opportunity name;
+- **Status** — one or more states (include Rejected/Expired/Cancelled to see the inactive ones);
+- **Responsável** (Responsible) — a person or "Sem responsável" (unassigned);
+- **Criada de / até** (Created from/to) and **Validade de / até** (Validity from/to) — periods;
+- **Valor mín. / máx.** (Amount min/max) — total range;
+- **Limpar** (Clear) — resets every filter.
+
+Click the title to open the **detail**, which shows the proposal summary, the status, the **source
+Opportunity** (with shortcuts to the Opportunity and the Lead) and the **items** (see below). The same
+**visibility rules** as Opportunities apply: a representative sees only their own proposals; a manager sees
+all. The list exposes commercial data only — never booking, payment or commission data.
 
 ### 9.3 Proposal items
 The **Itens** (Items) card on the proposal detail lists what will be offered to the client. While the

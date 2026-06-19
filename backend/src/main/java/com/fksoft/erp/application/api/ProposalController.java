@@ -2,6 +2,7 @@ package com.fksoft.erp.application.api;
 
 import com.fksoft.erp.application.api.dto.ProposalCreateRequest;
 import com.fksoft.erp.application.api.dto.ProposalItemRequest;
+import com.fksoft.erp.application.api.dto.ProposalListParams;
 import com.fksoft.erp.application.api.dto.ProposalResponse;
 import com.fksoft.erp.application.api.dto.ProposalUpdateRequest;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
@@ -10,11 +11,15 @@ import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalListItem;
+import com.fksoft.erp.domain.sales.service.data.ProposalSearchCriteria;
 import com.fksoft.erp.domain.sales.service.data.UpdateProposalCommand;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -70,17 +75,44 @@ public class ProposalController {
     }
 
     /**
-     * Operational, paginated list of Proposals visible to the caller.
+     * Operational, paginated list of Proposals visible to the caller, with optional filters and search.
+     * Terminal-negative Proposals (REJECTED/EXPIRED/CANCELLED) are excluded unless the {@code status} filter
+     * explicitly includes them. The contract carries commercial-offer data only — never Sale, Sales Order,
+     * Booking, Financial, Payment or Commission data.
      *
+     * @param params the optional filters and search term (see {@link ProposalListParams})
      * @param pageable page, size and sort (default: createdAt desc, size 20)
      * @return a page of Proposal list items
      */
     @GetMapping
     public PageResponse<ProposalListItem> list(
+            ProposalListParams params,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        boolean unassignedOnly = "unassigned".equalsIgnoreCase(params.responsible());
+        UUID responsibleId = (!unassignedOnly
+                        && params.responsible() != null
+                        && !params.responsible().isBlank())
+                ? UUID.fromString(params.responsible())
+                : null;
+        ProposalSearchCriteria criteria = new ProposalSearchCriteria(
+                params.status(),
+                responsibleId,
+                unassignedOnly,
+                params.opportunityId(),
+                toStartOfDayUtc(params.createdFrom()),
+                toStartOfDayUtc(params.createdTo() != null ? params.createdTo().plusDays(1) : null),
+                params.validFrom(),
+                params.validTo(),
+                params.totalMin(),
+                params.totalMax(),
+                params.q());
         return PageResponse.from(
                 proposalService.list(
-                        pageable, userContext.currentUserId(), canSeeAllProposals(), canSeeUnassignedProposals()),
+                        criteria,
+                        pageable,
+                        userContext.currentUserId(),
+                        canSeeAllProposals(),
+                        canSeeUnassignedProposals()),
                 item -> item);
     }
 
@@ -180,6 +212,12 @@ public class ProposalController {
     private static ProposalItemCommand toCommand(ProposalItemRequest r) {
         return new ProposalItemCommand(
                 r.type(), r.description(), r.quantity(), r.unitValue(), r.discountType(), r.discountValue());
+    }
+
+    // The creation period is given as calendar dates; the column is an instant, so anchor at UTC midnight
+    // (the upper bound is pre-incremented by a day by the caller, making the range [from, to) exclusive).
+    private static Instant toStartOfDayUtc(LocalDate date) {
+        return date != null ? date.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
     }
 
     // Source-opportunity visibility for creation reuses the Opportunity read tiers.

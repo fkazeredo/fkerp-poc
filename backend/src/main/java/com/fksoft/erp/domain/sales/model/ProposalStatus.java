@@ -1,5 +1,9 @@
 package com.fksoft.erp.domain.sales.model;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 /**
  * Lifecycle status of a commercial {@link Proposal} (Sprint 3). A new Proposal starts at {@link #DRAFT}.
  * The full lifecycle is defined here, but only DRAFT is reached in this slice — the transitions
@@ -28,5 +32,15 @@ public enum ProposalStatus {
      */
     public boolean isOpen() {
         return this != REJECTED && this != EXPIRED && this != CANCELLED;
+    }
+
+    /**
+     * The set of open statuses (not a terminal-negative outcome). This is the default operational view of
+     * the Proposal list — REJECTED, EXPIRED and CANCELLED are excluded unless explicitly filtered in.
+     *
+     * @return the open statuses (DRAFT, READY_FOR_REVIEW, APPROVED, SENT, ACCEPTED)
+     */
+    public static Set<ProposalStatus> openStatuses() {
+        return Stream.of(values()).filter(ProposalStatus::isOpen).collect(Collectors.toUnmodifiableSet());
     }
 }

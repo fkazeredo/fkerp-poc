@@ -355,6 +355,27 @@ describe('ProposalDetailPage', () => {
     expect(comp['itemOpen']()).toBe(false);
   });
 
+  // Regression: Esc must NOT silently discard an edited dialog — it warns through the guard.
+  it('warns before closing a changed dialog with the Escape shortcut, and keeps it open on reject', () => {
+    proposals.detail.mockReturnValue(of(withItem));
+    const comp = build();
+    comp.ngOnInit();
+    comp['openAddItem']();
+    comp['itemDescription'] = 'mudou'; // user types -> dirty
+
+    const confirm = vi
+      .spyOn(TestBed.inject(ConfirmationService), 'confirm')
+      .mockImplementation((opts) => {
+        opts.reject?.(); // "Continuar editando"
+        return TestBed.inject(ConfirmationService);
+      });
+
+    comp['onShortcut'](new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(confirm).toHaveBeenCalled();
+    expect(comp['itemOpen']()).toBe(true);
+  });
+
   describe('DOM rendering', () => {
     it('renders the loading state while the detail is in flight', () => {
       proposals.detail.mockReturnValue(NEVER); // never emits -> loading stays true
