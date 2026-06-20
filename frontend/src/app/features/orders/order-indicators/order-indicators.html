@@ -1,0 +1,99 @@
+<header class="page-head">
+  <div>
+    <h1>Indicadores de pedidos</h1>
+    <p class="sub muted">
+      Pedidos comerciais fechados — volume no período e os que ainda aguardam reserva hoje.
+    </p>
+  </div>
+</header>
+
+<div class="surface filters">
+  <div class="field">
+    <label for="from">Criado de</label>
+    <p-datepicker
+      inputId="from"
+      [(ngModel)]="createdFrom"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      [maxDate]="createdTo ?? undefined"
+      (onSelect)="applyPeriod()"
+      (onClear)="applyPeriod()"
+    />
+  </div>
+  <div class="field">
+    <label for="to">até</label>
+    <p-datepicker
+      inputId="to"
+      [(ngModel)]="createdTo"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      [minDate]="createdFrom ?? undefined"
+      (onSelect)="applyPeriod()"
+      (onClear)="applyPeriod()"
+    />
+  </div>
+  <p-button
+    label="Todo o período"
+    severity="secondary"
+    [text]="true"
+    icon="pi pi-times"
+    (onClick)="clearPeriod()"
+  />
+</div>
+
+@if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+}
+
+@if (loading() && !data()) {
+  <p class="muted state">Carregando indicadores…</p>
+} @else if (data(); as d) {
+  <section class="group">
+    <h2 class="group-title">Volume no período</h2>
+    <div class="kpis">
+      @for (kpi of periodKpis(); track kpi.key) {
+        <div class="kpi surface" [class]="kpi.accent">
+          <span class="kpi-value">
+            @if (kpi.currency) {
+              {{ kpi.value | currency: 'BRL' }}
+            } @else {
+              {{ kpi.value }}
+            }
+          </span>
+          <span class="kpi-label muted">{{ kpi.label }}</span>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section class="group">
+    <h2 class="group-title">
+      Em andamento <span class="muted">— retrato de hoje, independe do período</span>
+    </h2>
+    <div class="kpis">
+      @for (kpi of snapshotKpis(); track kpi.key) {
+        <div class="kpi surface" [class]="kpi.accent">
+          <span class="kpi-value">{{ kpi.value }}</span>
+          <span class="kpi-label muted">{{ kpi.label }}</span>
+        </div>
+      }
+    </div>
+  </section>
+
+  <div class="breakdowns">
+    <section class="surface breakdown">
+      <h2>Por responsável <span class="muted">(período)</span></h2>
+      @for (bar of byResponsible(); track bar.label) {
+        <div class="bar-row">
+          <span class="bar-label">{{ bar.label }}</span>
+          <span class="bar-track"
+            ><span class="bar-fill" [style.width.%]="bar.ratio * 100"></span
+          ></span>
+          <span class="bar-count">{{ bar.count }}</span>
+        </div>
+      } @empty {
+        <p class="muted">Sem dados.</p>
+      }
+    </section>
+  </div>
+}

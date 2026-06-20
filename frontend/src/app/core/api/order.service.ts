@@ -110,6 +110,25 @@ export interface OrderCreated {
   id: string;
 }
 
+/** Commercial Order count for a responsible person; `responsibleName === null` means unassigned. */
+export interface OrderResponsibleCount {
+  responsibleName: string | null;
+  count: number;
+}
+
+/**
+ * Minimum Commercial Order indicators. Two scopes: the **volume** figures ({@code total},
+ * {@code totalAmount}, {@code byResponsible}) cover the selected period (by creation date); the
+ * **operational** figure ({@code pendingBooking}) is a current snapshot of all the visible Orders,
+ * independent of the period.
+ */
+export interface OrderIndicators {
+  total: number;
+  totalAmount: number;
+  byResponsible: OrderResponsibleCount[];
+  pendingBooking: number;
+}
+
 /** API client for the Commercial Order endpoints (Sales & Proposals). */
 @Injectable({ providedIn: 'root' })
 export class OrderService {
@@ -118,6 +137,21 @@ export class OrderService {
   /** The selectable responsible people (shared with the CRM module). */
   responsibles(): Observable<Responsible[]> {
     return this.http.get<Responsible[]>('/api/crm/responsibles');
+  }
+
+  /** Minimum Commercial Order indicators in an optional period (ISO dates); absent dates = all-time. */
+  indicators(
+    createdFrom: string | null = null,
+    createdTo: string | null = null,
+  ): Observable<OrderIndicators> {
+    let params = new HttpParams();
+    if (createdFrom) {
+      params = params.set('createdFrom', createdFrom);
+    }
+    if (createdTo) {
+      params = params.set('createdTo', createdTo);
+    }
+    return this.http.get<OrderIndicators>('/api/orders/indicators', { params });
   }
 
   /** Creates a Commercial Order from an Accepted Proposal; returns the new order id. */

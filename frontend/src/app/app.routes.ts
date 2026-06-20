@@ -105,6 +105,14 @@ export const routes: Routes = [
           import('./features/proposals/proposal-list/proposal-list').then((m) => m.ProposalList),
       },
       {
+        path: 'propostas/indicadores',
+        canActivate: [proposalReadGuard],
+        loadComponent: () =>
+          import('./features/proposals/proposal-indicators/proposal-indicators').then(
+            (m) => m.ProposalIndicatorsPage,
+          ),
+      },
+      {
         path: 'propostas/:id',
         canActivate: [proposalReadGuard],
         canDeactivate: [unsavedChangesGuard],
@@ -117,6 +125,12 @@ export const routes: Routes = [
         path: 'pedidos',
         canActivate: [orderReadGuard],
         loadComponent: () => import('./features/orders/order-list/order-list').then((m) => m.OrderList),
+      },
+      {
+        path: 'pedidos/indicadores',
+        canActivate: [orderReadGuard],
+        loadComponent: () =>
+          import('./features/orders/order-indicators/order-indicators').then((m) => m.OrderIndicatorsPage),
       },
       {
         path: 'pedidos/:id',

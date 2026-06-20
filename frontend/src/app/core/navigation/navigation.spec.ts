@@ -92,4 +92,19 @@ describe('NavigationService', () => {
     const pedidos = vendas.items.find((i) => i.label === 'Pedidos');
     expect(pedidos?.link).toBe('/pedidos');
   });
+
+  it('adds the sales indicators destinations alongside their list, each gated by its read scope', () => {
+    // Proposals visible, orders hidden → only the proposal indicators destination appears.
+    auth.canSeeProposals.mockReturnValue(true);
+    auth.canSeeOrders.mockReturnValue(false);
+    let links = build().module('vendas')!.items.map((i) => i.link);
+    expect(links).toContain('/propostas/indicadores');
+    expect(links).not.toContain('/pedidos/indicadores');
+
+    // Orders also visible → both indicators destinations appear.
+    auth.canSeeOrders.mockReturnValue(true);
+    links = build().module('vendas')!.items.map((i) => i.link);
+    expect(links).toContain('/propostas/indicadores');
+    expect(links).toContain('/pedidos/indicadores');
+  });
 });

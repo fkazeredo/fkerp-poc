@@ -13,6 +13,7 @@ import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.service.ProposalService;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
+import com.fksoft.erp.domain.sales.service.data.ProposalIndicators;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalListItem;
 import com.fksoft.erp.domain.sales.service.data.ProposalSearchCriteria;
@@ -29,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,6 +39,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -118,6 +121,27 @@ public class ProposalController {
                         canSeeAllProposals(),
                         canSeeUnassignedProposals()),
                 item -> item);
+    }
+
+    /**
+     * Minimum Proposal-flow indicators for the caller: volume figures over the requested period (by
+     * creation date) plus a current operational snapshot (waiting for review / customer decision).
+     * Read-only; never exposes Sale, Sales Order, Booking, Financial, Payment or Commission data.
+     *
+     * @param createdFrom optional inclusive lower bound on the creation date (ISO date)
+     * @param createdTo optional inclusive upper bound on the creation date (ISO date)
+     * @return the indicators
+     */
+    @GetMapping("/indicators")
+    public ProposalIndicators indicators(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdTo) {
+        return proposalService.indicators(
+                userContext.currentUserId(),
+                canSeeAllProposals(),
+                canSeeUnassignedProposals(),
+                toStartOfDayUtc(createdFrom),
+                toStartOfDayUtc(createdTo != null ? createdTo.plusDays(1) : null));
     }
 
     /**

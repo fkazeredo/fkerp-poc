@@ -7,6 +7,7 @@ import com.fksoft.erp.domain.sales.service.CommercialOrderService;
 import com.fksoft.erp.domain.sales.service.data.CommercialOrderDetail;
 import com.fksoft.erp.domain.sales.service.data.CommercialOrderListItem;
 import com.fksoft.erp.domain.sales.service.data.CommercialOrderSearchCriteria;
+import com.fksoft.erp.domain.sales.service.data.OrderIndicators;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
@@ -19,12 +20,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -90,6 +93,27 @@ public class CommercialOrderController {
                 orderService.list(
                         criteria, pageable, userContext.currentUserId(), canSeeAllOrders(), canSeeUnassignedOrders()),
                 item -> item);
+    }
+
+    /**
+     * Minimum Commercial Order indicators for the caller: volume figures over the requested period (by
+     * creation date) plus a current operational snapshot (pending booking). Read-only; never exposes
+     * Booking, Receivable, Payment, Commission or Customer Care data.
+     *
+     * @param createdFrom optional inclusive lower bound on the creation date (ISO date)
+     * @param createdTo optional inclusive upper bound on the creation date (ISO date)
+     * @return the indicators
+     */
+    @GetMapping("/indicators")
+    public OrderIndicators indicators(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdTo) {
+        return orderService.indicators(
+                userContext.currentUserId(),
+                canSeeAllOrders(),
+                canSeeUnassignedOrders(),
+                toStartOfDayUtc(createdFrom),
+                toStartOfDayUtc(createdTo != null ? createdTo.plusDays(1) : null));
     }
 
     /**
