@@ -22,6 +22,8 @@
         <dd>{{ o.unassigned ? 'Sem responsável' : (o.responsibleName ?? '—') }}</dd>
         <dt>Reserva</dt>
         <dd>{{ statusLabel(o.status) }}</dd>
+        <dt>Necessita reserva</dt>
+        <dd>{{ o.requiresBooking ? 'Sim' : 'Não' }}</dd>
         <dt>Próximo passo</dt>
         <dd class="next-step">{{ nextStep(o.status) }}</dd>
         <dt>Criado em</dt>
@@ -37,6 +39,22 @@
         <dd>{{ o.sourceProposal.title }}</dd>
         <dt>Situação</dt>
         <dd>{{ proposalStatusLabel(o.sourceProposal.status) }}</dd>
+        @if (o.sourceProposal.validUntil) {
+          <dt>Validade</dt>
+          <dd>{{ o.sourceProposal.validUntil | date: 'shortDate' }}</dd>
+        }
+        @if (o.sourceProposal.commercialTerms) {
+          <dt>Termos comerciais</dt>
+          <dd class="notes">{{ o.sourceProposal.commercialTerms }}</dd>
+        }
+        @if (o.sourceProposal.notes) {
+          <dt>Notas</dt>
+          <dd class="notes">{{ o.sourceProposal.notes }}</dd>
+        }
+        @if (o.sourceProposal.paymentNotes) {
+          <dt>Observações de pagamento</dt>
+          <dd class="notes">{{ o.sourceProposal.paymentNotes }}</dd>
+        }
       </dl>
       <div class="trace">
         <a class="link" [routerLink]="['/propostas', o.proposalId]">Ver proposta de origem</a>

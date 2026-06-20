@@ -101,6 +101,7 @@ class CommercialOrderApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(get("/api/orders/" + orderId).header("Authorization", "Bearer " + mgr))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PENDING_BOOKING"))
+                .andExpect(jsonPath("$.requiresBooking").value(true)) // explicit booking-need indicator
                 .andExpect(jsonPath("$.number").isNumber()) // the sequential PC-000n number
                 .andExpect(jsonPath("$.proposalId").value(proposal.toString()))
                 .andExpect(jsonPath("$.opportunityId").value(opp.toString()))
@@ -142,7 +143,8 @@ class CommercialOrderApiIntegrationTest extends AbstractIntegrationTest {
 
         mvc.perform(get("/api/orders/" + orderId).header("Authorization", "Bearer " + mgr))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("BOOKING_NOT_REQUIRED"));
+                .andExpect(jsonPath("$.status").value("BOOKING_NOT_REQUIRED"))
+                .andExpect(jsonPath("$.requiresBooking").value(false));
     }
 
     @Test

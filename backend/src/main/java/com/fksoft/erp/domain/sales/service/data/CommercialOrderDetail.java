@@ -13,6 +13,7 @@ import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -24,10 +25,13 @@ import java.util.UUID;
  * id → display name. Exposes commercial-order data only — never Booking, Receivable, Payment, Commission or
  * Customer Care data.
  *
+ * @param requiresBooking whether the Order still needs a reservation (the explicit booking-need indicator;
+ *     {@code true} when the status is PENDING_BOOKING) — what Sprint 4 Booking Operations keys off
  * @param items the order lines (snapshot of the Proposal's items), each with its computed line total
  * @param subtotal the items subtotal (snapshot from the Proposal)
  * @param total the order total (snapshot from the Proposal)
- * @param sourceProposal the source Proposal (preserved)
+ * @param sourceProposal the source Proposal (preserved), with its commercial terms / validity / notes
+ *     surfaced for convenience (read from the immutable source Proposal — not duplicated onto the Order)
  * @param sourceOpportunity the source Opportunity (preserved; now marked won)
  * @param sourceLead the source Lead (preserved; still the system of record for the contact)
  */
@@ -38,6 +42,7 @@ public record CommercialOrderDetail(
         UUID opportunityId,
         UUID leadId,
         CommercialOrderStatus status,
+        boolean requiresBooking,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,
@@ -73,6 +78,7 @@ public record CommercialOrderDetail(
                 o.opportunityId(),
                 o.leadId(),
                 o.status(),
+                o.status() == CommercialOrderStatus.PENDING_BOOKING,
                 o.responsiblePersonId(),
                 nameOf(names, o.responsiblePersonId()),
                 o.responsiblePersonId() == null,
@@ -81,7 +87,14 @@ public record CommercialOrderDetail(
                 o.total(),
                 o.createdAt(),
                 nameOf(names, o.createdBy()),
-                new SourceProposal(proposal.id(), proposal.title(), proposal.status()),
+                new SourceProposal(
+                        proposal.id(),
+                        proposal.title(),
+                        proposal.status(),
+                        proposal.validUntil(),
+                        proposal.commercialTerms(),
+                        proposal.notes(),
+                        proposal.paymentNotes()),
                 new SourceOpportunity(opportunity.id(), opportunity.name(), opportunity.stage()),
                 new SourceLead(lead.id(), lead.name(), lead.phone(), lead.whatsapp(), lead.email(), lead.status()));
     }
@@ -90,8 +103,19 @@ public record CommercialOrderDetail(
         return id == null ? null : names.get(id);
     }
 
-    /** The source Proposal, preserved by the Order. */
-    public record SourceProposal(UUID id, String title, ProposalStatus status) {}
+    /**
+     * The source Proposal, preserved by the Order. Carries its commercial context — validity, commercial
+     * terms, notes and payment notes — surfaced (read from the immutable source Proposal, not duplicated onto
+     * the Order) so the Order detail is ready for Sprint 4 Booking without recapturing the commercial data.
+     */
+    public record SourceProposal(
+            UUID id,
+            String title,
+            ProposalStatus status,
+            LocalDate validUntil,
+            String commercialTerms,
+            String notes,
+            String paymentNotes) {}
 
     /** The source Opportunity, kept traceable from the Order. */
     public record SourceOpportunity(UUID id, String name, OpportunityStage stage) {}

@@ -625,8 +625,11 @@ date**.
 
 The order **detail** shows the number, the status, the **items** and the **total** (a copy of what was sold),
 the source references (proposal/opportunity/lead) and a **next-step** note (when *Pending booking*, it signals
-that the next step can start the booking operations). The list and the detail show **order data only** — never
-booking, finance, payment or commission.
+that the next step can start the booking operations). So it arrives **ready for the booking step** without
+re-typing anything, the detail also gathers the **commercial context from the source proposal** — the
+**commercial terms**, the **validity**, the **notes** and the **payment notes** (when filled in) — plus an
+explicit **booking-need** indicator (*Sim/Não* — Yes/No). The list and the detail show **order data only** —
+never booking, finance, payment or commission.
 
 > The next step of the Sales module (starting the **booking operations** from a pending-booking order) will come
 > in a later release.
