@@ -551,8 +551,25 @@ the top of the detail.
 Non-approvers (sellers, representatives) do **not** see these buttons and cannot approve — not even their own
 proposals. Approving or rejecting creates no commercial order, booking, finance or commission data.
 
-> The next steps of the Sales module (sending to the client, customer acceptance and the generation of a
-> **commercial order**) will come in later releases.
+### 9.6 Mark as sent to the client
+Once **approved**, a proposal can be **registered as sent/presented to the client**, so the company can track
+the client's decision. On an *Aprovada* (Approved) proposal's detail, whoever **operates** the proposal
+(sellers, representatives and the manager) sees the **Marcar como enviada** (Mark as sent) button (shortcut
+**`m`**).
+
+- On confirming, you may **optionally** record the **sending channel** — *E-mail*, *WhatsApp*, *Phone
+  presentation*, *In-person presentation* or *Other* — or leave it blank.
+- The proposal moves to *Enviada* (Sent); the channel (when given) appears on the summary as **Canal de envio**
+  (Sending channel), and the **who/when** transition is recorded in the status history. A *Sent* proposal
+  **stays available** for the client's decision.
+
+Marking as sent is only a **record**: the system does **not** send a real e-mail, WhatsApp or phone call, does
+not generate a PDF or signature, and creates **no** customer acceptance, commercial order, booking, finance or
+commission data. Only *Approved* proposals can be marked as sent (a draft, in-review or rejected proposal
+cannot).
+
+> The next steps of the Sales module (customer acceptance and the generation of a **commercial order**) will
+> come in later releases.
 
 ## 10. Managing reference data (*cadastros*)
 
@@ -645,10 +662,11 @@ Product Fit → Ready for Proposal), **registering commercial activities**, **ed
 details** (estimated value and expected closing date), the **Lost** flow with a reason, **Pending
 Opportunities** and **Opportunity indicators** — all with per-profile visibility.
 
-**Sprint 3 — Sales & Proposals** has begun: you can now **create a commercial proposal** from a ready
-Opportunity (the **Vendas → Propostas** module). The next steps will continue the proposal lifecycle
-(items, values, discounts, internal approval, customer acceptance) and the generation of a **commercial
-order**. This manual will be updated as each ships.
+**Sprint 3 — Sales & Proposals** is underway: from a ready Opportunity you can **create a commercial
+proposal** (the **Vendas → Propostas** module), manage its **items, values and discounts**, **submit it for
+internal review**, **approve or reject** it, and **mark an approved proposal as sent** to the client. The next
+steps will continue the proposal lifecycle (customer acceptance) and the generation of a **commercial order**.
+This manual will be updated as each ships.
 
 ---
 

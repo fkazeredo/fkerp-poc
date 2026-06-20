@@ -71,6 +71,14 @@ export type ProposalRejectionReason =
   | 'DUPLICATE'
   | 'OTHER';
 
+/** The fixed set of channels an approved Proposal can be sent/presented to the client through. */
+export type SendingChannel =
+  | 'EMAIL'
+  | 'WHATSAPP'
+  | 'PHONE_PRESENTATION'
+  | 'IN_PERSON_PRESENTATION'
+  | 'OTHER';
+
 /** A single commercial-offer line, with its computed line total. */
 export interface ProposalItem {
   id: string;
@@ -128,6 +136,7 @@ export interface ProposalDetail {
   statusHistory: ProposalStatusChange[];
   rejectionReason: ProposalRejectionReason | null;
   rejectionNote: string | null;
+  sendingChannel: SendingChannel | null;
 }
 
 /** Proposal list item (operational list of the Sales module). */
@@ -206,6 +215,11 @@ export class ProposalService {
     note: string | null,
   ): Observable<ProposalDetail> {
     return this.http.post<ProposalDetail>(`/api/proposals/${id}/reject`, { reason, note });
+  }
+
+  /** Marks an approved Proposal as sent to the client (Approved → Sent); the channel is optional. */
+  markSent(id: string, channel: SendingChannel | null): Observable<ProposalDetail> {
+    return this.http.post<ProposalDetail>(`/api/proposals/${id}/send`, { channel });
   }
 
   /** Adds an item to a Draft Proposal; returns the refreshed detail (with the recomputed total). */

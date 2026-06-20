@@ -21,6 +21,7 @@ import com.fksoft.erp.domain.sales.model.ProposalCreated;
 import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
+import com.fksoft.erp.domain.sales.model.SendingChannel;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
@@ -305,6 +306,31 @@ public class ProposalService {
             boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
         proposal.reject(userId, reason, note);
+        return toDetail(proposals.saveAndFlush(proposal));
+    }
+
+    /**
+     * Marks an approved Proposal the caller is allowed to see as sent to the client (Approved → Sent), with an
+     * optional descriptive sending channel, and returns the refreshed detail. The action is gated by the
+     * {@code sales:proposal:update} authority at the delivery boundary. Does NOT trigger any real e-mail/
+     * WhatsApp/phone integration, and creates no customer acceptance, Commercial Order, Booking, Financial or
+     * Commission data; the Proposal stays open for the client's decision.
+     *
+     * @param proposalId the proposal id
+     * @param channel the descriptive sending channel, or {@code null} (the channel is optional)
+     * @param userId the user registering the send
+     * @param canSeeAll whether the caller may see every Proposal
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws ProposalNotFoundException if the Proposal does not exist
+     * @throws ProposalAccessDeniedException if the caller may not see it
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException if it is not Approved
+     */
+    @Transactional
+    public ProposalDetail markAsSent(
+            UUID proposalId, SendingChannel channel, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
+        proposal.markAsSent(userId, channel);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 

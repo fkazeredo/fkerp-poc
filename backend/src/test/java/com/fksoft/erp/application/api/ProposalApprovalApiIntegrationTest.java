@@ -22,17 +22,20 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * End-to-end (MockMvc, real Postgres) of the internal Proposal approval/rejection slice: an approver (the
+ * End-to-end (MockMvc, real Postgres) of the internal Proposal lifecycle transitions: an approver (the
  * Manager, holding {@code sales:proposal:approve}) approves a Proposal under review (→ APPROVED) or rejects it
- * with a reason (→ REJECTED, recording the reason/note); both record the transition in the status history.
- * Only Ready-for-Review Proposals can be approved/rejected (else 422), rejection requires a reason (else 400),
- * and non-approvers (seller / representative / director / finance) get 403. Neither action sends the Proposal
- * to the client nor creates Sale/Order/Booking/Financial/Commission data. Rejecting frees the Opportunity for
- * a new Proposal.
+ * with a reason (→ REJECTED, recording the reason/note); a commercial operator (holding
+ * {@code sales:proposal:update}) then marks an approved Proposal as sent to the client (→ SENT, with an
+ * optional channel). Each transition is recorded in the status history. Only Ready-for-Review Proposals can be
+ * approved/rejected (else 422), rejection requires a reason (else 400), only Approved Proposals can be marked
+ * sent (else 422), and callers without the relevant authority get 403. None of these actions create
+ * Sale/Order/Booking/Financial/Commission data. Rejecting frees the Opportunity for a new Proposal; a SENT
+ * Proposal stays open (so the Opportunity keeps it).
  */
 class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
 
     private static final UUID MANAGER = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID SELLER = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
     @Autowired
     private ProposalRepository proposals;
@@ -182,6 +185,140 @@ class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"opportunityId\":\"%s\",\"title\":\"Revisada\"}".formatted(opp)))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void managerMarksAnApprovedProposalAsSentWithChannel() throws Exception {
+        String mgr = manager();
+        bringToApproved(mgr, mgrProposal);
+
+        mvc.perform(post("/api/proposals/" + mgrProposal + "/send")
+                        .header("Authorization", "Bearer " + mgr)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"channel\":\"EMAIL\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SENT"))
+                .andExpect(jsonPath("$.sendingChannel").value("EMAIL"))
+                .andExpect(jsonPath("$.statusHistory[0].from").value("APPROVED"))
+                .andExpect(jsonPath("$.statusHistory[0].to").value("SENT"))
+                .andExpect(jsonPath("$.statusHistory[0].by").value("comercial"))
+                .andExpect(jsonPath("$.statusHistory[0].at").value(notNullValue()));
+    }
+
+    @Test
+    void marksAnApprovedProposalAsSentWithoutAChannel() throws Exception {
+        String mgr = manager();
+        bringToApproved(mgr, mgrProposal);
+
+        // The channel is optional.
+        mvc.perform(post("/api/proposals/" + mgrProposal + "/send")
+                        .header("Authorization", "Bearer " + mgr)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SENT"))
+                .andExpect(jsonPath("$.sendingChannel").doesNotExist());
+    }
+
+    @Test
+    void aSellerMarksTheirOwnApprovedProposalAsSent() throws Exception {
+        // The seller operates the deal (sales:proposal:update) and owns it; the manager approves it first.
+        String mgr = manager();
+        UUID lead = insertLead("Seller", MANAGER);
+        UUID opp = insertOpportunity("Seller", lead);
+        UUID proposal = insertProposal(opp, lead, SELLER);
+        bringToApproved(mgr, proposal);
+
+        mvc.perform(post("/api/proposals/" + proposal + "/send")
+                        .header("Authorization", "Bearer " + login("vendedor", "vendedor123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"channel\":\"WHATSAPP\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SENT"))
+                .andExpect(jsonPath("$.sendingChannel").value("WHATSAPP"));
+    }
+
+    @Test
+    void cannotMarkAsSentAProposalThatIsNotApproved() throws Exception {
+        // mgrProposal is still a DRAFT (never approved).
+        mvc.perform(post("/api/proposals/" + mgrProposal + "/send")
+                        .header("Authorization", "Bearer " + manager())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"channel\":\"EMAIL\"}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("proposal.not-approved"));
+    }
+
+    @Test
+    void cannotMarkAsSentAProposalUnderReview() throws Exception {
+        String mgr = manager();
+        bringToReview(mgr, mgrProposal); // READY_FOR_REVIEW, not yet approved
+
+        mvc.perform(post("/api/proposals/" + mgrProposal + "/send")
+                        .header("Authorization", "Bearer " + mgr)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("proposal.not-approved"));
+    }
+
+    @Test
+    void aSentProposalStaysOpenSoTheOpportunityKeepsIt() throws Exception {
+        String mgr = manager();
+        UUID lead = insertLead("Open", MANAGER);
+        UUID opp = insertOpportunity("Open", lead);
+        UUID proposal = insertProposal(opp, lead, MANAGER);
+        bringToApproved(mgr, proposal);
+        mvc.perform(post("/api/proposals/" + proposal + "/send")
+                        .header("Authorization", "Bearer " + mgr)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"channel\":\"OTHER\"}"))
+                .andExpect(status().isOk());
+
+        // SENT is non-terminal: the Opportunity still has an open Proposal → it cannot originate a new one.
+        mvc.perform(post("/api/proposals")
+                        .header("Authorization", "Bearer " + mgr)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"opportunityId\":\"%s\",\"title\":\"Outra\"}".formatted(opp)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("proposal.already-exists-for-opportunity"));
+    }
+
+    @Test
+    void aDirectorConsultingCannotMarkAsSent() throws Exception {
+        // diretor has read:all (consultation) but no update scope.
+        bringToApproved(manager(), mgrProposal);
+        mvc.perform(post("/api/proposals/" + mgrProposal + "/send")
+                        .header("Authorization", "Bearer " + login("diretor", "diretor123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"channel\":\"EMAIL\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void financeCannotMarkAsSent() throws Exception {
+        bringToApproved(manager(), mgrProposal);
+        mvc.perform(post("/api/proposals/" + mgrProposal + "/send")
+                        .header("Authorization", "Bearer " + login("financeiro", "financeiro123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"channel\":\"EMAIL\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rejectsUnauthenticatedSend() throws Exception {
+        mvc.perform(post("/api/proposals/" + mgrProposal + "/send")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /** Brings the Proposal to APPROVED: reviews it then approves it (both as the given approver token). */
+    private void bringToApproved(String token, UUID proposal) throws Exception {
+        bringToReview(token, proposal);
+        mvc.perform(post("/api/proposals/" + proposal + "/approve").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"));
     }
 
     /** Adds an item, sets a validity date, and submits the Proposal so it reaches READY_FOR_REVIEW. */

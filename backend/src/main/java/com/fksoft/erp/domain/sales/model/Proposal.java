@@ -6,6 +6,7 @@ import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalExcep
 import com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
 import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException;
@@ -140,6 +141,13 @@ public class Proposal {
     @Size(max = 2000)
     @Column(name = "rejection_note")
     private String rejectionNote;
+
+    // Set when the Proposal is marked as sent to the client: the optional descriptive channel (the "how").
+    // The who/when of the send lives in the status-change history. Informational only — no real e-mail/
+    // WhatsApp/phone integration, and no customer acceptance, Order, Booking, Financial or Commission data.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sending_channel")
+    private SendingChannel sendingChannel;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -376,6 +384,24 @@ public class Proposal {
         updatedBy = byUser;
     }
 
+    /**
+     * Marks an approved Proposal as sent to the client (Approved → {@link ProposalStatus#SENT}), recording who
+     * and when in the status history and keeping the optional descriptive sending channel. The Proposal stays
+     * open for the client's decision. This does NOT trigger any real e-mail/WhatsApp/phone integration, and
+     * creates no customer acceptance, Commercial Order, Booking, Financial or Commission data.
+     *
+     * @param byUser id of the user registering the send
+     * @param channel the descriptive sending channel, or {@code null} (the channel is optional)
+     * @throws ProposalNotApprovedException if the Proposal is not Approved
+     */
+    public void markAsSent(UUID byUser, SendingChannel channel) {
+        requireApproved();
+        sendingChannel = channel;
+        recordStatusChange(status, ProposalStatus.SENT, byUser);
+        status = ProposalStatus.SENT;
+        updatedBy = byUser;
+    }
+
     // Appends a lifecycle transition to the status history (the initial DRAFT is not recorded — the history
     // stays empty until the first transition). Future transitions (approve/send/accept/reject) reuse this.
     private void recordStatusChange(ProposalStatus from, ProposalStatus to, UUID byUser) {
@@ -385,6 +411,12 @@ public class Proposal {
     private void requireUnderReview() {
         if (status != ProposalStatus.READY_FOR_REVIEW) {
             throw new ProposalNotUnderReviewException();
+        }
+    }
+
+    private void requireApproved() {
+        if (status != ProposalStatus.APPROVED) {
+            throw new ProposalNotApprovedException();
         }
     }
 

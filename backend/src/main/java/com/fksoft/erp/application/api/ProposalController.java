@@ -1,5 +1,6 @@
 package com.fksoft.erp.application.api;
 
+import com.fksoft.erp.application.api.dto.MarkProposalSentRequest;
 import com.fksoft.erp.application.api.dto.ProposalCreateRequest;
 import com.fksoft.erp.application.api.dto.ProposalItemRequest;
 import com.fksoft.erp.application.api.dto.ProposalListParams;
@@ -195,6 +196,22 @@ public class ProposalController {
                 userContext.currentUserId(),
                 canSeeAllProposals(),
                 canSeeUnassignedProposals());
+    }
+
+    /**
+     * Marks an approved Proposal as sent to the client (Approved → Sent); returns the refreshed detail.
+     * Requires the {@code sales:proposal:update} authority. The sending channel is optional descriptive
+     * information. Does not trigger any real e-mail/WhatsApp/phone integration, and creates no customer
+     * acceptance, Commercial Order, Booking, Financial or Commission data.
+     *
+     * @param id the proposal id
+     * @param request the optional sending channel
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/send")
+    public ProposalDetail send(@PathVariable UUID id, @Valid @RequestBody MarkProposalSentRequest request) {
+        return proposalService.markAsSent(
+                id, request.channel(), userContext.currentUserId(), canSeeAllProposals(), canSeeUnassignedProposals());
     }
 
     /**

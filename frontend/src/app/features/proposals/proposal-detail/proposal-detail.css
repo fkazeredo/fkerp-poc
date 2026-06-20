@@ -112,6 +112,11 @@
   color: var(--p-red-500, #ef4444);
 }
 
+.send-hint {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+}
+
 .items-head {
   display: flex;
   align-items: center;

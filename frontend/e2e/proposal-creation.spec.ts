@@ -1,9 +1,11 @@
 import { test, expect, Page } from '@playwright/test';
 
 /**
- * Sprint 3 / Slice 1 end-to-end: a READY_FOR_PROPOSAL Opportunity originates a commercial Proposal
- * through the real UI, and the new **Vendas** module (Propostas) is reachable in the menu. Drives the
- * Opportunity to "Pronta p/ proposta" (reusing the funnel flow) and then creates the Proposal.
+ * Sprint 3 end-to-end (Slices 1–8): a READY_FOR_PROPOSAL Opportunity originates a commercial Proposal
+ * through the real UI, the new **Vendas** module (Propostas) is reachable in the menu, and the Proposal is
+ * driven through its lifecycle — items, commercial details, submit for review, approve, and finally marked as
+ * sent to the client with a channel. Drives the Opportunity to "Pronta p/ proposta" (reusing the funnel flow)
+ * and then creates and progresses the Proposal.
  */
 
 async function login(page: Page, username: string, password: string): Promise<void> {
@@ -74,6 +76,7 @@ async function createReadyOpportunity(page: Page, name: string): Promise<void> {
 test('a ready opportunity originates a commercial proposal, reachable in the Vendas module', async ({
   page,
 }) => {
+  test.slow(); // a long end-to-end journey: qualify → opportunity funnel → proposal → items → submit → approve → send
   const name = `E2E Proposta ${Date.now()}`;
 
   await login(page, 'comercial', 'comercial123');
@@ -148,6 +151,19 @@ test('a ready opportunity originates a commercial proposal, reachable in the Ven
   await expect(page.getByText('Proposta aprovada')).toBeVisible();
   await expect(page.getByText('Aprovada').first()).toBeVisible();
   await expect(page.locator('.history')).toContainText('Aprovada');
+
+  // Slice 8 — the operator marks the approved Proposal as sent to the client, recording a channel → Enviada.
+  // Open via the `m` shortcut (also avoids the lingering "Proposta aprovada" toast overlapping the button).
+  await page.keyboard.press('m');
+  const sendDialog = page.getByRole('dialog');
+  await sendDialog.getByText('Selecione').click();
+  await page.getByRole('option', { name: 'E-mail' }).click();
+  await sendDialog.getByRole('button', { name: 'Marcar como enviada' }).click();
+  await expect(page.getByText('Proposta marcada como enviada')).toBeVisible();
+  await expect(page.getByText('Enviada').first()).toBeVisible();
+  await expect(page.locator('.history')).toContainText('Enviada');
+  await expect(page.getByText('Canal de envio', { exact: true })).toBeVisible(); // the summary row
+  await expect(page.locator('.sending-channel')).toHaveText('E-mail');
 
   // The Vendas module exposes "Propostas" in the menu, and the proposal shows on its list. The row now
   // carries both a title link (→ the proposal) and a source-opportunity link, so match the proposal one.
