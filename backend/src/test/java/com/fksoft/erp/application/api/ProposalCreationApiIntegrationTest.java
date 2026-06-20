@@ -248,7 +248,10 @@ class ProposalCreationApiIntegrationTest extends AbstractIntegrationTest {
                         "statusHistory",
                         "rejectionReason",
                         "rejectionNote",
-                        "sendingChannel");
+                        "sendingChannel",
+                        "acceptanceNote",
+                        "customerRejectionReason",
+                        "customerRejectionNote");
     }
 
     private ResultActions createProposal(String token, UUID opportunityId, String title) throws Exception {
