@@ -6,6 +6,7 @@ import { providePrimeNG } from 'primeng/config';
 import { NEVER, of, throwError } from 'rxjs';
 import { ProposalDetailPage } from './proposal-detail';
 import { ProposalDetail, ProposalItem, ProposalService } from '../../../core/api/proposal.service';
+import { OrderService } from '../../../core/api/order.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
@@ -28,8 +29,9 @@ describe('ProposalDetailPage', () => {
     accept: vi.fn(),
     decline: vi.fn(),
   };
+  const orders = { create: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
-  const auth = { canOperateProposal: vi.fn(), canApproveProposal: vi.fn() };
+  const auth = { canOperateProposal: vi.fn(), canApproveProposal: vi.fn(), canCreateOrder: vi.fn() };
 
   const sample: ProposalDetail = {
     id: 'p1',
@@ -67,6 +69,7 @@ describe('ProposalDetailPage', () => {
     acceptanceNote: null,
     customerRejectionReason: null,
     customerRejectionNote: null,
+    commercialOrderId: null,
   };
 
   const item: ProposalItem = {
@@ -91,6 +94,7 @@ describe('ProposalDetailPage', () => {
         MessageService,
         ConfirmationService,
         { provide: ProposalService, useValue: proposals },
+        { provide: OrderService, useValue: orders },
         { provide: Router, useValue: router },
         { provide: AuthService, useValue: auth },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'p1' } } } },
@@ -124,10 +128,14 @@ describe('ProposalDetailPage', () => {
     proposals.markSent.mockReset();
     proposals.accept.mockReset();
     proposals.decline.mockReset();
+    orders.create.mockReset();
     auth.canOperateProposal.mockReset();
     auth.canOperateProposal.mockReturnValue(true);
     auth.canApproveProposal.mockReset();
     auth.canApproveProposal.mockReturnValue(false);
+    auth.canCreateOrder.mockReset();
+    auth.canCreateOrder.mockReturnValue(false);
+    router.navigateByUrl.mockReset();
     proposals.detail.mockReturnValue(of(sample));
   });
 
@@ -527,6 +535,63 @@ describe('ProposalDetailPage', () => {
     expect(comp['proposal']()!.status).toBe('REJECTED');
   });
 
+  it('only allows creating an order with the create scope while Accepted and without an existing order', () => {
+    const accepted: ProposalDetail = { ...withItem, status: 'ACCEPTED' };
+    proposals.detail.mockReturnValue(of(accepted));
+    auth.canCreateOrder.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+    expect(comp['canCreateOrder']()).toBe(true);
+
+    comp['proposal'].set({ ...withItem, status: 'SENT' });
+    expect(comp['canCreateOrder']()).toBe(false); // not accepted
+
+    comp['proposal'].set({ ...accepted, commercialOrderId: 'ord1' });
+    expect(comp['canCreateOrder']()).toBe(false); // already has an order
+    expect(comp['hasOrder']()).toBe(true);
+
+    comp['proposal'].set(accepted);
+    auth.canCreateOrder.mockReturnValue(false);
+    expect(comp['canCreateOrder']()).toBe(false); // missing create scope
+  });
+
+  it('creates the commercial order and navigates to it', () => {
+    const accepted: ProposalDetail = { ...withItem, status: 'ACCEPTED' };
+    proposals.detail.mockReturnValue(of(accepted));
+    orders.create.mockReturnValue(of({ id: 'ord1' }));
+    auth.canCreateOrder.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['createOrder']();
+
+    expect(orders.create).toHaveBeenCalledWith({ proposalId: 'p1' });
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/pedidos/ord1');
+  });
+
+  it('navigates to the existing order when there is one', () => {
+    proposals.detail.mockReturnValue(of({ ...withItem, status: 'ACCEPTED', commercialOrderId: 'ord9' }));
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['viewOrder']();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/pedidos/ord9');
+    expect(orders.create).not.toHaveBeenCalled();
+  });
+
+  it('creates the order with the "o" shortcut on an accepted proposal', () => {
+    proposals.detail.mockReturnValue(of({ ...withItem, status: 'ACCEPTED' } as ProposalDetail));
+    orders.create.mockReturnValue(of({ id: 'ord1' }));
+    auth.canCreateOrder.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['onShortcut'](new KeyboardEvent('keydown', { key: 'o' }));
+
+    expect(orders.create).toHaveBeenCalledWith({ proposalId: 'p1' });
+  });
+
   it('reports unsaved changes only after a field is actually changed in an open dialog', () => {
     proposals.detail.mockReturnValue(of(withItem));
     const comp = build();
@@ -786,6 +851,34 @@ describe('ProposalDetailPage', () => {
       expect(el.textContent).toContain('Motivo da recusa do cliente');
       expect(el.textContent).toContain('Escolheu concorrente');
       expect(el.textContent).toContain('foi com a concorrência');
+    });
+
+    it('shows the create-order action for an accepted proposal without an order', () => {
+      proposals.detail.mockReturnValue(of({ ...withItem, status: 'ACCEPTED' } as ProposalDetail));
+      auth.canCreateOrder.mockReturnValue(true);
+      const el = render();
+
+      expect(el.textContent).toContain('Criar pedido comercial');
+      expect(el.textContent).not.toContain('Ver pedido comercial');
+    });
+
+    it('shows the view-order link when the proposal already has an order', () => {
+      proposals.detail.mockReturnValue(
+        of({ ...withItem, status: 'ACCEPTED', commercialOrderId: 'ord1' } as ProposalDetail),
+      );
+      auth.canCreateOrder.mockReturnValue(true);
+      const el = render();
+
+      expect(el.textContent).toContain('Ver pedido comercial');
+      expect(el.textContent).not.toContain('Criar pedido comercial');
+    });
+
+    it('hides the create-order action for a user without the create scope', () => {
+      proposals.detail.mockReturnValue(of({ ...withItem, status: 'ACCEPTED' } as ProposalDetail));
+      auth.canCreateOrder.mockReturnValue(false);
+      const el = render();
+
+      expect(el.textContent).not.toContain('Criar pedido comercial');
     });
   });
 });

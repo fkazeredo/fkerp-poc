@@ -51,6 +51,11 @@ public class SecurityConfig {
         "SCOPE_sales:proposal:read", "SCOPE_sales:proposal:read:unassigned", "SCOPE_sales:proposal:read:all"
     };
 
+    // Same three-tier model for Commercial Orders (Sales & Proposals); OrderAccessPolicy narrows visibility.
+    private static final String[] ORDER_READ_SCOPES = {
+        "SCOPE_sales:order:read", "SCOPE_sales:order:read:unassigned", "SCOPE_sales:order:read:all"
+    };
+
     private final SecurityProperties props;
 
     @Bean
@@ -136,6 +141,10 @@ public class SecurityConfig {
                         .hasAuthority("SCOPE_sales:proposal:update")
                         .requestMatchers(HttpMethod.GET, "/api/proposals", "/api/proposals/**")
                         .hasAnyAuthority(PROPOSAL_READ_SCOPES)
+                        .requestMatchers(HttpMethod.POST, "/api/orders")
+                        .hasAuthority("SCOPE_sales:order:create")
+                        .requestMatchers(HttpMethod.GET, "/api/orders", "/api/orders/**")
+                        .hasAnyAuthority(ORDER_READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/responsibles")
                         .hasAnyAuthority(READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/**")

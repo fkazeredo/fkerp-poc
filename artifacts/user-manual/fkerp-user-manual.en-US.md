@@ -323,7 +323,7 @@ Opportunities you may work. The list is paginated and shows, for each Opportunit
 |--------|-------|
 | **Título** (Title) | The Opportunity title; links to its **source lead**. |
 | **Responsável** (Responsible) | The owner, or *Sem responsável* (unassigned). |
-| **Estágio** (Stage) | Nova, Descoberta, Aderência, Pronta p/ proposta, Perdida. |
+| **Estágio** (Stage) | Nova, Descoberta, Aderência, Pronta p/ proposta, Ganha, Perdida. |
 | **Valor estimado** (Estimated value) | When informed. |
 | **Fechamento previsto** (Expected close) | When informed. |
 | **Criado em** (Created) | The creation date. |
@@ -406,6 +406,11 @@ the Opportunity, different from the lead's loss reasons.) The Opportunity moves 
 stage (which is **final** — it does not reopen) and the loss is recorded on the detail itself. This action
 **does not change** the source lead. Consultation-only users do not see the actions, and no one can
 operate an Opportunity they are not allowed to see.
+
+**Won Opportunity.** The Opportunity moves to the **Ganha** (Won) stage — also **final** — automatically when a
+**commercial order** is created from an accepted proposal (see section 9.8); there is no manual "mark as won"
+action. Like *Perdida*, a *Ganha* Opportunity is **hidden from the default list** (pick the stage in the filter
+to see it) and leaves the active pipeline and the pending worklist. Marking won triggers no finance or booking.
 
 The detail shows **commercial data only** — never proposal, sale, order, booking, financial, commission
 or customer care information.
@@ -587,8 +592,25 @@ summary. Registering the decision creates **no** booking, finance, commission or
 *Sent* proposals can be accepted or rejected by the client (a draft, in-review, approved or already-rejected
 proposal cannot).
 
-> The next step of the Sales module (generating a **commercial order** from an accepted proposal) will come in a
-> later release.
+### 9.8 Create the commercial order
+When the client **accepts** the proposal, a **Commercial Order** is created — the **formal internal record** of
+the closed deal, before the booking and finance steps. On an *Aceita* (Accepted) proposal's detail, whoever has
+the orders permission sees the **Criar pedido comercial** (Create commercial order) button (shortcut **`o`**).
+
+- On confirming, the system creates the order (you land straight on the **order detail**) and marks the **source
+  Opportunity as won** (*Ganha*).
+- The order **preserves** the source proposal, the opportunity, the responsible, the **items** and the **total**
+  (a faithful copy of what was sold).
+- The order starts **Pendente de reserva** (Pending booking) when it contains items that require booking (a
+  **travel package** or a **car rental**); otherwise it starts **Reserva não necessária** (Booking not required).
+- Each proposal yields **one** active order. Once created, the proposal shows **Ver pedido comercial** (View
+  commercial order) instead of creating another.
+
+Creating the order creates **no** booking, finance, commission or payment — it is only the record of the closed
+deal. Bookings and finance will come in later releases. Only an *Accepted* proposal can create an order.
+
+> The next step of the Sales module (the **orders list** and the **Pedidos** menu) will come in a later release;
+> for now the order is reached from its source proposal.
 
 ## 10. Managing reference data (*cadastros*)
 
@@ -683,9 +705,10 @@ Opportunities** and **Opportunity indicators** — all with per-profile visibili
 
 **Sprint 3 — Sales & Proposals** is underway: from a ready Opportunity you can **create a commercial
 proposal** (the **Vendas → Propostas** module), manage its **items, values and discounts**, **submit it for
-internal review**, **approve or reject** it, **mark an approved proposal as sent** to the client, and **register
-the client's acceptance or rejection**. The next step will continue the proposal lifecycle with the generation
-of a **commercial order** from an accepted proposal. This manual will be updated as each ships.
+internal review**, **approve or reject** it, **mark an approved proposal as sent** to the client, **register
+the client's acceptance or rejection**, and **create the commercial order** from an accepted proposal (which
+marks the Opportunity as **won**). The next steps will bring the **orders list** and, later, bookings and
+finance. This manual will be updated as each ships.
 
 ---
 

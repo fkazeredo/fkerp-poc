@@ -58,7 +58,7 @@ public final class OpportunityPendingSpecifications {
                     cb.lessThan(root.<LocalDate>get("expectedCloseDate"), today));
 
             return cb.and(
-                    cb.notEqual(stage, OpportunityStage.LOST),
+                    cb.not(stage.in(OpportunityStage.terminalStages())),
                     cb.or(
                             withoutRecentActivity,
                             overdueNextAction,

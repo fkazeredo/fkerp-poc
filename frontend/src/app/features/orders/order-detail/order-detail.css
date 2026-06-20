@@ -1,0 +1,110 @@
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.head-main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.head-main h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.data {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1rem;
+  margin: 0;
+}
+
+.data dt {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--p-text-muted-color, #6b7280);
+}
+
+.data dd {
+  margin: 0;
+}
+
+.trace {
+  margin-top: 0.9rem;
+}
+
+.link {
+  color: var(--p-primary-color, #2563eb);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.section {
+  display: block;
+  margin-bottom: 1.25rem;
+}
+
+.items-table .num {
+  text-align: right;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.3rem 1.5rem;
+  margin: 0.9rem 0 0;
+  margin-left: auto;
+  max-width: 22rem;
+}
+
+.totals dt {
+  color: var(--p-text-muted-color, #6b7280);
+}
+
+.totals dd {
+  margin: 0;
+}
+
+.totals .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.totals .grand {
+  font-weight: 700;
+  font-size: 1.05rem;
+  border-top: 1px solid var(--app-border, #e5e7eb);
+  padding-top: 0.4rem;
+  margin-top: 0.2rem;
+}
+
+.empty {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.loading {
+  padding: 1rem 0;
+}
+
+.back {
+  margin-top: 1rem;
+}

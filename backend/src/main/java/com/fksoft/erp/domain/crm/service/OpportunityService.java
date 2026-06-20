@@ -236,7 +236,7 @@ public class OpportunityService {
         // Pipeline — current snapshot (no period).
         Map<OpportunityStage, Long> byStageNow = indicatorQueries.countByStage(visible, null, null);
         long active = byStageNow.entrySet().stream()
-                .filter(e -> e.getKey() != OpportunityStage.LOST)
+                .filter(e -> !e.getKey().isTerminal())
                 .mapToLong(Map.Entry::getValue)
                 .sum();
         long readyForProposal = byStageNow.getOrDefault(OpportunityStage.READY_FOR_PROPOSAL, 0L);

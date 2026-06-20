@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { crmReadGuard } from './core/auth/crm-read.guard';
 import { opportunityReadGuard } from './core/auth/opportunity-read.guard';
+import { orderReadGuard } from './core/auth/order-read.guard';
 import { proposalReadGuard } from './core/auth/proposal-read.guard';
 import { unsavedChangesGuard } from './core/guards/unsaved-changes.guard';
 
@@ -111,6 +112,12 @@ export const routes: Routes = [
           import('./features/proposals/proposal-detail/proposal-detail').then(
             (m) => m.ProposalDetailPage,
           ),
+      },
+      {
+        path: 'pedidos/:id',
+        canActivate: [orderReadGuard],
+        loadComponent: () =>
+          import('./features/orders/order-detail/order-detail').then((m) => m.OrderDetailPage),
       },
       {
         path: 'cadastros/origens',

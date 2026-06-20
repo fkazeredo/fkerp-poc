@@ -29,6 +29,7 @@ import {
   UpdateProposal,
 } from '../../../core/api/proposal.service';
 import { OpportunityStage } from '../../../core/api/opportunity.service';
+import { OrderService } from '../../../core/api/order.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HasUnsavedChanges, UnsavedChangesService } from '../../../core/forms/unsaved-changes.service';
 
@@ -48,6 +49,7 @@ const STAGE_LABELS: Record<OpportunityStage, string> = {
   DISCOVERY: 'Descoberta',
   PRODUCT_FIT: 'Aderência',
   READY_FOR_PROPOSAL: 'Pronta p/ proposta',
+  WON: 'Ganha',
   LOST: 'Perdida',
 };
 
@@ -134,6 +136,7 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly proposals = inject(ProposalService);
+  private readonly orders = inject(OrderService);
   private readonly messages = inject(MessageService);
   private readonly auth = inject(AuthService);
   private readonly unsaved = inject(UnsavedChangesService);
@@ -572,9 +575,52 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     );
   }
 
+  /** Whether the Proposal already has a Commercial Order (a link to it is shown instead of the create action). */
+  protected hasOrder(): boolean {
+    return !!this.proposal()?.commercialOrderId;
+  }
+
+  /** Whether the user may create a Commercial Order (has the create authority, it is Accepted and has no Order). */
+  protected canCreateOrder(): boolean {
+    return this.auth.canCreateOrder() && this.proposal()?.status === 'ACCEPTED' && !this.hasOrder();
+  }
+
+  /** Creates the Commercial Order from this Accepted Proposal and navigates to it. */
+  protected createOrder(): void {
+    if (!this.canCreateOrder()) {
+      return;
+    }
+    this.acting.set(true);
+    this.orders.create({ proposalId: this.proposalId }).subscribe({
+      next: (created) => {
+        this.acting.set(false);
+        this.messages.add({ severity: 'success', summary: 'Pedido comercial criado' });
+        this.router.navigateByUrl('/pedidos/' + created.id);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.acting.set(false);
+        const body = err.error as { message?: string } | null;
+        this.messages.add({
+          severity: 'error',
+          summary: 'Erro',
+          detail: body?.message ?? 'Não foi possível criar o pedido comercial.',
+        });
+      },
+    });
+  }
+
+  /** Navigates to the Proposal's existing Commercial Order. */
+  protected viewOrder(): void {
+    const id = this.proposal()?.commercialOrderId;
+    if (id) {
+      this.router.navigateByUrl('/pedidos/' + id);
+    }
+  }
+
   /**
    * Shortcuts on the proposal detail: i add item, e edit commercial details, s submit for review,
-   * a approve, r reject, m mark as sent, c register acceptance, x register rejection, Esc back.
+   * a approve, r reject, m mark as sent, c register acceptance, x register rejection, o create/open the
+   * commercial order, Esc back.
    */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
@@ -626,6 +672,10 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
       this.openAccept();
     } else if (event.key === 'x' && this.canDecide()) {
       this.openDecline();
+    } else if (event.key === 'o' && this.canCreateOrder()) {
+      this.createOrder();
+    } else if (event.key === 'o' && this.hasOrder()) {
+      this.viewOrder();
     } else if (event.key === 'Escape') {
       this.back();
     }
