@@ -624,6 +624,37 @@ nunca reserva, financeiro, pagamento ou comissão.
 > A próxima etapa do módulo Vendas (iniciar as **operações de reserva** a partir de um pedido pendente de
 > reserva) virá numa próxima versão.
 
+### 9.10 Indicadores de propostas
+
+Abra **Indicadores de propostas** na barra lateral do módulo Vendas (ou pela paleta de comandos, `Ctrl K`)
+para uma visão mínima do fluxo de propostas. A tela tem **dois blocos**:
+
+- **Volume no período** (filtrado pela data de criação; padrão = mês atual): **Total** de propostas,
+  **Valor proposto** (a soma dos totais), **Valor aceito** (a soma das que hoje estão *Aceitas*) e
+  **Recusadas** (as que hoje estão *Rejeitadas*), mais as quebras **Por status** e **Por responsável**.
+  Ajuste o período pelos campos **Criado de / até**, ou clique em **Todo o período** para ver todo o histórico.
+- **Em andamento** (um retrato de hoje, que **independe do período**): **Aguardando revisão** (propostas
+  prontas para a revisão interna) e **Aguardando cliente** (propostas enviadas, à espera da decisão do cliente).
+
+Valem as mesmas **regras de visibilidade**: um representante vê **somente os próprios** números; um gerente
+ou a diretoria veem os de todos. É uma leitura operacional, **não** um dashboard executivo — sem receita,
+fluxo de caixa, previsão, comissão ou ROI — e mostra **apenas** dados comerciais das propostas, nunca venda,
+pedido, reserva, financeiro, pagamento ou comissão.
+
+### 9.11 Indicadores de pedidos
+
+Abra **Indicadores de pedidos** na barra lateral do módulo Vendas para acompanhar os pedidos fechados. A tela
+também tem **dois blocos**:
+
+- **Volume no período** (por data de criação; padrão = mês atual): **Total** de pedidos e o **Valor total**
+  (a soma), mais a quebra **Por responsável**. Ajuste ou limpe o período como na tela de propostas.
+- **Em andamento** (retrato de hoje, **independe do período**): **Pendentes de reserva** — os pedidos que
+  ainda aguardam o início das operações de reserva.
+
+Valem as mesmas **regras de visibilidade** (representante vê só os próprios; gerente/diretoria veem todos). A
+tela mostra **apenas** dados do pedido — nunca reserva, financeiro, pagamento ou comissão — e **não** é um
+dashboard executivo.
+
 ## 10. Gerenciando cadastros
 
 Os cadastros são as listas que alimentam o formulário de Lead e fluxos futuros. São quatro, todas

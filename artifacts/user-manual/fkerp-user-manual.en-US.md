@@ -631,6 +631,40 @@ booking, finance, payment or commission.
 > The next step of the Sales module (starting the **booking operations** from a pending-booking order) will come
 > in a later release.
 
+### 9.10 Proposal indicators
+
+Open **Indicadores de propostas** (Proposal indicators) in the Sales module's sidebar (or via the command
+palette, `Ctrl K`) for a minimal view of the proposal flow. The screen has **two blocks**:
+
+- **Volume no período** (Volume in period — filtered by creation date; default = current month): the **Total**
+  number of proposals, the **Valor proposto** (Proposed amount — the sum of their totals), the **Valor aceito**
+  (Accepted amount — the sum of those now *Accepted*) and **Recusadas** (Rejected — those now *Rejected*), plus
+  the **Por status** (By status) and **Por responsável** (By responsible) breakdowns. Adjust the period with the
+  **Criado de / até** (Created from / to) fields, or click **Todo o período** (All time) for the full history.
+- **Em andamento** (In progress — a snapshot of today that is **independent of the period**): **Aguardando
+  revisão** (Awaiting review — proposals ready for the internal review) and **Aguardando cliente** (Awaiting the
+  client — proposals already sent, awaiting the client's decision).
+
+The same **visibility rules** apply: a representative sees **only their own** figures; a manager or the board
+see everyone's. It is an operational read, **not** an executive dashboard — no revenue, cash flow, forecast,
+commission or ROI — and it shows **proposal commercial data only**, never sale, order, booking, finance,
+payment or commission.
+
+### 9.11 Order indicators
+
+Open **Indicadores de pedidos** (Order indicators) in the Sales module's sidebar to follow the closed orders.
+The screen also has **two blocks**:
+
+- **Volume no período** (Volume in period — by creation date; default = current month): the **Total** number of
+  orders and the **Valor total** (Total amount — the sum), plus the **Por responsável** (By responsible)
+  breakdown. Adjust or clear the period as on the proposals screen.
+- **Em andamento** (In progress — a snapshot of today, **independent of the period**): **Pendentes de reserva**
+  (Pending booking) — the orders still awaiting the start of the booking operations.
+
+The same **visibility rules** apply (a representative sees only their own; managers and the board see all). The
+screen shows **order data only** — never booking, finance, payment or commission — and is **not** an executive
+dashboard.
+
 ## 10. Managing reference data (*cadastros*)
 
 Reference data are the lists that feed the lead form and future workflows. There are
