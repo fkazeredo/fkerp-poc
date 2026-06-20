@@ -123,7 +123,7 @@ public class SecurityConfig {
                         .hasAuthority("SCOPE_sales:proposal:update")
                         .requestMatchers(HttpMethod.DELETE, "/api/proposals/*/items/*")
                         .hasAuthority("SCOPE_sales:proposal:update")
-                        .requestMatchers(HttpMethod.POST, "/api/proposals/*/submit")
+                        .requestMatchers(HttpMethod.POST, "/api/proposals/*/submit", "/api/proposals/*/send")
                         .hasAuthority("SCOPE_sales:proposal:update")
                         .requestMatchers(HttpMethod.POST, "/api/proposals/*/approve", "/api/proposals/*/reject")
                         .hasAuthority("SCOPE_sales:proposal:approve")

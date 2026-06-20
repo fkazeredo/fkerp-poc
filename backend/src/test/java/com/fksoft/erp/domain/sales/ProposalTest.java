@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
 import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException;
 import com.fksoft.erp.domain.sales.model.Proposal;
@@ -15,6 +16,7 @@ import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
+import com.fksoft.erp.domain.sales.model.SendingChannel;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import java.math.BigDecimal;
@@ -140,6 +142,49 @@ class ProposalTest {
         assertThatThrownBy(() -> draft.approve(CREATOR)).isInstanceOf(ProposalNotUnderReviewException.class);
         assertThatThrownBy(() -> draft.reject(CREATOR, ProposalRejectionReason.OTHER, null))
                 .isInstanceOf(ProposalNotUnderReviewException.class);
+    }
+
+    @Test
+    void markAsSentMovesAnApprovedProposalToSentWithChannelAndRecordsTheTransition() {
+        Proposal p = approvedProposal();
+        UUID sender = UUID.randomUUID();
+
+        p.markAsSent(sender, SendingChannel.EMAIL);
+
+        assertThat(p.status()).isEqualTo(ProposalStatus.SENT);
+        assertThat(p.isOpen()).isTrue(); // stays open for the client's decision
+        assertThat(p.sendingChannel()).isEqualTo(SendingChannel.EMAIL);
+        ProposalStatusChange last = p.statusChanges().get(p.statusChanges().size() - 1);
+        assertThat(last.fromStatus()).isEqualTo(ProposalStatus.APPROVED);
+        assertThat(last.toStatus()).isEqualTo(ProposalStatus.SENT);
+        assertThat(last.changedBy()).isEqualTo(sender);
+        assertThat(last.changedAt()).isNotNull();
+    }
+
+    @Test
+    void markAsSentAcceptsANullChannel() {
+        Proposal p = approvedProposal();
+
+        p.markAsSent(CREATOR, null); // the channel is optional
+
+        assertThat(p.status()).isEqualTo(ProposalStatus.SENT);
+        assertThat(p.sendingChannel()).isNull();
+    }
+
+    @Test
+    void markAsSentRequiresApproved() {
+        Proposal draft = readyDraft(); // a DRAFT
+        assertThatThrownBy(() -> draft.markAsSent(CREATOR, SendingChannel.EMAIL))
+                .isInstanceOf(ProposalNotApprovedException.class);
+        Proposal underReview = submittedProposal(); // READY_FOR_REVIEW, not yet approved
+        assertThatThrownBy(() -> underReview.markAsSent(CREATOR, SendingChannel.WHATSAPP))
+                .isInstanceOf(ProposalNotApprovedException.class);
+    }
+
+    private Proposal approvedProposal() {
+        Proposal p = submittedProposal();
+        p.approve(UUID.randomUUID());
+        return p;
     }
 
     private Proposal submittedProposal() {

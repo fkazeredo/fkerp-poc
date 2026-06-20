@@ -24,6 +24,7 @@ import {
   ProposalRejectionReason,
   ProposalService,
   ProposalStatus,
+  SendingChannel,
   UpdateProposal,
 } from '../../../core/api/proposal.service';
 import { OpportunityStage } from '../../../core/api/opportunity.service';
@@ -63,6 +64,14 @@ const REJECTION_REASON_LABELS: Record<ProposalRejectionReason, string> = {
   TERMS_NOT_ACCEPTABLE: 'Termos comerciais inadequados',
   VALIDITY_TOO_SHORT: 'Validade muito curta',
   DUPLICATE: 'Proposta duplicada',
+  OTHER: 'Outro',
+};
+
+const SENDING_CHANNEL_LABELS: Record<SendingChannel, string> = {
+  EMAIL: 'E-mail',
+  WHATSAPP: 'WhatsApp',
+  PHONE_PRESENTATION: 'Apresentação por telefone',
+  IN_PERSON_PRESENTATION: 'Apresentação presencial',
   OTHER: 'Outro',
 };
 
@@ -161,6 +170,13 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     (value) => ({ value, label: REJECTION_REASON_LABELS[value] }),
   );
 
+  // Mark-as-sent dialog: an optional descriptive sending channel.
+  protected readonly sendOpen = signal(false);
+  protected sendChannel: SendingChannel | null = null;
+  protected readonly sendChannelOptions = (Object.keys(SENDING_CHANNEL_LABELS) as SendingChannel[]).map(
+    (value) => ({ value, label: SENDING_CHANNEL_LABELS[value] }),
+  );
+
   private proposalId = '';
 
   ngOnInit(): void {
@@ -198,13 +214,16 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     if (this.rejectOpen()) {
       return JSON.stringify([this.rejectReason, this.rejectNote]);
     }
+    if (this.sendOpen()) {
+      return JSON.stringify([this.sendChannel]);
+    }
     return '';
   }
 
   /** Whether an edit dialog is open AND its fields were changed since it opened. */
   private dialogDirty(): boolean {
     return (
-      (this.itemOpen() || this.detailsOpen() || this.rejectOpen()) &&
+      (this.itemOpen() || this.detailsOpen() || this.rejectOpen() || this.sendOpen()) &&
       this.editSnapshot !== this.liveSnapshot()
     );
   }
@@ -238,8 +257,20 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     this.rejectOpen.set(false);
   }
 
+  /** Closes the mark-as-sent dialog, confirming first if it has unsaved edits. */
+  protected async requestCloseSend(): Promise<void> {
+    if (this.dialogDirty() && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
+    this.sendOpen.set(false);
+  }
+
   protected rejectionReasonLabel(reason: ProposalRejectionReason): string {
     return REJECTION_REASON_LABELS[reason];
+  }
+
+  protected sendingChannelLabel(channel: SendingChannel): string {
+    return SENDING_CHANNEL_LABELS[channel];
   }
 
   protected statusLabel(status: ProposalStatus): string {
@@ -414,13 +445,36 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     );
   }
 
+  /** Whether the user may mark this Proposal as sent (has the operate authority and it is Approved). */
+  protected canSend(): boolean {
+    return this.auth.canOperateProposal() && this.proposal()?.status === 'APPROVED';
+  }
+
+  protected openSend(): void {
+    if (!this.canSend()) {
+      return;
+    }
+    this.sendChannel = null;
+    this.sendOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
+  }
+
+  /** Confirms the send (Approved → Sent). The channel is optional, so this is always allowed. */
+  protected confirmSend(): void {
+    this.act(
+      this.proposals.markSent(this.proposalId, this.sendChannel),
+      'Proposta marcada como enviada',
+      this.sendOpen,
+    );
+  }
+
   /**
    * Shortcuts on the proposal detail: i add item, e edit commercial details, s submit for review,
-   * a approve, r reject, Esc back.
+   * a approve, r reject, m mark as sent, Esc back.
    */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
-    const anyDialogOpen = this.itemOpen() || this.detailsOpen() || this.rejectOpen();
+    const anyDialogOpen = this.itemOpen() || this.detailsOpen() || this.rejectOpen() || this.sendOpen();
     // Esc always closes the open dialog through the unsaved-changes guard — even from a focused field
     // (the dialogs disable PrimeNG's own Esc close so it can't bypass the guard).
     if (event.key === 'Escape' && anyDialogOpen) {
@@ -428,8 +482,10 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
         void this.requestCloseItem();
       } else if (this.detailsOpen()) {
         void this.requestCloseDetails();
-      } else {
+      } else if (this.rejectOpen()) {
         void this.requestCloseReject();
+      } else {
+        void this.requestCloseSend();
       }
       return;
     }
@@ -450,6 +506,8 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
       this.approve();
     } else if (event.key === 'r' && this.canApprove()) {
       this.openReject();
+    } else if (event.key === 'm' && this.canSend()) {
+      this.openSend();
     } else if (event.key === 'Escape') {
       this.back();
     }

@@ -24,6 +24,7 @@ describe('ProposalDetailPage', () => {
     submitForReview: vi.fn(),
     approve: vi.fn(),
     reject: vi.fn(),
+    markSent: vi.fn(),
   };
   const router = { navigateByUrl: vi.fn() };
   const auth = { canOperateProposal: vi.fn(), canApproveProposal: vi.fn() };
@@ -60,6 +61,7 @@ describe('ProposalDetailPage', () => {
     statusHistory: [],
     rejectionReason: null,
     rejectionNote: null,
+    sendingChannel: null,
   };
 
   const item: ProposalItem = {
@@ -114,6 +116,7 @@ describe('ProposalDetailPage', () => {
     proposals.removeItem.mockReset();
     proposals.approve.mockReset();
     proposals.reject.mockReset();
+    proposals.markSent.mockReset();
     auth.canOperateProposal.mockReset();
     auth.canOperateProposal.mockReturnValue(true);
     auth.canApproveProposal.mockReset();
@@ -386,6 +389,61 @@ describe('ProposalDetailPage', () => {
     expect(comp['proposal']()!.status).toBe('REJECTED');
   });
 
+  it('only allows marking as sent with the operate scope while Approved', () => {
+    const approved: ProposalDetail = { ...withItem, status: 'APPROVED' };
+    proposals.detail.mockReturnValue(of(approved));
+    auth.canOperateProposal.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+    expect(comp['canSend']()).toBe(true);
+
+    comp['proposal'].set(withItem); // a Draft
+    expect(comp['canSend']()).toBe(false);
+
+    comp['proposal'].set({ ...withItem, status: 'READY_FOR_REVIEW' });
+    expect(comp['canSend']()).toBe(false);
+
+    comp['proposal'].set({ ...withItem, status: 'SENT' });
+    expect(comp['canSend']()).toBe(false); // already sent
+
+    comp['proposal'].set(approved);
+    auth.canOperateProposal.mockReturnValue(false);
+    expect(comp['canSend']()).toBe(false); // missing operate scope
+  });
+
+  it('marks an Approved Proposal as sent with the chosen channel and reflects the status', () => {
+    const approved: ProposalDetail = { ...withItem, status: 'APPROVED' };
+    proposals.detail.mockReturnValue(of(approved));
+    proposals.markSent.mockReturnValue(of({ ...withItem, status: 'SENT', sendingChannel: 'EMAIL' }));
+    auth.canOperateProposal.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['openSend']();
+    expect(comp['sendOpen']()).toBe(true);
+    comp['sendChannel'] = 'EMAIL';
+    comp['confirmSend']();
+
+    expect(proposals.markSent).toHaveBeenCalledWith('p1', 'EMAIL');
+    expect(comp['proposal']()!.status).toBe('SENT');
+    expect(comp['sendOpen']()).toBe(false);
+  });
+
+  it('marks as sent without a channel (the channel is optional)', () => {
+    const approved: ProposalDetail = { ...withItem, status: 'APPROVED' };
+    proposals.detail.mockReturnValue(of(approved));
+    proposals.markSent.mockReturnValue(of({ ...withItem, status: 'SENT', sendingChannel: null }));
+    auth.canOperateProposal.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['openSend'](); // sendChannel reset to null
+    comp['confirmSend']();
+
+    expect(proposals.markSent).toHaveBeenCalledWith('p1', null);
+    expect(comp['proposal']()!.status).toBe('SENT');
+  });
+
   it('reports unsaved changes only after a field is actually changed in an open dialog', () => {
     proposals.detail.mockReturnValue(of(withItem));
     const comp = build();
@@ -572,6 +630,33 @@ describe('ProposalDetailPage', () => {
       expect(el.textContent).toContain('Motivo da rejeição');
       expect(el.textContent).toContain('Preço muito alto');
       expect(el.textContent).toContain('acima do orçamento');
+    });
+
+    it('shows the mark-as-sent action for an operator on an Approved Proposal', () => {
+      proposals.detail.mockReturnValue(of({ ...withItem, status: 'APPROVED' } as ProposalDetail));
+      auth.canOperateProposal.mockReturnValue(true);
+      const el = render();
+
+      expect(el.textContent).toContain('Marcar como enviada');
+    });
+
+    it('hides the mark-as-sent action for a consultation-only user', () => {
+      proposals.detail.mockReturnValue(of({ ...withItem, status: 'APPROVED' } as ProposalDetail));
+      auth.canOperateProposal.mockReturnValue(false);
+      const el = render();
+
+      expect(el.textContent).not.toContain('Marcar como enviada');
+    });
+
+    it('shows the sending channel on a sent Proposal', () => {
+      proposals.detail.mockReturnValue(
+        of({ ...withItem, status: 'SENT', sendingChannel: 'WHATSAPP' } as ProposalDetail),
+      );
+      auth.canOperateProposal.mockReturnValue(false);
+      const el = render();
+
+      expect(el.textContent).toContain('Canal de envio');
+      expect(el.textContent).toContain('WhatsApp');
     });
   });
 });
