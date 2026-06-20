@@ -177,6 +177,7 @@ class ProposalSprint3JourneyApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(get("/api/orders/" + orderId).header("Authorization", "Bearer " + manager))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PENDING_BOOKING"))
+                .andExpect(jsonPath("$.requiresBooking").value(true))
                 .andExpect(jsonPath("$.number").isNumber())
                 .andExpect(jsonPath("$.proposalId").value(proposal))
                 .andExpect(jsonPath("$.opportunityId").value(opp.toString()))
@@ -187,6 +188,9 @@ class ProposalSprint3JourneyApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.items[0].quantity").value(2))
                 .andExpect(jsonPath("$.total").value(1000.00))
                 .andExpect(jsonPath("$.sourceProposal.id").value(proposal))
+                // The commercial context is surfaced from the preserved Proposal — ready for Sprint 4 booking.
+                .andExpect(jsonPath("$.sourceProposal.commercialTerms").value("À vista"))
+                .andExpect(jsonPath("$.sourceProposal.validUntil").value("2026-12-31"))
                 .andExpect(jsonPath("$.sourceOpportunity.stage").value("WON"))
                 .andExpect(jsonPath("$.booking").doesNotExist())
                 .andExpect(jsonPath("$.receivable").doesNotExist())

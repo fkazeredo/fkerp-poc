@@ -42,6 +42,10 @@
   margin: 0;
 }
 
+.data dd.notes {
+  white-space: pre-wrap;
+}
+
 .trace {
   margin-top: 0.9rem;
 }

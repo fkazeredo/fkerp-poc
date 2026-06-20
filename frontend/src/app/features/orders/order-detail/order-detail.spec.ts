@@ -23,6 +23,7 @@ describe('OrderDetailPage', () => {
     opportunityId: 'o1',
     leadId: 'l1',
     status: 'PENDING_BOOKING',
+    requiresBooking: true,
     responsibleId: 'u1',
     responsibleName: 'comercial',
     unassigned: false,
@@ -42,7 +43,15 @@ describe('OrderDetailPage', () => {
     total: 3000,
     createdAt: '2026-06-20T10:00:00Z',
     createdByName: 'comercial',
-    sourceProposal: { id: 'p1', title: 'Proposta Aurora', status: 'ACCEPTED' },
+    sourceProposal: {
+      id: 'p1',
+      title: 'Proposta Aurora',
+      status: 'ACCEPTED',
+      validUntil: '2026-12-31',
+      commercialTerms: 'Pagamento à vista',
+      notes: 'Cliente prefere voos diretos',
+      paymentNotes: 'Sinal de 30% na reserva',
+    },
     sourceOpportunity: { id: 'o1', name: 'Aurora', stage: 'WON' },
     sourceLead: {
       id: 'l1',
@@ -152,6 +161,38 @@ describe('OrderDetailPage', () => {
       expect(el.textContent).toContain('Ganha'); // won opportunity stage
       expect(el.textContent).toContain('Cliente Aurora'); // source lead
       expect(el.textContent).toContain('Ver oportunidade de origem');
+
+      // The commercial context surfaced from the source Proposal, ready for Sprint 4 booking.
+      expect(el.textContent).toContain('Necessita reserva');
+      expect(el.textContent).toContain('Sim'); // requiresBooking = true (PENDING_BOOKING)
+      expect(el.textContent).toContain('Termos comerciais');
+      expect(el.textContent).toContain('Pagamento à vista');
+      expect(el.textContent).toContain('Observações de pagamento');
+      expect(el.textContent).toContain('Sinal de 30% na reserva');
+    });
+
+    it('hides the optional commercial-context rows when the source proposal has none', () => {
+      orders.detail.mockReturnValue(
+        of({
+          ...sample,
+          status: 'BOOKING_NOT_REQUIRED',
+          requiresBooking: false,
+          sourceProposal: {
+            id: 'p1',
+            title: 'Proposta Aurora',
+            status: 'ACCEPTED',
+            validUntil: null,
+            commercialTerms: null,
+            notes: null,
+            paymentNotes: null,
+          },
+        } satisfies CommercialOrderDetail),
+      );
+      const el = render();
+      expect(el.textContent).toContain('Necessita reserva');
+      expect(el.textContent).toContain('Não'); // requiresBooking = false
+      expect(el.textContent).not.toContain('Termos comerciais');
+      expect(el.textContent).not.toContain('Observações de pagamento');
     });
 
     it('renders the error state with a back button on 403', () => {
