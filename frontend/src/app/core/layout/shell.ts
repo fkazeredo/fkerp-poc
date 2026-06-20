@@ -166,6 +166,7 @@ export class Shell {
       else if (event.key === 'n') this.go('/leads/new');
       else if (event.key === 'o') this.go('/oportunidades');
       else if (event.key === 'p') this.go('/propostas');
+      else if (event.key === 'd') this.go('/pedidos');
       else if (event.key === 'c') this.go('/cadastros');
       return;
     }

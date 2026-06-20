@@ -101,6 +101,7 @@ class CommercialOrderApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(get("/api/orders/" + orderId).header("Authorization", "Bearer " + mgr))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PENDING_BOOKING"))
+                .andExpect(jsonPath("$.number").isNumber()) // the sequential PC-000n number
                 .andExpect(jsonPath("$.proposalId").value(proposal.toString()))
                 .andExpect(jsonPath("$.opportunityId").value(opp.toString()))
                 .andExpect(jsonPath("$.responsibleId").value(MANAGER.toString()))

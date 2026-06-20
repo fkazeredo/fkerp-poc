@@ -18,6 +18,7 @@ describe('OrderDetailPage', () => {
 
   const sample: CommercialOrderDetail = {
     id: 'ord1',
+    number: 7,
     proposalId: 'p1',
     opportunityId: 'o1',
     leadId: 'l1',
@@ -101,6 +102,14 @@ describe('OrderDetailPage', () => {
     expect(comp['stageLabel']('WON')).toBe('Ganha');
   });
 
+  it('formats the order code and the next-step note', () => {
+    const comp = build();
+    expect(comp['orderCode'](7)).toBe('PC-0007');
+    expect(comp['orderCode'](1234)).toBe('PC-1234');
+    expect(comp['nextStep']('PENDING_BOOKING')).toContain('operações de reserva');
+    expect(comp['nextStep']('BOOKING_NOT_REQUIRED')).toContain('não necessária');
+  });
+
   it('shows a permission message on 403', () => {
     orders.detail.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
     const comp = build();
@@ -133,8 +142,9 @@ describe('OrderDetailPage', () => {
       orders.detail.mockReturnValue(of(sample));
       const el = render();
 
-      expect(el.querySelector('h1')?.textContent).toContain('Pedido comercial');
+      expect(el.querySelector('h1')?.textContent).toContain('Pedido PC-0007');
       expect(el.textContent).toContain('Pendente de reserva'); // status tag
+      expect(el.textContent).toContain('Próximo passo'); // next operational step note
       expect(el.textContent).toContain('Pacote Caribe'); // item row
       expect(el.textContent).toContain('Total');
       expect(el.textContent).toContain('Proposta Aurora'); // source proposal

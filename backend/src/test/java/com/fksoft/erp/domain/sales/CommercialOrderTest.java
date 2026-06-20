@@ -31,8 +31,9 @@ class CommercialOrderTest {
     void createsFromAnAcceptedProposalSnapshottingItemsTotalAndReferences() {
         Proposal proposal = acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE);
 
-        CommercialOrder order = CommercialOrder.createFromProposal(proposal, CREATOR);
+        CommercialOrder order = CommercialOrder.createFromProposal(proposal, CREATOR, 7L);
 
+        assertThat(order.number()).isEqualTo(7L);
         assertThat(order.proposalId()).isEqualTo(proposal.id());
         assertThat(order.opportunityId()).isEqualTo(OPP_ID);
         assertThat(order.leadId()).isEqualTo(LEAD_ID);
@@ -49,16 +50,18 @@ class CommercialOrderTest {
 
     @Test
     void startsPendingBookingWhenItContainsABookableItem() {
-        assertThat(CommercialOrder.createFromProposal(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), CREATOR)
+        assertThat(CommercialOrder.createFromProposal(
+                                acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), CREATOR, 1L)
                         .status())
                 .isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
-        assertThat(CommercialOrder.createFromProposal(acceptedProposalWith(ProposalItemType.CAR_RENTAL), CREATOR)
+        assertThat(CommercialOrder.createFromProposal(acceptedProposalWith(ProposalItemType.CAR_RENTAL), CREATOR, 2L)
                         .status())
                 .isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
         // A mix that includes a bookable item still requires booking.
         assertThat(CommercialOrder.createFromProposal(
                                 acceptedProposalWith(ProposalItemType.SERVICE_FEE, ProposalItemType.CAR_RENTAL),
-                                CREATOR)
+                                CREATOR,
+                                3L)
                         .status())
                 .isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
     }
@@ -66,7 +69,7 @@ class CommercialOrderTest {
     @Test
     void startsBookingNotRequiredWhenNoItemRequiresBooking() {
         CommercialOrder order = CommercialOrder.createFromProposal(
-                acceptedProposalWith(ProposalItemType.SERVICE_FEE, ProposalItemType.OTHER), CREATOR);
+                acceptedProposalWith(ProposalItemType.SERVICE_FEE, ProposalItemType.OTHER), CREATOR, 1L);
 
         assertThat(order.status()).isEqualTo(CommercialOrderStatus.BOOKING_NOT_REQUIRED);
     }
@@ -77,10 +80,10 @@ class CommercialOrderTest {
         // Build a Proposal that is only SENT (not accepted).
         Proposal onlySent = sentProposal();
 
-        assertThatThrownBy(() -> CommercialOrder.createFromProposal(onlySent, CREATOR))
+        assertThatThrownBy(() -> CommercialOrder.createFromProposal(onlySent, CREATOR, 1L))
                 .isInstanceOf(ProposalNotAcceptedException.class);
         // Sanity: the accepted one does create an order.
-        assertThat(CommercialOrder.createFromProposal(sent, CREATOR)).isNotNull();
+        assertThat(CommercialOrder.createFromProposal(sent, CREATOR, 2L)).isNotNull();
     }
 
     private Proposal acceptedProposalWith(ProposalItemType... types) {
