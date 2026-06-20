@@ -25,6 +25,8 @@ describe('ProposalDetailPage', () => {
     approve: vi.fn(),
     reject: vi.fn(),
     markSent: vi.fn(),
+    accept: vi.fn(),
+    decline: vi.fn(),
   };
   const router = { navigateByUrl: vi.fn() };
   const auth = { canOperateProposal: vi.fn(), canApproveProposal: vi.fn() };
@@ -62,6 +64,9 @@ describe('ProposalDetailPage', () => {
     rejectionReason: null,
     rejectionNote: null,
     sendingChannel: null,
+    acceptanceNote: null,
+    customerRejectionReason: null,
+    customerRejectionNote: null,
   };
 
   const item: ProposalItem = {
@@ -117,6 +122,8 @@ describe('ProposalDetailPage', () => {
     proposals.approve.mockReset();
     proposals.reject.mockReset();
     proposals.markSent.mockReset();
+    proposals.accept.mockReset();
+    proposals.decline.mockReset();
     auth.canOperateProposal.mockReset();
     auth.canOperateProposal.mockReturnValue(true);
     auth.canApproveProposal.mockReset();
@@ -444,6 +451,82 @@ describe('ProposalDetailPage', () => {
     expect(comp['proposal']()!.status).toBe('SENT');
   });
 
+  it('only allows registering the client decision with the operate scope while Sent', () => {
+    const sent: ProposalDetail = { ...withItem, status: 'SENT' };
+    proposals.detail.mockReturnValue(of(sent));
+    auth.canOperateProposal.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+    expect(comp['canDecide']()).toBe(true);
+
+    comp['proposal'].set({ ...withItem, status: 'APPROVED' });
+    expect(comp['canDecide']()).toBe(false); // not sent yet
+
+    comp['proposal'].set({ ...withItem, status: 'ACCEPTED' });
+    expect(comp['canDecide']()).toBe(false); // already decided
+
+    comp['proposal'].set(sent);
+    auth.canOperateProposal.mockReturnValue(false);
+    expect(comp['canDecide']()).toBe(false); // missing operate scope
+  });
+
+  it('registers the client acceptance with an optional note and reflects the status', () => {
+    const sent: ProposalDetail = { ...withItem, status: 'SENT' };
+    proposals.detail.mockReturnValue(of(sent));
+    proposals.accept.mockReturnValue(of({ ...withItem, status: 'ACCEPTED', acceptanceNote: 'ok' }));
+    auth.canOperateProposal.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['openAccept']();
+    expect(comp['acceptOpen']()).toBe(true);
+    comp['acceptNote'] = 'ok';
+    comp['confirmAccept']();
+
+    expect(proposals.accept).toHaveBeenCalledWith('p1', 'ok');
+    expect(comp['proposal']()!.status).toBe('ACCEPTED');
+    expect(comp['acceptOpen']()).toBe(false);
+  });
+
+  it('registers the acceptance without a note (the note is optional)', () => {
+    const sent: ProposalDetail = { ...withItem, status: 'SENT' };
+    proposals.detail.mockReturnValue(of(sent));
+    proposals.accept.mockReturnValue(of({ ...withItem, status: 'ACCEPTED', acceptanceNote: null }));
+    auth.canOperateProposal.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['openAccept'](); // acceptNote reset to ''
+    comp['confirmAccept']();
+
+    expect(proposals.accept).toHaveBeenCalledWith('p1', null);
+    expect(comp['proposal']()!.status).toBe('ACCEPTED');
+  });
+
+  it('requires a reason to confirm a client rejection, then calls the service with reason and note', () => {
+    const sent: ProposalDetail = { ...withItem, status: 'SENT' };
+    proposals.detail.mockReturnValue(of(sent));
+    proposals.decline.mockReturnValue(
+      of({ ...withItem, status: 'REJECTED', customerRejectionReason: 'CHOSE_COMPETITOR', customerRejectionNote: 'concorrente' }),
+    );
+    auth.canOperateProposal.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['openDecline']();
+    expect(comp['canConfirmDecline']()).toBe(false); // no reason yet
+    comp['confirmDecline']();
+    expect(proposals.decline).not.toHaveBeenCalled();
+
+    comp['declineReason'] = 'CHOSE_COMPETITOR';
+    comp['declineNote'] = 'concorrente';
+    expect(comp['canConfirmDecline']()).toBe(true);
+    comp['confirmDecline']();
+
+    expect(proposals.decline).toHaveBeenCalledWith('p1', 'CHOSE_COMPETITOR', 'concorrente');
+    expect(comp['proposal']()!.status).toBe('REJECTED');
+  });
+
   it('reports unsaved changes only after a field is actually changed in an open dialog', () => {
     proposals.detail.mockReturnValue(of(withItem));
     const comp = build();
@@ -657,6 +740,52 @@ describe('ProposalDetailPage', () => {
 
       expect(el.textContent).toContain('Canal de envio');
       expect(el.textContent).toContain('WhatsApp');
+    });
+
+    it('shows the accept/decline actions for an operator on a sent Proposal', () => {
+      proposals.detail.mockReturnValue(of({ ...withItem, status: 'SENT' } as ProposalDetail));
+      auth.canOperateProposal.mockReturnValue(true);
+      const el = render();
+
+      expect(el.textContent).toContain('Registrar aceite');
+      expect(el.textContent).toContain('Registrar recusa');
+    });
+
+    it('hides the accept/decline actions for a consultation-only user', () => {
+      proposals.detail.mockReturnValue(of({ ...withItem, status: 'SENT' } as ProposalDetail));
+      auth.canOperateProposal.mockReturnValue(false);
+      const el = render();
+
+      expect(el.textContent).not.toContain('Registrar aceite');
+      expect(el.textContent).not.toContain('Registrar recusa');
+    });
+
+    it('shows the acceptance note on an accepted Proposal', () => {
+      proposals.detail.mockReturnValue(
+        of({ ...withItem, status: 'ACCEPTED', acceptanceNote: 'Cliente confirmou' } as ProposalDetail),
+      );
+      auth.canOperateProposal.mockReturnValue(false);
+      const el = render();
+
+      expect(el.textContent).toContain('Nota do aceite');
+      expect(el.textContent).toContain('Cliente confirmou');
+    });
+
+    it('shows the customer rejection reason and note on a customer-rejected Proposal', () => {
+      proposals.detail.mockReturnValue(
+        of({
+          ...withItem,
+          status: 'REJECTED',
+          customerRejectionReason: 'CHOSE_COMPETITOR',
+          customerRejectionNote: 'foi com a concorrência',
+        } as ProposalDetail),
+      );
+      auth.canOperateProposal.mockReturnValue(false);
+      const el = render();
+
+      expect(el.textContent).toContain('Motivo da recusa do cliente');
+      expect(el.textContent).toContain('Escolheu concorrente');
+      expect(el.textContent).toContain('foi com a concorrência');
     });
   });
 });

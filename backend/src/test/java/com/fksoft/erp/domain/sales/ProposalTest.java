@@ -9,8 +9,10 @@ import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotSentException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
 import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException;
+import com.fksoft.erp.domain.sales.model.CustomerRejectionReason;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
@@ -179,6 +181,75 @@ class ProposalTest {
         Proposal underReview = submittedProposal(); // READY_FOR_REVIEW, not yet approved
         assertThatThrownBy(() -> underReview.markAsSent(CREATOR, SendingChannel.WHATSAPP))
                 .isInstanceOf(ProposalNotApprovedException.class);
+    }
+
+    @Test
+    void acceptByCustomerMovesASentProposalToAcceptedWithNoteAndStaysOpen() {
+        Proposal p = sentProposal();
+        UUID register = UUID.randomUUID();
+
+        p.acceptByCustomer(register, "Cliente confirmou por e-mail");
+
+        assertThat(p.status()).isEqualTo(ProposalStatus.ACCEPTED);
+        assertThat(p.isOpen()).isTrue(); // the winning offer keeps the Opportunity; prepares the Order
+        assertThat(p.acceptanceNote()).isEqualTo("Cliente confirmou por e-mail");
+        ProposalStatusChange last = p.statusChanges().get(p.statusChanges().size() - 1);
+        assertThat(last.fromStatus()).isEqualTo(ProposalStatus.SENT);
+        assertThat(last.toStatus()).isEqualTo(ProposalStatus.ACCEPTED);
+        assertThat(last.changedBy()).isEqualTo(register);
+        assertThat(last.changedAt()).isNotNull();
+    }
+
+    @Test
+    void acceptByCustomerAcceptsANullNote() {
+        Proposal p = sentProposal();
+
+        p.acceptByCustomer(CREATOR, null); // the confirmation note is optional
+
+        assertThat(p.status()).isEqualTo(ProposalStatus.ACCEPTED);
+        assertThat(p.acceptanceNote()).isNull();
+    }
+
+    @Test
+    void declineByCustomerMovesASentProposalToRejectedWithReasonAndIsTerminal() {
+        Proposal p = sentProposal();
+        UUID register = UUID.randomUUID();
+
+        p.declineByCustomer(register, CustomerRejectionReason.CHOSE_COMPETITOR, "foi com a concorrência");
+
+        assertThat(p.status()).isEqualTo(ProposalStatus.REJECTED);
+        assertThat(p.isOpen()).isFalse(); // terminal — frees the Opportunity for a new Proposal
+        assertThat(p.customerRejectionReason()).isEqualTo(CustomerRejectionReason.CHOSE_COMPETITOR);
+        assertThat(p.customerRejectionNote()).isEqualTo("foi com a concorrência");
+        ProposalStatusChange last = p.statusChanges().get(p.statusChanges().size() - 1);
+        assertThat(last.fromStatus()).isEqualTo(ProposalStatus.SENT);
+        assertThat(last.toStatus()).isEqualTo(ProposalStatus.REJECTED);
+        assertThat(last.changedBy()).isEqualTo(register);
+    }
+
+    @Test
+    void declineByCustomerRequiresAReason() {
+        Proposal p = sentProposal();
+        assertThatThrownBy(() -> p.declineByCustomer(CREATOR, null, "sem motivo"))
+                .isInstanceOf(ProposalRejectionReasonRequiredException.class);
+    }
+
+    @Test
+    void acceptAndDeclineByCustomerRequireSent() {
+        Proposal draft = readyDraft(); // a DRAFT
+        assertThatThrownBy(() -> draft.acceptByCustomer(CREATOR, null)).isInstanceOf(ProposalNotSentException.class);
+        assertThatThrownBy(() -> draft.declineByCustomer(CREATOR, CustomerRejectionReason.OTHER, null))
+                .isInstanceOf(ProposalNotSentException.class);
+        Proposal approved = approvedProposal(); // APPROVED, not yet sent
+        assertThatThrownBy(() -> approved.acceptByCustomer(CREATOR, null)).isInstanceOf(ProposalNotSentException.class);
+        assertThatThrownBy(() -> approved.declineByCustomer(CREATOR, CustomerRejectionReason.PRICE_TOO_HIGH, null))
+                .isInstanceOf(ProposalNotSentException.class);
+    }
+
+    private Proposal sentProposal() {
+        Proposal p = approvedProposal();
+        p.markAsSent(UUID.randomUUID(), SendingChannel.EMAIL);
+        return p;
     }
 
     private Proposal approvedProposal() {

@@ -1,11 +1,11 @@
 import { test, expect, Page } from '@playwright/test';
 
 /**
- * Sprint 3 end-to-end (Slices 1–8): a READY_FOR_PROPOSAL Opportunity originates a commercial Proposal
+ * Sprint 3 end-to-end (Slices 1–9): a READY_FOR_PROPOSAL Opportunity originates a commercial Proposal
  * through the real UI, the new **Vendas** module (Propostas) is reachable in the menu, and the Proposal is
- * driven through its lifecycle — items, commercial details, submit for review, approve, and finally marked as
- * sent to the client with a channel. Drives the Opportunity to "Pronta p/ proposta" (reusing the funnel flow)
- * and then creates and progresses the Proposal.
+ * driven through its lifecycle — items, commercial details, submit for review, approve, mark as sent to the
+ * client with a channel, and finally register the client's acceptance. Drives the Opportunity to "Pronta p/
+ * proposta" (reusing the funnel flow) and then creates and progresses the Proposal.
  */
 
 async function login(page: Page, username: string, password: string): Promise<void> {
@@ -164,6 +164,17 @@ test('a ready opportunity originates a commercial proposal, reachable in the Ven
   await expect(page.locator('.history')).toContainText('Enviada');
   await expect(page.getByText('Canal de envio', { exact: true })).toBeVisible(); // the summary row
   await expect(page.locator('.sending-channel')).toHaveText('E-mail');
+
+  // Slice 9 — the operator registers the client's acceptance (via the `c` shortcut, avoiding the toast),
+  // optionally with a confirmation note → Aceita.
+  await page.keyboard.press('c');
+  const acceptDialog = page.getByRole('dialog');
+  await acceptDialog.locator('#anote').fill('Cliente confirmou por e-mail');
+  await acceptDialog.getByRole('button', { name: 'Registrar aceite' }).click();
+  await expect(page.getByText('Aceite registrado')).toBeVisible();
+  await expect(page.getByText('Aceita').first()).toBeVisible();
+  await expect(page.locator('.history')).toContainText('Aceita');
+  await expect(page.getByText('Nota do aceite', { exact: true })).toBeVisible(); // the summary row
 
   // The Vendas module exposes "Propostas" in the menu, and the proposal shows on its list. The row now
   // carries both a title link (→ the proposal) and a source-opportunity link, so match the proposal one.

@@ -568,8 +568,27 @@ not generate a PDF or signature, and creates **no** customer acceptance, commerc
 commission data. Only *Approved* proposals can be marked as sent (a draft, in-review or rejected proposal
 cannot).
 
-> The next steps of the Sales module (customer acceptance and the generation of a **commercial order**) will
-> come in later releases.
+### 9.7 Register the client's acceptance or rejection
+When the client responds to a *Enviada* (Sent) proposal, you register their decision to **close the
+negotiation**. On a *Sent* proposal's detail, whoever **operates** the proposal (sellers, representatives and
+the manager) sees the **Registrar aceite** (Register acceptance) button (shortcut **`c`**) and the **Registrar
+recusa** (Register rejection) button (shortcut **`x`**).
+
+- **Register acceptance** opens a dialog with an **optional confirmation note**; the proposal moves to *Aceita*
+  (Accepted). An accepted proposal **stays available** (it is the winning offer) and **prepares** the generation
+  of the **commercial order**, which will come in a later release.
+- **Register rejection** opens a dialog where you pick a **reason** (a fixed list: *Price too high*, *Chose
+  competitor*, *Travel postponed*, *Travel cancelled*, *Changed destination*, *No response after the proposal*,
+  *Product mismatch*, *Other*) and, optionally, a **note**; the proposal moves to *Rejeitada* (Rejected). This is
+  the **client's** rejection reason, distinct from an internal-review rejection (section 9.5).
+
+In both cases the **who/when** transition is recorded in the status history, and the reason/note shows on the
+summary. Registering the decision creates **no** booking, finance, commission or **commercial order** data. Only
+*Sent* proposals can be accepted or rejected by the client (a draft, in-review, approved or already-rejected
+proposal cannot).
+
+> The next step of the Sales module (generating a **commercial order** from an accepted proposal) will come in a
+> later release.
 
 ## 10. Managing reference data (*cadastros*)
 
@@ -664,9 +683,9 @@ Opportunities** and **Opportunity indicators** — all with per-profile visibili
 
 **Sprint 3 — Sales & Proposals** is underway: from a ready Opportunity you can **create a commercial
 proposal** (the **Vendas → Propostas** module), manage its **items, values and discounts**, **submit it for
-internal review**, **approve or reject** it, and **mark an approved proposal as sent** to the client. The next
-steps will continue the proposal lifecycle (customer acceptance) and the generation of a **commercial order**.
-This manual will be updated as each ships.
+internal review**, **approve or reject** it, **mark an approved proposal as sent** to the client, and **register
+the client's acceptance or rejection**. The next step will continue the proposal lifecycle with the generation
+of a **commercial order** from an accepted proposal. This manual will be updated as each ships.
 
 ---
 

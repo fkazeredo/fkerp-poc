@@ -17,6 +17,7 @@ import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { Observable } from 'rxjs';
 import {
+  CustomerRejectionReason,
   DiscountType,
   ProposalDetail,
   ProposalItem,
@@ -72,6 +73,17 @@ const SENDING_CHANNEL_LABELS: Record<SendingChannel, string> = {
   WHATSAPP: 'WhatsApp',
   PHONE_PRESENTATION: 'Apresentação por telefone',
   IN_PERSON_PRESENTATION: 'Apresentação presencial',
+  OTHER: 'Outro',
+};
+
+const CUSTOMER_REJECTION_REASON_LABELS: Record<CustomerRejectionReason, string> = {
+  PRICE_TOO_HIGH: 'Preço muito alto',
+  CHOSE_COMPETITOR: 'Escolheu concorrente',
+  TRAVEL_POSTPONED: 'Viagem adiada',
+  TRAVEL_CANCELLED: 'Viagem cancelada',
+  CHANGED_DESTINATION: 'Mudou de destino',
+  NO_RESPONSE: 'Sem resposta após a proposta',
+  PRODUCT_MISMATCH: 'Produto não atende',
   OTHER: 'Outro',
 };
 
@@ -177,6 +189,18 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     (value) => ({ value, label: SENDING_CHANNEL_LABELS[value] }),
   );
 
+  // Customer-acceptance dialog: an optional confirmation note.
+  protected readonly acceptOpen = signal(false);
+  protected acceptNote = '';
+
+  // Customer-rejection dialog: a required reason + an optional note.
+  protected readonly declineOpen = signal(false);
+  protected declineReason: CustomerRejectionReason | null = null;
+  protected declineNote = '';
+  protected readonly declineReasonOptions = (
+    Object.keys(CUSTOMER_REJECTION_REASON_LABELS) as CustomerRejectionReason[]
+  ).map((value) => ({ value, label: CUSTOMER_REJECTION_REASON_LABELS[value] }));
+
   private proposalId = '';
 
   ngOnInit(): void {
@@ -217,13 +241,24 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     if (this.sendOpen()) {
       return JSON.stringify([this.sendChannel]);
     }
+    if (this.acceptOpen()) {
+      return JSON.stringify([this.acceptNote]);
+    }
+    if (this.declineOpen()) {
+      return JSON.stringify([this.declineReason, this.declineNote]);
+    }
     return '';
   }
 
   /** Whether an edit dialog is open AND its fields were changed since it opened. */
   private dialogDirty(): boolean {
     return (
-      (this.itemOpen() || this.detailsOpen() || this.rejectOpen() || this.sendOpen()) &&
+      (this.itemOpen() ||
+        this.detailsOpen() ||
+        this.rejectOpen() ||
+        this.sendOpen() ||
+        this.acceptOpen() ||
+        this.declineOpen()) &&
       this.editSnapshot !== this.liveSnapshot()
     );
   }
@@ -265,12 +300,32 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     this.sendOpen.set(false);
   }
 
+  /** Closes the acceptance dialog, confirming first if it has unsaved edits. */
+  protected async requestCloseAccept(): Promise<void> {
+    if (this.dialogDirty() && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
+    this.acceptOpen.set(false);
+  }
+
+  /** Closes the customer-rejection dialog, confirming first if it has unsaved edits. */
+  protected async requestCloseDecline(): Promise<void> {
+    if (this.dialogDirty() && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
+    this.declineOpen.set(false);
+  }
+
   protected rejectionReasonLabel(reason: ProposalRejectionReason): string {
     return REJECTION_REASON_LABELS[reason];
   }
 
   protected sendingChannelLabel(channel: SendingChannel): string {
     return SENDING_CHANNEL_LABELS[channel];
+  }
+
+  protected customerRejectionReasonLabel(reason: CustomerRejectionReason): string {
+    return CUSTOMER_REJECTION_REASON_LABELS[reason];
   }
 
   protected statusLabel(status: ProposalStatus): string {
@@ -468,13 +523,68 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     );
   }
 
+  /** Whether the user may register the client's decision (has the operate authority and it is Sent). */
+  protected canDecide(): boolean {
+    return this.auth.canOperateProposal() && this.proposal()?.status === 'SENT';
+  }
+
+  protected openAccept(): void {
+    if (!this.canDecide()) {
+      return;
+    }
+    this.acceptNote = '';
+    this.acceptOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
+  }
+
+  /** Confirms the acceptance (Sent → Accepted). The note is optional, so this is always allowed. */
+  protected confirmAccept(): void {
+    this.act(
+      this.proposals.accept(this.proposalId, this.acceptNote.trim() || null),
+      'Aceite registrado',
+      this.acceptOpen,
+    );
+  }
+
+  protected openDecline(): void {
+    if (!this.canDecide()) {
+      return;
+    }
+    this.declineReason = null;
+    this.declineNote = '';
+    this.declineOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
+  }
+
+  /** Whether the decline dialog can be confirmed (a reason was chosen). */
+  protected canConfirmDecline(): boolean {
+    return !!this.declineReason;
+  }
+
+  protected confirmDecline(): void {
+    if (!this.declineReason) {
+      return;
+    }
+    this.act(
+      this.proposals.decline(this.proposalId, this.declineReason, this.declineNote.trim() || null),
+      'Recusa registrada',
+      this.declineOpen,
+    );
+  }
+
   /**
    * Shortcuts on the proposal detail: i add item, e edit commercial details, s submit for review,
-   * a approve, r reject, m mark as sent, Esc back.
+   * a approve, r reject, m mark as sent, c register acceptance, x register rejection, Esc back.
    */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
-    const anyDialogOpen = this.itemOpen() || this.detailsOpen() || this.rejectOpen() || this.sendOpen();
+    const anyDialogOpen =
+      this.itemOpen() ||
+      this.detailsOpen() ||
+      this.rejectOpen() ||
+      this.sendOpen() ||
+      this.acceptOpen() ||
+      this.declineOpen();
     // Esc always closes the open dialog through the unsaved-changes guard — even from a focused field
     // (the dialogs disable PrimeNG's own Esc close so it can't bypass the guard).
     if (event.key === 'Escape' && anyDialogOpen) {
@@ -484,8 +594,12 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
         void this.requestCloseDetails();
       } else if (this.rejectOpen()) {
         void this.requestCloseReject();
-      } else {
+      } else if (this.sendOpen()) {
         void this.requestCloseSend();
+      } else if (this.acceptOpen()) {
+        void this.requestCloseAccept();
+      } else {
+        void this.requestCloseDecline();
       }
       return;
     }
@@ -508,6 +622,10 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
       this.openReject();
     } else if (event.key === 'm' && this.canSend()) {
       this.openSend();
+    } else if (event.key === 'c' && this.canDecide()) {
+      this.openAccept();
+    } else if (event.key === 'x' && this.canDecide()) {
+      this.openDecline();
     } else if (event.key === 'Escape') {
       this.back();
     }
