@@ -16,6 +16,8 @@ import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalExcep
 import com.fksoft.erp.domain.sales.exception.ProposalAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunityException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
+import com.fksoft.erp.domain.sales.model.CommercialOrder;
+import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.CustomerRejectionReason;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalCreated;
@@ -23,6 +25,7 @@ import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import com.fksoft.erp.domain.sales.model.SendingChannel;
+import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
@@ -57,12 +60,17 @@ public class ProposalService {
     // Statuses for which a Proposal is still "open" — at most one open Proposal per Opportunity.
     private static final Set<ProposalStatus> OPEN_STATUSES = ProposalStatus.openStatuses();
 
+    // Statuses for which a Commercial Order is still active — used to surface the Proposal's active Order.
+    private static final Set<CommercialOrderStatus> ACTIVE_ORDER_STATUSES =
+            Set.of(CommercialOrderStatus.PENDING_BOOKING, CommercialOrderStatus.BOOKING_NOT_REQUIRED);
+
     private final ProposalRepository proposals;
     private final ProposalAccessPolicy accessPolicy;
     private final OpportunityRepository opportunities;
     private final OpportunityAccessPolicy opportunityAccessPolicy;
     private final LeadRepository leads;
     private final UserRepository users;
+    private final CommercialOrderRepository orders;
     private final ApplicationEventPublisher events;
 
     /**
@@ -427,7 +435,10 @@ public class ProposalService {
         Map<UUID, String> names = resolveNames(Stream.concat(
                 Stream.of(proposal.responsiblePersonId()),
                 proposal.statusChanges().stream().map(ProposalStatusChange::changedBy)));
-        return ProposalDetail.from(proposal, opportunity, lead, names);
+        UUID commercialOrderId = orders.findFirstByProposalIdAndStatusIn(proposal.id(), ACTIVE_ORDER_STATUSES)
+                .map(CommercialOrder::id)
+                .orElse(null);
+        return ProposalDetail.from(proposal, opportunity, lead, names, commercialOrderId);
     }
 
     private Proposal loadVisible(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {

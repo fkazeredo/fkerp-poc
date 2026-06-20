@@ -41,6 +41,7 @@ import java.util.UUID;
  * @param acceptanceNote the optional client confirmation note (present only when the client accepted)
  * @param customerRejectionReason the customer-rejection reason (present only when the client rejected)
  * @param customerRejectionNote the optional customer-rejection note (present only when the client rejected)
+ * @param commercialOrderId the Proposal's active Commercial Order id (present once an Order was created), else null
  */
 public record ProposalDetail(
         UUID id,
@@ -70,7 +71,8 @@ public record ProposalDetail(
         SendingChannel sendingChannel,
         String acceptanceNote,
         CustomerRejectionReason customerRejectionReason,
-        String customerRejectionNote) {
+        String customerRejectionNote,
+        UUID commercialOrderId) {
 
     /**
      * Assembles the detail from the Proposal, its source Opportunity and Lead, and the resolved user names.
@@ -79,9 +81,11 @@ public record ProposalDetail(
      * @param opportunity the source Opportunity (loaded for traceability)
      * @param lead the source Lead (loaded for the contact reference)
      * @param names map of user id → display name for the responsible and the history actors
+     * @param commercialOrderId the id of the Proposal's active Commercial Order, or {@code null} when none
      * @return the detail read model
      */
-    public static ProposalDetail from(Proposal p, Opportunity opportunity, Lead lead, Map<UUID, String> names) {
+    public static ProposalDetail from(
+            Proposal p, Opportunity opportunity, Lead lead, Map<UUID, String> names, UUID commercialOrderId) {
         List<Item> items = p.items().stream()
                 .sorted(Comparator.comparing(ProposalItem::createdAt))
                 .map(Item::from)
@@ -118,7 +122,8 @@ public record ProposalDetail(
                 p.sendingChannel(),
                 p.acceptanceNote(),
                 p.customerRejectionReason(),
-                p.customerRejectionNote());
+                p.customerRejectionNote(),
+                commercialOrderId);
     }
 
     private static String nameOf(Map<UUID, String> names, UUID id) {

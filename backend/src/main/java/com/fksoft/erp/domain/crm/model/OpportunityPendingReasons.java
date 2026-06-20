@@ -34,7 +34,7 @@ public final class OpportunityPendingReasons {
     public static List<OpportunityPendingReason> of(
             Opportunity opportunity, Instant now, LocalDate today, Instant lastActivityAt) {
         List<OpportunityPendingReason> reasons = new ArrayList<>();
-        if (opportunity.stage() == OpportunityStage.LOST) {
+        if (opportunity.stage().isTerminal()) {
             return reasons;
         }
         Instant staleBefore = now.minus(STALE_DAYS, ChronoUnit.DAYS);

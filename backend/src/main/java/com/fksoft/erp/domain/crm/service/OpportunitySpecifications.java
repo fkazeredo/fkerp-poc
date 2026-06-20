@@ -38,11 +38,12 @@ public final class OpportunitySpecifications {
                 search(c.query()));
     }
 
-    // Lost Opportunities never appear in the default operational list; include LOST in the filter to see them.
+    // Closed (won/lost) Opportunities never appear in the default operational list; include them in the
+    // stage filter to see them.
     private static Specification<Opportunity> stageFilter(Set<OpportunityStage> stages) {
         return (root, query, cb) -> {
             if (stages == null || stages.isEmpty()) {
-                return cb.notEqual(root.get("stage"), OpportunityStage.LOST);
+                return cb.not(root.get("stage").in(OpportunityStage.terminalStages()));
             }
             return root.get("stage").in(stages);
         };

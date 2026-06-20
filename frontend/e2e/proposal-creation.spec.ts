@@ -1,11 +1,12 @@
 import { test, expect, Page } from '@playwright/test';
 
 /**
- * Sprint 3 end-to-end (Slices 1–9): a READY_FOR_PROPOSAL Opportunity originates a commercial Proposal
+ * Sprint 3 end-to-end (Slices 1–10): a READY_FOR_PROPOSAL Opportunity originates a commercial Proposal
  * through the real UI, the new **Vendas** module (Propostas) is reachable in the menu, and the Proposal is
- * driven through its lifecycle — items, commercial details, submit for review, approve, mark as sent to the
- * client with a channel, and finally register the client's acceptance. Drives the Opportunity to "Pronta p/
- * proposta" (reusing the funnel flow) and then creates and progresses the Proposal.
+ * driven through its full lifecycle — items, commercial details, submit for review, approve, mark as sent to
+ * the client, register the client's acceptance, and finally create the Commercial Order (which wins the source
+ * Opportunity). Drives the Opportunity to "Pronta p/ proposta" (reusing the funnel flow) and then creates and
+ * progresses the Proposal.
  */
 
 async function login(page: Page, username: string, password: string): Promise<void> {
@@ -175,6 +176,24 @@ test('a ready opportunity originates a commercial proposal, reachable in the Ven
   await expect(page.getByText('Aceita').first()).toBeVisible();
   await expect(page.locator('.history')).toContainText('Aceita');
   await expect(page.getByText('Nota do aceite', { exact: true })).toBeVisible(); // the summary row
+
+  // Slice 10 — create the commercial order from the accepted proposal; it lands on the order detail, which
+  // preserves the items/total and traces back to the proposal. Let the acceptance toast clear first so it does
+  // not overlap the header button.
+  await expect(page.getByText('Aceite registrado')).toBeHidden();
+  await page.getByRole('button', { name: 'Criar pedido comercial' }).click();
+  await expect(page.getByText('Pedido comercial criado')).toBeVisible();
+  await expect(page).toHaveURL(/\/pedidos\//);
+  await expect(page.getByRole('heading', { name: 'Pedido comercial' })).toBeVisible();
+  await expect(page.getByText('Pendente de reserva').first()).toBeVisible(); // a travel package needs booking
+  await expect(page.getByText('Pacote de viagem corporativo')).toBeVisible(); // the snapshotted item
+  await expect(page.getByText('Ganha').first()).toBeVisible(); // the source opportunity is now won
+  await expect(page.getByRole('link', { name: 'Ver proposta de origem' })).toBeVisible();
+
+  // Back on the accepted proposal, the action now links to the existing order instead of creating a new one.
+  await page.getByRole('button', { name: 'Voltar para a proposta' }).click();
+  await expect(page).toHaveURL(/\/propostas\//);
+  await expect(page.getByRole('button', { name: 'Ver pedido comercial' })).toBeVisible();
 
   // The Vendas module exposes "Propostas" in the menu, and the proposal shows on its list. The row now
   // carries both a title link (→ the proposal) and a source-opportunity link, so match the proposal one.

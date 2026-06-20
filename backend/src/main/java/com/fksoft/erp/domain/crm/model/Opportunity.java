@@ -2,6 +2,7 @@ package com.fksoft.erp.domain.crm.model;
 
 import com.fksoft.erp.domain.crm.exception.LeadNotQualifiedForOpportunityException;
 import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException;
+import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedWonException;
 import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import jakarta.persistence.CascadeType;
@@ -180,10 +181,10 @@ public class Opportunity {
      * @param reason the loss reason
      * @param byUser id of the user marking the Opportunity lost
      * @param note optional loss note
-     * @throws OpportunityCannotBeMarkedLostException if the Opportunity is already lost
+     * @throws OpportunityCannotBeMarkedLostException if the Opportunity is already closed (won or lost)
      */
     public void markLost(OpportunityLossReason reason, UUID byUser, String note) {
-        if (stage == OpportunityStage.LOST) {
+        if (stage.isTerminal()) {
             throw new OpportunityCannotBeMarkedLostException();
         }
         recordStageChange(stage, OpportunityStage.LOST, byUser);
@@ -192,6 +193,23 @@ public class Opportunity {
         lostAt = Instant.now();
         lostBy = byUser;
         lossNote = emptyToNull(note);
+        updatedBy = byUser;
+    }
+
+    /**
+     * Marks the Opportunity as won (closed-won) and records the movement in the stage history. Allowed from
+     * any non-terminal stage; invoked when a Commercial Order is created from an Accepted Proposal. Marking
+     * won creates no Financial, Booking or Commission data, and never modifies the source Lead.
+     *
+     * @param byUser id of the user closing the Opportunity as won (the Commercial Order creator)
+     * @throws OpportunityCannotBeMarkedWonException if the Opportunity is already closed (won or lost)
+     */
+    public void markWon(UUID byUser) {
+        if (stage.isTerminal()) {
+            throw new OpportunityCannotBeMarkedWonException();
+        }
+        recordStageChange(stage, OpportunityStage.WON, byUser);
+        stage = OpportunityStage.WON;
         updatedBy = byUser;
     }
 

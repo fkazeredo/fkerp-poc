@@ -18,6 +18,7 @@ import com.fksoft.erp.domain.crm.exception.LossReasonNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAlreadyExistsForLeadException;
 import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException;
+import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedWonException;
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.exception.OriginNotAvailableException;
@@ -25,6 +26,9 @@ import com.fksoft.erp.domain.crm.exception.ReferenceNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.error.DomainException;
 import com.fksoft.erp.domain.identity.InvalidCredentialsException;
+import com.fksoft.erp.domain.sales.exception.CommercialOrderAccessDeniedException;
+import com.fksoft.erp.domain.sales.exception.CommercialOrderAlreadyExistsException;
+import com.fksoft.erp.domain.sales.exception.CommercialOrderNotFoundException;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
 import com.fksoft.erp.domain.sales.exception.ProposalAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunityException;
@@ -32,6 +36,7 @@ import com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotAcceptedException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
@@ -75,6 +80,7 @@ public class HttpErrorMapping {
             entry(OpportunityNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(OpportunityAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(OpportunityCannotBeMarkedLostException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(OpportunityCannotBeMarkedWonException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(OpportunityStageTransitionException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(OpportunityNotReadyForProposalException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalAlreadyExistsForOpportunityException.class, HttpStatus.CONFLICT),
@@ -92,6 +98,10 @@ public class HttpErrorMapping {
             entry(ProposalRejectionReasonRequiredException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotApprovedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotSentException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ProposalNotAcceptedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(CommercialOrderAlreadyExistsException.class, HttpStatus.CONFLICT),
+            entry(CommercialOrderNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(CommercialOrderAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {
