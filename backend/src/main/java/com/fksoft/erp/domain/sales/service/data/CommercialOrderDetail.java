@@ -33,6 +33,7 @@ import java.util.UUID;
  */
 public record CommercialOrderDetail(
         UUID id,
+        long number,
         UUID proposalId,
         UUID opportunityId,
         UUID leadId,
@@ -67,6 +68,7 @@ public record CommercialOrderDetail(
                 .toList();
         return new CommercialOrderDetail(
                 o.id(),
+                o.number(),
                 o.proposalId(),
                 o.opportunityId(),
                 o.leadId(),

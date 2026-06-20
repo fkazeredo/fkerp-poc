@@ -2,6 +2,7 @@ package com.fksoft.erp.domain.sales.service;
 
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import java.util.UUID;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,6 +18,24 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class OrderAccessPolicy {
+
+    /**
+     * Builds the visibility predicate for the Commercial Order list for the given user.
+     *
+     * @param userId the current user id
+     * @param canSeeAll whether the user holds the read-all scope
+     * @param canSeeUnassigned whether the user may also see the unassigned pool
+     * @return a Specification restricting visible Orders (always-true when {@code canSeeAll})
+     */
+    public Specification<CommercialOrder> visibleTo(UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        if (canSeeAll) {
+            return (root, query, cb) -> cb.conjunction();
+        }
+        return (root, query, cb) -> {
+            var own = cb.equal(root.get("responsiblePersonId"), userId);
+            return canSeeUnassigned ? cb.or(own, cb.isNull(root.get("responsiblePersonId"))) : own;
+        };
+    }
 
     /**
      * Tells whether a user may see a single Commercial Order: they hold read-all (sees all), are its

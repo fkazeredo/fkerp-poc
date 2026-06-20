@@ -15,6 +15,7 @@ describe('Shell keyboard shortcuts', () => {
     canCreateLead: vi.fn(() => false),
     canSeeOpportunities: vi.fn(() => false),
     canSeeProposals: vi.fn(() => false),
+    canSeeOrders: vi.fn(() => false),
   };
 
   function build(): Shell {

@@ -114,6 +114,11 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'pedidos',
+        canActivate: [orderReadGuard],
+        loadComponent: () => import('./features/orders/order-list/order-list').then((m) => m.OrderList),
+      },
+      {
         path: 'pedidos/:id',
         canActivate: [orderReadGuard],
         loadComponent: () =>

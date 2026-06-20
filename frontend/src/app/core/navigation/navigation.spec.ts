@@ -8,6 +8,7 @@ describe('NavigationService', () => {
     canCreateLead: vi.fn(),
     canSeeOpportunities: vi.fn(),
     canSeeProposals: vi.fn(),
+    canSeeOrders: vi.fn(),
   };
 
   function build(): NavigationService {
@@ -25,6 +26,7 @@ describe('NavigationService', () => {
     auth.canCreateLead.mockReset().mockReturnValue(false);
     auth.canSeeOpportunities.mockReset().mockReturnValue(false);
     auth.canSeeProposals.mockReset().mockReturnValue(false);
+    auth.canSeeOrders.mockReset().mockReturnValue(false);
   });
 
   it('shows only the modules the user can access', () => {
@@ -78,5 +80,16 @@ describe('NavigationService', () => {
   it('returns undefined for a module the user cannot see', () => {
     const nav = build(); // no proposal access
     expect(nav.module('vendas')).toBeUndefined();
+  });
+
+  it('shows the Pedidos destination in Vendas only when the user can see orders', () => {
+    auth.canSeeProposals.mockReturnValue(true);
+    auth.canSeeOrders.mockReturnValue(false);
+    expect(build().module('vendas')!.items.map((i) => i.label)).not.toContain('Pedidos');
+
+    auth.canSeeOrders.mockReturnValue(true);
+    const vendas = build().module('vendas')!;
+    const pedidos = vendas.items.find((i) => i.label === 'Pedidos');
+    expect(pedidos?.link).toBe('/pedidos');
   });
 });

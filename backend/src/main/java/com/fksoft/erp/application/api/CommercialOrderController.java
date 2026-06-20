@@ -1,14 +1,24 @@
 package com.fksoft.erp.application.api;
 
+import com.fksoft.erp.application.api.dto.CommercialOrderListParams;
 import com.fksoft.erp.application.api.dto.CreateOrderRequest;
 import com.fksoft.erp.application.api.dto.OrderResponse;
 import com.fksoft.erp.domain.sales.service.CommercialOrderService;
 import com.fksoft.erp.domain.sales.service.data.CommercialOrderDetail;
+import com.fksoft.erp.domain.sales.service.data.CommercialOrderListItem;
+import com.fksoft.erp.domain.sales.service.data.CommercialOrderSearchCriteria;
 import com.fksoft.erp.infra.security.UserContextProvider;
+import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -48,6 +58,41 @@ public class CommercialOrderController {
     }
 
     /**
+     * Operational, paginated list of Commercial Orders visible to the caller, with optional filters. Cancelled
+     * Orders are excluded unless the {@code status} filter explicitly includes them. The contract carries
+     * commercial-order data only — never Booking, Receivable, Payment, Commission or Customer Care data.
+     *
+     * @param params the optional filters (see {@link CommercialOrderListParams})
+     * @param pageable page, size and sort (default: createdAt desc, size 20)
+     * @return a page of Commercial Order list items
+     */
+    @GetMapping
+    public PageResponse<CommercialOrderListItem> list(
+            CommercialOrderListParams params,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        boolean unassignedOnly = "unassigned".equalsIgnoreCase(params.responsible());
+        UUID responsibleId = (!unassignedOnly
+                        && params.responsible() != null
+                        && !params.responsible().isBlank())
+                ? UUID.fromString(params.responsible())
+                : null;
+        CommercialOrderSearchCriteria criteria = new CommercialOrderSearchCriteria(
+                params.status(),
+                responsibleId,
+                unassignedOnly,
+                toStartOfDayUtc(params.createdFrom()),
+                toStartOfDayUtc(params.createdTo() != null ? params.createdTo().plusDays(1) : null),
+                params.totalMin(),
+                params.totalMax(),
+                params.bookingNeed(),
+                params.q());
+        return PageResponse.from(
+                orderService.list(
+                        criteria, pageable, userContext.currentUserId(), canSeeAllOrders(), canSeeUnassignedOrders()),
+                item -> item);
+    }
+
+    /**
      * Full detail of a Commercial Order the caller may see, with the source Proposal, Opportunity and Lead
      * kept traceable.
      *
@@ -57,6 +102,12 @@ public class CommercialOrderController {
     @GetMapping("/{id}")
     public CommercialOrderDetail detail(@PathVariable UUID id) {
         return orderService.detail(id, userContext.currentUserId(), canSeeAllOrders(), canSeeUnassignedOrders());
+    }
+
+    // The creation period is given as calendar dates; the column is an instant, so anchor at UTC midnight
+    // (the upper bound is pre-incremented by a day, making the range [from, to) exclusive).
+    private static Instant toStartOfDayUtc(LocalDate date) {
+        return date != null ? date.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
     }
 
     // Creating an Order reuses the Proposal read tiers to check the caller may see the source Proposal.

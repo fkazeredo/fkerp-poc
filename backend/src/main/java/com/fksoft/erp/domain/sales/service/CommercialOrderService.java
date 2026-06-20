@@ -20,6 +20,8 @@ import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.data.CommercialOrderDetail;
+import com.fksoft.erp.domain.sales.service.data.CommercialOrderListItem;
+import com.fksoft.erp.domain.sales.service.data.CommercialOrderSearchCriteria;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -28,6 +30,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,7 +84,7 @@ public class CommercialOrderService {
         orders.findFirstByProposalIdAndStatusIn(proposalId, ACTIVE_STATUSES).ifPresent(existing -> {
             throw new CommercialOrderAlreadyExistsException(existing.id());
         });
-        CommercialOrder order = CommercialOrder.createFromProposal(proposal, userId);
+        CommercialOrder order = CommercialOrder.createFromProposal(proposal, userId, orders.nextOrderNumber());
         orders.save(order);
         // Close the source Opportunity as won (same transaction); this creates no Finance or Booking behavior.
         Opportunity opportunity =
@@ -113,6 +118,41 @@ public class CommercialOrderService {
         return toDetail(loadVisible(id, userId, canSeeAll, canSeeUnassigned));
     }
 
+    /**
+     * Operational, paginated Commercial Order list, filtered by the given criteria and restricted to the
+     * caller's visibility. Cancelled Orders are excluded unless the status filter explicitly includes them.
+     * Enriches each item with the responsible's name, the source Proposal's title (the client-facing summary)
+     * and the source Opportunity's name. Exposes commercial-order data only.
+     *
+     * @param criteria the optional filters
+     * @param pageable page, size and sort
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every Order
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return a page of Commercial Order list items
+     */
+    @Transactional(readOnly = true)
+    public Page<CommercialOrderListItem> list(
+            CommercialOrderSearchCriteria criteria,
+            Pageable pageable,
+            UUID userId,
+            boolean canSeeAll,
+            boolean canSeeUnassigned) {
+        Specification<CommercialOrder> spec = CommercialOrderSpecifications.matching(criteria)
+                .and(accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned));
+        Page<CommercialOrder> page = orders.findAll(spec, pageable);
+        Map<UUID, String> names = resolveNames(page.getContent().stream().map(CommercialOrder::responsiblePersonId));
+        Map<UUID, String> proposalTitles =
+                resolveProposalTitles(page.getContent().stream().map(CommercialOrder::proposalId));
+        Map<UUID, String> opportunityNames =
+                resolveOpportunityNames(page.getContent().stream().map(CommercialOrder::opportunityId));
+        return page.map(o -> CommercialOrderListItem.from(
+                o,
+                proposalTitles.get(o.proposalId()),
+                opportunityNames.get(o.opportunityId()),
+                nameOf(names, o.responsiblePersonId())));
+    }
+
     private CommercialOrderDetail toDetail(CommercialOrder order) {
         Proposal proposal = proposals.findById(order.proposalId()).orElseThrow(ProposalNotFoundException::new);
         Opportunity opportunity =
@@ -135,5 +175,23 @@ public class CommercialOrderService {
         return set.isEmpty()
                 ? Map.of()
                 : users.findAllById(set).stream().collect(Collectors.toMap(User::id, User::username));
+    }
+
+    private Map<UUID, String> resolveProposalTitles(Stream<UUID> ids) {
+        Set<UUID> set = ids.filter(Objects::nonNull).collect(Collectors.toSet());
+        return set.isEmpty()
+                ? Map.of()
+                : proposals.findAllById(set).stream().collect(Collectors.toMap(Proposal::id, Proposal::title));
+    }
+
+    private Map<UUID, String> resolveOpportunityNames(Stream<UUID> ids) {
+        Set<UUID> set = ids.filter(Objects::nonNull).collect(Collectors.toSet());
+        return set.isEmpty()
+                ? Map.of()
+                : opportunities.findAllById(set).stream().collect(Collectors.toMap(Opportunity::id, Opportunity::name));
+    }
+
+    private static String nameOf(Map<UUID, String> names, UUID id) {
+        return id == null ? null : names.get(id);
     }
 }
