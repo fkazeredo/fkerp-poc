@@ -1,10 +1,11 @@
 import { test, expect, Page } from '@playwright/test';
 
 /**
- * Sprint 3 / Slice 7 end-to-end: internal rejection of a Proposal under review. A manager (an approver)
- * rejects a Ready-for-Review Proposal with a reason; it becomes Rejeitada, the reason shows on the detail,
- * and the transition is recorded in the status history. Drives a Proposal to Ready for Review through the
- * real flow (qualify a lead → opportunity → funnel → proposal → item → validity → submit) and then rejects.
+ * Sprint 3 validation end-to-end (ALT 2 — customer rejection): a Sent Proposal is declined by the customer
+ * with a reason → it becomes Rejeitada, the customer reason shows on the detail, NO Commercial Order can be
+ * created, and the source Opportunity stays traceable and was never won (still Pronta p/ proposta). Drives a
+ * Proposal all the way to Sent through the real flow (qualify a lead → opportunity funnel → proposal → item →
+ * validity → submit → approve → send) and then registers the customer's rejection.
  */
 
 async function login(page: Page): Promise<void> {
@@ -15,8 +16,8 @@ async function login(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 }
 
-/** Creates a Proposal and brings it to Ready for Review (item + validity + submit), staying on the detail. */
-async function proposalUnderReview(page: Page, name: string): Promise<void> {
+/** Creates a Proposal and brings it all the way to Sent (item + validity + submit + approve + send). */
+async function sentProposal(page: Page, name: string): Promise<void> {
   // Qualified lead assigned to the manager.
   await page.goto('/leads/new');
   await page.locator('#name').fill(name);
@@ -49,7 +50,6 @@ async function proposalUnderReview(page: Page, name: string): Promise<void> {
   await qualify.getByRole('button', { name: 'Qualificar' }).click();
   await expect(page.getByText('Qualificação')).toBeVisible();
 
-  // Opportunity advanced to Ready for Proposal.
   await page.getByRole('button', { name: 'Criar oportunidade' }).click();
   const opp = page.getByRole('dialog');
   await opp.locator('#optype').fill('Software corporativo');
@@ -68,7 +68,6 @@ async function proposalUnderReview(page: Page, name: string): Promise<void> {
     await expect(page.getByText(stage).first()).toBeVisible();
   }
 
-  // Proposal from the ready Opportunity, with an item + validity, submitted for review.
   await page.getByRole('button', { name: 'Criar proposta' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Criar proposta' }).click();
@@ -95,35 +94,51 @@ async function proposalUnderReview(page: Page, name: string): Promise<void> {
   await page.getByRole('button', { name: 'Enviar para revisão' }).click();
   await expect(page.getByText('Proposta enviada para revisão')).toBeVisible();
   await expect(page.getByText('Pronta para revisão').first()).toBeVisible();
+
+  // Approve, then mark as sent (open the send dialog via the `m` shortcut to dodge the lingering toast).
+  await page.getByRole('button', { name: 'Aprovar' }).click();
+  await expect(page.getByText('Proposta aprovada')).toBeVisible();
+  await expect(page.getByText('Aprovada').first()).toBeVisible();
+
+  await page.keyboard.press('m');
+  const sendDialog = page.getByRole('dialog');
+  await sendDialog.getByText('Selecione').click();
+  await page.getByRole('option', { name: 'E-mail' }).click();
+  await sendDialog.getByRole('button', { name: 'Marcar como enviada' }).click();
+  await expect(page.getByText('Proposta marcada como enviada')).toBeVisible();
+  await expect(page.getByText('Enviada').first()).toBeVisible();
 }
 
-test('a manager rejects a Proposal under review with a reason, recorded on the detail', async ({ page }) => {
-  const name = `E2E Reject ${Date.now()}`;
+test('a sent proposal declined by the customer becomes Rejected, creates no order, and the opportunity stays traceable', async ({
+  page,
+}) => {
+  test.slow();
+  const name = `E2E Recusa Cliente ${Date.now()}`;
   await login(page);
-  await proposalUnderReview(page, name);
+  await sentProposal(page, name);
 
-  // Reject with a reason + note.
-  await page.getByRole('button', { name: 'Rejeitar' }).click();
-  const reject = page.getByRole('dialog');
-  await reject.getByText('Selecione').click();
-  await page.getByRole('option', { name: 'Preço muito alto' }).click();
-  await reject.locator('#rnote').fill('Acima do orçamento do cliente');
-  await reject.getByRole('button', { name: 'Rejeitar proposta' }).click();
-  await expect(page.getByText('Proposta rejeitada')).toBeVisible();
+  // Register the customer's rejection via the `x` shortcut (keyboard avoids the lingering "Enviada" toast).
+  await page.keyboard.press('x');
+  const declineDialog = page.getByRole('dialog');
+  await declineDialog.getByText('Selecione').click();
+  await page.getByRole('option', { name: 'Escolheu concorrente' }).click();
+  await declineDialog.locator('#dnote').fill('Cliente fechou com a concorrência');
+  await declineDialog.getByRole('button', { name: 'Registrar recusa' }).click();
+  await expect(page.getByText('Recusa registrada')).toBeVisible();
 
-  // The Proposal is Rejeitada, the reason shows on the detail, and the transition is in the history.
+  // The Proposal is Rejeitada and the customer reason + note show on the detail.
   await expect(page.getByText('Rejeitada').first()).toBeVisible();
-  await expect(page.getByText('Motivo da rejeição')).toBeVisible();
-  // Scope to the detail's rejection line (the dialog's select label also reads the reason).
-  await expect(page.locator('.rejection')).toContainText('Preço muito alto');
-  await expect(page.locator('.rejection')).toContainText('Acima do orçamento do cliente');
-  await expect(page.locator('.history')).toContainText('Rejeitada');
+  await expect(page.getByText('Motivo da recusa do cliente')).toBeVisible();
+  await expect(page.locator('.rejection')).toContainText('Escolheu concorrente');
+  await expect(page.locator('.rejection')).toContainText('Cliente fechou com a concorrência');
 
-  // A Rejected Proposal offers no further actions: it cannot be approved/rejected again, marked sent, or
-  // turned into a Commercial Order (the backend re-enforces this; the UI simply hides the header actions).
-  // Exact names so the (closed) reject dialog's "Rejeitar proposta" button is not matched.
-  await expect(page.getByRole('button', { name: 'Aprovar', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Rejeitar', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Marcar como enviada', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Criar pedido comercial', exact: true })).toHaveCount(0);
+  // No Commercial Order can be created, and none exists — neither action button is offered.
+  await expect(page.getByRole('button', { name: 'Criar pedido comercial' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ver pedido comercial' })).toHaveCount(0);
+
+  // The source Opportunity remains traceable and was never won (still Pronta p/ proposta).
+  await page.getByRole('link', { name: 'Ver oportunidade de origem' }).click();
+  await expect(page).toHaveURL(/\/oportunidades\//);
+  await expect(page.getByText('Pronta p/ proposta').first()).toBeVisible();
+  await expect(page.getByText('Ganha')).toHaveCount(0);
 });
