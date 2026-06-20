@@ -1,0 +1,121 @@
+package com.fksoft.erp.domain.sales.repository;
+
+import com.fksoft.erp.domain.sales.model.CommercialOrder;
+import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Component;
+
+/**
+ * Read-side aggregate queries for the Commercial Order indicators. Every query reuses the caller's
+ * visibility {@link Specification} as its WHERE predicate (single source of truth) plus the optional
+ * period, so the numbers never include Orders the caller cannot see. A {@code null} period bound is
+ * omitted — passing both as {@code null} yields the current snapshot (used for the pending-booking figure).
+ * Group-by queries return only the buckets present in the data (no N+1, no unbounded loads, §11).
+ */
+@Component
+@RequiredArgsConstructor
+public class OrderIndicatorQueries {
+
+    private final EntityManager em;
+
+    /**
+     * Order counts grouped by lifecycle status. Pass {@code null} bounds for the current snapshot (used to
+     * derive the total and the pending-booking figure).
+     *
+     * @param visible the visibility predicate
+     * @param from inclusive lower bound on creation (or {@code null})
+     * @param to exclusive upper bound on creation (or {@code null})
+     * @return counts keyed by status
+     */
+    public Map<CommercialOrderStatus, Long> countByStatus(
+            Specification<CommercialOrder> visible, Instant from, Instant to) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Object[]> q = cb.createQuery(Object[].class);
+        Root<CommercialOrder> root = q.from(CommercialOrder.class);
+        q.multiselect(root.get("status"), cb.count(root));
+        q.where(where(cb, root, q, visible, from, to));
+        q.groupBy(root.get("status"));
+        Map<CommercialOrderStatus, Long> result = new EnumMap<>(CommercialOrderStatus.class);
+        for (Object[] row : em.createQuery(q).getResultList()) {
+            result.put((CommercialOrderStatus) row[0], (Long) row[1]);
+        }
+        return result;
+    }
+
+    /**
+     * Summed Order {@code total} over the period.
+     *
+     * @param visible the visibility predicate
+     * @param from inclusive lower bound on creation (or {@code null})
+     * @param to exclusive upper bound on creation (or {@code null})
+     * @return the summed total (zero when there is none)
+     */
+    public BigDecimal sumTotal(Specification<CommercialOrder> visible, Instant from, Instant to) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<BigDecimal> q = cb.createQuery(BigDecimal.class);
+        Root<CommercialOrder> root = q.from(CommercialOrder.class);
+        q.select(cb.coalesce(cb.sum(root.<BigDecimal>get("total")), BigDecimal.ZERO));
+        q.where(where(cb, root, q, visible, from, to));
+        return em.createQuery(q).getSingleResult();
+    }
+
+    /**
+     * Order counts grouped by responsible id (a {@code null} id is the unassigned bucket), busiest first,
+     * over the period.
+     *
+     * @param visible the visibility predicate
+     * @param from inclusive lower bound on creation (or {@code null})
+     * @param to exclusive upper bound on creation (or {@code null})
+     * @return counts keyed by responsible id ({@code null} key = unassigned), busiest-first
+     */
+    public Map<UUID, Long> countByResponsible(Specification<CommercialOrder> visible, Instant from, Instant to) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Object[]> q = cb.createQuery(Object[].class);
+        Root<CommercialOrder> root = q.from(CommercialOrder.class);
+        var responsible = root.get("responsiblePersonId");
+        q.multiselect(responsible, cb.count(root));
+        q.where(where(cb, root, q, visible, from, to));
+        q.groupBy(responsible);
+        q.orderBy(cb.desc(cb.count(root)));
+        Map<UUID, Long> out = new LinkedHashMap<>();
+        for (Object[] row : em.createQuery(q).getResultList()) {
+            out.put((UUID) row[0], (Long) row[1]);
+        }
+        return out;
+    }
+
+    private Predicate where(
+            CriteriaBuilder cb,
+            Root<CommercialOrder> root,
+            CriteriaQuery<?> query,
+            Specification<CommercialOrder> visible,
+            Instant from,
+            Instant to) {
+        List<Predicate> predicates = new ArrayList<>();
+        Predicate visibility = visible.toPredicate(root, query, cb);
+        if (visibility != null) {
+            predicates.add(visibility);
+        }
+        if (from != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.<Instant>get("createdAt"), from));
+        }
+        if (to != null) {
+            predicates.add(cb.lessThan(root.<Instant>get("createdAt"), to));
+        }
+        return cb.and(predicates.toArray(Predicate[]::new));
+    }
+}

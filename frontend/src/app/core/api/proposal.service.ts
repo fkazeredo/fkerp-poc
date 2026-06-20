@@ -189,10 +189,55 @@ export interface ProposalFilters {
   q?: string | null;
 }
 
+/** Proposal count for a lifecycle status (volume, in period). */
+export interface ProposalStatusCount {
+  status: ProposalStatus;
+  count: number;
+}
+
+/** Proposal count for a responsible person; `responsibleName === null` means unassigned. */
+export interface ProposalResponsibleCount {
+  responsibleName: string | null;
+  count: number;
+}
+
+/**
+ * Minimum Proposal-flow indicators. Two scopes: the **volume** figures ({@code total}, {@code byStatus},
+ * {@code byResponsible}, {@code proposedAmount}, {@code acceptedAmount}, {@code rejectedCount}) cover the
+ * selected period (by creation date); the **operational** figures ({@code waitingForReview},
+ * {@code waitingForCustomerDecision}) are a current snapshot of all the visible Proposals, independent of
+ * the period.
+ */
+export interface ProposalIndicators {
+  total: number;
+  byStatus: ProposalStatusCount[];
+  byResponsible: ProposalResponsibleCount[];
+  proposedAmount: number;
+  acceptedAmount: number;
+  rejectedCount: number;
+  waitingForReview: number;
+  waitingForCustomerDecision: number;
+}
+
 /** API client for the commercial Proposal endpoints (Sales & Proposals). */
 @Injectable({ providedIn: 'root' })
 export class ProposalService {
   private readonly http = inject(HttpClient);
+
+  /** Minimum Proposal-flow indicators in an optional period (ISO dates); absent dates = all-time. */
+  indicators(
+    createdFrom: string | null = null,
+    createdTo: string | null = null,
+  ): Observable<ProposalIndicators> {
+    let params = new HttpParams();
+    if (createdFrom) {
+      params = params.set('createdFrom', createdFrom);
+    }
+    if (createdTo) {
+      params = params.set('createdTo', createdTo);
+    }
+    return this.http.get<ProposalIndicators>('/api/proposals/indicators', { params });
+  }
 
   /** The selectable responsible people (shared with the CRM module). */
   responsibles(): Observable<Responsible[]> {

@@ -79,11 +79,13 @@ export class NavigationService {
     if (this.auth.canSeeProposals()) {
       sales.push(
         link('Propostas', 'pi pi-file-edit', '/propostas', false, 'As propostas comerciais — formalize a oferta ao cliente.', 'sales'),
+        link('Indicadores de propostas', 'pi pi-chart-bar', '/propostas/indicadores', true, 'Volume e fluxo das propostas.', 'indicators'),
       );
     }
     if (this.auth.canSeeOrders()) {
       sales.push(
         link('Pedidos', 'pi pi-shopping-bag', '/pedidos', false, 'Os pedidos comerciais — acompanhe os negócios fechados.', 'sales'),
+        link('Indicadores de pedidos', 'pi pi-chart-bar', '/pedidos/indicadores', true, 'Pedidos fechados e pendentes de reserva.', 'indicators'),
       );
     }
 

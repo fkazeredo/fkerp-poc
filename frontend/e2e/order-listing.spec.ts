@@ -23,7 +23,7 @@ test('the order list is reachable from the Vendas module and shows its operation
   // Open the Vendas module from the sidebar (which expands the accordion), then its Pedidos destination.
   await page.locator('.sidebar').getByRole('link', { name: 'Vendas' }).click();
   await expect(page).toHaveURL(/\/vendas$/);
-  await page.locator('.sidebar').getByRole('link', { name: 'Pedidos' }).click();
+  await page.locator('.sidebar').getByRole('link', { name: 'Pedidos', exact: true }).click();
   await expect(page).toHaveURL(/\/pedidos$/);
 
   await expect(page.getByRole('heading', { name: 'Pedidos' })).toBeVisible();

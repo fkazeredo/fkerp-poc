@@ -18,10 +18,15 @@ import com.fksoft.erp.domain.sales.model.CommercialOrderCreated;
 import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
+import com.fksoft.erp.domain.sales.repository.OrderIndicatorQueries;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.data.CommercialOrderDetail;
 import com.fksoft.erp.domain.sales.service.data.CommercialOrderListItem;
 import com.fksoft.erp.domain.sales.service.data.CommercialOrderSearchCriteria;
+import com.fksoft.erp.domain.sales.service.data.OrderIndicators;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -52,6 +57,7 @@ public class CommercialOrderService {
 
     private final CommercialOrderRepository orders;
     private final OrderAccessPolicy accessPolicy;
+    private final OrderIndicatorQueries indicatorQueries;
     private final ProposalRepository proposals;
     private final ProposalAccessPolicy proposalAccessPolicy;
     private final OpportunityRepository opportunities;
@@ -151,6 +157,43 @@ public class CommercialOrderService {
                 proposalTitles.get(o.proposalId()),
                 opportunityNames.get(o.opportunityId()),
                 nameOf(names, o.responsiblePersonId())));
+    }
+
+    /**
+     * Minimum Commercial Order indicators over the Orders visible to the caller. The volume figures (total,
+     * total amount, by responsible) cover the requested period (by creation date); the operational figure
+     * (pending booking) is a current snapshot of all the visible Orders. Read-only; never exposes Booking,
+     * Receivable, Payment, Commission or Customer Care data.
+     *
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every Order
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @param from inclusive lower bound on creation (or {@code null})
+     * @param to exclusive upper bound on creation (or {@code null})
+     * @return the indicators
+     */
+    @Transactional(readOnly = true)
+    public OrderIndicators indicators(
+            UUID userId, boolean canSeeAll, boolean canSeeUnassigned, Instant from, Instant to) {
+        Specification<CommercialOrder> visible = accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned);
+
+        // Volume — over the period.
+        Map<CommercialOrderStatus, Long> countByStatus = indicatorQueries.countByStatus(visible, from, to);
+        long total = countByStatus.values().stream().mapToLong(Long::longValue).sum();
+        BigDecimal totalAmount = indicatorQueries.sumTotal(visible, from, to);
+        Map<UUID, Long> byResponsibleId = indicatorQueries.countByResponsible(visible, from, to);
+
+        // Operational — current snapshot (no period).
+        long pendingBooking = indicatorQueries
+                .countByStatus(visible, null, null)
+                .getOrDefault(CommercialOrderStatus.PENDING_BOOKING, 0L);
+
+        Map<UUID, String> names = resolveNames(byResponsibleId.keySet().stream());
+        List<OrderIndicators.ResponsibleCount> responsibleCounts = byResponsibleId.entrySet().stream()
+                .map(e -> new OrderIndicators.ResponsibleCount(nameOf(names, e.getKey()), e.getValue()))
+                .toList();
+
+        return new OrderIndicators(total, totalAmount, responsibleCounts, pendingBooking);
     }
 
     private CommercialOrderDetail toDetail(CommercialOrder order) {

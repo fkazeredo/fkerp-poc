@@ -26,13 +26,18 @@ import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import com.fksoft.erp.domain.sales.model.SendingChannel;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
+import com.fksoft.erp.domain.sales.repository.ProposalIndicatorQueries;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
+import com.fksoft.erp.domain.sales.service.data.ProposalIndicators;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalListItem;
 import com.fksoft.erp.domain.sales.service.data.ProposalSearchCriteria;
 import com.fksoft.erp.domain.sales.service.data.UpdateProposalCommand;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -66,6 +71,7 @@ public class ProposalService {
 
     private final ProposalRepository proposals;
     private final ProposalAccessPolicy accessPolicy;
+    private final ProposalIndicatorQueries indicatorQueries;
     private final OpportunityRepository opportunities;
     private final OpportunityAccessPolicy opportunityAccessPolicy;
     private final LeadRepository leads;
@@ -426,6 +432,58 @@ public class ProposalService {
                 resolveOpportunityNames(page.getContent().stream().map(Proposal::opportunityId));
         return page.map(p -> ProposalListItem.from(
                 p, nameOf(names, p.responsiblePersonId()), opportunityNames.get(p.opportunityId())));
+    }
+
+    /**
+     * Minimum Proposal-flow indicators over the Proposals visible to the caller. The volume figures (total,
+     * by status, by responsible, proposed amount, accepted amount, rejected count) cover the requested
+     * period (by creation date); the operational figures (waiting for review, waiting for customer
+     * decision) are a current snapshot of all the visible Proposals. Read-only; never exposes Sale, Sales
+     * Order, Booking, Financial, Payment or Commission data.
+     *
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every Proposal
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @param from inclusive lower bound on creation (or {@code null})
+     * @param to exclusive upper bound on creation (or {@code null})
+     * @return the indicators
+     */
+    @Transactional(readOnly = true)
+    public ProposalIndicators indicators(
+            UUID userId, boolean canSeeAll, boolean canSeeUnassigned, Instant from, Instant to) {
+        Specification<Proposal> visible = accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned);
+
+        // Volume — over the period.
+        Map<ProposalStatus, Long> countByStatus = indicatorQueries.countByStatus(visible, from, to);
+        long total = countByStatus.values().stream().mapToLong(Long::longValue).sum();
+        long rejectedCount = countByStatus.getOrDefault(ProposalStatus.REJECTED, 0L);
+        Map<ProposalStatus, BigDecimal> sumByStatus = indicatorQueries.sumTotalByStatus(visible, from, to);
+        BigDecimal proposedAmount = sumByStatus.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal acceptedAmount = sumByStatus.getOrDefault(ProposalStatus.ACCEPTED, BigDecimal.ZERO);
+        Map<UUID, Long> byResponsibleId = indicatorQueries.countByResponsible(visible, from, to);
+
+        // Operational — current snapshot (no period).
+        Map<ProposalStatus, Long> countByStatusNow = indicatorQueries.countByStatus(visible, null, null);
+        long waitingForReview = countByStatusNow.getOrDefault(ProposalStatus.READY_FOR_REVIEW, 0L);
+        long waitingForCustomerDecision = countByStatusNow.getOrDefault(ProposalStatus.SENT, 0L);
+
+        Map<UUID, String> names = resolveNames(byResponsibleId.keySet().stream());
+        List<ProposalIndicators.StatusCount> statusCounts = countByStatus.entrySet().stream()
+                .map(e -> new ProposalIndicators.StatusCount(e.getKey(), e.getValue()))
+                .toList();
+        List<ProposalIndicators.ResponsibleCount> responsibleCounts = byResponsibleId.entrySet().stream()
+                .map(e -> new ProposalIndicators.ResponsibleCount(nameOf(names, e.getKey()), e.getValue()))
+                .toList();
+
+        return new ProposalIndicators(
+                total,
+                statusCounts,
+                responsibleCounts,
+                proposedAmount,
+                acceptedAmount,
+                rejectedCount,
+                waitingForReview,
+                waitingForCustomerDecision);
     }
 
     private ProposalDetail toDetail(Proposal proposal) {
