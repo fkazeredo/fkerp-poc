@@ -117,6 +117,20 @@ export class AuthService {
   canApproveProposal(): boolean {
     return this.hasScope('sales:proposal:approve');
   }
+
+  /** Whether the user may create a Commercial Order from an Accepted Proposal (Sales & Proposals). */
+  canCreateOrder(): boolean {
+    return this.hasScope('sales:order:create');
+  }
+
+  /** Any Commercial Order read tier (own / pool / all) grants access to the Order detail. */
+  canSeeOrders(): boolean {
+    return (
+      this.hasScope('sales:order:read') ||
+      this.hasScope('sales:order:read:unassigned') ||
+      this.hasScope('sales:order:read:all')
+    );
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

@@ -90,6 +90,28 @@
         />
       </div>
     }
+    @if (canCreateOrder()) {
+      <div class="head-actions">
+        <p-button
+          label="Criar pedido comercial"
+          icon="pi pi-shopping-bag"
+          severity="success"
+          size="small"
+          [loading]="acting()"
+          (onClick)="createOrder()"
+        />
+      </div>
+    } @else if (hasOrder()) {
+      <div class="head-actions">
+        <p-button
+          label="Ver pedido comercial"
+          icon="pi pi-shopping-bag"
+          [outlined]="true"
+          size="small"
+          (onClick)="viewOrder()"
+        />
+      </div>
+    }
   </header>
 
   @if (canManageItems() && !canSubmit()) {

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException;
+import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedWonException;
 import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadStatus;
@@ -74,6 +75,41 @@ class OpportunityTest {
         assertThat(opportunity.stageChanges().get(0).fromStage()).isEqualTo(OpportunityStage.NEW_OPPORTUNITY);
         assertThat(opportunity.stageChanges().get(0).toStage()).isEqualTo(OpportunityStage.LOST);
         assertThat(opportunity.stageChanges().get(0).changedBy()).isEqualTo(RESPONSIBLE);
+    }
+
+    @Test
+    void marksAsWonRecordingTheMovementToWon() {
+        Opportunity opportunity = newOpportunity();
+        opportunity.moveToStage(OpportunityStage.DISCOVERY, RESPONSIBLE);
+
+        opportunity.markWon(CREATOR);
+
+        assertThat(opportunity.stage()).isEqualTo(OpportunityStage.WON);
+        assertThat(opportunity.stage().isTerminal()).isTrue();
+        var last = opportunity.stageChanges().get(opportunity.stageChanges().size() - 1);
+        assertThat(last.fromStage()).isEqualTo(OpportunityStage.DISCOVERY);
+        assertThat(last.toStage()).isEqualTo(OpportunityStage.WON);
+        assertThat(last.changedBy()).isEqualTo(CREATOR);
+    }
+
+    @Test
+    void rejectsMarkingAnAlreadyClosedOpportunityWon() {
+        Opportunity won = newOpportunity();
+        won.markWon(CREATOR);
+        assertThatThrownBy(() -> won.markWon(CREATOR)).isInstanceOf(OpportunityCannotBeMarkedWonException.class);
+
+        Opportunity lost = newOpportunity();
+        lost.markLost(reason, RESPONSIBLE, null);
+        assertThatThrownBy(() -> lost.markWon(CREATOR)).isInstanceOf(OpportunityCannotBeMarkedWonException.class);
+    }
+
+    @Test
+    void rejectsMarkingAWonOpportunityLost() {
+        Opportunity opportunity = newOpportunity();
+        opportunity.markWon(CREATOR);
+
+        assertThatThrownBy(() -> opportunity.markLost(reason, RESPONSIBLE, null))
+                .isInstanceOf(OpportunityCannotBeMarkedLostException.class);
     }
 
     @Test

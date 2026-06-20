@@ -151,6 +151,7 @@ export interface ProposalDetail {
   acceptanceNote: string | null;
   customerRejectionReason: CustomerRejectionReason | null;
   customerRejectionNote: string | null;
+  commercialOrderId: string | null;
 }
 
 /** Proposal list item (operational list of the Sales module). */

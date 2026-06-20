@@ -167,7 +167,7 @@ public class OpportunityIndicatorQueries {
     }
 
     private static Predicate active(CriteriaBuilder cb, Root<Opportunity> root) {
-        return cb.notEqual(root.get("stage"), OpportunityStage.LOST);
+        return cb.not(root.get("stage").in(OpportunityStage.terminalStages()));
     }
 
     private Predicate where(

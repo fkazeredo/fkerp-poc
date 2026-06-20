@@ -1,0 +1,107 @@
+@if (loading()) {
+  <p class="loading">Carregando…</p>
+} @else if (error()) {
+  <p-message severity="error" [text]="error()!" />
+  <div class="back">
+    <p-button label="Voltar" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
+  </div>
+} @else if (order(); as o) {
+  <header class="head">
+    <div class="head-main">
+      <h1>Pedido comercial</h1>
+      <p-tag [value]="statusLabel(o.status)" [severity]="statusSeverity(o.status)" />
+    </div>
+  </header>
+
+  <div class="grid">
+    <p-card header="Resumo do pedido">
+      <dl class="data">
+        <dt>Responsável</dt>
+        <dd>{{ o.unassigned ? 'Sem responsável' : (o.responsibleName ?? '—') }}</dd>
+        <dt>Reserva</dt>
+        <dd>{{ statusLabel(o.status) }}</dd>
+        <dt>Criado em</dt>
+        <dd>{{ o.createdAt | date: 'short' }}</dd>
+        <dt>Criado por</dt>
+        <dd>{{ o.createdByName ?? '—' }}</dd>
+      </dl>
+    </p-card>
+
+    <p-card header="Proposta de origem">
+      <dl class="data">
+        <dt>Proposta</dt>
+        <dd>{{ o.sourceProposal.title }}</dd>
+        <dt>Situação</dt>
+        <dd>{{ proposalStatusLabel(o.sourceProposal.status) }}</dd>
+      </dl>
+      <div class="trace">
+        <a class="link" [routerLink]="['/propostas', o.proposalId]">Ver proposta de origem</a>
+      </div>
+    </p-card>
+
+    <p-card header="Oportunidade de origem">
+      <dl class="data">
+        <dt>Oportunidade</dt>
+        <dd>{{ o.sourceOpportunity.name }}</dd>
+        <dt>Estágio</dt>
+        <dd>{{ stageLabel(o.sourceOpportunity.stage) }}</dd>
+      </dl>
+      <div class="trace">
+        <a class="link" [routerLink]="['/oportunidades', o.opportunityId]">Ver oportunidade de origem</a>
+      </div>
+    </p-card>
+
+    <p-card header="Lead de origem">
+      <dl class="data">
+        <dt>Nome</dt>
+        <dd>{{ o.sourceLead.name }}</dd>
+        <dt>Telefone</dt>
+        <dd>{{ o.sourceLead.phone ?? '—' }}</dd>
+        <dt>E-mail</dt>
+        <dd>{{ o.sourceLead.email ?? '—' }}</dd>
+      </dl>
+      <div class="trace">
+        <a class="link" [routerLink]="['/leads', o.leadId]">Ver lead de origem</a>
+      </div>
+    </p-card>
+  </div>
+
+  <p-card header="Itens" styleClass="section">
+    <p-table [value]="o.items" styleClass="p-datatable-sm items-table" [tableStyle]="{ 'min-width': '40rem' }">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Tipo</th>
+          <th>Descrição</th>
+          <th class="num">Qtd.</th>
+          <th class="num">Valor unit.</th>
+          <th class="num">Total</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-item>
+        <tr>
+          <td>{{ itemTypeLabel(item.type) }}</td>
+          <td>{{ item.description }}</td>
+          <td class="num">{{ item.quantity }}</td>
+          <td class="num">{{ item.unitValue | currency: 'BRL' }}</td>
+          <td class="num">{{ item.lineTotal | currency: 'BRL' }}</td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5" class="empty">Sem itens.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+
+    <dl class="totals">
+      <dt>Subtotal</dt>
+      <dd class="num">{{ o.subtotal | currency: 'BRL' }}</dd>
+      <dt class="grand">Total</dt>
+      <dd class="num grand">{{ o.total | currency: 'BRL' }}</dd>
+    </dl>
+  </p-card>
+
+  <div class="back">
+    <p-button label="Voltar para a proposta" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
+  </div>
+}

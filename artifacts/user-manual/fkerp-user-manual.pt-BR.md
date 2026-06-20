@@ -323,7 +323,7 @@ Oportunidades que você pode trabalhar. A lista é paginada e mostra, para cada 
 |--------|-------------|
 | **Título** | O título da Oportunidade; leva ao **Lead de origem**. |
 | **Responsável** | O dono, ou *Sem responsável* (não atribuída). |
-| **Estágio** | Nova, Descoberta, Aderência, Pronta p/ proposta, Perdida. |
+| **Estágio** | Nova, Descoberta, Aderência, Pronta p/ proposta, Ganha, Perdida. |
 | **Valor estimado** | Quando informado. |
 | **Fechamento previsto** | Quando informado. |
 | **Criado em** | A data de criação. |
@@ -406,6 +406,11 @@ anotação. (Esses motivos são próprios da Oportunidade, diferentes dos motivo
 Oportunidade passa ao estágio **Perdida** (que é **final** — não reabre) e a perda fica registrada no
 próprio detalhe. Essa ação **não altera** o Lead de origem. Quem só pode consultar não vê as ações, e
 ninguém pode operar uma Oportunidade que não tem permissão para ver.
+
+**Oportunidade ganha.** A Oportunidade passa ao estágio **Ganha** (também **final**) automaticamente quando se
+**cria um pedido comercial** a partir de uma proposta aceita (ver a seção 9.8) — não há uma ação manual de
+"marcar como ganha". Como a *Perdida*, a *Ganha* fica **oculta na lista padrão** (selecione o estágio no filtro
+para vê-la) e sai do pipeline ativo e das pendências. Marcar como ganha **não** dispara financeiro nem reserva.
 
 O detalhe mostra **apenas dados comerciais** — nunca proposta, venda, pedido, reserva, financeiro,
 comissão ou atendimento.
@@ -581,8 +586,25 @@ Em ambos os casos a transição **quem/quando** entra no Histórico de status, e
 Registrar a decisão **não** cria reserva, financeiro, comissão **nem pedido comercial**. Apenas propostas
 *Enviadas* podem ser aceitas ou recusadas pelo cliente (rascunho, em revisão, aprovada ou já rejeitada não podem).
 
-> As próximas etapas do módulo Vendas (a geração de um **pedido comercial** a partir de uma proposta aceita)
-> virão nas próximas versões.
+### 9.8 Criar o pedido comercial
+Quando o cliente **aceita** a proposta, gera-se um **Pedido Comercial** — o **registro formal interno** do
+negócio fechado, antes das etapas de reserva e financeiro. No detalhe de uma proposta *Aceita*, quem tem a
+permissão de pedidos vê o botão **Criar pedido comercial** (atalho **`o`**).
+
+- Ao confirmar, o sistema cria o pedido (você é levado direto ao **detalhe do pedido**) e marca a **Oportunidade
+  de origem como Ganha**.
+- O pedido **preserva** a proposta de origem, a oportunidade, o responsável, os **itens** e o **total** (uma
+  cópia fiel do que foi vendido).
+- O pedido nasce **Pendente de reserva** quando contém itens que exigem reserva (**Pacote de viagem** ou
+  **Locação de veículo**); caso contrário, nasce **Reserva não necessária**.
+- Cada proposta gera **um único** pedido ativo. Depois de criado, a proposta passa a mostrar **Ver pedido
+  comercial** (em vez de criar outro).
+
+Criar o pedido **não** cria reserva, financeiro, comissão nem pagamento — é apenas o registro do negócio
+fechado. As reservas e o financeiro virão em próximas versões. Só uma proposta *Aceita* gera pedido.
+
+> A próxima etapa do módulo Vendas (a **lista de pedidos** e o menu **Pedidos**) virá numa próxima versão; por
+> ora o pedido é acessado a partir da proposta de origem.
 
 ## 10. Gerenciando cadastros
 
@@ -680,9 +702,9 @@ dados comerciais** (valor estimado e previsão de fechamento), o fluxo de **Perd
 A **Sprint 3 — Vendas & Propostas** está em andamento: a partir de uma Oportunidade pronta já é possível
 **criar uma proposta comercial** (módulo **Vendas → Propostas**), gerir seus **itens, valores e descontos**,
 **enviá-la para revisão interna**, **aprovar ou rejeitar**, **marcar uma proposta aprovada como enviada** ao
-cliente e **registrar o aceite ou a recusa do cliente**. A próxima etapa dará sequência ao ciclo da proposta com
-a geração de um **pedido comercial** a partir de uma proposta aceita. Este manual será atualizado a cada
-lançamento.
+cliente, **registrar o aceite ou a recusa do cliente** e **criar o pedido comercial** a partir de uma proposta
+aceita (que marca a Oportunidade como **Ganha**). As próximas etapas trarão a **lista de pedidos** e, adiante,
+as reservas e o financeiro. Este manual será atualizado a cada lançamento.
 
 ---
 

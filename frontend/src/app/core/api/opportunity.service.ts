@@ -8,6 +8,7 @@ export type OpportunityStage =
   | 'DISCOVERY'
   | 'PRODUCT_FIT'
   | 'READY_FOR_PROPOSAL'
+  | 'WON'
   | 'LOST';
 
 /** Payload to create an Opportunity from a Qualified Lead. */

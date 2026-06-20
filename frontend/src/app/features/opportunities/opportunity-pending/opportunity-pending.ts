@@ -17,6 +17,7 @@ const STAGE_LABELS: Record<OpportunityStage, string> = {
   DISCOVERY: 'Descoberta',
   PRODUCT_FIT: 'Aderência',
   READY_FOR_PROPOSAL: 'Pronta p/ proposta',
+  WON: 'Ganha',
   LOST: 'Perdida',
 };
 
