@@ -23,11 +23,18 @@ export interface CommercialOrderItem {
   lineTotal: number;
 }
 
-/** The source Proposal, preserved by the Order. */
+/**
+ * The source Proposal, preserved by the Order. Carries its commercial context (validity, commercial terms,
+ * notes, payment notes) surfaced from the immutable source Proposal — not duplicated onto the Order.
+ */
 export interface OrderSourceProposal {
   id: string;
   title: string;
   status: ProposalStatus;
+  validUntil: string | null;
+  commercialTerms: string | null;
+  notes: string | null;
+  paymentNotes: string | null;
 }
 
 /** The source Opportunity, kept traceable from the Order (now won). */
@@ -88,6 +95,7 @@ export interface CommercialOrderDetail {
   opportunityId: string;
   leadId: string;
   status: CommercialOrderStatus;
+  requiresBooking: boolean;
   responsibleId: string | null;
   responsibleName: string | null;
   unassigned: boolean;

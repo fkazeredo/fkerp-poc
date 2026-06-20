@@ -618,8 +618,11 @@ criação**.
 
 O **detalhe** do pedido mostra o número, o status, os **itens** e o **total** (cópia do que foi vendido), as
 origens (proposta/oportunidade/lead) e uma nota de **próximo passo** (quando *Pendente de reserva*, indica que a
-próxima etapa pode iniciar as operações de reserva). A lista e o detalhe mostram **apenas dados do pedido** —
-nunca reserva, financeiro, pagamento ou comissão.
+próxima etapa pode iniciar as operações de reserva). Para já chegar **pronto à etapa de reserva** sem redigitar
+nada, o detalhe também reúne o **contexto comercial vindo da proposta de origem** — os **termos comerciais**, a
+**validade**, as **notas** e as **observações de pagamento** (quando preenchidos) — e um indicador explícito de
+**necessidade de reserva** (*Sim/Não*). A lista e o detalhe mostram **apenas dados do pedido** — nunca reserva,
+financeiro, pagamento ou comissão.
 
 > A próxima etapa do módulo Vendas (iniciar as **operações de reserva** a partir de um pedido pendente de
 > reserva) virá numa próxima versão.
