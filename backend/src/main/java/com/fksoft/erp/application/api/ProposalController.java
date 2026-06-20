@@ -1,5 +1,7 @@
 package com.fksoft.erp.application.api;
 
+import com.fksoft.erp.application.api.dto.AcceptProposalRequest;
+import com.fksoft.erp.application.api.dto.DeclineProposalRequest;
 import com.fksoft.erp.application.api.dto.MarkProposalSentRequest;
 import com.fksoft.erp.application.api.dto.ProposalCreateRequest;
 import com.fksoft.erp.application.api.dto.ProposalItemRequest;
@@ -212,6 +214,41 @@ public class ProposalController {
     public ProposalDetail send(@PathVariable UUID id, @Valid @RequestBody MarkProposalSentRequest request) {
         return proposalService.markAsSent(
                 id, request.channel(), userContext.currentUserId(), canSeeAllProposals(), canSeeUnassignedProposals());
+    }
+
+    /**
+     * Registers that the client accepted a sent Proposal (Sent → Accepted), with an optional confirmation
+     * note; returns the refreshed detail. Requires the {@code sales:proposal:update} authority. Creates no
+     * Booking, Financial, Commission or Commercial Order data.
+     *
+     * @param id the proposal id
+     * @param request the optional confirmation note
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/accept")
+    public ProposalDetail accept(@PathVariable UUID id, @Valid @RequestBody AcceptProposalRequest request) {
+        return proposalService.acceptByCustomer(
+                id, request.note(), userContext.currentUserId(), canSeeAllProposals(), canSeeUnassignedProposals());
+    }
+
+    /**
+     * Registers that the client rejected a sent Proposal (Sent → Rejected) with a reason; returns the
+     * refreshed detail. Requires the {@code sales:proposal:update} authority. The rejected Proposal is
+     * terminal and creates no Booking, Financial, Commission or Commercial Order data.
+     *
+     * @param id the proposal id
+     * @param request the customer-rejection reason and optional note
+     * @return the updated detail
+     */
+    @PostMapping("/{id}/decline")
+    public ProposalDetail decline(@PathVariable UUID id, @Valid @RequestBody DeclineProposalRequest request) {
+        return proposalService.declineByCustomer(
+                id,
+                request.reason(),
+                request.note(),
+                userContext.currentUserId(),
+                canSeeAllProposals(),
+                canSeeUnassignedProposals());
     }
 
     /**

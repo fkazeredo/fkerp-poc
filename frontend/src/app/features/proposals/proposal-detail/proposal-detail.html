@@ -70,6 +70,26 @@
         />
       </div>
     }
+    @if (canDecide()) {
+      <div class="head-actions">
+        <p-button
+          label="Registrar aceite"
+          icon="pi pi-check-circle"
+          severity="success"
+          size="small"
+          [loading]="acting()"
+          (onClick)="openAccept()"
+        />
+        <p-button
+          label="Registrar recusa"
+          icon="pi pi-times-circle"
+          severity="danger"
+          [outlined]="true"
+          size="small"
+          (onClick)="openDecline()"
+        />
+      </div>
+    }
   </header>
 
   @if (canManageItems() && !canSubmit()) {
@@ -101,6 +121,17 @@
         @if (p.sendingChannel) {
           <dt>Canal de envio</dt>
           <dd class="sending-channel">{{ sendingChannelLabel(p.sendingChannel) }}</dd>
+        }
+        @if (p.status === 'ACCEPTED' && p.acceptanceNote) {
+          <dt>Nota do aceite</dt>
+          <dd class="acceptance">{{ p.acceptanceNote }}</dd>
+        }
+        @if (p.status === 'REJECTED' && p.customerRejectionReason) {
+          <dt>Motivo da recusa do cliente</dt>
+          <dd class="rejection">
+            {{ customerRejectionReasonLabel(p.customerRejectionReason)
+            }}{{ p.customerRejectionNote ? ' — ' + p.customerRejectionNote : '' }}
+          </dd>
         }
         <dt>Criada em</dt>
         <dd>{{ p.createdAt | date: 'short' }}</dd>
@@ -497,6 +528,74 @@
         (onClick)="confirmSend()"
       />
       <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestCloseSend()" />
+    </div>
+  </p-dialog>
+
+  <p-dialog
+    header="Registrar aceite do cliente"
+    [(visible)]="acceptOpen"
+    [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
+    [style]="{ width: '30rem' }"
+  >
+    <p class="muted send-hint">
+      Registra que o cliente aceitou a proposta enviada. Não cria reserva, financeiro, comissão nem pedido
+      comercial.
+    </p>
+    <div class="field">
+      <label for="anote">Nota de confirmação (opcional)</label>
+      <textarea pTextarea id="anote" [(ngModel)]="acceptNote" rows="3" maxlength="2000" class="w-full"></textarea>
+    </div>
+    <div class="actions">
+      <p-button
+        label="Registrar aceite"
+        icon="pi pi-check-circle"
+        severity="success"
+        [loading]="acting()"
+        (onClick)="confirmAccept()"
+      />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestCloseAccept()" />
+    </div>
+  </p-dialog>
+
+  <p-dialog
+    header="Registrar recusa do cliente"
+    [(visible)]="declineOpen"
+    [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
+    [style]="{ width: '30rem' }"
+  >
+    <div class="field">
+      <label for="dreason">Motivo <span class="req">*</span></label>
+      <p-select
+        inputId="dreason"
+        [options]="declineReasonOptions"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="declineReason"
+        placeholder="Selecione"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="dnote">Anotação (opcional)</label>
+      <textarea pTextarea id="dnote" [(ngModel)]="declineNote" rows="3" maxlength="2000" class="w-full"></textarea>
+    </div>
+    <div class="actions">
+      <p-button
+        label="Registrar recusa"
+        icon="pi pi-times-circle"
+        severity="danger"
+        [disabled]="!canConfirmDecline()"
+        [loading]="acting()"
+        (onClick)="confirmDecline()"
+      />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestCloseDecline()" />
     </div>
   </p-dialog>
 }

@@ -564,8 +564,25 @@ gera PDF nem assinatura, e **não** cria aceite do cliente, pedido comercial, re
 Apenas propostas *Aprovadas* podem ser marcadas como enviadas (uma proposta em rascunho, em revisão ou
 rejeitada não pode).
 
-> As próximas etapas do módulo Vendas (o aceite do cliente e a geração de um **pedido comercial**) virão nas
-> próximas versões.
+### 9.7 Registrar o aceite ou a recusa do cliente
+Quando o cliente responde a uma proposta *Enviada*, registra-se a decisão dele para **encerrar a negociação**.
+No detalhe de uma proposta *Enviada*, quem **opera** a proposta (vendedores, representantes e o gerente) vê os
+botões **Registrar aceite** (atalho **`c`**) e **Registrar recusa** (atalho **`x`**).
+
+- **Registrar aceite** abre um diálogo com uma **nota de confirmação opcional**; a proposta passa a *Aceita*. A
+  proposta aceita **continua disponível** (é a oferta vencedora) e **prepara** a geração do **pedido comercial**,
+  que virá numa próxima versão.
+- **Registrar recusa** abre um diálogo onde você escolhe um **motivo** (lista fixa: *Preço muito alto*, *Escolheu
+  concorrente*, *Viagem adiada*, *Viagem cancelada*, *Mudou de destino*, *Sem resposta após a proposta*, *Produto
+  não atende*, *Outro*) e, opcionalmente, uma **anotação**; a proposta passa a *Rejeitada*. Esse motivo é o **da
+  recusa do cliente**, distinto do motivo de uma rejeição na revisão interna (seção 9.5).
+
+Em ambos os casos a transição **quem/quando** entra no Histórico de status, e o motivo/nota aparece no resumo.
+Registrar a decisão **não** cria reserva, financeiro, comissão **nem pedido comercial**. Apenas propostas
+*Enviadas* podem ser aceitas ou recusadas pelo cliente (rascunho, em revisão, aprovada ou já rejeitada não podem).
+
+> As próximas etapas do módulo Vendas (a geração de um **pedido comercial** a partir de uma proposta aceita)
+> virão nas próximas versões.
 
 ## 10. Gerenciando cadastros
 
@@ -662,9 +679,10 @@ dados comerciais** (valor estimado e previsão de fechamento), o fluxo de **Perd
 
 A **Sprint 3 — Vendas & Propostas** está em andamento: a partir de uma Oportunidade pronta já é possível
 **criar uma proposta comercial** (módulo **Vendas → Propostas**), gerir seus **itens, valores e descontos**,
-**enviá-la para revisão interna**, **aprovar ou rejeitar** e **marcar uma proposta aprovada como enviada** ao
-cliente. As próximas etapas darão sequência ao ciclo da proposta (aceite do cliente) e a geração de um
-**pedido comercial**. Este manual será atualizado a cada lançamento.
+**enviá-la para revisão interna**, **aprovar ou rejeitar**, **marcar uma proposta aprovada como enviada** ao
+cliente e **registrar o aceite ou a recusa do cliente**. A próxima etapa dará sequência ao ciclo da proposta com
+a geração de um **pedido comercial** a partir de uma proposta aceita. Este manual será atualizado a cada
+lançamento.
 
 ---
 

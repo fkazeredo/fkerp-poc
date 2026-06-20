@@ -8,6 +8,7 @@ import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotSentException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
 import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalResponsibleRequiredException;
@@ -148,6 +149,22 @@ public class Proposal {
     @Enumerated(EnumType.STRING)
     @Column(name = "sending_channel")
     private SendingChannel sendingChannel;
+
+    // Set when the client accepts the Proposal: an optional confirmation note (the who/when lives in the
+    // status-change history). Acceptance creates no Booking, Financial, Commission or Commercial Order data.
+    @Size(max = 2000)
+    @Column(name = "acceptance_note")
+    private String acceptanceNote;
+
+    // Set when the client rejects the Proposal: the structured reason and an optional note (the "why"). The
+    // who/when lives in the status-change history. Distinct from the internal-review rejectionReason.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "customer_rejection_reason")
+    private CustomerRejectionReason customerRejectionReason;
+
+    @Size(max = 2000)
+    @Column(name = "customer_rejection_note")
+    private String customerRejectionNote;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -402,6 +419,48 @@ public class Proposal {
         updatedBy = byUser;
     }
 
+    /**
+     * Registers that the client accepted a sent Proposal (Sent → {@link ProposalStatus#ACCEPTED}), recording
+     * who and when in the status history and keeping an optional confirmation note. The accepted Proposal
+     * stays open (it is the winning offer and prepares the future Commercial Order). This does NOT create any
+     * Booking, Financial, Commission or Commercial Order data.
+     *
+     * @param byUser id of the user registering the acceptance
+     * @param note an optional client confirmation note
+     * @throws ProposalNotSentException if the Proposal is not Sent
+     */
+    public void acceptByCustomer(UUID byUser, String note) {
+        requireSent();
+        acceptanceNote = emptyToNull(note);
+        recordStatusChange(status, ProposalStatus.ACCEPTED, byUser);
+        status = ProposalStatus.ACCEPTED;
+        updatedBy = byUser;
+    }
+
+    /**
+     * Registers that the client rejected a sent Proposal (Sent → {@link ProposalStatus#REJECTED}) with a
+     * reason, recording who and when in the status history and keeping the structured reason and optional
+     * note. The rejected Proposal is terminal (it frees the Opportunity for a new Proposal); it creates no
+     * Booking, Financial, Commission or Commercial Order data.
+     *
+     * @param byUser id of the user registering the rejection
+     * @param reason the customer-rejection reason (required)
+     * @param note an optional free-text note
+     * @throws ProposalNotSentException if the Proposal is not Sent
+     * @throws ProposalRejectionReasonRequiredException if no reason is given
+     */
+    public void declineByCustomer(UUID byUser, CustomerRejectionReason reason, String note) {
+        requireSent();
+        if (reason == null) {
+            throw new ProposalRejectionReasonRequiredException();
+        }
+        customerRejectionReason = reason;
+        customerRejectionNote = emptyToNull(note);
+        recordStatusChange(status, ProposalStatus.REJECTED, byUser);
+        status = ProposalStatus.REJECTED;
+        updatedBy = byUser;
+    }
+
     // Appends a lifecycle transition to the status history (the initial DRAFT is not recorded — the history
     // stays empty until the first transition). Future transitions (approve/send/accept/reject) reuse this.
     private void recordStatusChange(ProposalStatus from, ProposalStatus to, UUID byUser) {
@@ -417,6 +476,12 @@ public class Proposal {
     private void requireApproved() {
         if (status != ProposalStatus.APPROVED) {
             throw new ProposalNotApprovedException();
+        }
+    }
+
+    private void requireSent() {
+        if (status != ProposalStatus.SENT) {
+            throw new ProposalNotSentException();
         }
     }
 

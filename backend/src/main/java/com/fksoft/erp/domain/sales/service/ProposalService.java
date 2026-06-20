@@ -16,6 +16,7 @@ import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalExcep
 import com.fksoft.erp.domain.sales.exception.ProposalAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunityException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
+import com.fksoft.erp.domain.sales.model.CustomerRejectionReason;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalCreated;
 import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
@@ -331,6 +332,61 @@ public class ProposalService {
             UUID proposalId, SendingChannel channel, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
         proposal.markAsSent(userId, channel);
+        return toDetail(proposals.saveAndFlush(proposal));
+    }
+
+    /**
+     * Registers that the client accepted a sent Proposal the caller is allowed to see (Sent → Accepted), with
+     * an optional confirmation note, and returns the refreshed detail. Gated by the
+     * {@code sales:proposal:update} authority at the delivery boundary. Creates no Booking, Financial,
+     * Commission or Commercial Order data.
+     *
+     * @param proposalId the proposal id
+     * @param note an optional client confirmation note
+     * @param userId the user registering the acceptance
+     * @param canSeeAll whether the caller may see every Proposal
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws ProposalNotFoundException if the Proposal does not exist
+     * @throws ProposalAccessDeniedException if the caller may not see it
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalNotSentException if it is not Sent
+     */
+    @Transactional
+    public ProposalDetail acceptByCustomer(
+            UUID proposalId, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
+        proposal.acceptByCustomer(userId, note);
+        return toDetail(proposals.saveAndFlush(proposal));
+    }
+
+    /**
+     * Registers that the client rejected a sent Proposal the caller is allowed to see (Sent → Rejected) with a
+     * reason, and returns the refreshed detail. Gated by the {@code sales:proposal:update} authority at the
+     * delivery boundary. The rejected Proposal is terminal (it frees the Opportunity for a new Proposal) and
+     * creates no Booking, Financial, Commission or Commercial Order data.
+     *
+     * @param proposalId the proposal id
+     * @param reason the customer-rejection reason (required)
+     * @param note an optional free-text note
+     * @param userId the user registering the rejection
+     * @param canSeeAll whether the caller may see every Proposal
+     * @param canSeeUnassigned whether the caller may also see the unassigned pool
+     * @return the updated detail
+     * @throws ProposalNotFoundException if the Proposal does not exist
+     * @throws ProposalAccessDeniedException if the caller may not see it
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalNotSentException if it is not Sent
+     * @throws com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException if no reason is given
+     */
+    @Transactional
+    public ProposalDetail declineByCustomer(
+            UUID proposalId,
+            CustomerRejectionReason reason,
+            String note,
+            UUID userId,
+            boolean canSeeAll,
+            boolean canSeeUnassigned) {
+        Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
+        proposal.declineByCustomer(userId, reason, note);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 

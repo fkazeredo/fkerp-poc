@@ -4,6 +4,7 @@ import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
+import com.fksoft.erp.domain.sales.model.CustomerRejectionReason;
 import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItem;
@@ -37,6 +38,9 @@ import java.util.UUID;
  * @param rejectionReason the rejection reason (present only when the Proposal was rejected at review)
  * @param rejectionNote the optional rejection note (present only when the Proposal was rejected)
  * @param sendingChannel the optional channel the Proposal was sent through (present only once it was sent)
+ * @param acceptanceNote the optional client confirmation note (present only when the client accepted)
+ * @param customerRejectionReason the customer-rejection reason (present only when the client rejected)
+ * @param customerRejectionNote the optional customer-rejection note (present only when the client rejected)
  */
 public record ProposalDetail(
         UUID id,
@@ -63,7 +67,10 @@ public record ProposalDetail(
         List<StatusChange> statusHistory,
         ProposalRejectionReason rejectionReason,
         String rejectionNote,
-        SendingChannel sendingChannel) {
+        SendingChannel sendingChannel,
+        String acceptanceNote,
+        CustomerRejectionReason customerRejectionReason,
+        String customerRejectionNote) {
 
     /**
      * Assembles the detail from the Proposal, its source Opportunity and Lead, and the resolved user names.
@@ -108,7 +115,10 @@ public record ProposalDetail(
                 statusHistory,
                 p.rejectionReason(),
                 p.rejectionNote(),
-                p.sendingChannel());
+                p.sendingChannel(),
+                p.acceptanceNote(),
+                p.customerRejectionReason(),
+                p.customerRejectionNote());
     }
 
     private static String nameOf(Map<UUID, String> names, UUID id) {

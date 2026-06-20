@@ -79,6 +79,17 @@ export type SendingChannel =
   | 'IN_PERSON_PRESENTATION'
   | 'OTHER';
 
+/** The fixed set of reasons a client can reject a sent Proposal (distinct from the internal-review reasons). */
+export type CustomerRejectionReason =
+  | 'PRICE_TOO_HIGH'
+  | 'CHOSE_COMPETITOR'
+  | 'TRAVEL_POSTPONED'
+  | 'TRAVEL_CANCELLED'
+  | 'CHANGED_DESTINATION'
+  | 'NO_RESPONSE'
+  | 'PRODUCT_MISMATCH'
+  | 'OTHER';
+
 /** A single commercial-offer line, with its computed line total. */
 export interface ProposalItem {
   id: string;
@@ -137,6 +148,9 @@ export interface ProposalDetail {
   rejectionReason: ProposalRejectionReason | null;
   rejectionNote: string | null;
   sendingChannel: SendingChannel | null;
+  acceptanceNote: string | null;
+  customerRejectionReason: CustomerRejectionReason | null;
+  customerRejectionNote: string | null;
 }
 
 /** Proposal list item (operational list of the Sales module). */
@@ -220,6 +234,20 @@ export class ProposalService {
   /** Marks an approved Proposal as sent to the client (Approved → Sent); the channel is optional. */
   markSent(id: string, channel: SendingChannel | null): Observable<ProposalDetail> {
     return this.http.post<ProposalDetail>(`/api/proposals/${id}/send`, { channel });
+  }
+
+  /** Registers that the client accepted a sent Proposal (Sent → Accepted); the note is optional. */
+  accept(id: string, note: string | null): Observable<ProposalDetail> {
+    return this.http.post<ProposalDetail>(`/api/proposals/${id}/accept`, { note });
+  }
+
+  /** Registers that the client rejected a sent Proposal (Sent → Rejected) with a reason (+ optional note). */
+  decline(
+    id: string,
+    reason: CustomerRejectionReason,
+    note: string | null,
+  ): Observable<ProposalDetail> {
+    return this.http.post<ProposalDetail>(`/api/proposals/${id}/decline`, { reason, note });
   }
 
   /** Adds an item to a Draft Proposal; returns the refreshed detail (with the recomputed total). */

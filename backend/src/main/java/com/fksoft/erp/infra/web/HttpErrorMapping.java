@@ -35,6 +35,7 @@ import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotSentException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
 import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalResponsibleRequiredException;
@@ -90,6 +91,7 @@ public class HttpErrorMapping {
             entry(ProposalNotUnderReviewException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalRejectionReasonRequiredException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotApprovedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ProposalNotSentException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {

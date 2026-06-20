@@ -117,6 +117,10 @@
   font-size: 0.85rem;
 }
 
+.acceptance {
+  color: var(--p-green-600, #16a34a);
+}
+
 .items-head {
   display: flex;
   align-items: center;
