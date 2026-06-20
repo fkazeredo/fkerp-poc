@@ -103,6 +103,22 @@ export class OrderDetailPage implements OnInit {
     return PROPOSAL_STATUS_LABELS[status];
   }
 
+  /** The human-friendly order code (PC-000n). */
+  protected orderCode(n: number): string {
+    return 'PC-' + String(n).padStart(4, '0');
+  }
+
+  /** A note about the next operational step, derived from the order status. */
+  protected nextStep(status: CommercialOrderStatus): string {
+    if (status === 'PENDING_BOOKING') {
+      return 'Pendente de reserva — a próxima etapa pode iniciar as operações de reserva.';
+    }
+    if (status === 'BOOKING_NOT_REQUIRED') {
+      return 'Reserva não necessária para este pedido.';
+    }
+    return 'Pedido cancelado.';
+  }
+
   protected back(): void {
     const o = this.order();
     this.router.navigateByUrl(o ? '/propostas/' + o.proposalId : '/vendas');

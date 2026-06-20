@@ -81,6 +81,11 @@ export class NavigationService {
         link('Propostas', 'pi pi-file-edit', '/propostas', false, 'As propostas comerciais — formalize a oferta ao cliente.', 'sales'),
       );
     }
+    if (this.auth.canSeeOrders()) {
+      sales.push(
+        link('Pedidos', 'pi pi-shopping-bag', '/pedidos', false, 'Os pedidos comerciais — acompanhe os negócios fechados.', 'sales'),
+      );
+    }
 
     const cadastros: NavLink[] = [
       link('Origens', 'pi pi-database', '/cadastros/origens', false, 'De onde vêm os leads.', 'ref'),

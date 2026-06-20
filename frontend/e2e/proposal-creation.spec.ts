@@ -184,7 +184,7 @@ test('a ready opportunity originates a commercial proposal, reachable in the Ven
   await page.getByRole('button', { name: 'Criar pedido comercial' }).click();
   await expect(page.getByText('Pedido comercial criado')).toBeVisible();
   await expect(page).toHaveURL(/\/pedidos\//);
-  await expect(page.getByRole('heading', { name: 'Pedido comercial' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Pedido PC-/ })).toBeVisible(); // the sequential PC-000n code
   await expect(page.getByText('Pendente de reserva').first()).toBeVisible(); // a travel package needs booking
   await expect(page.getByText('Pacote de viagem corporativo')).toBeVisible(); // the snapshotted item
   await expect(page.getByText('Ganha').first()).toBeVisible(); // the source opportunity is now won

@@ -45,6 +45,12 @@ public class CommercialOrder {
     @Column(nullable = false)
     private long version;
 
+    // A human-friendly sequential number (assigned from a DB sequence at creation; rendered as PC-000n in the
+    // UI). Unique and immutable.
+    @NotNull
+    @Column(nullable = false, updatable = false, unique = true)
+    private Long number;
+
     // The source Proposal this Order was created from (preserved; the Proposal is not modified).
     @NotNull
     @Column(name = "proposal_id", nullable = false, updatable = false)
@@ -104,15 +110,17 @@ public class CommercialOrder {
      *
      * @param proposal the source Proposal; must be {@link ProposalStatus#ACCEPTED}
      * @param createdBy id of the user creating the Order
+     * @param number the sequential order number (assigned from the order-number sequence)
      * @return a new, unsaved Commercial Order
      * @throws ProposalNotAcceptedException if the Proposal is not Accepted
      */
-    public static CommercialOrder createFromProposal(Proposal proposal, UUID createdBy) {
+    public static CommercialOrder createFromProposal(Proposal proposal, UUID createdBy, long number) {
         if (proposal.status() != ProposalStatus.ACCEPTED) {
             throw new ProposalNotAcceptedException();
         }
         CommercialOrder order = new CommercialOrder();
         order.id = UUID.randomUUID();
+        order.number = number;
         order.proposalId = proposal.id();
         order.opportunityId = proposal.opportunityId();
         order.leadId = proposal.leadId();

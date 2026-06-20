@@ -609,8 +609,27 @@ the orders permission sees the **Criar pedido comercial** (Create commercial ord
 Creating the order creates **no** booking, finance, commission or payment — it is only the record of the closed
 deal. Bookings and finance will come in later releases. Only an *Accepted* proposal can create an order.
 
-> The next step of the Sales module (the **orders list** and the **Pedidos** menu) will come in a later release;
-> for now the order is reached from its source proposal.
+### 9.9 The orders list
+The commercial orders live under **Vendas → Pedidos** (keyboard shortcut **`g d`**). The list shows, for each
+order: the **Identificador** (Identifier — a friendly number such as **PC-0001**, linking to the detail), the
+**Resumo** (Summary — the source proposal's title), the **Oportunidade** (Opportunity), the **Responsável**
+(Responsible), the **Total**, the **Status**, the **Reserva** (Booking) indicator (*Exige reserva* / Requires
+booking when it has a travel package or a car rental; otherwise *Não exige* / Not required) and the **creation
+date**.
+
+- **Filters:** by **status**, **booking need**, **responsible**, **creation period** and **amount range**, plus
+  a **search** over the summary (proposal title). Use **Limpar** (Clear) to reset.
+- **Per-profile visibility:** everyone sees only the orders they may see — **representatives** see **only their
+  own**; **managers** see **all**. No filter can surface an order you are not allowed to see.
+- **Cancelled** orders are hidden by default; pick the *Cancelado* status in the filter to see them.
+
+The order **detail** shows the number, the status, the **items** and the **total** (a copy of what was sold),
+the source references (proposal/opportunity/lead) and a **next-step** note (when *Pending booking*, it signals
+that the next step can start the booking operations). The list and the detail show **order data only** — never
+booking, finance, payment or commission.
+
+> The next step of the Sales module (starting the **booking operations** from a pending-booking order) will come
+> in a later release.
 
 ## 10. Managing reference data (*cadastros*)
 
@@ -706,9 +725,9 @@ Opportunities** and **Opportunity indicators** — all with per-profile visibili
 **Sprint 3 — Sales & Proposals** is underway: from a ready Opportunity you can **create a commercial
 proposal** (the **Vendas → Propostas** module), manage its **items, values and discounts**, **submit it for
 internal review**, **approve or reject** it, **mark an approved proposal as sent** to the client, **register
-the client's acceptance or rejection**, and **create the commercial order** from an accepted proposal (which
-marks the Opportunity as **won**). The next steps will bring the **orders list** and, later, bookings and
-finance. This manual will be updated as each ships.
+the client's acceptance or rejection**, **create the commercial order** from an accepted proposal (which
+marks the Opportunity as **won**), and **consult the orders list** (the **Vendas → Pedidos** module). The next
+steps will bring the **booking operations** and, later, finance. This manual will be updated as each ships.
 
 ---
 

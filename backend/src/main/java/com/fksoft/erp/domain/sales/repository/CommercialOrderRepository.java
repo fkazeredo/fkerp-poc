@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 
 /** Repository for Commercial Orders (Sales &amp; Proposals). */
 public interface CommercialOrderRepository
@@ -22,4 +23,12 @@ public interface CommercialOrderRepository
      */
     Optional<CommercialOrder> findFirstByProposalIdAndStatusIn(
             UUID proposalId, Collection<CommercialOrderStatus> statuses);
+
+    /**
+     * Draws the next human-friendly sequential order number from the order-number sequence.
+     *
+     * @return the next order number
+     */
+    @Query(value = "SELECT nextval('commercial_order_number_seq')", nativeQuery = true)
+    long nextOrderNumber();
 }

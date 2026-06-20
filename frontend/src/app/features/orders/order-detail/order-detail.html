@@ -8,7 +8,7 @@
 } @else if (order(); as o) {
   <header class="head">
     <div class="head-main">
-      <h1>Pedido comercial</h1>
+      <h1>Pedido {{ orderCode(o.number) }}</h1>
       <p-tag [value]="statusLabel(o.status)" [severity]="statusSeverity(o.status)" />
     </div>
   </header>
@@ -16,10 +16,14 @@
   <div class="grid">
     <p-card header="Resumo do pedido">
       <dl class="data">
+        <dt>Identificador</dt>
+        <dd>{{ orderCode(o.number) }}</dd>
         <dt>Responsável</dt>
         <dd>{{ o.unassigned ? 'Sem responsável' : (o.responsibleName ?? '—') }}</dd>
         <dt>Reserva</dt>
         <dd>{{ statusLabel(o.status) }}</dd>
+        <dt>Próximo passo</dt>
+        <dd class="next-step">{{ nextStep(o.status) }}</dd>
         <dt>Criado em</dt>
         <dd>{{ o.createdAt | date: 'short' }}</dd>
         <dt>Criado por</dt>

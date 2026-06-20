@@ -603,8 +603,26 @@ permissão de pedidos vê o botão **Criar pedido comercial** (atalho **`o`**).
 Criar o pedido **não** cria reserva, financeiro, comissão nem pagamento — é apenas o registro do negócio
 fechado. As reservas e o financeiro virão em próximas versões. Só uma proposta *Aceita* gera pedido.
 
-> A próxima etapa do módulo Vendas (a **lista de pedidos** e o menu **Pedidos**) virá numa próxima versão; por
-> ora o pedido é acessado a partir da proposta de origem.
+### 9.9 A lista de pedidos
+Os pedidos comerciais ficam em **Vendas → Pedidos** (atalho de teclado **`g d`**). A lista mostra, para cada
+pedido: o **Identificador** (um número amigável, ex.: **PC-0001**, que leva ao detalhe), o **Resumo** (o título
+da proposta de origem), a **Oportunidade**, o **Responsável**, o **Total**, o **Status**, o indicador de
+**Reserva** (*Exige reserva* quando há item de Pacote de viagem ou Locação; senão *Não exige*) e a **data de
+criação**.
+
+- **Filtros:** por **status**, **necessidade de reserva**, **responsável**, **período de criação** e **faixa de
+  valor**, além de uma **busca** pelo resumo (título da proposta). Use **Limpar** para zerar.
+- **Visibilidade por perfil:** cada um vê os pedidos que pode ver — **representantes** veem **apenas os seus**;
+  **gerentes** veem **todos**. Nenhum filtro mostra um pedido que você não tem permissão de ver.
+- Os pedidos **cancelados** ficam ocultos por padrão; selecione o status *Cancelado* no filtro para vê-los.
+
+O **detalhe** do pedido mostra o número, o status, os **itens** e o **total** (cópia do que foi vendido), as
+origens (proposta/oportunidade/lead) e uma nota de **próximo passo** (quando *Pendente de reserva*, indica que a
+próxima etapa pode iniciar as operações de reserva). A lista e o detalhe mostram **apenas dados do pedido** —
+nunca reserva, financeiro, pagamento ou comissão.
+
+> A próxima etapa do módulo Vendas (iniciar as **operações de reserva** a partir de um pedido pendente de
+> reserva) virá numa próxima versão.
 
 ## 10. Gerenciando cadastros
 
@@ -702,9 +720,10 @@ dados comerciais** (valor estimado e previsão de fechamento), o fluxo de **Perd
 A **Sprint 3 — Vendas & Propostas** está em andamento: a partir de uma Oportunidade pronta já é possível
 **criar uma proposta comercial** (módulo **Vendas → Propostas**), gerir seus **itens, valores e descontos**,
 **enviá-la para revisão interna**, **aprovar ou rejeitar**, **marcar uma proposta aprovada como enviada** ao
-cliente, **registrar o aceite ou a recusa do cliente** e **criar o pedido comercial** a partir de uma proposta
-aceita (que marca a Oportunidade como **Ganha**). As próximas etapas trarão a **lista de pedidos** e, adiante,
-as reservas e o financeiro. Este manual será atualizado a cada lançamento.
+cliente, **registrar o aceite ou a recusa do cliente**, **criar o pedido comercial** a partir de uma proposta
+aceita (que marca a Oportunidade como **Ganha**) e **consultar a lista de pedidos** (módulo **Vendas →
+Pedidos**). As próximas etapas trarão as **operações de reserva** e, adiante, o financeiro. Este manual será
+atualizado a cada lançamento.
 
 ---
 
