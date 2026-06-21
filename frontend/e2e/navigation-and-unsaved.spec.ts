@@ -18,22 +18,23 @@ test('sidebar is compact: only the active module sub-menu is shown', async ({ pa
   const sidebar = page.locator('.sidebar');
   // Target the sidebar Leads link by href — robust against decorative icon glyphs polluting the name.
   const leadsLink = sidebar.locator('a[href="/leads"]');
-  const crmToggle = sidebar.getByRole('button', { name: /Comercial \/ CRM/ });
+  const comercialToggle = sidebar.getByRole('button', { name: /Comercial/ });
 
-  // On the system home no module is active, so the CRM section is collapsed and its items (Leads) are hidden.
-  await expect(crmToggle).toHaveAttribute('aria-expanded', 'false');
+  // On the system home no module is active, so the Comercial section is collapsed and its items (Leads)
+  // are hidden.
+  await expect(comercialToggle).toHaveAttribute('aria-expanded', 'false');
   await expect(leadsLink).toBeHidden();
 
-  // Opening the Comercial / CRM module reveals its sub-menu and navigates to its home.
-  await sidebar.getByText('Comercial / CRM').click();
-  await expect(page).toHaveURL(/\/crm$/);
-  await expect(crmToggle).toHaveAttribute('aria-expanded', 'true');
+  // Opening the Comercial module reveals its sub-menu and navigates to its home.
+  await sidebar.getByRole('link', { name: 'Comercial', exact: true }).click();
+  await expect(page).toHaveURL(/\/comercial$/);
+  await expect(comercialToggle).toHaveAttribute('aria-expanded', 'true');
   await expect(leadsLink).toBeVisible();
 
-  // Switching to Vendas closes the CRM sub-menu (one open at a time = short menu).
-  await sidebar.getByText('Vendas').click();
-  await expect(page).toHaveURL(/\/vendas$/);
-  await expect(crmToggle).toHaveAttribute('aria-expanded', 'false');
+  // Switching to Acompanhamento closes the Comercial sub-menu (one open at a time = short menu).
+  await sidebar.getByRole('link', { name: 'Acompanhamento', exact: true }).click();
+  await expect(page).toHaveURL(/\/acompanhamento$/);
+  await expect(comercialToggle).toHaveAttribute('aria-expanded', 'false');
   await expect(leadsLink).toBeHidden();
 });
 

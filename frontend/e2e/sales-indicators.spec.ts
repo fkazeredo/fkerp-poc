@@ -1,11 +1,12 @@
 import { test, expect, Page } from '@playwright/test';
 
 /**
- * Sprint 3 / Slice 12 end-to-end: the minimum sales indicators (Proposals and Commercial Orders) are
- * reachable from the Vendas module and render their KPI cards and breakdowns. The numbers' data-driven
- * behaviour (period vs snapshot, per-profile visibility, the contract fields) is covered thoroughly by
- * ProposalIndicatorsApiIntegrationTest / OrderIndicatorsApiIntegrationTest; this E2E covers the
- * cross-cutting concern — the navigation entries, the routes and the page render.
+ * Sprint 3 / Slice 12 end-to-end (updated Sprint 4 / Slice 3): the minimum sales indicators (Proposals and
+ * Commercial Orders) are now reachable through the single Indicadores hub (in the Acompanhamento module),
+ * selecting the area tab. The numbers' data-driven behaviour (period vs snapshot, per-profile visibility, the
+ * contract fields) is covered thoroughly by ProposalIndicatorsApiIntegrationTest /
+ * OrderIndicatorsApiIntegrationTest; this E2E covers the cross-cutting concern — the navigation entry, the hub
+ * route, the tab switch and the page render.
  */
 
 async function login(page: Page, username: string, password: string): Promise<void> {
@@ -16,14 +17,22 @@ async function login(page: Page, username: string, password: string): Promise<vo
   await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 }
 
-test('the proposal indicators page is reachable from Vendas and renders its KPI cards', async ({ page }) => {
-  await login(page, 'comercial', 'comercial123');
+async function openIndicadoresHub(page: Page): Promise<void> {
+  // Open the Acompanhamento module from the sidebar (expands the accordion), then the Indicadores hub.
+  await page.locator('.sidebar').getByRole('link', { name: 'Acompanhamento' }).click();
+  await expect(page).toHaveURL(/\/acompanhamento$/);
+  await page.locator('.sidebar').getByRole('link', { name: 'Indicadores' }).click();
+  await expect(page).toHaveURL(/\/indicadores$/);
+}
 
-  // Open the Vendas module from the sidebar (which expands the accordion), then its proposal indicators.
-  await page.locator('.sidebar').getByRole('link', { name: 'Vendas' }).click();
-  await expect(page).toHaveURL(/\/vendas$/);
-  await page.locator('.sidebar').getByRole('link', { name: 'Indicadores de propostas' }).click();
-  await expect(page).toHaveURL(/\/propostas\/indicadores$/);
+test('the proposal indicators are reachable through the Indicadores hub and render their KPI cards', async ({
+  page,
+}) => {
+  await login(page, 'comercial', 'comercial123');
+  await openIndicadoresHub(page);
+
+  // Switch to the Propostas tab inside the hub.
+  await page.getByRole('tab', { name: 'Propostas' }).click();
 
   await expect(page.getByRole('heading', { name: 'Indicadores de propostas' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Volume no período' })).toBeVisible();
@@ -33,13 +42,14 @@ test('the proposal indicators page is reachable from Vendas and renders its KPI 
   await expect(page.getByRole('heading', { name: 'Por status' })).toBeVisible();
 });
 
-test('the order indicators page is reachable from Vendas and renders its KPI cards', async ({ page }) => {
+test('the order indicators are reachable through the Indicadores hub and render their KPI cards', async ({
+  page,
+}) => {
   await login(page, 'comercial', 'comercial123');
+  await openIndicadoresHub(page);
 
-  await page.locator('.sidebar').getByRole('link', { name: 'Vendas' }).click();
-  await expect(page).toHaveURL(/\/vendas$/);
-  await page.locator('.sidebar').getByRole('link', { name: 'Indicadores de pedidos' }).click();
-  await expect(page).toHaveURL(/\/pedidos\/indicadores$/);
+  // Switch to the Pedidos tab inside the hub.
+  await page.getByRole('tab', { name: 'Pedidos' }).click();
 
   await expect(page.getByRole('heading', { name: 'Indicadores de pedidos' })).toBeVisible();
   await expect(page.getByText('Total no período')).toBeVisible();

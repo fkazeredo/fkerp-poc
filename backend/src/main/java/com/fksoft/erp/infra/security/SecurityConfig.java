@@ -56,6 +56,12 @@ public class SecurityConfig {
         "SCOPE_sales:order:read", "SCOPE_sales:order:read:unassigned", "SCOPE_sales:order:read:all"
     };
 
+    // Same three-tier model for Booking Requests (Booking Operations); BookingRequestAccessPolicy narrows
+    // visibility. Any read tier passes the GET gate.
+    private static final String[] BOOKING_READ_SCOPES = {
+        "SCOPE_booking:request:read", "SCOPE_booking:request:read:unassigned", "SCOPE_booking:request:read:all"
+    };
+
     private final SecurityProperties props;
 
     @Bean
@@ -147,6 +153,8 @@ public class SecurityConfig {
                         .hasAnyAuthority(ORDER_READ_SCOPES)
                         .requestMatchers(HttpMethod.POST, "/api/bookings")
                         .hasAuthority("SCOPE_booking:request:create")
+                        .requestMatchers(HttpMethod.GET, "/api/bookings", "/api/bookings/**")
+                        .hasAnyAuthority(BOOKING_READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/responsibles")
                         .hasAnyAuthority(READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/**")

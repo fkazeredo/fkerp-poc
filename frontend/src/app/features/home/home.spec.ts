@@ -29,13 +29,16 @@ describe('Home (system landing)', () => {
   }
 
   it('renders a card per accessible module, linking to each module home', () => {
-    const el = render([mod('crm', 'Comercial / CRM', '/crm'), mod('vendas', 'Vendas', '/vendas')]);
+    const el = render([
+      mod('comercial', 'Comercial', '/comercial'),
+      mod('reservas', 'Reservas', '/reservas'),
+    ]);
     const tiles = el.querySelectorAll('.tile');
     expect(tiles).toHaveLength(2);
-    expect(el.textContent).toContain('Comercial / CRM');
-    expect(el.textContent).toContain('Vendas');
+    expect(el.textContent).toContain('Comercial');
+    expect(el.textContent).toContain('Reservas');
     const links = Array.from(el.querySelectorAll('a.tile')).map((a) => a.getAttribute('href'));
-    expect(links).toEqual(['/crm', '/vendas']);
+    expect(links).toEqual(['/comercial', '/reservas']);
   });
 
   it('shows a no-access notice when the user can reach no module', () => {

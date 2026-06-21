@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { bookingReadGuard } from './core/auth/booking-read.guard';
 import { crmReadGuard } from './core/auth/crm-read.guard';
 import { opportunityReadGuard } from './core/auth/opportunity-read.guard';
 import { orderReadGuard } from './core/auth/order-read.guard';
@@ -18,13 +19,13 @@ export const routes: Routes = [
     children: [
       { path: '', loadComponent: () => import('./features/home/home').then((m) => m.Home) },
       {
-        path: 'crm',
-        data: { module: 'crm' },
+        path: 'comercial',
+        data: { module: 'comercial' },
         loadComponent: () => import('./features/home/module-home').then((m) => m.ModuleHome),
       },
       {
-        path: 'vendas',
-        data: { module: 'vendas' },
+        path: 'acompanhamento',
+        data: { module: 'acompanhamento' },
         loadComponent: () => import('./features/home/module-home').then((m) => m.ModuleHome),
       },
       {
@@ -33,17 +34,21 @@ export const routes: Routes = [
         loadComponent: () => import('./features/home/module-home').then((m) => m.ModuleHome),
       },
       {
-        path: 'pendencias',
-        canActivate: [crmReadGuard],
+        path: 'reservas',
+        canActivate: [bookingReadGuard],
         loadComponent: () =>
-          import('./features/leads/lead-pending/lead-pending').then((m) => m.LeadPending),
+          import('./features/bookings/booking-list/booking-list').then((m) => m.BookingList),
+      },
+      {
+        path: 'pendencias',
+        loadComponent: () =>
+          import('./features/pendencias/pendencias-hub/pendencias-hub').then((m) => m.PendenciasHub),
       },
       {
         path: 'indicadores',
-        canActivate: [crmReadGuard],
         loadComponent: () =>
-          import('./features/leads/lead-indicators/lead-indicators').then(
-            (m) => m.LeadIndicatorsPage,
+          import('./features/indicadores/indicadores-hub/indicadores-hub').then(
+            (m) => m.IndicadoresHub,
           ),
       },
       {
@@ -74,22 +79,6 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'oportunidades/pendencias',
-        canActivate: [opportunityReadGuard],
-        loadComponent: () =>
-          import('./features/opportunities/opportunity-pending/opportunity-pending').then(
-            (m) => m.OpportunityPending,
-          ),
-      },
-      {
-        path: 'oportunidades/indicadores',
-        canActivate: [opportunityReadGuard],
-        loadComponent: () =>
-          import('./features/opportunities/opportunity-indicators/opportunity-indicators').then(
-            (m) => m.OpportunityIndicatorsPage,
-          ),
-      },
-      {
         path: 'oportunidades/:id',
         canActivate: [opportunityReadGuard],
         canDeactivate: [unsavedChangesGuard],
@@ -105,14 +94,6 @@ export const routes: Routes = [
           import('./features/proposals/proposal-list/proposal-list').then((m) => m.ProposalList),
       },
       {
-        path: 'propostas/indicadores',
-        canActivate: [proposalReadGuard],
-        loadComponent: () =>
-          import('./features/proposals/proposal-indicators/proposal-indicators').then(
-            (m) => m.ProposalIndicatorsPage,
-          ),
-      },
-      {
         path: 'propostas/:id',
         canActivate: [proposalReadGuard],
         canDeactivate: [unsavedChangesGuard],
@@ -125,12 +106,6 @@ export const routes: Routes = [
         path: 'pedidos',
         canActivate: [orderReadGuard],
         loadComponent: () => import('./features/orders/order-list/order-list').then((m) => m.OrderList),
-      },
-      {
-        path: 'pedidos/indicadores',
-        canActivate: [orderReadGuard],
-        loadComponent: () =>
-          import('./features/orders/order-indicators/order-indicators').then((m) => m.OrderIndicatorsPage),
       },
       {
         path: 'pedidos/:id',

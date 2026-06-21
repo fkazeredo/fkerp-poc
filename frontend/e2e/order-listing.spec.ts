@@ -1,10 +1,11 @@
 import { test, expect, Page } from '@playwright/test';
 
 /**
- * Sprint 3 / Slice 11 end-to-end: the operational Commercial Order list is reachable from the Vendas module
- * and renders its operational columns. The list's data-driven behaviour (per-profile visibility, the filters
- * and the booking-need indicator) is covered thoroughly by CommercialOrderListingApiIntegrationTest; this E2E
- * covers the cross-cutting concern — the navigation entry, the route and the page render.
+ * Sprint 3 / Slice 11 end-to-end: the operational Commercial Order list is reachable from the Comercial module
+ * (the whole funnel now lives there) and renders its operational columns. The list's data-driven behaviour
+ * (per-profile visibility, the filters and the booking-need indicator) is covered thoroughly by
+ * CommercialOrderListingApiIntegrationTest; this E2E covers the cross-cutting concern — the navigation entry,
+ * the route and the page render.
  */
 
 async function login(page: Page, username: string, password: string): Promise<void> {
@@ -15,14 +16,14 @@ async function login(page: Page, username: string, password: string): Promise<vo
   await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 }
 
-test('the order list is reachable from the Vendas module and shows its operational columns', async ({
+test('the order list is reachable from the Comercial module and shows its operational columns', async ({
   page,
 }) => {
   await login(page, 'comercial', 'comercial123');
 
-  // Open the Vendas module from the sidebar (which expands the accordion), then its Pedidos destination.
-  await page.locator('.sidebar').getByRole('link', { name: 'Vendas' }).click();
-  await expect(page).toHaveURL(/\/vendas$/);
+  // Open the Comercial module from the sidebar (which expands the accordion), then its Pedidos destination.
+  await page.locator('.sidebar').getByRole('link', { name: 'Comercial' }).click();
+  await expect(page).toHaveURL(/\/comercial$/);
   await page.locator('.sidebar').getByRole('link', { name: 'Pedidos', exact: true }).click();
   await expect(page).toHaveURL(/\/pedidos$/);
 

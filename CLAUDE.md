@@ -460,9 +460,9 @@ a new Proposal is allowed once the previous is `REJECTED`/`EXPIRED`/`CANCELLED`)
 creates **no** Sale, Sales Order, Booking, Customer, Financial, Payment or Commission data, and never
 modifies the Opportunity or Lead. Profile → scopes: Admin/Manager = read:all + create + update; Sellers =
 read + read:unassigned + create + update; Representatives = read + create + update (own only);
-Board/Director = read:all (consultation); Finance/HR/IT = none. The **frontend separates the modules
-visually** — the sidebar groups **Comercial / CRM** (Leads + Opportunities) and **Vendas** (Proposals) as
-distinct menus, each gated by its read scopes; the backend stays the only authority.
+Board/Director = read:all (consultation); Finance/HR/IT = none. In the frontend, Proposals are a destination
+of the workflow-oriented **Comercial** funnel module (Leads · Oportunidades · Propostas · Pedidos, §12), gated
+by its read scopes; the backend stays the only authority.
 
 **Proposal items (normative — Sales & Proposals).** A **`DRAFT`** Proposal carries **items** — the
 commercial-offer lines (what the company intends to sell), modeled as a child collection of the Proposal
@@ -506,9 +506,20 @@ process — a Booking Request is **NOT** an external integration, a Receivable, 
 Customer Care. Its scopes use the **`booking:`** prefix. Operation `booking:request:create` gates creating a
 Booking Request **from a Commercial Order that is `PENDING_BOOKING`** (`POST /api/bookings`); the creator must
 also be allowed to **see the source Order**, reusing the Order read tiers (`sales:order:read` / `:read:unassigned`
-/ `:read:all`) — a caller who cannot see it gets `order.access-denied` (**403**). The future read tiers
-`booking:request:read` (own only) → also `booking:request:read:unassigned` → `booking:request:read:all` arrive
-with the booking list/detail slice. A Booking Request **preserves** its source `commercialOrderId` (never
+/ `:read:all`) — a caller who cannot see it gets `order.access-denied` (**403**). The **operational Booking
+Request list** (`GET /api/bookings`) is gated by the same escalating read tiers — `booking:request:read` (own
+only) → also `booking:request:read:unassigned` (the no-operator pool) → `booking:request:read:all` (all); any
+tier passes the GET gate and **`BookingRequestAccessPolicy`** (a query Specification: own = booking operator
+OR commercial responsible; the unassigned tier adds operator-is-null) narrows which requests are returned so
+filters can never bypass it. The list carries **operational reservation data only — never Financial, Payment
+or Commission data**: the source Order number (`PC-000n`, the human identifier, 1:1 with the Order — the
+reservation has no number of its own), the source Proposal title (commercial reference), the booking status,
+the operator and commercial responsible, the counts of items requiring booking / confirmed, and the
+creation/update instants (the latest-attempt field is reserved, null until the attempt slice). The default
+view excludes the terminal `CONFIRMED` + `CANCELLED` requests but **keeps `FAILED` visible**; filters: status,
+operator (incl. unassigned), commercial responsible, creation period, source order, item type, has-failed-items.
+Only the `read:all` tier is seeded today; the own/unassigned tiers are defined in the policy for future operator
+profiles. A Booking Request **preserves** its source `commercialOrderId` (never
 modified), the source `proposalId` / `opportunityId` / `leadId` and the commercial `responsiblePersonId`, takes
 an optional `bookingOperatorId` (assignment is a later slice; validated when present, else
 `booking.operator-not-found`, **422**) and optional notes, snapshots the Order's items as **booking items**
@@ -521,9 +532,11 @@ has **at most one active Booking Request** (the service returns a friendly **409
 partial unique index is the last-resort guard; a new request is allowed once the previous is `CANCELLED`).
 Creating a request creates **no** external reservation and **no** Receivable/Payment/Commission/Customer Care
 data, and never modifies the Order. **Persona → scopes (Sprint 4):** a new back-office **`operacoes`** user
-(seed 006) is the booking operator (`booking:request:create` + `sales:order:read:all` to see the source Order);
-the commercial **Manager** (001) also holds `booking:request:create` (oversight); everyone else has no booking
-scope for now. The lifecycle (`PENDING → IN_PROGRESS → PARTIALLY_CONFIRMED → CONFIRMED`, plus `FAILED` /
+(seed 006) is the booking operator (`booking:request:create` + `sales:order:read:all` to see the source Order +
+`booking:request:read:all` to work the list); the commercial **Manager** (001) also holds
+`booking:request:create` + `booking:request:read:all` (oversight); the **Board/Director** (004) holds
+`booking:request:read:all` (consultation); Sellers/Representatives and Finance/HR/IT have **no** booking read
+tier (they do not see reservations). The lifecycle (`PENDING → IN_PROGRESS → PARTIALLY_CONFIRMED → CONFIRMED`, plus `FAILED` /
 `CANCELLED`) and the **reflection of the booking status back onto the Commercial Order** are later slices; a
 **Confirmed** Booking Request may prepare the Order for **Financial Operations in Sprint 5**, but Finance is not
 implemented now.
@@ -574,20 +587,28 @@ feature-specific code MUST stay inside the feature.
   messages.
 - **UI & styling:** the component library owns component internals; Tailwind owns layout and
   custom widgets. All user-facing text goes through the i18n layer.
-- **Module-oriented navigation (normative):** a **single navigation config** (`core/navigation`,
-  `NavigationService`) is the source of truth for the sidebar, the system home and the per-module homes — the
-  three never drift. The **system home** (`/`) shows a **card per accessible module** (Comercial / CRM, Vendas,
-  Cadastros) leading to each **module home** (`/crm`, `/vendas`, `/cadastros`), which lists that module's
-  destinations as tiles. The **sidebar** renders each module as a **collapsible accordion section** (header
-  links to the module home; a chevron toggles, collapse state persisted in `localStorage`) so it scales as the
-  ERP grows. Visibility mirrors the backend authority; the backend stays the only guard. A new module/feature
-  is added in the nav config, which updates the sidebar + homes + command palette at once.
+- **Module-oriented navigation (normative) — organized by WORKFLOW, not by backend bounded context:** a
+  **single navigation config** (`core/navigation`, `NavigationService`) is the source of truth for the sidebar,
+  the system home and the per-module homes — the three never drift. The modules follow the **user's workflow**,
+  deliberately **not** mirroring the backend contexts: **Comercial** (`/comercial`) is the whole commercial
+  **funnel in order** — Leads · Oportunidades · Propostas · Pedidos (each destination gated by its read scope);
+  **Reservas** (`/reservas`) is the operations worklist (the booking list; a standalone module that grows with
+  Booking Operations); **Acompanhamento** (`/acompanhamento`) groups the cross-funnel monitoring as **two single
+  hubs** — `/pendencias` (the pending-items hub) and `/indicadores` (the indicators hub), each a **tabbed page
+  reusing the existing area screens** (Leads/Oportunidades/Propostas/Pedidos) and showing only the tabs the
+  profile may see; **Cadastros** (`/cadastros`) is the reference data. The **system home** (`/`) shows a card per
+  accessible module leading to its **module home** (tiles); the **sidebar** renders each module as a
+  **collapsible accordion section** (header links to the module home; a chevron toggles; only the active
+  module's section is open). Visibility mirrors the backend authority; the backend stays the only guard. A new
+  feature is added in the nav config (+ a hub tab when it is a pending/indicator view), which updates the sidebar
+  + homes + command palette at once.
 - **Keyboard access (normative, every feature):** every feature MUST be reachable by keyboard. The
   **command palette** (`Ctrl/Cmd+K`, in the shell) is the universal index and MUST list every route +
-  primary action; primary destinations get a `g`-leader shortcut (`g i/l/o/p/c`) and detail pages get
-  context keys (e.g. proposal: `i` add item, `e` edit details, `s` submit, `Esc` back). The `?` help
-  overlay is the single source of truth listing the current set. A new feature ships its palette entry
-  + shortcut as part of the Definition of Done (§3).
+  primary action; primary destinations get a `g`-leader shortcut (`g i/l/o/p/d/r/c` → início/leads/
+  oportunidades/propostas/pedidos/reservas/cadastros) and detail pages get context keys (e.g. proposal:
+  `i` add item, `e` edit details, `s` submit, `Esc` back). The `?` help overlay is the single source of
+  truth listing the current set. A new feature ships its palette entry + shortcut as part of the
+  Definition of Done (§3).
 - **Unsaved-changes protection (normative, every form/action):** leaving a form/edit with in-progress
   changes MUST warn before the data is lost — **including navigation via keyboard shortcuts**. Use the
   central `unsavedChangesGuard` (`CanDeactivate`, driven by the component's `hasUnsavedChanges()`) on
