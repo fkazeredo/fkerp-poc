@@ -519,7 +519,16 @@ creation/update instants (the latest-attempt field is reserved, null until the a
 view excludes the terminal `CONFIRMED` + `CANCELLED` requests but **keeps `FAILED` visible**; filters: status,
 operator (incl. unassigned), commercial responsible, creation period, source order, item type, has-failed-items.
 Only the `read:all` tier is seeded today; the own/unassigned tiers are defined in the policy for future operator
-profiles. A Booking Request **preserves** its source `commercialOrderId` (never
+profiles. The **single-record detail** (`GET /api/bookings/{id}`) is gated by the same read tiers and applies the
+same `BookingRequestAccessPolicy.canSee` check — **404** (`booking.not-found`) if the request is absent, **403**
+(`booking.access-denied`) if it is not visible. It is a read-only consultation showing the reservation summary,
+the source **Commercial Order / Proposal / Opportunity / Lead kept traceable**, the operational notes, and the
+**booking items with their per-item status** (the available confirmation/failure signal — a `CONFIRMED` item is
+shown confirmed, a `FAILED` item shown failed) plus the requiring/confirmed/failed counts; each item stays
+traceable to its source Order item (`orderItemId`). It carries **operational reservation data only — never
+Financial, Payment or Commission data**. The richer **manual-attempt log / confirmation reference / failure
+reason** are a later slice (the attempt/confirmation work, BOOK4‑005..007); today confirmation/failure are
+surfaced via the item status. A Booking Request **preserves** its source `commercialOrderId` (never
 modified), the source `proposalId` / `opportunityId` / `leadId` and the commercial `responsiblePersonId`, takes
 an optional `bookingOperatorId` (assignment is a later slice; validated when present, else
 `booking.operator-not-found`, **422**) and optional notes, snapshots the Order's items as **booking items**

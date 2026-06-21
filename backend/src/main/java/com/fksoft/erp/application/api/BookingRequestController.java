@@ -5,6 +5,7 @@ import com.fksoft.erp.application.api.dto.BookingRequestResponse;
 import com.fksoft.erp.application.api.dto.CreateBookingRequestRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.service.BookingRequestService;
+import com.fksoft.erp.domain.booking.service.data.BookingRequestDetail;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestListItem;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
 import com.fksoft.erp.infra.security.UserContextProvider;
@@ -21,6 +22,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -98,6 +100,20 @@ public class BookingRequestController {
                         canSeeAllBookings(),
                         canSeeUnassignedBookings()),
                 item -> item);
+    }
+
+    /**
+     * Full detail of a Booking Request the caller may see, with the source Commercial Order, Proposal,
+     * Opportunity and Lead kept traceable and each booking item carrying its status (the per-item
+     * confirmation/failure signal). The contract carries operational reservation data only — never Financial,
+     * Payment or Commission data.
+     *
+     * @param id the booking request id
+     * @return the Booking Request detail read model
+     */
+    @GetMapping("/{id}")
+    public BookingRequestDetail detail(@PathVariable UUID id) {
+        return bookingService.detail(id, userContext.currentUserId(), canSeeAllBookings(), canSeeUnassignedBookings());
     }
 
     // Source-order visibility for creation reuses the Order read tiers.

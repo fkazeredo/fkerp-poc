@@ -137,7 +137,7 @@
     <ng-template pTemplate="body" let-b>
       <tr>
         <td>
-          <a [routerLink]="['/pedidos', b.commercialOrderId]" class="order-link">
+          <a [routerLink]="['/reservas', b.id]" class="order-link">
             {{ orderCode(b.commercialOrderNumber) }}
           </a>
         </td>
