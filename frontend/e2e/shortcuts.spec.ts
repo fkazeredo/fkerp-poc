@@ -27,10 +27,15 @@ test('global keyboard shortcuts navigate the app', async ({ page }) => {
   await page.keyboard.press('o');
   await expect(page).toHaveURL(/\/oportunidades$/);
 
-  // g then p -> proposals (Vendas module)
+  // g then p -> proposals (Comercial funnel module)
   await page.keyboard.press('g');
   await page.keyboard.press('p');
   await expect(page).toHaveURL(/\/propostas$/);
+
+  // g then r -> reservations (Reservas module, Booking Operations)
+  await page.keyboard.press('g');
+  await page.keyboard.press('r');
+  await expect(page).toHaveURL(/\/reservas$/);
 });
 
 test('the command palette opens from the top bar', async ({ page }) => {

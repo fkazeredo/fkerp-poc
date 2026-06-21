@@ -1,15 +1,26 @@
 package com.fksoft.erp.application.api;
 
+import com.fksoft.erp.application.api.dto.BookingRequestListParams;
 import com.fksoft.erp.application.api.dto.BookingRequestResponse;
 import com.fksoft.erp.application.api.dto.CreateBookingRequestRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.service.BookingRequestService;
+import com.fksoft.erp.domain.booking.service.data.BookingRequestListItem;
+import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
 import com.fksoft.erp.infra.security.UserContextProvider;
+import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -49,6 +60,46 @@ public class BookingRequestController {
                 .body(new BookingRequestResponse(id, BookingRequestStatus.PENDING));
     }
 
+    /**
+     * Operational, paginated list of Booking Requests visible to the caller, with optional filters. The
+     * terminal CONFIRMED and CANCELLED requests are excluded unless the {@code status} filter includes them;
+     * FAILED stays visible by default. The contract carries operational reservation data only — never
+     * Financial, Payment or Commission data.
+     *
+     * @param params the optional filters (see {@link BookingRequestListParams})
+     * @param pageable page, size and sort (default: updatedAt desc, size 20)
+     * @return a page of Booking Request list items
+     */
+    @GetMapping
+    public PageResponse<BookingRequestListItem> list(
+            BookingRequestListParams params,
+            @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        boolean operatorUnassignedOnly = "unassigned".equalsIgnoreCase(params.operator());
+        UUID operatorId = (!operatorUnassignedOnly
+                        && params.operator() != null
+                        && !params.operator().isBlank())
+                ? UUID.fromString(params.operator())
+                : null;
+        BookingRequestSearchCriteria criteria = new BookingRequestSearchCriteria(
+                params.status(),
+                operatorId,
+                operatorUnassignedOnly,
+                params.responsible(),
+                toStartOfDayUtc(params.createdFrom()),
+                toStartOfDayUtc(params.createdTo() != null ? params.createdTo().plusDays(1) : null),
+                params.order(),
+                params.itemType(),
+                params.hasFailedItems());
+        return PageResponse.from(
+                bookingService.list(
+                        criteria,
+                        pageable,
+                        userContext.currentUserId(),
+                        canSeeAllBookings(),
+                        canSeeUnassignedBookings()),
+                item -> item);
+    }
+
     // Source-order visibility for creation reuses the Order read tiers.
     private boolean canSeeAllOrders() {
         return userContext.hasScope("sales:order:read:all");
@@ -56,5 +107,20 @@ public class BookingRequestController {
 
     private boolean canSeeUnassignedOrders() {
         return userContext.hasScope("sales:order:read:unassigned");
+    }
+
+    // Booking listing uses the Booking read tiers.
+    private boolean canSeeAllBookings() {
+        return userContext.hasScope("booking:request:read:all");
+    }
+
+    private boolean canSeeUnassignedBookings() {
+        return userContext.hasScope("booking:request:read:unassigned");
+    }
+
+    // The creation period is given as calendar dates; the column is an instant, so anchor at UTC midnight
+    // (the upper bound is pre-incremented by a day, making the range [from, to) exclusive).
+    private static Instant toStartOfDayUtc(LocalDate date) {
+        return date != null ? date.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
     }
 }

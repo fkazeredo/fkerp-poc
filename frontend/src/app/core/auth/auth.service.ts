@@ -131,6 +131,15 @@ export class AuthService {
       this.hasScope('sales:order:read:all')
     );
   }
+
+  /** Any Booking Request read tier (own / pool / all) grants access to the reservation list (Booking Operations). */
+  canSeeBookings(): boolean {
+    return (
+      this.hasScope('booking:request:read') ||
+      this.hasScope('booking:request:read:unassigned') ||
+      this.hasScope('booking:request:read:all')
+    );
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

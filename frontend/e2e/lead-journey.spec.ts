@@ -56,11 +56,12 @@ test('main journey: Instagram unassigned → manager assigns → seller WhatsApp
     phone: `119${Date.now()}${Math.floor(Math.random() * 1000)}`,
   });
 
-  // The manager finds it as a pending, unassigned lead. Open the Comercial / CRM module first (the
-  // accordion shows only the active module's sub-menu), then its pending worklist.
-  await page.locator('.sidebar').getByRole('link', { name: 'Comercial / CRM' }).click();
-  await expect(page).toHaveURL(/\/crm$/);
+  // The manager finds it as a pending, unassigned lead. Pendências now lives in the Acompanhamento module
+  // (the accordion shows only the active module's sub-menu), so open it first, then its pending worklist.
+  await page.locator('.sidebar').getByRole('link', { name: 'Acompanhamento' }).click();
+  await expect(page).toHaveURL(/\/acompanhamento$/);
   await page.locator('.sidebar').getByRole('link', { name: 'Pendências' }).click();
+  await expect(page).toHaveURL(/\/pendencias$/);
   await expect(page.getByRole('heading', { name: 'Pendências' })).toBeVisible();
   await expect(page.getByRole('link', { name })).toBeVisible();
 
