@@ -499,6 +499,32 @@ aggregate). **Submit for review** (`POST /api/proposals/{id}/submit`, gated by `
 mandatory only at the future *send* step (not enforced this slice). None of this creates Receivable, Payment,
 Booking, Commission, tax or margin data; the rest of the lifecycle (Approve/Send/Accept…) is a later slice.
 
+**Booking authorization model (normative — Booking Operations).** The **Booking Operations** bounded context
+lives in `domain.booking` (same layout as `domain.sales`) and owns the **Booking Request** (and, later, its
+items' attempts/confirmation and the operational booking history). It is a back-office, **still-manual**
+process — a Booking Request is **NOT** an external integration, a Receivable, a Payment, a Commission or
+Customer Care. Its scopes use the **`booking:`** prefix. Operation `booking:request:create` gates creating a
+Booking Request **from a Commercial Order that is `PENDING_BOOKING`** (`POST /api/bookings`); the creator must
+also be allowed to **see the source Order**, reusing the Order read tiers (`sales:order:read` / `:read:unassigned`
+/ `:read:all`) — a caller who cannot see it gets `order.access-denied` (**403**). The future read tiers
+`booking:request:read` (own only) → also `booking:request:read:unassigned` → `booking:request:read:all` arrive
+with the booking list/detail slice. A Booking Request **preserves** its source `commercialOrderId` (never
+modified), the source `proposalId` / `opportunityId` / `leadId` and the commercial `responsiblePersonId`, takes
+an optional `bookingOperatorId` (assignment is a later slice; validated when present, else
+`booking.operator-not-found`, **422**) and optional notes, snapshots the Order's items as **booking items**
+(type/description/quantity + a `requiresBooking` classification + an item status — **no monetary data**;
+`TRAVEL_PACKAGE`/`CAR_RENTAL` → require booking, the rest do not), and starts **`PENDING`**. A Commercial Order
+has **at most one active Booking Request** (the service returns a friendly **409** `booking.already-exists`; a
+partial unique index is the last-resort guard; a new request is allowed once the previous is `CANCELLED`).
+Creating a request creates **no** external reservation and **no** Receivable/Payment/Commission/Customer Care
+data, and never modifies the Order. **Persona → scopes (Sprint 4):** a new back-office **`operacoes`** user
+(seed 006) is the booking operator (`booking:request:create` + `sales:order:read:all` to see the source Order);
+the commercial **Manager** (001) also holds `booking:request:create` (oversight); everyone else has no booking
+scope for now. The lifecycle (`PENDING → IN_PROGRESS → PARTIALLY_CONFIRMED → CONFIRMED`, plus `FAILED` /
+`CANCELLED`) and the **reflection of the booking status back onto the Commercial Order** are later slices; a
+**Confirmed** Booking Request may prepare the Order for **Financial Operations in Sprint 5**, but Finance is not
+implemented now.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST
