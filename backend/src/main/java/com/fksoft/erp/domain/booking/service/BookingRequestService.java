@@ -5,19 +5,31 @@ import com.fksoft.erp.domain.booking.exception.BookingRequestAlreadyExistsExcept
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestCreated;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
+import com.fksoft.erp.domain.booking.repository.BookingItemCountsRow;
 import com.fksoft.erp.domain.booking.repository.BookingRequestRepository;
+import com.fksoft.erp.domain.booking.service.data.BookingRequestListItem;
+import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderNotFoundException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
+import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
+import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
 import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +48,8 @@ public class BookingRequestService {
     private final BookingRequestRepository bookingRequests;
     private final CommercialOrderRepository orders;
     private final OrderAccessPolicy orderAccessPolicy;
+    private final BookingRequestAccessPolicy accessPolicy;
+    private final ProposalRepository proposals;
     private final UserRepository users;
     private final ApplicationEventPublisher events;
 
@@ -98,5 +112,90 @@ public class BookingRequestService {
                 userId,
                 order.responsiblePersonId()));
         return request.id();
+    }
+
+    /**
+     * Operational, paginated Booking Request list, filtered by the given criteria and restricted to the
+     * caller's visibility. The terminal CONFIRMED and CANCELLED requests are excluded unless the status filter
+     * explicitly includes them; FAILED stays visible by default. Enriches each item with the source Order's
+     * number (the human identifier), the source Proposal's title (the commercial reference), the operator and
+     * commercial-responsible names, and the item counts (requiring booking / confirmed). Exposes operational
+     * reservation data only — never Financial, Payment or Commission data.
+     *
+     * @param criteria the optional filters
+     * @param pageable page, size and sort
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every request
+     * @param canSeeUnassigned whether the caller may also see the unassigned (no-operator) pool
+     * @return a page of Booking Request list items
+     */
+    @Transactional(readOnly = true)
+    public Page<BookingRequestListItem> list(
+            BookingRequestSearchCriteria criteria,
+            Pageable pageable,
+            UUID userId,
+            boolean canSeeAll,
+            boolean canSeeUnassigned) {
+        Specification<BookingRequest> spec = BookingRequestSpecifications.matching(criteria)
+                .and(accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned));
+        Page<BookingRequest> page = bookingRequests.findAll(spec, pageable);
+
+        Map<UUID, String> names = resolveNames(
+                page.getContent().stream().flatMap(r -> Stream.of(r.bookingOperatorId(), r.responsiblePersonId())));
+        Map<UUID, Long> orderNumbers =
+                resolveOrderNumbers(page.getContent().stream().map(BookingRequest::commercialOrderId));
+        Map<UUID, String> proposalTitles =
+                resolveProposalTitles(page.getContent().stream().map(BookingRequest::proposalId));
+        Map<UUID, long[]> itemCounts = resolveItemCounts(
+                page.getContent().stream().map(BookingRequest::id).toList());
+
+        return page.map(r -> {
+            long[] counts = itemCounts.getOrDefault(r.id(), EMPTY_COUNTS);
+            return BookingRequestListItem.from(
+                    r,
+                    orderNumbers.getOrDefault(r.commercialOrderId(), 0L),
+                    proposalTitles.get(r.proposalId()),
+                    nameOf(names, r.bookingOperatorId()),
+                    nameOf(names, r.responsiblePersonId()),
+                    counts[0],
+                    counts[1]);
+        });
+    }
+
+    private static final long[] EMPTY_COUNTS = {0L, 0L};
+
+    private Map<UUID, String> resolveNames(Stream<UUID> ids) {
+        Set<UUID> set = ids.filter(Objects::nonNull).collect(Collectors.toSet());
+        return set.isEmpty()
+                ? Map.of()
+                : users.findAllById(set).stream().collect(Collectors.toMap(User::id, User::username));
+    }
+
+    private Map<UUID, Long> resolveOrderNumbers(Stream<UUID> ids) {
+        Set<UUID> set = ids.filter(Objects::nonNull).collect(Collectors.toSet());
+        return set.isEmpty()
+                ? Map.of()
+                : orders.findAllById(set).stream()
+                        .collect(Collectors.toMap(CommercialOrder::id, CommercialOrder::number));
+    }
+
+    private Map<UUID, String> resolveProposalTitles(Stream<UUID> ids) {
+        Set<UUID> set = ids.filter(Objects::nonNull).collect(Collectors.toSet());
+        return set.isEmpty()
+                ? Map.of()
+                : proposals.findAllById(set).stream().collect(Collectors.toMap(Proposal::id, Proposal::title));
+    }
+
+    private Map<UUID, long[]> resolveItemCounts(java.util.List<UUID> ids) {
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return bookingRequests.findItemCounts(ids).stream()
+                .collect(Collectors.toMap(BookingItemCountsRow::getBookingRequestId, row ->
+                        new long[] {row.getRequiring(), row.getConfirmed()}));
+    }
+
+    private static String nameOf(Map<UUID, String> names, UUID id) {
+        return id == null ? null : names.get(id);
     }
 }

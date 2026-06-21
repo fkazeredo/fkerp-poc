@@ -6,16 +6,16 @@ import { NavigationService, NavModule } from '../../core/navigation/navigation';
 describe('ModuleHome', () => {
   const nav = { module: vi.fn() };
 
-  const crm: NavModule = {
-    id: 'crm',
-    title: 'Comercial / CRM',
+  const comercial: NavModule = {
+    id: 'comercial',
+    title: 'Comercial',
     icon: 'pi pi-briefcase',
     accent: 'leads',
-    home: '/crm',
-    desc: 'Leads e oportunidades.',
+    home: '/comercial',
+    desc: 'O funil comercial.',
     items: [
       { label: 'Leads', icon: 'pi pi-list', link: '/leads', exact: false, desc: 'lista', accent: 'leads' },
-      { label: 'Indicadores', icon: 'pi pi-chart-bar', link: '/indicadores', exact: true, desc: 'kpi', accent: 'indicators' },
+      { label: 'Pedidos', icon: 'pi pi-shopping-bag', link: '/pedidos', exact: false, desc: 'pedidos', accent: 'sales' },
     ],
     actions: [
       { label: 'Novo lead', icon: 'pi pi-user-plus', link: '/leads/new', exact: false, desc: 'novo', accent: 'new' },
@@ -38,15 +38,15 @@ describe('ModuleHome', () => {
   }
 
   it('renders the module title and a tile per item and action, linking to each destination', () => {
-    const el = render('crm', crm);
-    expect(el.querySelector('h1')?.textContent).toContain('Comercial / CRM');
+    const el = render('comercial', comercial);
+    expect(el.querySelector('h1')?.textContent).toContain('Comercial');
     const links = Array.from(el.querySelectorAll('a.tile')).map((a) => a.getAttribute('href'));
-    expect(links).toEqual(['/leads', '/indicadores', '/leads/new']); // items first, then actions
+    expect(links).toEqual(['/leads', '/pedidos', '/leads/new']); // items first, then actions
     expect(el.textContent).toContain('Novo lead');
   });
 
   it('shows a no-access notice when the module is not visible to the user', () => {
-    const el = render('vendas', undefined);
+    const el = render('reservas', undefined);
     expect(el.querySelectorAll('a.tile')).toHaveLength(0);
     expect(el.querySelector('.notice')?.textContent).toContain('não tem acesso');
   });

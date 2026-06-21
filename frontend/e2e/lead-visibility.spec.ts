@@ -43,8 +43,8 @@ test('a director consults a lead read-only — no actions, no Novo lead', async 
 test('a finance user has no access to the Lead module', async ({ page }) => {
   await login(page, 'financeiro', 'financeiro123');
 
-  // No Comercial / CRM module: no module card on the home and no Leads link in the sidebar.
-  await expect(page.getByRole('link', { name: 'Comercial / CRM' })).toHaveCount(0);
+  // No Comercial module: no module card on the home and no Leads link in the sidebar.
+  await expect(page.getByRole('link', { name: 'Comercial', exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Leads' })).toHaveCount(0);
 
   // Navigating to /leads is blocked by the guard (redirected back to the system home).

@@ -1,0 +1,34 @@
+@if (tabs().length === 0) {
+  <header class="page-head">
+    <div>
+      <h1>Pendências</h1>
+      <p class="sub muted">Você não tem acesso a pendências.</p>
+    </div>
+  </header>
+} @else {
+  <div class="hub-tabs" role="tablist" aria-label="Pendências">
+    @for (tab of tabs(); track tab.key) {
+      <button
+        type="button"
+        role="tab"
+        class="hub-tab"
+        [class.active]="active() === tab.key"
+        [attr.aria-selected]="active() === tab.key"
+        (click)="select(tab.key)"
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+
+  <div class="hub-body">
+    @switch (active()) {
+      @case ('leads') {
+        <app-lead-pending />
+      }
+      @case ('oportunidades') {
+        <app-opportunity-pending />
+      }
+    }
+  </div>
+}

@@ -16,6 +16,7 @@ describe('Shell keyboard shortcuts', () => {
     canSeeOpportunities: vi.fn(() => false),
     canSeeProposals: vi.fn(() => false),
     canSeeOrders: vi.fn(() => false),
+    canSeeBookings: vi.fn(() => false),
   };
 
   function build(): Shell {
@@ -73,6 +74,13 @@ describe('Shell keyboard shortcuts', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/propostas');
   });
 
+  it('navigates to the Reservas list on "g" then "r"', () => {
+    const shell = build();
+    shell['onKeydown'](key({ key: 'g' }));
+    shell['onKeydown'](key({ key: 'r' }));
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/reservas');
+  });
+
   it('navigates to the Cadastros module home on "g" then "c"', () => {
     const shell = build();
     shell['onKeydown'](key({ key: 'g' }));
@@ -89,28 +97,29 @@ describe('Shell keyboard shortcuts', () => {
   it('opens one module sub-menu at a time (accordion); the others stay collapsed', () => {
     const shell = build();
     // No module is active on the system home, so the menu starts compact (nothing open).
-    expect(shell['isOpen']('crm')).toBe(false);
-    expect(shell['isOpen']('vendas')).toBe(false);
+    expect(shell['isOpen']('comercial')).toBe(false);
+    expect(shell['isOpen']('reservas')).toBe(false);
 
-    shell['toggleSection']('crm');
-    expect(shell['isOpen']('crm')).toBe(true);
+    shell['toggleSection']('comercial');
+    expect(shell['isOpen']('comercial')).toBe(true);
 
     // Opening another closes the first (only one sub-menu open at a time = short menu).
-    shell['toggleSection']('vendas');
-    expect(shell['isOpen']('vendas')).toBe(true);
-    expect(shell['isOpen']('crm')).toBe(false);
+    shell['toggleSection']('reservas');
+    expect(shell['isOpen']('reservas')).toBe(true);
+    expect(shell['isOpen']('comercial')).toBe(false);
 
     // Toggling the open one closes it.
-    shell['toggleSection']('vendas');
-    expect(shell['isOpen']('vendas')).toBe(false);
+    shell['toggleSection']('reservas');
+    expect(shell['isOpen']('reservas')).toBe(false);
   });
 
   it('auto-opens the module matching the current route so the menu shows where you are', () => {
     auth.canSeeProposals.mockReturnValue(true);
     router.url = '/propostas/p1' as never;
     const shell = build();
-    expect(shell['isOpen']('vendas')).toBe(true);
-    expect(shell['isOpen']('crm')).toBe(false);
+    // Propostas now live in the Comercial funnel module.
+    expect(shell['isOpen']('comercial')).toBe(true);
+    expect(shell['isOpen']('cadastros')).toBe(false);
     router.url = '/' as never;
     auth.canSeeProposals.mockReturnValue(false);
   });
@@ -127,14 +136,21 @@ describe('Shell keyboard shortcuts', () => {
   it('derives the command palette from the navigation config plus the global actions', () => {
     auth.canSeeProposals.mockReturnValue(true);
     const labels = build()['commands'].map((c) => c.label);
-    // Always: Início + the global actions; Vendas (proposals visible) + Cadastros (always).
+    // Always: Início + the global actions; Comercial (proposals visible) + Cadastros (always).
     expect(labels).toContain('Início');
-    expect(labels).toContain('Vendas');
+    expect(labels).toContain('Comercial');
     expect(labels).toContain('Propostas');
     expect(labels).toContain('Cadastros');
     expect(labels).toContain('Sair');
     expect(labels).not.toContain('Leads'); // no lead access in this build
     auth.canSeeProposals.mockReturnValue(false);
+  });
+
+  it('lists the Reservas destination in the command palette when bookings are visible', () => {
+    auth.canSeeBookings.mockReturnValue(true);
+    const labels = build()['commands'].map((c) => c.label);
+    expect(labels).toContain('Reservas');
+    auth.canSeeBookings.mockReturnValue(false);
   });
 
   it('runs a command and closes the palette', () => {
@@ -199,10 +215,10 @@ describe('Shell keyboard shortcuts', () => {
       expect(el.textContent).toContain('FKERP');
       expect(el.textContent).toContain('Início');
       // Module HEADERS are always shown (short menu); their sub-menus are collapsed on the system home.
-      expect(el.textContent).toContain('Vendas'); // proposals visible
+      expect(el.textContent).toContain('Comercial'); // proposals visible → funnel module shown
       expect(el.textContent).toContain('Cadastros'); // always present
       expect(el.querySelectorAll('.nav-section-items.collapsed').length).toBeGreaterThan(0);
-      // CRM module hidden (no lead/opportunity scopes in this build).
+      // No lead/opportunity scopes in this build → the Leads destination is not shown.
       expect(el.textContent).not.toContain('Leads');
       auth.canSeeProposals.mockReturnValue(false);
     });

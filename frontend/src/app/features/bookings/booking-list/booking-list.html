@@ -1,0 +1,166 @@
+<header class="page-head">
+  <div>
+    <h1>Reservas</h1>
+    <p class="sub muted">As solicitações de reserva a operar — a partir dos pedidos fechados.</p>
+  </div>
+</header>
+
+<div class="filters surface pad">
+  <div class="filter">
+    <label>Status</label>
+    <p-multiSelect
+      [options]="statusOptions"
+      optionLabel="label"
+      optionValue="value"
+      [(ngModel)]="status"
+      (ngModelChange)="applyFilters()"
+      placeholder="Ativas"
+      [showClear]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Operador</label>
+    <p-select
+      [options]="operatorOptions()"
+      optionLabel="name"
+      optionValue="id"
+      [(ngModel)]="operator"
+      (ngModelChange)="applyFilters()"
+      placeholder="Todos"
+      [showClear]="true"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Responsável comercial</label>
+    <p-select
+      [options]="responsibleOptions()"
+      optionLabel="name"
+      optionValue="id"
+      [(ngModel)]="responsible"
+      (ngModelChange)="applyFilters()"
+      placeholder="Todos"
+      [showClear]="true"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Tipo de item</label>
+    <p-select
+      [options]="itemTypeOptions"
+      optionLabel="label"
+      optionValue="value"
+      [(ngModel)]="itemType"
+      (ngModelChange)="applyFilters()"
+      placeholder="Qualquer"
+      [showClear]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Criado de</label>
+    <p-datepicker
+      [(ngModel)]="createdFrom"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Criado até</label>
+    <p-datepicker
+      [(ngModel)]="createdTo"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter filter-toggle">
+    <label for="hasFailed">Com falhas</label>
+    <p-toggleswitch
+      inputId="hasFailed"
+      [(ngModel)]="hasFailedItems"
+      (ngModelChange)="applyFilters()"
+    />
+  </div>
+  <p-button
+    label="Limpar"
+    icon="pi pi-filter-slash"
+    severity="secondary"
+    [text]="true"
+    size="small"
+    (onClick)="clearFilters()"
+  />
+</div>
+
+@if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+}
+
+<div class="surface table-wrap">
+  <p-table
+    [value]="items()"
+    [lazy]="true"
+    (onLazyLoad)="onLazyLoad($event)"
+    [paginator]="true"
+    [rows]="rows"
+    [totalRecords]="total()"
+    [first]="firstRow"
+    [loading]="loading()"
+    styleClass="p-datatable-sm"
+    [tableStyle]="{ 'min-width': '70rem' }"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Pedido</th>
+        <th>Proposta</th>
+        <th>Status</th>
+        <th>Operador</th>
+        <th>Responsável</th>
+        <th class="num">Itens p/ reservar</th>
+        <th class="num">Confirmados</th>
+        <th>Criado em</th>
+        <th>Atualizado em</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-b>
+      <tr>
+        <td>
+          <a [routerLink]="['/pedidos', b.commercialOrderId]" class="order-link">
+            {{ orderCode(b.commercialOrderNumber) }}
+          </a>
+        </td>
+        <td>{{ b.proposalTitle ?? '—' }}</td>
+        <td><p-tag [value]="statusLabel(b.status)" [severity]="statusSeverity(b.status)" /></td>
+        <td>
+          @if (b.operatorUnassigned) {
+            <span class="unassigned">Sem operador</span>
+          } @else {
+            {{ b.bookingOperatorName ?? '—' }}
+          }
+        </td>
+        <td>{{ b.responsibleName ?? '—' }}</td>
+        <td class="num">{{ b.itemsRequiringBooking }}</td>
+        <td class="num">{{ b.confirmedItems }}</td>
+        <td>{{ b.createdAt | date: 'short' }}</td>
+        <td>{{ b.updatedAt | date: 'short' }}</td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="9" class="muted empty">Nenhuma reserva ainda.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

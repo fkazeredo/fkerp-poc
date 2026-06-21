@@ -21,13 +21,14 @@ test('the indicators page shows the top-of-funnel after a lead is created', asyn
   await page.getByRole('button', { name: 'Salvar lead' }).click();
   await expect(page.getByText('Lead criado')).toBeVisible();
 
-  // Open Indicadores (Leads) from the sidebar. Only the active module's sub-menu is shown (accordion),
-  // and after creating a lead we are on the system home — so open the Comercial / CRM module first
-  // (deterministically expands it), then match the link by href (unambiguous next to
-  // "Indicadores de oportunidades").
-  await page.locator('.sidebar').getByRole('link', { name: 'Comercial / CRM' }).click();
-  await expect(page).toHaveURL(/\/crm$/);
+  // Open the Indicadores hub from the Acompanhamento module. Only the active module's sub-menu is shown
+  // (accordion), and after creating a lead we are on the system home — so open the Acompanhamento module
+  // first (deterministically expands it), then its Indicadores hub. The hub defaults to the first visible
+  // tab (Leads for the manager), which renders the top-of-funnel lead indicators.
+  await page.locator('.sidebar').getByRole('link', { name: 'Acompanhamento' }).click();
+  await expect(page).toHaveURL(/\/acompanhamento$/);
   await page.locator('.sidebar a[href="/indicadores"]').click();
+  await expect(page).toHaveURL(/\/indicadores$/);
   await expect(page.getByRole('heading', { name: 'Indicadores', exact: true })).toBeVisible();
 
   // The KPI cards render with numbers; Total is at least 1 (the lead we just created).

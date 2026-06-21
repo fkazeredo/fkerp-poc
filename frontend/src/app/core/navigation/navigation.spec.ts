@@ -9,6 +9,7 @@ describe('NavigationService', () => {
     canSeeOpportunities: vi.fn(),
     canSeeProposals: vi.fn(),
     canSeeOrders: vi.fn(),
+    canSeeBookings: vi.fn(),
   };
 
   function build(): NavigationService {
@@ -27,84 +28,87 @@ describe('NavigationService', () => {
     auth.canSeeOpportunities.mockReset().mockReturnValue(false);
     auth.canSeeProposals.mockReset().mockReturnValue(false);
     auth.canSeeOrders.mockReset().mockReturnValue(false);
+    auth.canSeeBookings.mockReset().mockReturnValue(false);
   });
 
   it('shows only the modules the user can access', () => {
     auth.canSeeProposals.mockReturnValue(true);
     const nav = build();
     const ids = nav.modules().map((m) => m.id);
-    // Cadastros is always available; Vendas because proposals are visible; CRM hidden (no lead/opp access).
-    expect(ids).toEqual(['vendas', 'cadastros']);
+    // Cadastros is always available; Comercial because proposals are visible; Acompanhamento because the
+    // indicators hub spans proposals; Reservas hidden (no booking access).
+    expect(ids).toEqual(['comercial', 'acompanhamento', 'cadastros']);
   });
 
-  it('hides every module when the user has no access at all', () => {
+  it('hides every funnel module when the user has no access at all', () => {
     const nav = build();
-    // Cadastros has fixed items, so it always survives; CRM and Vendas are gone.
+    // Cadastros has fixed items, so it always survives; the funnel modules are gone.
     expect(nav.modules().map((m) => m.id)).toEqual(['cadastros']);
   });
 
-  it('builds the CRM module from the lead and opportunity scopes independently', () => {
+  it('builds the Comercial module funnel from each read scope independently, in order', () => {
     auth.canSeeLeads.mockReturnValue(true);
-    const nav = build();
-    const crm = nav.module('crm');
-    expect(crm).toBeDefined();
-    const links = crm!.items.map((i) => i.link);
-    expect(links).toContain('/leads');
-    expect(links).not.toContain('/oportunidades'); // no opportunity scope yet
+    let comercial = build().module('comercial')!;
+    expect(comercial.items.map((i) => i.link)).toEqual(['/leads']);
 
     auth.canSeeOpportunities.mockReturnValue(true);
-    const nav2 = build();
-    expect(nav2.module('crm')!.items.map((i) => i.link)).toContain('/oportunidades');
+    auth.canSeeProposals.mockReturnValue(true);
+    auth.canSeeOrders.mockReturnValue(true);
+    comercial = build().module('comercial')!;
+    expect(comercial.items.map((i) => i.link)).toEqual([
+      '/leads',
+      '/oportunidades',
+      '/propostas',
+      '/pedidos',
+    ]);
   });
 
   it('exposes "Novo lead" only as an action (home tile), not a sidebar item, and only with create scope', () => {
     auth.canSeeLeads.mockReturnValue(true);
     auth.canCreateLead.mockReturnValue(true);
-    const crm = build().module('crm')!;
-    expect(crm.items.map((i) => i.link)).not.toContain('/leads/new');
-    expect(crm.actions.map((a) => a.link)).toContain('/leads/new');
+    const comercial = build().module('comercial')!;
+    expect(comercial.items.map((i) => i.link)).not.toContain('/leads/new');
+    expect(comercial.actions.map((a) => a.link)).toContain('/leads/new');
 
     auth.canCreateLead.mockReturnValue(false);
-    expect(build().module('crm')!.actions).toHaveLength(0);
+    expect(build().module('comercial')!.actions).toHaveLength(0);
+  });
+
+  it('shows the Reservas module only when the user can see bookings', () => {
+    auth.canSeeBookings.mockReturnValue(false);
+    expect(build().module('reservas')).toBeUndefined();
+
+    auth.canSeeBookings.mockReturnValue(true);
+    const reservas = build().module('reservas')!;
+    expect(reservas.home).toBe('/reservas');
+    expect(reservas.items.map((i) => i.link)).toEqual(['/reservas']);
+  });
+
+  it('builds the Acompanhamento hubs: pendencias from CRM scopes, indicadores from any funnel scope', () => {
+    // Only orders visible → no pendencias (CRM-only), but indicadores appears (spans orders).
+    auth.canSeeOrders.mockReturnValue(true);
+    let acomp = build().module('acompanhamento')!;
+    expect(acomp.items.map((i) => i.link)).toEqual(['/indicadores']);
+
+    // Leads visible → pendencias appears too.
+    auth.canSeeLeads.mockReturnValue(true);
+    acomp = build().module('acompanhamento')!;
+    expect(acomp.items.map((i) => i.link)).toEqual(['/pendencias', '/indicadores']);
   });
 
   it('every module points at its own home route', () => {
     auth.canSeeLeads.mockReturnValue(true);
-    auth.canSeeProposals.mockReturnValue(true);
+    auth.canSeeBookings.mockReturnValue(true);
     const homes = Object.fromEntries(build().modules().map((m) => [m.id, m.home]));
-    expect(homes['crm']).toBe('/crm');
-    expect(homes['vendas']).toBe('/vendas');
+    expect(homes['comercial']).toBe('/comercial');
+    expect(homes['reservas']).toBe('/reservas');
+    expect(homes['acompanhamento']).toBe('/acompanhamento');
     expect(homes['cadastros']).toBe('/cadastros');
   });
 
   it('returns undefined for a module the user cannot see', () => {
-    const nav = build(); // no proposal access
-    expect(nav.module('vendas')).toBeUndefined();
-  });
-
-  it('shows the Pedidos destination in Vendas only when the user can see orders', () => {
-    auth.canSeeProposals.mockReturnValue(true);
-    auth.canSeeOrders.mockReturnValue(false);
-    expect(build().module('vendas')!.items.map((i) => i.label)).not.toContain('Pedidos');
-
-    auth.canSeeOrders.mockReturnValue(true);
-    const vendas = build().module('vendas')!;
-    const pedidos = vendas.items.find((i) => i.label === 'Pedidos');
-    expect(pedidos?.link).toBe('/pedidos');
-  });
-
-  it('adds the sales indicators destinations alongside their list, each gated by its read scope', () => {
-    // Proposals visible, orders hidden → only the proposal indicators destination appears.
-    auth.canSeeProposals.mockReturnValue(true);
-    auth.canSeeOrders.mockReturnValue(false);
-    let links = build().module('vendas')!.items.map((i) => i.link);
-    expect(links).toContain('/propostas/indicadores');
-    expect(links).not.toContain('/pedidos/indicadores');
-
-    // Orders also visible → both indicators destinations appear.
-    auth.canSeeOrders.mockReturnValue(true);
-    links = build().module('vendas')!.items.map((i) => i.link);
-    expect(links).toContain('/propostas/indicadores');
-    expect(links).toContain('/pedidos/indicadores');
+    const nav = build(); // no funnel access
+    expect(nav.module('comercial')).toBeUndefined();
+    expect(nav.module('reservas')).toBeUndefined();
   });
 });

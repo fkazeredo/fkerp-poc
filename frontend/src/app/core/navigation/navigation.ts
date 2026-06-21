@@ -53,39 +53,60 @@ export class NavigationService {
   }
 
   private allModules(): NavModule[] {
-    const crm: NavLink[] = [];
-    const crmActions: NavLink[] = [];
+    // Comercial: the whole sales funnel in order (Lead → Oportunidade → Proposta → Pedido), each step gated.
+    const comercial: NavLink[] = [];
+    const comercialActions: NavLink[] = [];
     if (this.auth.canSeeLeads()) {
-      crm.push(
-        link('Leads', 'pi pi-list', '/leads', false, 'Veja, busque e filtre os leads que você pode trabalhar.', 'leads'),
-        link('Pendências', 'pi pi-flag', '/pendencias', true, 'Leads que precisam de ação para não perder oportunidades.', 'pending'),
-        link('Indicadores', 'pi pi-chart-bar', '/indicadores', true, 'O topo do funil: total, por status, origem e responsável.', 'indicators'),
-      );
-    }
-    if (this.auth.canCreateLead()) {
-      crmActions.push(
-        link('Novo lead', 'pi pi-user-plus', '/leads/new', false, 'Registre um novo interessado e a primeira anotação.', 'new'),
+      comercial.push(
+        link('Leads', 'pi pi-list', '/leads', false, 'O topo do funil: interessados a trabalhar.', 'leads'),
       );
     }
     if (this.auth.canSeeOpportunities()) {
-      crm.push(
-        link('Oportunidades', 'pi pi-briefcase', '/oportunidades', false, 'O funil comercial: negociações em andamento.', 'leads'),
-        link('Oportunidades pendentes', 'pi pi-flag', '/oportunidades/pendencias', true, 'Oportunidades que precisam de ação.', 'pending'),
-        link('Indicadores de oportunidades', 'pi pi-chart-bar', '/oportunidades/indicadores', true, 'Volume e pipeline comercial.', 'indicators'),
+      comercial.push(
+        link('Oportunidades', 'pi pi-briefcase', '/oportunidades', false, 'As negociações em andamento.', 'leads'),
       );
     }
-
-    const sales: NavLink[] = [];
     if (this.auth.canSeeProposals()) {
-      sales.push(
-        link('Propostas', 'pi pi-file-edit', '/propostas', false, 'As propostas comerciais — formalize a oferta ao cliente.', 'sales'),
-        link('Indicadores de propostas', 'pi pi-chart-bar', '/propostas/indicadores', true, 'Volume e fluxo das propostas.', 'indicators'),
+      comercial.push(
+        link('Propostas', 'pi pi-file-edit', '/propostas', false, 'A oferta formal ao cliente.', 'sales'),
       );
     }
     if (this.auth.canSeeOrders()) {
-      sales.push(
-        link('Pedidos', 'pi pi-shopping-bag', '/pedidos', false, 'Os pedidos comerciais — acompanhe os negócios fechados.', 'sales'),
-        link('Indicadores de pedidos', 'pi pi-chart-bar', '/pedidos/indicadores', true, 'Pedidos fechados e pendentes de reserva.', 'indicators'),
+      comercial.push(
+        link('Pedidos', 'pi pi-shopping-bag', '/pedidos', false, 'Os negócios fechados.', 'sales'),
+      );
+    }
+    if (this.auth.canCreateLead()) {
+      comercialActions.push(
+        link('Novo lead', 'pi pi-user-plus', '/leads/new', false, 'Registre um novo interessado e a primeira anotação.', 'new'),
+      );
+    }
+
+    // Reservas: the operational reservation worklist. A one-item module today (home is the list itself); it
+    // grows with the booking detail/attempt slices.
+    const reservas: NavLink[] = [];
+    if (this.auth.canSeeBookings()) {
+      reservas.push(
+        link('Reservas', 'pi pi-bookmark', '/reservas', false, 'As solicitações de reserva a operar.', 'sales'),
+      );
+    }
+
+    // Acompanhamento: the cross-funnel monitoring hubs — one place for all the pending-items lists and one for
+    // all the indicators (each is a tabbed hub gated per profile).
+    const acompanhamento: NavLink[] = [];
+    if (this.auth.canSeeLeads() || this.auth.canSeeOpportunities()) {
+      acompanhamento.push(
+        link('Pendências', 'pi pi-flag', '/pendencias', false, 'O que precisa de ação para não perder negócios.', 'pending'),
+      );
+    }
+    if (
+      this.auth.canSeeLeads() ||
+      this.auth.canSeeOpportunities() ||
+      this.auth.canSeeProposals() ||
+      this.auth.canSeeOrders()
+    ) {
+      acompanhamento.push(
+        link('Indicadores', 'pi pi-chart-bar', '/indicadores', false, 'Os números do funil, num lugar só.', 'indicators'),
       );
     }
 
@@ -97,8 +118,9 @@ export class NavigationService {
     ];
 
     return [
-      module('crm', 'Comercial / CRM', 'pi pi-briefcase', 'leads', '/crm', 'Leads e oportunidades da equipe comercial.', crm, crmActions),
-      module('vendas', 'Vendas', 'pi pi-shopping-cart', 'sales', '/vendas', 'Propostas comerciais.', sales, []),
+      module('comercial', 'Comercial', 'pi pi-briefcase', 'leads', '/comercial', 'O funil comercial: leads, oportunidades, propostas e pedidos.', comercial, comercialActions),
+      module('reservas', 'Reservas', 'pi pi-bookmark', 'sales', '/reservas', 'As reservas a operar a partir dos pedidos fechados.', reservas, []),
+      module('acompanhamento', 'Acompanhamento', 'pi pi-chart-bar', 'indicators', '/acompanhamento', 'Pendências e indicadores de todo o funil.', acompanhamento, []),
       module('cadastros', 'Cadastros', 'pi pi-database', 'ref', '/cadastros', 'As listas que alimentam os fluxos.', cadastros, []),
     ];
   }
