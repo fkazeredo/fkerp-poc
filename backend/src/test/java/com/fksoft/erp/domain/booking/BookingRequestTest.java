@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.fksoft.erp.domain.booking.exception.BookingItemNotMarkableException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
 import com.fksoft.erp.domain.booking.model.BookingItem;
 import com.fksoft.erp.domain.booking.model.BookingItemStatus;
@@ -21,6 +22,7 @@ import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -37,7 +39,8 @@ class BookingRequestTest {
     void createsFromPendingBookingOrderPreservingRefsAndClassifyingItems() {
         CommercialOrder order = pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE, ProposalItemType.SERVICE_FEE);
 
-        BookingRequest request = BookingRequest.createFromOrder(order, OPERATOR, "Reservar com urgência", CREATOR);
+        BookingRequest request =
+                BookingRequest.createFromOrder(order, OPERATOR, "Reservar com urgência", Set.of(), CREATOR);
 
         assertThat(request.status()).isEqualTo(BookingRequestStatus.PENDING);
         assertThat(request.commercialOrderId()).isEqualTo(order.id());
@@ -49,20 +52,58 @@ class BookingRequestTest {
         assertThat(request.notes()).isEqualTo("Reservar com urgência");
         assertThat(request.createdBy()).isEqualTo(CREATOR);
 
-        // All order items become booking items, classified by booking need.
+        // Each order item becomes a booking item, classified by booking need, preserving the source line.
         assertThat(request.items()).hasSize(2);
         BookingItem pkg = itemOfType(request, ProposalItemType.TRAVEL_PACKAGE);
         assertThat(pkg.requiresBooking()).isTrue();
         assertThat(pkg.status()).isEqualTo(BookingItemStatus.PENDING);
+        assertThat(pkg.orderItemId()).isEqualTo(orderItemId(order, ProposalItemType.TRAVEL_PACKAGE));
+        assertThat(pkg.description()).isEqualTo("linha");
         BookingItem fee = itemOfType(request, ProposalItemType.SERVICE_FEE);
         assertThat(fee.requiresBooking()).isFalse();
         assertThat(fee.status()).isEqualTo(BookingItemStatus.NOT_REQUIRED);
     }
 
     @Test
+    void otherItemRequiresBookingOnlyWhenExplicitlyMarked() {
+        CommercialOrder order = pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE, ProposalItemType.OTHER);
+        UUID otherId = orderItemId(order, ProposalItemType.OTHER);
+
+        // Not marked → NOT_REQUIRED.
+        BookingRequest unmarked = BookingRequest.createFromOrder(order, null, null, Set.of(), CREATOR);
+        assertThat(itemOfType(unmarked, ProposalItemType.OTHER).requiresBooking())
+                .isFalse();
+        assertThat(itemOfType(unmarked, ProposalItemType.OTHER).status()).isEqualTo(BookingItemStatus.NOT_REQUIRED);
+
+        // Explicitly marked → PENDING; the travel package still requires booking regardless.
+        BookingRequest marked = BookingRequest.createFromOrder(order, null, null, Set.of(otherId), CREATOR);
+        assertThat(itemOfType(marked, ProposalItemType.OTHER).requiresBooking()).isTrue();
+        assertThat(itemOfType(marked, ProposalItemType.OTHER).status()).isEqualTo(BookingItemStatus.PENDING);
+        assertThat(itemOfType(marked, ProposalItemType.TRAVEL_PACKAGE).requiresBooking())
+                .isTrue();
+    }
+
+    @Test
+    void rejectsMarkingANonOtherItem() {
+        CommercialOrder order = pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE, ProposalItemType.SERVICE_FEE);
+        UUID serviceFeeId = orderItemId(order, ProposalItemType.SERVICE_FEE);
+
+        assertThatThrownBy(() -> BookingRequest.createFromOrder(order, null, null, Set.of(serviceFeeId), CREATOR))
+                .isInstanceOf(BookingItemNotMarkableException.class);
+    }
+
+    @Test
+    void rejectsMarkingAnIdNotInTheOrder() {
+        CommercialOrder order = pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE);
+
+        assertThatThrownBy(() -> BookingRequest.createFromOrder(order, null, null, Set.of(UUID.randomUUID()), CREATOR))
+                .isInstanceOf(BookingItemNotMarkableException.class);
+    }
+
+    @Test
     void acceptsNullOperatorAndNotes() {
-        BookingRequest request =
-                BookingRequest.createFromOrder(pendingBookingOrder(ProposalItemType.CAR_RENTAL), null, null, CREATOR);
+        BookingRequest request = BookingRequest.createFromOrder(
+                pendingBookingOrder(ProposalItemType.CAR_RENTAL), null, null, Set.of(), CREATOR);
 
         assertThat(request.bookingOperatorId()).isNull();
         assertThat(request.notes()).isNull();
@@ -75,7 +116,7 @@ class BookingRequestTest {
                 pendingBookingOrderRaw(ProposalItemType.SERVICE_FEE, ProposalItemType.OTHER); // BOOKING_NOT_REQUIRED
         assertThat(notRequired.status()).isEqualTo(CommercialOrderStatus.BOOKING_NOT_REQUIRED);
 
-        assertThatThrownBy(() -> BookingRequest.createFromOrder(notRequired, null, null, CREATOR))
+        assertThatThrownBy(() -> BookingRequest.createFromOrder(notRequired, null, null, Set.of(), CREATOR))
                 .isInstanceOf(CommercialOrderNotPendingBookingException.class);
     }
 
@@ -99,6 +140,14 @@ class BookingRequestTest {
                 .filter(i -> i.type() == type)
                 .findFirst()
                 .orElseThrow();
+    }
+
+    private static UUID orderItemId(CommercialOrder order, ProposalItemType type) {
+        return order.items().stream()
+                .filter(i -> i.type() == type)
+                .findFirst()
+                .orElseThrow()
+                .id();
     }
 
     private CommercialOrder pendingBookingOrder(ProposalItemType... types) {
