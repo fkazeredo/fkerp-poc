@@ -513,7 +513,10 @@ modified), the source `proposalId` / `opportunityId` / `leadId` and the commerci
 an optional `bookingOperatorId` (assignment is a later slice; validated when present, else
 `booking.operator-not-found`, **422**) and optional notes, snapshots the Order's items as **booking items**
 (type/description/quantity + a `requiresBooking` classification + an item status — **no monetary data**;
-`TRAVEL_PACKAGE`/`CAR_RENTAL` → require booking, the rest do not), and starts **`PENDING`**. A Commercial Order
+`TRAVEL_PACKAGE`/`CAR_RENTAL` always require booking, `SERVICE_FEE` never does, and an `OTHER` item requires it
+**only when explicitly marked** at creation via the request's `bookingRequiredItemIds` — marking a non-OTHER item
+or an id outside the Order → `booking.item-not-markable`, **422**; required items start `PENDING`, the rest
+`NOT_REQUIRED`), and starts **`PENDING`**. A Commercial Order
 has **at most one active Booking Request** (the service returns a friendly **409** `booking.already-exists`; a
 partial unique index is the last-resort guard; a new request is allowed once the previous is `CANCELLED`).
 Creating a request creates **no** external reservation and **no** Receivable/Payment/Commission/Customer Care

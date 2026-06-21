@@ -216,11 +216,109 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void marksAnOtherItemAsRequiringBookingAtCreationLeavingTheRestUnchanged() throws Exception {
+        UUID order =
+                order("OtherMark", CommercialOrderStatus.PENDING_BOOKING, "TRAVEL_PACKAGE", "OTHER", "SERVICE_FEE");
+        UUID otherItem = orderItemId(order, "OTHER");
+
+        String created = mvc.perform(post("/api/bookings")
+                        .header("Authorization", "Bearer " + login("operacoes", "operacoes123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"commercialOrderId\":\"%s\",\"bookingRequiredItemIds\":[\"%s\"]}"
+                                .formatted(order, otherItem)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        UUID requestId = UUID.fromString(JsonPath.read(created, "$.id"));
+
+        List<Map<String, Object>> items = jdbc.queryForList(
+                "SELECT type, requires_booking, status FROM booking_items WHERE booking_request_id = ?::uuid",
+                requestId.toString());
+        assertThat(items).hasSize(3);
+        // The explicitly-marked OTHER item now requires booking and is PENDING.
+        Map<String, Object> other = items.stream()
+                .filter(i -> "OTHER".equals(i.get("type")))
+                .findFirst()
+                .orElseThrow();
+        assertThat(other.get("requires_booking")).isEqualTo(true);
+        assertThat(other.get("status")).isEqualTo(BookingItemStatus.PENDING.name());
+        // The travel package still requires booking; the service fee is still NOT_REQUIRED (rules are fixed).
+        Map<String, Object> pkg = items.stream()
+                .filter(i -> "TRAVEL_PACKAGE".equals(i.get("type")))
+                .findFirst()
+                .orElseThrow();
+        assertThat(pkg.get("requires_booking")).isEqualTo(true);
+        Map<String, Object> fee = items.stream()
+                .filter(i -> "SERVICE_FEE".equals(i.get("type")))
+                .findFirst()
+                .orElseThrow();
+        assertThat(fee.get("requires_booking")).isEqualTo(false);
+        assertThat(fee.get("status")).isEqualTo(BookingItemStatus.NOT_REQUIRED.name());
+    }
+
+    @Test
+    void anUnmarkedOtherItemStaysNotRequired() throws Exception {
+        UUID order = order("OtherDefault", CommercialOrderStatus.PENDING_BOOKING, "TRAVEL_PACKAGE", "OTHER");
+
+        String created = mvc.perform(post("/api/bookings")
+                        .header("Authorization", "Bearer " + login("operacoes", "operacoes123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"commercialOrderId\":\"%s\"}".formatted(order)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        UUID requestId = UUID.fromString(JsonPath.read(created, "$.id"));
+
+        Map<String, Object> other = jdbc.queryForList(
+                        "SELECT requires_booking, status FROM booking_items WHERE booking_request_id = ?::uuid AND type = 'OTHER'",
+                        requestId.toString())
+                .get(0);
+        assertThat(other.get("requires_booking")).isEqualTo(false);
+        assertThat(other.get("status")).isEqualTo(BookingItemStatus.NOT_REQUIRED.name());
+    }
+
+    @Test
+    void cannotMarkAServiceFeeItem() throws Exception {
+        UUID order = order("BadMark", CommercialOrderStatus.PENDING_BOOKING, "TRAVEL_PACKAGE", "SERVICE_FEE");
+        UUID feeItem = orderItemId(order, "SERVICE_FEE");
+        mvc.perform(post("/api/bookings")
+                        .header("Authorization", "Bearer " + login("operacoes", "operacoes123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"commercialOrderId\":\"%s\",\"bookingRequiredItemIds\":[\"%s\"]}"
+                                .formatted(order, feeItem)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("booking.item-not-markable"))
+                .andExpect(jsonPath("$.fields[?(@.field=='itemId')]").exists());
+    }
+
+    @Test
+    void cannotMarkAnItemThatIsNotInTheOrder() throws Exception {
+        UUID order = pendingBookingOrder("Foreign");
+        mvc.perform(post("/api/bookings")
+                        .header("Authorization", "Bearer " + login("operacoes", "operacoes123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"commercialOrderId\":\"%s\",\"bookingRequiredItemIds\":[\"%s\"]}"
+                                .formatted(order, UUID.randomUUID())))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("booking.item-not-markable"));
+    }
+
+    @Test
     void rejectsUnauthenticated() throws Exception {
         mvc.perform(post("/api/bookings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"commercialOrderId\":\"%s\"}".formatted(UUID.randomUUID())))
                 .andExpect(status().isUnauthorized());
+    }
+
+    private UUID orderItemId(UUID orderId, String type) {
+        return jdbc.queryForObject(
+                "SELECT id FROM commercial_order_items WHERE order_id = ?::uuid AND type = ? LIMIT 1",
+                UUID.class,
+                orderId.toString(),
+                type);
     }
 
     /** Seeds a PENDING_BOOKING Order (a travel package + a service fee), responsible = the manager. */

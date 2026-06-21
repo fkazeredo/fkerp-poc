@@ -1,8 +1,11 @@
 package com.fksoft.erp.domain.booking.model;
 
+import com.fksoft.erp.domain.booking.exception.BookingItemNotMarkableException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
+import com.fksoft.erp.domain.sales.model.CommercialOrderItem;
 import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
+import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -18,7 +21,10 @@ import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -110,14 +116,31 @@ public class BookingRequest {
      * @param order the source Commercial Order; must be {@link CommercialOrderStatus#PENDING_BOOKING}
      * @param bookingOperatorId the assigned booking operator, or {@code null} (optional initially)
      * @param notes optional booking notes
+     * @param bookingRequiredItemIds ids of the Order's OTHER items to mark as requiring booking (each must be
+     *     an OTHER item of the Order); {@code null}/empty marks none
      * @param createdBy id of the user creating the request
      * @return a new, unsaved Booking Request
      * @throws CommercialOrderNotPendingBookingException if the Order is not PENDING_BOOKING
+     * @throws BookingItemNotMarkableException if a marked id is not an OTHER item of the Order
      */
     public static BookingRequest createFromOrder(
-            CommercialOrder order, UUID bookingOperatorId, String notes, UUID createdBy) {
+            CommercialOrder order,
+            UUID bookingOperatorId,
+            String notes,
+            Set<UUID> bookingRequiredItemIds,
+            UUID createdBy) {
         if (order.status() != CommercialOrderStatus.PENDING_BOOKING) {
             throw new CommercialOrderNotPendingBookingException();
+        }
+        Set<UUID> required = bookingRequiredItemIds == null ? Set.of() : bookingRequiredItemIds;
+        // Only OTHER items of the Order may be explicitly marked as requiring booking (a travel package / car
+        // rental already require it; a service fee never does). Reject any other marked id (incl. unknown ones).
+        Map<UUID, ProposalItemType> typeById =
+                order.items().stream().collect(Collectors.toMap(CommercialOrderItem::id, CommercialOrderItem::type));
+        for (UUID id : required) {
+            if (typeById.get(id) != ProposalItemType.OTHER) {
+                throw new BookingItemNotMarkableException(id);
+            }
         }
         BookingRequest request = new BookingRequest();
         request.id = UUID.randomUUID();
@@ -129,7 +152,7 @@ public class BookingRequest {
         request.bookingOperatorId = bookingOperatorId;
         request.notes = notes;
         request.status = BookingRequestStatus.PENDING;
-        order.items().forEach(item -> request.items.add(BookingItem.snapshotOf(item)));
+        order.items().forEach(item -> request.items.add(BookingItem.snapshotOf(item, required.contains(item.id()))));
         request.createdBy = createdBy;
         request.updatedBy = createdBy;
         return request;
