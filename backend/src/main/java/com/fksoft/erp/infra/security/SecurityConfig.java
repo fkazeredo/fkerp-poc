@@ -145,6 +145,8 @@ public class SecurityConfig {
                         .hasAuthority("SCOPE_sales:order:create")
                         .requestMatchers(HttpMethod.GET, "/api/orders", "/api/orders/**")
                         .hasAnyAuthority(ORDER_READ_SCOPES)
+                        .requestMatchers(HttpMethod.POST, "/api/bookings")
+                        .hasAuthority("SCOPE_booking:request:create")
                         .requestMatchers(HttpMethod.GET, "/api/crm/responsibles")
                         .hasAnyAuthority(READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/**")

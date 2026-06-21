@@ -2,6 +2,9 @@ package com.fksoft.erp.infra.web;
 
 import static java.util.Map.entry;
 
+import com.fksoft.erp.domain.booking.exception.BookingOperatorNotFoundException;
+import com.fksoft.erp.domain.booking.exception.BookingRequestAlreadyExistsException;
+import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
 import com.fksoft.erp.domain.crm.exception.DuplicateLeadException;
 import com.fksoft.erp.domain.crm.exception.DuplicateReferenceCodeException;
 import com.fksoft.erp.domain.crm.exception.InteractionResultNotAvailableException;
@@ -102,6 +105,9 @@ public class HttpErrorMapping {
             entry(CommercialOrderAlreadyExistsException.class, HttpStatus.CONFLICT),
             entry(CommercialOrderNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(CommercialOrderAccessDeniedException.class, HttpStatus.FORBIDDEN),
+            entry(BookingRequestAlreadyExistsException.class, HttpStatus.CONFLICT),
+            entry(CommercialOrderNotPendingBookingException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(BookingOperatorNotFoundException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {
