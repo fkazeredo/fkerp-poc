@@ -13,6 +13,7 @@ import com.fksoft.erp.domain.sales.exception.CommercialOrderNotFoundException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
+import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,8 @@ public class BookingRequestService {
      * @param commercialOrderId the source Commercial Order id
      * @param bookingOperatorId the assigned booking operator, or {@code null} (optional initially)
      * @param notes optional booking notes
+     * @param bookingRequiredItemIds ids of the Order's OTHER items to mark as requiring booking, or
+     *     {@code null} (each must be an OTHER item of the Order)
      * @param userId the authenticated user
      * @param canSeeAllOrders whether the caller may see every Commercial Order
      * @param canSeeUnassignedOrders whether the caller may also see the unassigned Order pool
@@ -58,12 +61,15 @@ public class BookingRequestService {
      * @throws BookingOperatorNotFoundException if a booking operator is given but unknown/inactive
      * @throws com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException if the Order
      *     is not PENDING_BOOKING
+     * @throws com.fksoft.erp.domain.booking.exception.BookingItemNotMarkableException if a marked id is not an
+     *     OTHER item of the Order
      */
     @Transactional
     public UUID create(
             UUID commercialOrderId,
             UUID bookingOperatorId,
             String notes,
+            Set<UUID> bookingRequiredItemIds,
             UUID userId,
             boolean canSeeAllOrders,
             boolean canSeeUnassignedOrders) {
@@ -80,7 +86,8 @@ public class BookingRequestService {
                 && users.findById(bookingOperatorId).filter(User::active).isEmpty()) {
             throw new BookingOperatorNotFoundException();
         }
-        BookingRequest request = BookingRequest.createFromOrder(order, bookingOperatorId, notes, userId);
+        Set<UUID> required = bookingRequiredItemIds == null ? Collections.emptySet() : bookingRequiredItemIds;
+        BookingRequest request = BookingRequest.createFromOrder(order, bookingOperatorId, notes, required, userId);
         bookingRequests.save(request);
         events.publishEvent(new BookingRequestCreated(
                 request.id(),

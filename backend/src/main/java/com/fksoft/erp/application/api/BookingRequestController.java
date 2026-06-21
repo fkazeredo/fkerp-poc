@@ -41,6 +41,7 @@ public class BookingRequestController {
                 request.commercialOrderId(),
                 request.bookingOperatorId(),
                 request.notes(),
+                request.bookingRequiredItemIds(),
                 userContext.currentUserId(),
                 canSeeAllOrders(),
                 canSeeUnassignedOrders());

@@ -23,8 +23,10 @@ import org.hibernate.annotations.CreationTimestamp;
  * A line to be reserved within a {@link BookingRequest}: a snapshot of a {@link CommercialOrderItem} taken
  * when the request is created (type, description, quantity) plus its booking classification and status. It
  * carries <b>no monetary data</b> — a Booking Request is not financial data; the money stays on the
- * Commercial Order. Items that require booking (a travel package or a car rental) start
- * {@link BookingItemStatus#PENDING}; the others start {@link BookingItemStatus#NOT_REQUIRED}.
+ * Commercial Order. The booking requirement follows the type: a travel package or a car rental always require
+ * booking, a service fee never does, and an OTHER item only when the operations team explicitly marked it at
+ * creation. Items that require booking start {@link BookingItemStatus#PENDING}; the others
+ * {@link BookingItemStatus#NOT_REQUIRED}.
  */
 @Entity
 @Table(name = "booking_items")
@@ -68,21 +70,40 @@ public class BookingItem {
 
     /**
      * Snapshots a Commercial Order item into a new Booking item — copying <b>what</b> to reserve (type,
-     * description, quantity), classifying its booking need, and setting the initial status (PENDING when it
-     * requires booking, NOT_REQUIRED otherwise). No monetary data is copied.
+     * description, quantity), classifying its booking need (see {@link #requiresBooking(ProposalItemType,
+     * boolean)}), and setting the initial status (PENDING when it requires booking, NOT_REQUIRED otherwise).
+     * No monetary data is copied.
      *
      * @param source the source Commercial Order item (untouched)
+     * @param explicitlyRequired whether the operations team explicitly marked this item as requiring booking
+     *     (only meaningful for an OTHER item)
      * @return a new Booking item
      */
-    static BookingItem snapshotOf(CommercialOrderItem source) {
+    static BookingItem snapshotOf(CommercialOrderItem source, boolean explicitlyRequired) {
         BookingItem item = new BookingItem();
         item.id = UUID.randomUUID();
         item.orderItemId = source.id();
         item.type = source.type();
         item.description = source.description();
         item.quantity = source.quantity();
-        item.requiresBooking = source.requiresBooking();
+        item.requiresBooking = requiresBooking(source.type(), explicitlyRequired);
         item.status = item.requiresBooking ? BookingItemStatus.PENDING : BookingItemStatus.NOT_REQUIRED;
         return item;
+    }
+
+    /**
+     * Whether an order item of the given type requires booking: a travel package or a car rental always do, a
+     * service fee never does, and an OTHER item only when explicitly marked as booking-required.
+     *
+     * @param type the order item type
+     * @param explicitlyRequired whether an OTHER item was explicitly marked as requiring booking
+     * @return {@code true} if the item requires a booking operation
+     */
+    static boolean requiresBooking(ProposalItemType type, boolean explicitlyRequired) {
+        return switch (type) {
+            case TRAVEL_PACKAGE, CAR_RENTAL -> true;
+            case SERVICE_FEE -> false;
+            case OTHER -> explicitlyRequired;
+        };
     }
 }
