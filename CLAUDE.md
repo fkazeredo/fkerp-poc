@@ -551,7 +551,21 @@ pickup/dropoff instants may be in the future), car category — plus the require
 `CAR_RENTAL` item that requires booking and is not resolved can be confirmed through it. Both flows share a
 single `@Embeddable BookingItemConfirmation` (the type-irrelevant fields stay null) and a single `Confirmation`
 read shape. A request with a travel package + a car rental reaches `CONFIRMED` only when **both** are confirmed.
-Confirming a `SERVICE_FEE`/`OTHER` item, item failure and cancellation remain later slices. A Booking Request
+**Marking a booking item as failed** (`POST /api/bookings/{id}/items/{itemId}/fail`, gated by
+`booking:request:update` + the same visibility) records a **failure reason** (required, its own fixed enum
+`BookingFailureReason` — `NO_AVAILABILITY`, `SUPPLIER_UNAVAILABLE`, `INVALID_COMMERCIAL_DATA`,
+`MISSING_TRAVELER_DATA`, `EXTERNAL_SYSTEM_UNAVAILABLE`, `PRICE_CHANGED`, `MANUAL_OPERATION_ERROR`,
+`OUT_OF_POLICY`, `OTHER`), an optional note, and who/when (`failedBy` = the authenticated user, `failedAt`
+operator-supplied `@PastOrPresent`) in an `@Embeddable BookingItemFailure` on the item (**no monetary data**). It
+moves the item to `FAILED` and **consolidates** the request via a single unified roll-up over the items requiring
+booking: all `CONFIRMED` → `CONFIRMED`; ≥1 `CONFIRMED` (not all) → `PARTIALLY_CONFIRMED`; else ≥1 `FAILED` →
+`FAILED`. **Only** an item that requires booking and is not already resolved can be failed (a `SERVICE_FEE`/
+non-requiring item → `booking.item-not-failable` **422**; a `CONFIRMED`/`CANCELLED` item →
+`booking.item-already-resolved` **422**); an unknown item id → `booking.item-not-found` **404**. A failed item
+**stays visible as an operational problem**, **may receive new manual attempts** (the attempt log is unchanged),
+and **may be retried** — a later confirm reconsolidates the request (`FAILED → PARTIALLY_CONFIRMED`/`CONFIRMED`).
+The fail flow **never** cancels the Commercial Order and creates **no** Financial/Payment/Commission/Customer Care
+data. Confirming a `SERVICE_FEE`/`OTHER` item and the cancellation flow remain later slices. A Booking Request
 **preserves** its source `commercialOrderId` (never
 modified), the source `proposalId` / `opportunityId` / `leadId` and the commercial `responsiblePersonId`, takes
 an optional `bookingOperatorId` (assignment is a later slice; validated when present, else

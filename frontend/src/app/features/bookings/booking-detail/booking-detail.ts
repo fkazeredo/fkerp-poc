@@ -18,6 +18,7 @@ import { Observable } from 'rxjs';
 import {
   BookingAttemptResult,
   BookingAttemptType,
+  BookingFailureReason,
   BookingItemStatus,
   BookingRequestDetail,
   BookingRequestItem,
@@ -121,12 +122,27 @@ const ATTEMPT_RESULT_LABELS: Record<BookingAttemptResult, string> = {
   OTHER: 'Outro',
 };
 
+const FAILURE_REASON_LABELS: Record<BookingFailureReason, string> = {
+  NO_AVAILABILITY: 'Sem disponibilidade',
+  SUPPLIER_UNAVAILABLE: 'Fornecedor indisponível',
+  INVALID_COMMERCIAL_DATA: 'Dados comerciais inválidos',
+  MISSING_TRAVELER_DATA: 'Dados do passageiro ausentes',
+  EXTERNAL_SYSTEM_UNAVAILABLE: 'Sistema externo indisponível',
+  PRICE_CHANGED: 'Preço alterado',
+  MANUAL_OPERATION_ERROR: 'Erro de operação manual',
+  OUT_OF_POLICY: 'Fora da política',
+  OTHER: 'Outro',
+};
+
 const ATTEMPT_TYPE_OPTIONS = (Object.keys(ATTEMPT_TYPE_LABELS) as BookingAttemptType[]).map((value) => ({
   value,
   label: ATTEMPT_TYPE_LABELS[value],
 }));
 const ATTEMPT_RESULT_OPTIONS = (Object.keys(ATTEMPT_RESULT_LABELS) as BookingAttemptResult[]).map(
   (value) => ({ value, label: ATTEMPT_RESULT_LABELS[value] }),
+);
+const FAILURE_REASON_OPTIONS = (Object.keys(FAILURE_REASON_LABELS) as BookingFailureReason[]).map(
+  (value) => ({ value, label: FAILURE_REASON_LABELS[value] }),
 );
 
 // Sentinel option value for "the whole request" (no item link) in the item select.
@@ -204,7 +220,16 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
   protected confirmDropoffAt: Date | null = null;
   protected confirmCarCategory = '';
 
-  /** Upper bound for the date pickers — an attempt/confirmation cannot have happened in the future. */
+  // Fail dialog state — mark a booking item as failed (reason required).
+  protected readonly failOpen = signal(false);
+  protected readonly failReasonOptions = FAILURE_REASON_OPTIONS;
+  protected failItemId = '';
+  protected failItemLabel = '';
+  protected failReason: BookingFailureReason | null = null;
+  protected failDate: Date = new Date();
+  protected failNote = '';
+
+  /** Upper bound for the date pickers — an attempt/confirmation/failure cannot have happened in the future. */
   protected readonly now = new Date();
 
   private bookingId = '';
@@ -215,7 +240,7 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
   }
 
   private anyDialogOpen(): boolean {
-    return this.attemptOpen() || this.confirmOpen();
+    return this.attemptOpen() || this.confirmOpen() || this.failOpen();
   }
 
   ngOnInit(): void {
@@ -250,6 +275,9 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
       this.confirmDropoffAt,
       this.confirmCarCategory,
       this.confirmOperationalNotes,
+      this.failReason,
+      this.failDate,
+      this.failNote,
     ]);
   }
 
@@ -296,6 +324,10 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
 
   protected attemptResultLabel(result: BookingAttemptResult): string {
     return ATTEMPT_RESULT_LABELS[result];
+  }
+
+  protected failureReasonLabel(reason: BookingFailureReason): string {
+    return FAILURE_REASON_LABELS[reason];
   }
 
   /** The human-friendly reservation code — the source Order number rendered PC-000n. */
@@ -441,6 +473,54 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
     this.act(action, 'Reserva confirmada', this.confirmOpen);
   }
 
+  /** The failed booking items (those carrying a failure block), for the operational-problems card. */
+  protected failedItems(): BookingRequestItem[] {
+    return this.booking()?.items.filter((i) => i.failure) ?? [];
+  }
+
+  /**
+   * Whether this booking item can be marked as failed by the current user: it must require booking and not be
+   * already resolved (CONFIRMED/CANCELLED). A FAILED item may still be failed again (updating the reason) or
+   * confirmed (retry).
+   */
+  protected canFailItem(item: BookingRequestItem): boolean {
+    return (
+      this.auth.canOperateBookings() &&
+      item.requiresBooking &&
+      item.status !== 'CONFIRMED' &&
+      item.status !== 'CANCELLED'
+    );
+  }
+
+  protected openFail(item: BookingRequestItem): void {
+    this.failItemId = item.id;
+    this.failItemLabel = `${ITEM_TYPE_LABELS[item.type]} — ${item.description}`;
+    this.failReason = null;
+    this.failDate = new Date();
+    this.failNote = '';
+    this.failOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
+  }
+
+  protected canSaveFail(): boolean {
+    return !!this.failReason && !!this.failDate;
+  }
+
+  protected failItem(): void {
+    if (!this.canSaveFail()) {
+      return;
+    }
+    this.act(
+      this.bookings.failBookingItem(this.bookingId, this.failItemId, {
+        failureReason: this.failReason!,
+        failureNote: this.failNote.trim() || null,
+        failedAt: this.failDate.toISOString(),
+      }),
+      'Falha registrada',
+      this.failOpen,
+    );
+  }
+
   /** Closes a dialog, confirming first if it has unsaved edits. */
   protected async requestClose(open: { set: (v: boolean) => void }): Promise<void> {
     if (this.hasUnsavedChanges() && !(await this.unsaved.confirmDiscard())) {
@@ -450,7 +530,7 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
   }
 
   private closeOpenDialog(): void {
-    for (const open of [this.attemptOpen, this.confirmOpen]) {
+    for (const open of [this.attemptOpen, this.confirmOpen, this.failOpen]) {
       if (open()) {
         void this.requestClose(open);
         return;

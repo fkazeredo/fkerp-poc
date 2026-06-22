@@ -3,8 +3,10 @@ package com.fksoft.erp.domain.booking.service.data;
 import com.fksoft.erp.domain.booking.model.BookingAttempt;
 import com.fksoft.erp.domain.booking.model.BookingAttemptResult;
 import com.fksoft.erp.domain.booking.model.BookingAttemptType;
+import com.fksoft.erp.domain.booking.model.BookingFailureReason;
 import com.fksoft.erp.domain.booking.model.BookingItem;
 import com.fksoft.erp.domain.booking.model.BookingItemConfirmation;
+import com.fksoft.erp.domain.booking.model.BookingItemFailure;
 import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
@@ -161,7 +163,8 @@ public record BookingRequestDetail(
             int quantity,
             boolean requiresBooking,
             BookingItemStatus status,
-            Confirmation confirmation) {
+            Confirmation confirmation,
+            Failure failure) {
 
         static Item from(BookingItem i, Map<UUID, String> names) {
             BookingItemConfirmation c = i.confirmation();
@@ -183,6 +186,10 @@ public record BookingRequestDetail(
                             c.dropoffAt(),
                             c.carCategory(),
                             c.operationalNotes());
+            BookingItemFailure f = i.failure();
+            Failure failure = f == null
+                    ? null
+                    : new Failure(f.failureReason(), f.failureNote(), nameOf(names, f.failedBy()), f.failedAt());
             return new Item(
                     i.id(),
                     i.orderItemId(),
@@ -191,9 +198,17 @@ public record BookingRequestDetail(
                     i.quantity(),
                     i.requiresBooking(),
                     i.status(),
-                    confirmation);
+                    confirmation,
+                    failure);
         }
     }
+
+    /**
+     * The failure recorded when a booking item is manually marked as failed: the reason, an optional note, and
+     * who/when. A failed item stays visible as an operational problem; it carries <b>no monetary data</b>.
+     */
+    public record Failure(
+            BookingFailureReason failureReason, String failureNote, String failedByName, Instant failedAt) {}
 
     /**
      * The external reservation result recorded when a booking item is manually confirmed: the external

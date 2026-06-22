@@ -3,10 +3,11 @@
 > **Público:** usuários finais do sistema FKERP (equipe comercial / vendas).
 > **Idioma:** Português (pt-BR). Há uma edição em inglês mantida em paralelo
 > (`fkerp-user-manual.en-US.md`).
-> **Escopo:** cobre tudo que foi liberado até a **v0.12.0** — o ciclo de vida completo de
-> Leads do Comercial / CRM (cadastro, lista/busca/filtros, detalhe, atribuição, interações, regra de
-> Em contato, qualificação, fluxo de Perda, visibilidade por perfil, pendências e indicadores) mais a
-> **deduplicação** de Leads. Será ampliado à medida que novos recursos forem lançados.
+> **Escopo:** cobre tudo que foi liberado até a **v0.44.0** — o **Comercial / CRM** (ciclo de vida completo
+> de Leads e de Oportunidades), **Vendas & Propostas** (propostas, itens, valores e descontos, fluxo de
+> aprovação/envio/aceite e os pedidos comerciais) e as **Operações de reserva** (o módulo Reservas: a fila de
+> trabalho, o detalhe, o histórico de tentativas, a confirmação de itens de Pacote e Locação, e o registro de
+> falhas com retry). Será ampliado à medida que novos recursos forem lançados.
 
 ---
 
@@ -87,7 +88,7 @@ O FKERP foi feito para ser usado **pelo teclado**, então você raramente precis
 | Ver **todos os atalhos** (ajuda) | `?` |
 | Novo lead | `n` |
 | Ir para a **lista de Leads** | `g` depois `l` |
-| Ir para **Origens** | `g` depois `o` |
+| Ir para **Oportunidades** | `g` depois `o` |
 | Ir para o **Início** | `g` depois `i` |
 | Mover entre campos | `Tab` / `Shift` + `Tab` |
 | Confirmar / enviar um formulário | `Enter` |
@@ -122,9 +123,17 @@ para alternar entre os modos claro e escuro. Sua escolha fica salva no dispositi
 ## 4. Início e navegação por módulos
 
 Ao entrar, você vê a **tela inicial do sistema**, que apresenta um **card para cada módulo** ao qual você tem
-acesso — **Comercial / CRM**, **Vendas** e **Cadastros**. Clicar em um card abre a **home daquele módulo**, com
-os atalhos para suas telas (por exemplo, a home de Comercial / CRM traz Leads, Pendências, Indicadores,
-Oportunidades e Novo lead).
+acesso. Os módulos seguem o **fluxo de trabalho**:
+
+- **Comercial** — o funil comercial em ordem: **Leads → Oportunidades → Propostas → Pedidos** (mais a ação
+  **Novo lead**).
+- **Reservas** — a fila operacional das reservas a operar, nascidas dos pedidos fechados (seção 10).
+- **Acompanhamento** — o monitoramento de todo o funil reunido em dois hubs: **Pendências** (o que precisa de
+  ação) e **Indicadores** (os números do funil). Cada hub é uma página com **abas** por área (Leads,
+  Oportunidades, Propostas, Pedidos) — você vê apenas as abas que o seu perfil pode ver.
+- **Cadastros** — as listas de apoio que alimentam os fluxos (seção 11).
+
+Clicar em um card abre a **home daquele módulo**, com os atalhos para suas telas.
 
 O **menu lateral** acompanha essa organização: cada módulo é uma **seção recolhível** (acordeão). Clique no
 **título do módulo** para ir à home dele, ou na **setinha** para recolher/expandir a seção — o sistema lembra
@@ -453,11 +462,11 @@ nunca no pipeline ativo nem no valor. É uma leitura operacional, **não** um da
 receita, fluxo de caixa, previsão de vendas, comissão ou ROI, e o indicador "Prontas p/ proposta" **não**
 cria proposta.
 
-## 9. Propostas (módulo Vendas)
+## 9. Propostas e pedidos (módulo Comercial)
 
-O FKERP separa os módulos no menu: além de **Comercial / CRM** (Leads e Oportunidades), há agora o módulo
-**Vendas**, com a tela **Propostas**. Uma **proposta comercial** é a oferta formalizada ao cliente, criada
-a partir de uma Oportunidade que esteja **Pronta para proposta**.
+As **Propostas** e os **Pedidos** são as etapas finais do funil **Comercial** — depois de Leads e
+Oportunidades, no mesmo módulo. Uma **proposta comercial** é a oferta formalizada ao cliente, criada a partir
+de uma Oportunidade que esteja **Pronta para proposta**.
 
 ### 9.1 Criando uma proposta
 No detalhe de uma Oportunidade em **Pronta para proposta**, clique em **Criar proposta**. Informe o
@@ -476,7 +485,7 @@ Regras importantes:
 - Criar uma proposta **não** cria venda, pedido, reserva nem dado financeiro — isso é etapa futura.
 
 ### 9.2 A lista e o detalhe
-Abra **Vendas → Propostas** no menu para a lista operacional das propostas que você pode ver. Cada linha
+Abra **Comercial → Propostas** no menu para a lista operacional das propostas que você pode ver. Cada linha
 mostra o **título**, o **status**, o **responsável**, a **Oportunidade de origem** (pelo nome, com atalho
 para a Oportunidade), o **total**, a **validade**, a **data de criação** e a **data da última atualização**.
 
@@ -604,7 +613,7 @@ Criar o pedido **não** cria reserva, financeiro, comissão nem pagamento — é
 fechado. As reservas e o financeiro virão em próximas versões. Só uma proposta *Aceita* gera pedido.
 
 ### 9.9 A lista de pedidos
-Os pedidos comerciais ficam em **Vendas → Pedidos** (atalho de teclado **`g d`**). A lista mostra, para cada
+Os pedidos comerciais ficam em **Comercial → Pedidos** (atalho de teclado **`g d`**). A lista mostra, para cada
 pedido: o **Identificador** (um número amigável, ex.: **PC-0001**, que leva ao detalhe), o **Resumo** (o título
 da proposta de origem), a **Oportunidade**, o **Responsável**, o **Total**, o **Status**, o indicador de
 **Reserva** (*Exige reserva* quando há item de Pacote de viagem ou Locação; senão *Não exige*) e a **data de
@@ -624,12 +633,12 @@ nada, o detalhe também reúne o **contexto comercial vindo da proposta de orige
 **necessidade de reserva** (*Sim/Não*). A lista e o detalhe mostram **apenas dados do pedido** — nunca reserva,
 financeiro, pagamento ou comissão.
 
-> A próxima etapa do módulo Vendas (iniciar as **operações de reserva** a partir de um pedido pendente de
-> reserva) virá numa próxima versão.
+> A partir de um pedido **Pendente de reserva**, as **operações de reserva** já estão disponíveis no módulo
+> **Reservas** (seção 10).
 
 ### 9.10 Indicadores de propostas
 
-Abra **Indicadores de propostas** na barra lateral do módulo Vendas (ou pela paleta de comandos, `Ctrl K`)
+Abra **Acompanhamento → Indicadores** e selecione a aba **Propostas** (ou use a paleta de comandos, `Ctrl K`)
 para uma visão mínima do fluxo de propostas. A tela tem **dois blocos**:
 
 - **Volume no período** (filtrado pela data de criação; padrão = mês atual): **Total** de propostas,
@@ -646,7 +655,7 @@ pedido, reserva, financeiro, pagamento ou comissão.
 
 ### 9.11 Indicadores de pedidos
 
-Abra **Indicadores de pedidos** na barra lateral do módulo Vendas para acompanhar os pedidos fechados. A tela
+Abra **Acompanhamento → Indicadores** e selecione a aba **Pedidos** para acompanhar os pedidos fechados. A tela
 também tem **dois blocos**:
 
 - **Volume no período** (por data de criação; padrão = mês atual): **Total** de pedidos e o **Valor total**
@@ -658,7 +667,114 @@ Valem as mesmas **regras de visibilidade** (representante vê só os próprios; 
 tela mostra **apenas** dados do pedido — nunca reserva, financeiro, pagamento ou comissão — e **não** é um
 dashboard executivo.
 
-## 10. Gerenciando cadastros
+## 10. Operando reservas (módulo Reservas)
+
+Quando um pedido comercial é fechado com itens que exigem reserva (**Pacote de viagem** ou **Locação de
+veículo**), nasce uma **solicitação de reserva** — o trabalho operacional de efetivar, junto aos fornecedores
+e sistemas, o que foi vendido. O módulo **Reservas** é a área de retaguarda onde a equipe de operações
+acompanha e trabalha essas solicitações.
+
+> O processo é **manual e operacional**. O sistema **não** integra automaticamente com fornecedores, **não**
+> verifica disponibilidade sozinho e **não** cria nada de financeiro, pagamento, comissão ou atendimento ao
+> cliente. Ele organiza e registra o trabalho da equipe.
+
+### 10.1 Perfis e acesso
+
+| Perfil | Vê | Pode operar? |
+|---|---|---|
+| **Operações** (`operacoes`) | todas as reservas | sim — registrar tentativas, confirmar itens, registrar falhas |
+| **Gerente Comercial** (`comercial`) | todas as reservas | sim (acompanhamento operacional) |
+| **Diretoria** (`diretor`) | todas as reservas | **não** — apenas consulta |
+| **Vendedores, Representantes, Financeiro / RH / TI** | — | sem acesso ao módulo Reservas |
+
+Como em todo o sistema, a regra é garantida no servidor: quem não tem acesso não vê o menu **Reservas** nem
+abre uma reserva por link direto.
+
+### 10.2 A lista de reservas
+
+Abra **Reservas** na barra lateral (ou pela paleta de comandos, `Ctrl K`, atalho **`g r`**). A lista é a
+**fila de trabalho** das operações. Para cada reserva ela mostra: o **Pedido** de origem (o identificador
+amigável, ex.: **PC-0001**, que leva ao detalhe), a **Proposta** de origem, o **Status**, o **Operador**
+responsável pela reserva, o **Responsável** comercial, as contagens de **Itens p/ reservar** e de
+**Confirmados**, a **Última tentativa**, e as datas de **criação** e **atualização**.
+
+- **Filtros:** por **status**, **operador** (inclui *Sem operador*), **responsável comercial**, **tipo de
+  item**, **período de criação** e um interruptor **Com falhas** (mostra só as reservas que têm algum item
+  com falha). Use **Limpar** para zerar.
+- **O que aparece por padrão:** as reservas **ativas**. As **Confirmadas** e **Canceladas** ficam ocultas
+  (selecione esses status no filtro para vê-las); as **com falha** continuam visíveis, pois são problemas a
+  resolver.
+- **Visibilidade por perfil:** cada um vê apenas as reservas que pode ver; nenhum filtro revela uma reserva
+  fora da sua permissão.
+
+A lista mostra **apenas dados operacionais da reserva** — nunca financeiro, pagamento ou comissão.
+
+### 10.3 O detalhe da reserva
+
+Clique no pedido para abrir o **detalhe**. Ele reúne:
+
+- **Resumo da reserva:** o pedido, o status, o operador e o responsável comercial, as contagens de itens
+  **para reservar / confirmados / com falha**, as observações e os dados de auditoria (criada em / por).
+- **Origens** (sempre rastreáveis): o **pedido**, a **proposta**, a **oportunidade** e o **lead** que deram
+  origem à reserva, cada um com um atalho para a tela correspondente.
+- **Itens da reserva:** cada item vendido, com seu **tipo**, **descrição**, **quantidade**, se **exige
+  reserva** e seu **status** (Pendente, Em andamento, Confirmado, Falhou, Não requer reserva, Cancelado).
+- Os cards **Confirmações de reserva**, **Problemas operacionais** e o **Histórico de tentativas** (abaixo).
+
+### 10.4 Registrar uma tentativa
+
+Cada passo do trabalho — acessar um sistema externo, ligar ou escrever para o fornecedor, conferir
+internamente, checar disponibilidade — pode ser **registrado como uma tentativa**, formando um **histórico**
+do que foi feito.
+
+1. Clique em **Registrar tentativa** (atalho **`a`**).
+2. Informe o **tipo** e o **resultado** (ex.: *Aguardando fornecedor*, *Disponibilidade encontrada*, *Precisa
+   nova tentativa*…), a **data**, uma **descrição** e, opcionalmente, a qual **item** se refere (ou à reserva
+   toda) e uma **próxima ação**.
+3. Salve. A tentativa entra no histórico.
+
+Registrar a primeira tentativa pode mover a reserva de **Pendente** para **Em andamento**. Uma tentativa é
+**apenas histórico**: ela **não** confirma nem falha a reserva por conta própria.
+
+### 10.5 Confirmar a reserva de um item
+
+Quando um item (Pacote de viagem ou Locação de veículo) é efetivamente reservado junto ao fornecedor, você
+**confirma** esse item.
+
+1. Na tabela de itens, clique em **Confirmar** no item.
+2. Informe o **sistema ou fornecedor** e o **localizador / código de reserva** (ambos obrigatórios) e a **data
+   da confirmação**. Conforme o tipo, registre dados opcionais: para o **Pacote**, o pacote/destino, as datas
+   de viagem e observações de passageiros; para a **Locação**, a locadora, a categoria do carro, os locais e as
+   datas de retirada e devolução. Em ambos, há um campo de **notas operacionais**.
+3. Salve. O item passa a **Confirmado** e a confirmação aparece no card **Confirmações de reserva**.
+
+Conforme os itens são confirmados, o **status da reserva** se ajusta sozinho: **Confirmada** quando todos os
+itens que exigem reserva estão confirmados; **Parcialmente confirmada** quando só parte está. Confirmar
+**não** chama nenhum sistema externo e **não** cria voucher, financeiro, pagamento nem comissão.
+
+### 10.6 Registrar uma falha e retentar
+
+Quando a reserva de um item **não dá certo** — sem disponibilidade, fornecedor indisponível, dados inválidos,
+preço alterado etc. — você registra a **falha** do item.
+
+1. Na tabela de itens, clique em **Falhar**.
+2. Escolha o **motivo da falha** (obrigatório) entre as opções — *Sem disponibilidade*, *Fornecedor
+   indisponível*, *Dados comerciais inválidos*, *Dados do passageiro ausentes*, *Sistema externo
+   indisponível*, *Preço alterado*, *Erro de operação manual*, *Fora da política* ou *Outro* —, a **data** e,
+   opcionalmente, uma **nota**.
+3. Salve. O item passa a **Falhou** e aparece no card **Problemas operacionais**, com o motivo, a nota e quem
+   registrou, quando.
+
+Um item com falha **continua visível como um problema operacional** a resolver — ele **não some** da reserva.
+A reserva, então, fica **Parcialmente confirmada** (se algum outro item já estava confirmado) ou **Falhou**
+(se nenhum estava).
+
+**Retentar é simples:** um item com falha pode receber **novas tentativas** (seção 10.4) e pode ser
+**confirmado depois** (seção 10.5) — ao confirmá-lo, a reserva se **reconsolida** automaticamente para
+*Parcialmente confirmada* ou *Confirmada*. Registrar uma falha **não** cancela o pedido comercial e **não**
+cria nada de financeiro, pagamento, comissão ou atendimento ao cliente.
+
+## 11. Gerenciando cadastros
 
 Os cadastros são as listas que alimentam o formulário de Lead e fluxos futuros. São quatro, todas
 gerenciadas do mesmo jeito:
@@ -672,27 +788,27 @@ gerenciadas do mesmo jeito:
 
 Abra-os em **Cadastros** no menu superior ou pela paleta de comandos.
 
-### 10.1 A lista
+### 11.1 A lista
 
 Cada linha mostra o **código**, o **rótulo** (o que os usuários veem), a **ordem** e se está **Ativo**
 ou **Inativo**. Por padrão só os ativos aparecem; use **Mostrar inativos / Ocultar inativos** para
 alternar.
 
-### 10.2 Criando um registro
+### 11.2 Criando um registro
 
 1. Clique em **Novo**.
 2. Preencha **Código** (um código interno estável), **Rótulo** (o texto exibido) e **Ordem** (ordem de
    exibição, um número ≥ 0).
 3. Clique em **Salvar**. Códigos precisam ser únicos — reusar um é rejeitado.
 
-### 10.3 Editando um registro
+### 11.3 Editando um registro
 
 1. Clique no ícone de **lápis** na linha.
 2. Você pode alterar o **rótulo**, a **ordem** e o interruptor **Ativo**. O **código** não pode ser
    alterado (é o identificador estável).
 3. Clique em **Salvar**.
 
-### 10.4 Ativando / desativando
+### 11.4 Ativando / desativando
 
 - Clique no ícone de **proibido** para **desativar** um registro (exclusão lógica). Valores inativos
   permanecem para a fidelidade histórica, mas **não podem ser usados em novos Leads**.
@@ -700,7 +816,7 @@ alternar.
 
 ---
 
-## 11. Mensagens e validação
+## 12. Mensagens e validação
 
 O FKERP valida o que você digita e mostra mensagens claras, em português:
 
@@ -715,32 +831,34 @@ O FKERP valida o que você digita e mostra mensagens claras, em português:
 
 ---
 
-## 11.1 Atalhos de teclado
+## 12.1 Atalhos de teclado
 
-O menu é organizado em **módulos** claros — **Comercial / CRM**, **Vendas** e **Cadastros** — cada um uma seção
-recolhível na barra lateral, com uma **home própria** (veja a seção 4). Tudo também é acessível pelo teclado:
+O menu é organizado em **módulos** claros — **Comercial**, **Reservas**, **Acompanhamento** e **Cadastros** —
+cada um uma seção recolhível na barra lateral, com uma **home própria** (veja a seção 4). Tudo também é
+acessível pelo teclado:
 
 - **`Ctrl`/`Cmd` + `K`** — a **paleta de comandos**: busque e vá para qualquer tela ou ação de qualquer lugar.
 - **`?`** — mostra a ajuda completa de atalhos a qualquer momento.
 - **Ir para (tecle `g`, depois uma letra):** `g i` Início · `g l` Leads · `g o` Oportunidades · `g p`
-  Propostas · `g c` Cadastros. **`n`** cria um novo lead.
+  Propostas · `g d` Pedidos · `g r` Reservas · `g c` Cadastros. **`n`** cria um novo lead.
 - **Em um lead:** `i` registrar interação · `q` qualificar · `o` criar oportunidade · `p` marcar perdido ·
   `r` reatribuir · `Esc` voltar.
 - **Em uma oportunidade:** `a` registrar atividade · `e` editar dados · `s` avançar estágio · `p` marcar
   perdida · `Esc` voltar.
 - **Em uma proposta:** `i` adicionar item · `e` editar dados comerciais · `s` enviar para revisão · `Esc`
   voltar.
+- **Em uma reserva:** `a` registrar tentativa · `Esc` voltar.
 
 ---
 
-## 12. Saindo
+## 13. Saindo
 
 Clique em **Sair** no canto superior direito da barra de menu. Você volta para a tela de login e sua
 sessão é encerrada.
 
 ---
 
-## 13. O que vem a seguir
+## 14. O que vem a seguir
 
 Esta edição cobre todo o ciclo de vida de Leads da **Sprint 1** (cadastrar e encontrar Leads, o
 detalhe, atribuição, histórico de interações com a regra de **Em contato**, **qualificação**, fluxo de
@@ -751,15 +869,20 @@ Descoberta → Aderência → Pronta para proposta), o **registro de atividades 
 dados comerciais** (valor estimado e previsão de fechamento), o fluxo de **Perda** com motivo, as
 **Oportunidades pendentes** e os **Indicadores de oportunidades** — tudo com visibilidade por perfil.
 
-A **Sprint 3 — Vendas & Propostas** está em andamento: a partir de uma Oportunidade pronta já é possível
-**criar uma proposta comercial** (módulo **Vendas → Propostas**), gerir seus **itens, valores e descontos**,
-**enviá-la para revisão interna**, **aprovar ou rejeitar**, **marcar uma proposta aprovada como enviada** ao
-cliente, **registrar o aceite ou a recusa do cliente**, **criar o pedido comercial** a partir de uma proposta
-aceita (que marca a Oportunidade como **Ganha**) e **consultar a lista de pedidos** (módulo **Vendas →
-Pedidos**). As próximas etapas trarão as **operações de reserva** e, adiante, o financeiro. Este manual será
-atualizado a cada lançamento.
+A **Sprint 3 — Vendas & Propostas** está concluída: a partir de uma Oportunidade pronta é possível **criar uma
+proposta comercial** (**Comercial → Propostas**), gerir seus **itens, valores e descontos**, **enviá-la para
+revisão interna**, **aprovar ou rejeitar**, **marcar uma proposta aprovada como enviada** ao cliente,
+**registrar o aceite ou a recusa do cliente**, **criar o pedido comercial** a partir de uma proposta aceita
+(que marca a Oportunidade como **Ganha**) e **consultar a lista de pedidos** (**Comercial → Pedidos**).
+
+A **Sprint 4 — Operações de reserva** está em andamento e já entrega o módulo **Reservas** (seção 10): a **fila
+de trabalho** das solicitações de reserva nascidas dos pedidos fechados, o **detalhe** da reserva com suas
+origens rastreáveis, o **histórico de tentativas**, a **confirmação** de itens de **Pacote de viagem** e de
+**Locação de veículo**, e o **registro de falhas com retry**. As próximas etapas trarão o restante do ciclo de
+reserva (atribuição de operador, cancelamento e o reflexo do status no pedido) e, adiante, o financeiro. Este
+manual será atualizado a cada lançamento.
 
 ---
 
-*Status do documento: Sprint 1 e Sprint 2 concluídas; Sprint 3 (Vendas & Propostas) em andamento — criação
-de proposta a partir de uma Oportunidade pronta. Mantido junto com o produto.*
+*Status do documento: Sprints 1, 2 e 3 concluídas; Sprint 4 (Operações de reserva) em andamento — o módulo
+Reservas com tentativas, confirmação de itens e registro de falhas com retry. Mantido junto com o produto.*

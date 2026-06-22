@@ -109,6 +109,33 @@ export interface BookingFilters {
   hasFailedItems?: boolean | null;
 }
 
+/** The reason a booking item was manually marked as failed (Booking Operations, Sprint 4). */
+export type BookingFailureReason =
+  | 'NO_AVAILABILITY'
+  | 'SUPPLIER_UNAVAILABLE'
+  | 'INVALID_COMMERCIAL_DATA'
+  | 'MISSING_TRAVELER_DATA'
+  | 'EXTERNAL_SYSTEM_UNAVAILABLE'
+  | 'PRICE_CHANGED'
+  | 'MANUAL_OPERATION_ERROR'
+  | 'OUT_OF_POLICY'
+  | 'OTHER';
+
+/** The failure recorded when a booking item is manually marked as failed. No monetary data. */
+export interface BookingItemFailure {
+  failureReason: BookingFailureReason;
+  failureNote: string | null;
+  failedByName: string | null;
+  failedAt: string;
+}
+
+/** Payload to mark a booking item as failed. */
+export interface FailBookingItem {
+  failureReason: BookingFailureReason;
+  failureNote?: string | null;
+  failedAt: string;
+}
+
 /**
  * The external reservation result recorded when a booking item is manually confirmed (Travel Package or Car
  * Rental). A single shape carries both the travel and car metadata — the fields not relevant to the item's type
@@ -142,6 +169,7 @@ export interface BookingRequestItem {
   requiresBooking: boolean;
   status: BookingItemStatus;
   confirmation: BookingItemConfirmation | null;
+  failure: BookingItemFailure | null;
 }
 
 /** Payload to manually confirm a Travel Package booking item. */
@@ -262,6 +290,11 @@ export class BookingService {
       `/api/bookings/${id}/items/${itemId}/confirm-car-rental`,
       payload,
     );
+  }
+
+  /** Manually marks a booking item as failed (with reason); returns the refreshed detail. */
+  failBookingItem(id: string, itemId: string, payload: FailBookingItem): Observable<BookingRequestDetail> {
+    return this.http.post<BookingRequestDetail>(`/api/bookings/${id}/items/${itemId}/fail`, payload);
   }
 
   /** The selectable responsible people (shared with the CRM module). */

@@ -2,6 +2,7 @@ package com.fksoft.erp.domain.booking.model;
 
 import com.fksoft.erp.domain.booking.exception.BookingItemAlreadyResolvedException;
 import com.fksoft.erp.domain.booking.exception.BookingItemNotConfirmableException;
+import com.fksoft.erp.domain.booking.exception.BookingItemNotFailableException;
 import com.fksoft.erp.domain.sales.model.CommercialOrderItem;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import jakarta.persistence.Column;
@@ -71,6 +72,11 @@ public class BookingItem {
     // otherwise). Carries no monetary data.
     @Embedded
     private BookingItemConfirmation confirmation;
+
+    // The manual failure — populated only when the item is marked as failed (the current/last failure; null
+    // otherwise). Carries no monetary data.
+    @Embedded
+    private BookingItemFailure failure;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -154,5 +160,27 @@ public class BookingItem {
         }
         this.confirmation = confirmation;
         this.status = BookingItemStatus.CONFIRMED;
+    }
+
+    /**
+     * Manually marks this item as failed: records the failure and moves the item to
+     * {@link BookingItemStatus#FAILED}. Only an item that requires booking and is not already
+     * confirmed/cancelled can be failed; a failed item stays visible as an operational problem and may later
+     * receive new attempts or be confirmed (the failure does not bar a retry). No external call is made and no
+     * Financial/Commission/Customer Care data is created; the Commercial Order is not cancelled.
+     *
+     * @param failure the failure record (reason, optional note, author, date)
+     * @throws BookingItemNotFailableException if this item does not require booking
+     * @throws BookingItemAlreadyResolvedException if this item is already confirmed or cancelled
+     */
+    void fail(BookingItemFailure failure) {
+        if (!requiresBooking) {
+            throw new BookingItemNotFailableException();
+        }
+        if (status == BookingItemStatus.CONFIRMED || status == BookingItemStatus.CANCELLED) {
+            throw new BookingItemAlreadyResolvedException();
+        }
+        this.failure = failure;
+        this.status = BookingItemStatus.FAILED;
     }
 }

@@ -5,6 +5,7 @@ import com.fksoft.erp.application.api.dto.BookingRequestResponse;
 import com.fksoft.erp.application.api.dto.ConfirmCarRentalRequest;
 import com.fksoft.erp.application.api.dto.ConfirmTravelPackageRequest;
 import com.fksoft.erp.application.api.dto.CreateBookingRequestRequest;
+import com.fksoft.erp.application.api.dto.FailBookingItemRequest;
 import com.fksoft.erp.application.api.dto.RegisterBookingAttemptRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.service.BookingRequestService;
@@ -13,6 +14,7 @@ import com.fksoft.erp.domain.booking.service.data.BookingRequestListItem;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
 import com.fksoft.erp.domain.booking.service.data.ConfirmCarRentalCommand;
 import com.fksoft.erp.domain.booking.service.data.ConfirmTravelPackageCommand;
+import com.fksoft.erp.domain.booking.service.data.FailBookingItemCommand;
 import com.fksoft.erp.domain.booking.service.data.RecordBookingAttemptCommand;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
@@ -199,6 +201,26 @@ public class BookingRequestController {
                 request.carCategory(),
                 request.operationalNotes());
         return bookingService.confirmCarRentalItem(
+                id, itemId, command, userContext.currentUserId(), canSeeAllBookings(), canSeeUnassignedBookings());
+    }
+
+    /**
+     * Marks a booking item as failed and returns the refreshed detail. Requires {@code booking:request:update}
+     * and that the caller may see the request. Records the failure on the item, moves it to FAILED and
+     * consolidates the request status; the failed item stays visible and may later be retried/confirmed. It
+     * does not cancel the Commercial Order and creates no Financial, Payment, Commission or Customer Care data.
+     *
+     * @param id the booking request id
+     * @param itemId the booking item to fail
+     * @param request the failure data (reason, optional note, date)
+     * @return the updated Booking Request detail
+     */
+    @PostMapping("/{id}/items/{itemId}/fail")
+    public BookingRequestDetail failBookingItem(
+            @PathVariable UUID id, @PathVariable UUID itemId, @Valid @RequestBody FailBookingItemRequest request) {
+        FailBookingItemCommand command =
+                new FailBookingItemCommand(request.failureReason(), request.failureNote(), request.failedAt());
+        return bookingService.failBookingItem(
                 id, itemId, command, userContext.currentUserId(), canSeeAllBookings(), canSeeUnassignedBookings());
     }
 
