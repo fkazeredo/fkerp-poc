@@ -109,7 +109,11 @@ export interface BookingFilters {
   hasFailedItems?: boolean | null;
 }
 
-/** The external reservation result recorded when a Travel Package item is manually confirmed. No monetary data. */
+/**
+ * The external reservation result recorded when a booking item is manually confirmed (Travel Package or Car
+ * Rental). A single shape carries both the travel and car metadata — the fields not relevant to the item's type
+ * stay null. No monetary data.
+ */
 export interface BookingItemConfirmation {
   externalSystem: string;
   externalLocator: string;
@@ -119,6 +123,12 @@ export interface BookingItemConfirmation {
   travelStartDate: string | null;
   travelEndDate: string | null;
   travelerNotes: string | null;
+  rentalCompany: string | null;
+  pickupLocation: string | null;
+  dropoffLocation: string | null;
+  pickupAt: string | null;
+  dropoffAt: string | null;
+  carCategory: string | null;
   operationalNotes: string | null;
 }
 
@@ -143,6 +153,20 @@ export interface ConfirmTravelPackage {
   travelStartDate?: string | null;
   travelEndDate?: string | null;
   travelerNotes?: string | null;
+  operationalNotes?: string | null;
+}
+
+/** Payload to manually confirm a Car Rental booking item. */
+export interface ConfirmCarRental {
+  externalSystem: string;
+  externalLocator: string;
+  confirmedAt: string;
+  rentalCompany?: string | null;
+  pickupLocation?: string | null;
+  dropoffLocation?: string | null;
+  pickupAt?: string | null;
+  dropoffAt?: string | null;
+  carCategory?: string | null;
   operationalNotes?: string | null;
 }
 
@@ -226,6 +250,18 @@ export class BookingService {
     payload: ConfirmTravelPackage,
   ): Observable<BookingRequestDetail> {
     return this.http.post<BookingRequestDetail>(`/api/bookings/${id}/items/${itemId}/confirm`, payload);
+  }
+
+  /** Manually confirms a Car Rental booking item; returns the refreshed detail. */
+  confirmCarRental(
+    id: string,
+    itemId: string,
+    payload: ConfirmCarRental,
+  ): Observable<BookingRequestDetail> {
+    return this.http.post<BookingRequestDetail>(
+      `/api/bookings/${id}/items/${itemId}/confirm-car-rental`,
+      payload,
+    );
   }
 
   /** The selectable responsible people (shared with the CRM module). */

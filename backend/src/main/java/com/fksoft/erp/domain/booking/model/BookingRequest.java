@@ -226,13 +226,37 @@ public class BookingRequest {
      *     confirmed or cancelled
      */
     public void confirmTravelPackageItem(UUID itemId, BookingItemConfirmation confirmation, UUID byUser) {
-        BookingItem item = items.stream()
+        item(itemId).confirmTravelPackage(confirmation);
+        rollUpStatus();
+        updatedBy = byUser;
+    }
+
+    /**
+     * Manually confirms a Car Rental booking item's external reservation and consolidates the request status.
+     * The item must belong to this request and be a Car Rental item that requires booking and is not already
+     * resolved (the item enforces that). After confirming, the request status rolls up the same way as the
+     * Travel Package flow. No external call is made and no Financial/Commission/Customer Care data is created.
+     *
+     * @param itemId the booking item to confirm
+     * @param confirmation the external reservation result
+     * @param byUser the user confirming (the request's updater)
+     * @throws BookingItemNotFoundException if the item is not part of this request
+     * @throws com.fksoft.erp.domain.booking.exception.BookingItemNotConfirmableException if the item is not a Car
+     *     Rental item that requires booking
+     * @throws com.fksoft.erp.domain.booking.exception.BookingItemAlreadyResolvedException if the item is already
+     *     confirmed or cancelled
+     */
+    public void confirmCarRentalItem(UUID itemId, BookingItemConfirmation confirmation, UUID byUser) {
+        item(itemId).confirmCarRental(confirmation);
+        rollUpStatus();
+        updatedBy = byUser;
+    }
+
+    private BookingItem item(UUID itemId) {
+        return items.stream()
                 .filter(i -> i.id().equals(itemId))
                 .findFirst()
                 .orElseThrow(BookingItemNotFoundException::new);
-        item.confirmTravelPackage(confirmation);
-        rollUpStatus();
-        updatedBy = byUser;
     }
 
     // Consolidates the request status from the items that require booking: all confirmed → CONFIRMED; at least

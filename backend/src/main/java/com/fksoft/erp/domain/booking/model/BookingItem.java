@@ -126,7 +126,27 @@ public class BookingItem {
      * @throws BookingItemAlreadyResolvedException if this item is already confirmed or cancelled
      */
     void confirmTravelPackage(BookingItemConfirmation confirmation) {
-        if (type != ProposalItemType.TRAVEL_PACKAGE || !requiresBooking) {
+        confirm(confirmation, ProposalItemType.TRAVEL_PACKAGE);
+    }
+
+    /**
+     * Manually confirms this item's external reservation through the Car Rental flow: records the confirmation
+     * and moves the item to {@link BookingItemStatus#CONFIRMED}. Only a Car Rental item that requires booking
+     * and is not already confirmed/cancelled can be confirmed. No monetary/Financial/Commission/Customer Care
+     * data is created and no external call is made.
+     *
+     * @param confirmation the external reservation result (system, locator, date, author + optional metadata)
+     * @throws BookingItemNotConfirmableException if this is not a Car Rental item that requires booking
+     * @throws BookingItemAlreadyResolvedException if this item is already confirmed or cancelled
+     */
+    void confirmCarRental(BookingItemConfirmation confirmation) {
+        confirm(confirmation, ProposalItemType.CAR_RENTAL);
+    }
+
+    // Shared confirmation guard + transition: only an item of the expected type that requires booking and is not
+    // already resolved can be confirmed (the item protects its own invariant, §5.3).
+    private void confirm(BookingItemConfirmation confirmation, ProposalItemType expectedType) {
+        if (type != expectedType || !requiresBooking) {
             throw new BookingItemNotConfirmableException();
         }
         if (status == BookingItemStatus.CONFIRMED || status == BookingItemStatus.CANCELLED) {

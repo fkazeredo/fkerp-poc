@@ -174,6 +174,32 @@
                 <dt>Passageiros</dt>
                 <dd class="notes">{{ item.confirmation!.travelerNotes }}</dd>
               }
+              @if (item.confirmation!.rentalCompany) {
+                <dt>Locadora</dt>
+                <dd>{{ item.confirmation!.rentalCompany }}</dd>
+              }
+              @if (item.confirmation!.carCategory) {
+                <dt>Categoria</dt>
+                <dd>{{ item.confirmation!.carCategory }}</dd>
+              }
+              @if (item.confirmation!.pickupLocation || item.confirmation!.pickupAt) {
+                <dt>Retirada</dt>
+                <dd>
+                  {{ item.confirmation!.pickupLocation ?? '—' }}
+                  @if (item.confirmation!.pickupAt) {
+                    · {{ item.confirmation!.pickupAt | date: 'short' }}
+                  }
+                </dd>
+              }
+              @if (item.confirmation!.dropoffLocation || item.confirmation!.dropoffAt) {
+                <dt>Devolução</dt>
+                <dd>
+                  {{ item.confirmation!.dropoffLocation ?? '—' }}
+                  @if (item.confirmation!.dropoffAt) {
+                    · {{ item.confirmation!.dropoffAt | date: 'short' }}
+                  }
+                </dd>
+              }
               @if (item.confirmation!.operationalNotes) {
                 <dt>Notas operacionais</dt>
                 <dd class="notes">{{ item.confirmation!.operationalNotes }}</dd>
@@ -300,7 +326,7 @@
   </p-dialog>
 
   <p-dialog
-    header="Confirmar reserva — Pacote de Viagem"
+    [header]="'Confirmar reserva — ' + itemTypeLabel(confirmItemType)"
     [(visible)]="confirmOpen"
     [modal]="true"
     [closable]="false"
@@ -329,38 +355,87 @@
         appendTo="body"
       />
     </div>
-    <div class="field">
-      <label for="cpkg">Pacote / destino (opcional)</label>
-      <input pInputText id="cpkg" [(ngModel)]="confirmPackageDescription" class="w-full" />
-    </div>
-    <div class="field-row">
+    @if (confirmItemType === 'TRAVEL_PACKAGE') {
       <div class="field">
-        <label for="cstart">Início da viagem (opcional)</label>
-        <p-datepicker
-          inputId="cstart"
-          [(ngModel)]="confirmTravelStart"
-          dateFormat="dd/mm/yy"
-          [showButtonBar]="true"
-          styleClass="w-full"
-          appendTo="body"
-        />
+        <label for="cpkg">Pacote / destino (opcional)</label>
+        <input pInputText id="cpkg" [(ngModel)]="confirmPackageDescription" class="w-full" />
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="cstart">Início da viagem (opcional)</label>
+          <p-datepicker
+            inputId="cstart"
+            [(ngModel)]="confirmTravelStart"
+            dateFormat="dd/mm/yy"
+            [showButtonBar]="true"
+            styleClass="w-full"
+            appendTo="body"
+          />
+        </div>
+        <div class="field">
+          <label for="cend">Fim da viagem (opcional)</label>
+          <p-datepicker
+            inputId="cend"
+            [(ngModel)]="confirmTravelEnd"
+            dateFormat="dd/mm/yy"
+            [showButtonBar]="true"
+            styleClass="w-full"
+            appendTo="body"
+          />
+        </div>
       </div>
       <div class="field">
-        <label for="cend">Fim da viagem (opcional)</label>
-        <p-datepicker
-          inputId="cend"
-          [(ngModel)]="confirmTravelEnd"
-          dateFormat="dd/mm/yy"
-          [showButtonBar]="true"
-          styleClass="w-full"
-          appendTo="body"
-        />
+        <label for="ctravelers">Passageiros / observações (opcional)</label>
+        <textarea pTextarea id="ctravelers" [(ngModel)]="confirmTravelerNotes" rows="2" class="w-full"></textarea>
       </div>
-    </div>
-    <div class="field">
-      <label for="ctravelers">Passageiros / observações (opcional)</label>
-      <textarea pTextarea id="ctravelers" [(ngModel)]="confirmTravelerNotes" rows="2" class="w-full"></textarea>
-    </div>
+    } @else if (confirmItemType === 'CAR_RENTAL') {
+      <div class="field-row">
+        <div class="field">
+          <label for="crental">Locadora (opcional)</label>
+          <input pInputText id="crental" [(ngModel)]="confirmRentalCompany" class="w-full" />
+        </div>
+        <div class="field">
+          <label for="ccat">Categoria do carro (opcional)</label>
+          <input pInputText id="ccat" [(ngModel)]="confirmCarCategory" class="w-full" />
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="cpick">Local de retirada (opcional)</label>
+          <input pInputText id="cpick" [(ngModel)]="confirmPickupLocation" class="w-full" />
+        </div>
+        <div class="field">
+          <label for="cdrop">Local de devolução (opcional)</label>
+          <input pInputText id="cdrop" [(ngModel)]="confirmDropoffLocation" class="w-full" />
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="cpickat">Retirada em (opcional)</label>
+          <p-datepicker
+            inputId="cpickat"
+            [(ngModel)]="confirmPickupAt"
+            [showTime]="true"
+            dateFormat="dd/mm/yy"
+            [showButtonBar]="true"
+            styleClass="w-full"
+            appendTo="body"
+          />
+        </div>
+        <div class="field">
+          <label for="cdropat">Devolução em (opcional)</label>
+          <p-datepicker
+            inputId="cdropat"
+            [(ngModel)]="confirmDropoffAt"
+            [showTime]="true"
+            dateFormat="dd/mm/yy"
+            [showButtonBar]="true"
+            styleClass="w-full"
+            appendTo="body"
+          />
+        </div>
+      </div>
+    }
     <div class="field">
       <label for="cnotes">Notas operacionais (opcional)</label>
       <textarea pTextarea id="cnotes" [(ngModel)]="confirmOperationalNotes" rows="2" class="w-full"></textarea>

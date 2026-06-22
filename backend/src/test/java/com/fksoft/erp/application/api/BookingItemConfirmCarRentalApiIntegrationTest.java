@@ -27,14 +27,15 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * End-to-end (MockMvc, real Postgres) of manually confirming a Travel Package booking item: the operations
- * user records the external reservation result (system/supplier, locator, date + optional travel metadata); the
+ * End-to-end (MockMvc, real Postgres) of manually confirming a Car Rental booking item: the operations user
+ * records the external car reservation result (system/supplier, locator, date + optional rental metadata); the
  * item becomes CONFIRMED and the Booking Request status consolidates (CONFIRMED when every item requiring
- * booking is confirmed, PARTIALLY_CONFIRMED otherwise). Only a Travel Package item that requires booking and is
- * not already resolved can be confirmed (else 422); the locator and system are required (else 400); the
- * operation is gated by booking:request:update + visibility; no external call and no Financial/Commission data.
+ * booking is confirmed, PARTIALLY_CONFIRMED otherwise). Only a Car Rental item that requires booking and is not
+ * already resolved can be confirmed through this flow (else 422); the locator and system are required (else
+ * 400); the operation is gated by booking:request:update + visibility; no external call and no
+ * Financial/Commission data.
  */
-class BookingItemConfirmTravelPackageApiIntegrationTest extends AbstractIntegrationTest {
+class BookingItemConfirmCarRentalApiIntegrationTest extends AbstractIntegrationTest {
 
     private static final UUID MANAGER = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID OPERATOR = UUID.fromString("00000000-0000-0000-0000-000000000006");
@@ -88,19 +89,24 @@ class BookingItemConfirmTravelPackageApiIntegrationTest extends AbstractIntegrat
 
     private static final String VALID =
             """
-            {"externalSystem":"Amadeus","externalLocator":"ABC123","confirmedAt":"2026-06-10T10:00:00Z",
-             "packageDescription":"Cancún 7 noites","travelStartDate":"2026-07-01","travelEndDate":"2026-07-08",
-             "travelerNotes":"2 adultos","operationalNotes":"Confirmado por telefone"}
+            {"externalSystem":"Localiza Connect","externalLocator":"CAR-77","confirmedAt":"2026-06-10T10:00:00Z",
+             "rentalCompany":"Localiza","pickupLocation":"GRU Aeroporto","dropoffLocation":"Centro",
+             "pickupAt":"2026-07-01T12:00:00Z","dropoffAt":"2026-07-08T12:00:00Z","carCategory":"SUV",
+             "operationalNotes":"Retirada no balcão"}
             """;
 
-    @Test
-    void confirmsATravelPackageItemRecordingTheResultAndRollingUpToConfirmed() throws Exception {
-        // A travel package (requires booking) + a service fee (does not) → confirming the package confirms all
-        // items that require booking → the request becomes CONFIRMED.
-        UUID request = pendingRequest("TRAVEL_PACKAGE", "SERVICE_FEE");
-        UUID item = itemId(request, "TRAVEL_PACKAGE");
+    private String carUrl(UUID request, UUID item) {
+        return "/api/bookings/" + request + "/items/" + item + "/confirm-car-rental";
+    }
 
-        String body = mvc.perform(post("/api/bookings/" + request + "/items/" + item + "/confirm")
+    @Test
+    void confirmsACarRentalItemRecordingTheResultAndRollingUpToConfirmed() throws Exception {
+        // A car rental (requires booking) + a service fee (does not) → confirming the car confirms all items
+        // that require booking → the request becomes CONFIRMED.
+        UUID request = pendingRequest("CAR_RENTAL", "SERVICE_FEE");
+        UUID item = itemId(request, "CAR_RENTAL");
+
+        String body = mvc.perform(post(carUrl(request, item))
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID))
@@ -111,110 +117,107 @@ class BookingItemConfirmTravelPackageApiIntegrationTest extends AbstractIntegrat
                 .getResponse()
                 .getContentAsString();
 
-        List<Map<String, Object>> pkg = JsonPath.read(body, "$.items[?(@.type=='TRAVEL_PACKAGE')]");
-        assertThat(pkg).hasSize(1);
-        assertThat(pkg.get(0).get("status")).isEqualTo("CONFIRMED");
+        List<Map<String, Object>> car = JsonPath.read(body, "$.items[?(@.type=='CAR_RENTAL')]");
+        assertThat(car).hasSize(1);
+        assertThat(car.get(0).get("status")).isEqualTo("CONFIRMED");
         @SuppressWarnings("unchecked")
-        Map<String, Object> confirmation = (Map<String, Object>) pkg.get(0).get("confirmation");
-        assertThat(confirmation.get("externalSystem")).isEqualTo("Amadeus");
-        assertThat(confirmation.get("externalLocator")).isEqualTo("ABC123");
+        Map<String, Object> confirmation = (Map<String, Object>) car.get(0).get("confirmation");
+        assertThat(confirmation.get("externalSystem")).isEqualTo("Localiza Connect");
+        assertThat(confirmation.get("externalLocator")).isEqualTo("CAR-77");
         assertThat(confirmation.get("confirmedByName")).isEqualTo("operacoes");
-        assertThat(confirmation.get("packageDescription")).isEqualTo("Cancún 7 noites");
-        assertThat(confirmation.get("confirmedAt")).isNotNull();
-        // The car-rental-specific fields stay null for a Travel Package confirmation.
-        assertThat(confirmation.get("rentalCompany")).isNull();
-        assertThat(confirmation.get("pickupLocation")).isNull();
-        // The confirmation carries operational data only — no monetary/financial fields. The single
-        // confirmation VO exposes both the travel-package and car-rental metadata (the irrelevant ones null).
-        assertThat(confirmation.keySet())
-                .containsExactlyInAnyOrder(
-                        "externalSystem",
-                        "externalLocator",
-                        "confirmedAt",
-                        "confirmedByName",
-                        "packageDescription",
-                        "travelStartDate",
-                        "travelEndDate",
-                        "travelerNotes",
-                        "rentalCompany",
-                        "pickupLocation",
-                        "dropoffLocation",
-                        "pickupAt",
-                        "dropoffAt",
-                        "carCategory",
-                        "operationalNotes");
+        assertThat(confirmation.get("rentalCompany")).isEqualTo("Localiza");
+        assertThat(confirmation.get("pickupLocation")).isEqualTo("GRU Aeroporto");
+        assertThat(confirmation.get("carCategory")).isEqualTo("SUV");
+        // The travel-package-specific fields stay null for a Car Rental confirmation.
+        assertThat(confirmation.get("packageDescription")).isNull();
     }
 
     @Test
-    void confirmingOnePackageWithOtherRequiringItemsLeavesTheRequestPartiallyConfirmed() throws Exception {
-        // A travel package + a car rental, both require booking → confirming only the package leaves the request
-        // PARTIALLY_CONFIRMED (the car rental confirmation is a future slice).
+    void confirmingOneCarWithOtherRequiringItemsLeavesTheRequestPartiallyConfirmed() throws Exception {
+        // A travel package + a car rental, both require booking → confirming only the car leaves the request
+        // PARTIALLY_CONFIRMED.
         UUID request = pendingRequest("TRAVEL_PACKAGE", "CAR_RENTAL");
-        UUID item = itemId(request, "TRAVEL_PACKAGE");
+        UUID item = itemId(request, "CAR_RENTAL");
 
-        String body = mvc.perform(post("/api/bookings/" + request + "/items/" + item + "/confirm")
+        mvc.perform(post(carUrl(request, item))
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PARTIALLY_CONFIRMED"))
-                .andExpect(jsonPath("$.itemsConfirmed").value(1))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        // The car rental item stays PENDING (its confirmation is a future slice).
-        List<String> carStatus = JsonPath.read(body, "$.items[?(@.type=='CAR_RENTAL')].status");
-        assertThat(carStatus).containsExactly("PENDING");
+                .andExpect(jsonPath("$.itemsConfirmed").value(1));
+    }
+
+    @Test
+    void confirmingBothTheCarAndThePackageRollsUpToConfirmed() throws Exception {
+        UUID request = pendingRequest("TRAVEL_PACKAGE", "CAR_RENTAL");
+        String token = operator();
+        // Confirm the car rental.
+        mvc.perform(post(carUrl(request, itemId(request, "CAR_RENTAL")))
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PARTIALLY_CONFIRMED"));
+        // Confirm the travel package via its own endpoint → all requiring items confirmed → CONFIRMED.
+        mvc.perform(
+                        post("/api/bookings/" + request + "/items/" + itemId(request, "TRAVEL_PACKAGE") + "/confirm")
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"externalSystem\":\"Amadeus\",\"externalLocator\":\"ABC123\",\"confirmedAt\":\"2026-06-10T10:00:00Z\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.itemsConfirmed").value(2));
     }
 
     @Test
     void requiresExternalSystemLocatorAndDate() throws Exception {
-        UUID request = pendingRequest("TRAVEL_PACKAGE");
-        UUID item = itemId(request, "TRAVEL_PACKAGE");
+        UUID request = pendingRequest("CAR_RENTAL");
+        UUID item = itemId(request, "CAR_RENTAL");
         String token = operator();
-        String url = "/api/bookings/" + request + "/items/" + item + "/confirm";
         // Missing locator.
-        mvc.perform(post(url)
+        mvc.perform(post(carUrl(request, item))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"externalSystem\":\"Amadeus\",\"confirmedAt\":\"2026-06-10T10:00:00Z\"}"))
+                        .content("{\"externalSystem\":\"Localiza\",\"confirmedAt\":\"2026-06-10T10:00:00Z\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("validation.failed"))
                 .andExpect(jsonPath("$.fields[?(@.field=='externalLocator')]").exists());
         // Missing system.
-        mvc.perform(post(url)
+        mvc.perform(post(carUrl(request, item))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"externalLocator\":\"ABC123\",\"confirmedAt\":\"2026-06-10T10:00:00Z\"}"))
+                        .content("{\"externalLocator\":\"CAR-77\",\"confirmedAt\":\"2026-06-10T10:00:00Z\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fields[?(@.field=='externalSystem')]").exists());
         // Missing date.
-        mvc.perform(post(url)
+        mvc.perform(post(carUrl(request, item))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"externalSystem\":\"Amadeus\",\"externalLocator\":\"ABC123\"}"))
+                        .content("{\"externalSystem\":\"Localiza\",\"externalLocator\":\"CAR-77\"}"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void rejectsAFutureConfirmationDate() throws Exception {
-        UUID request = pendingRequest("TRAVEL_PACKAGE");
-        UUID item = itemId(request, "TRAVEL_PACKAGE");
+        UUID request = pendingRequest("CAR_RENTAL");
+        UUID item = itemId(request, "CAR_RENTAL");
         mvc.perform(
-                        post("/api/bookings/" + request + "/items/" + item + "/confirm")
+                        post(carUrl(request, item))
                                 .header("Authorization", "Bearer " + operator())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
-                                        "{\"externalSystem\":\"Amadeus\",\"externalLocator\":\"ABC123\",\"confirmedAt\":\"2099-01-01T10:00:00Z\"}"))
+                                        "{\"externalSystem\":\"Localiza\",\"externalLocator\":\"CAR-77\",\"confirmedAt\":\"2099-01-01T10:00:00Z\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fields[?(@.field=='confirmedAt')]").exists());
     }
 
     @Test
-    void cannotConfirmACarRentalItem() throws Exception {
+    void cannotConfirmATravelPackageItemThroughTheCarRentalFlow() throws Exception {
         UUID request = pendingRequest("TRAVEL_PACKAGE", "CAR_RENTAL");
-        UUID carItem = itemId(request, "CAR_RENTAL");
-        mvc.perform(post("/api/bookings/" + request + "/items/" + carItem + "/confirm")
+        UUID pkgItem = itemId(request, "TRAVEL_PACKAGE");
+        mvc.perform(post(carUrl(request, pkgItem))
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID))
@@ -224,9 +227,9 @@ class BookingItemConfirmTravelPackageApiIntegrationTest extends AbstractIntegrat
 
     @Test
     void cannotConfirmAServiceFeeItem() throws Exception {
-        UUID request = pendingRequest("TRAVEL_PACKAGE", "SERVICE_FEE");
+        UUID request = pendingRequest("CAR_RENTAL", "SERVICE_FEE");
         UUID feeItem = itemId(request, "SERVICE_FEE");
-        mvc.perform(post("/api/bookings/" + request + "/items/" + feeItem + "/confirm")
+        mvc.perform(post(carUrl(request, feeItem))
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID))
@@ -236,16 +239,15 @@ class BookingItemConfirmTravelPackageApiIntegrationTest extends AbstractIntegrat
 
     @Test
     void cannotConfirmAnAlreadyConfirmedItem() throws Exception {
-        UUID request = pendingRequest("TRAVEL_PACKAGE");
-        UUID item = itemId(request, "TRAVEL_PACKAGE");
+        UUID request = pendingRequest("CAR_RENTAL");
+        UUID item = itemId(request, "CAR_RENTAL");
         String token = operator();
-        String url = "/api/bookings/" + request + "/items/" + item + "/confirm";
-        mvc.perform(post(url)
+        mvc.perform(post(carUrl(request, item))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID))
                 .andExpect(status().isOk());
-        mvc.perform(post(url)
+        mvc.perform(post(carUrl(request, item))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID))
@@ -255,8 +257,8 @@ class BookingItemConfirmTravelPackageApiIntegrationTest extends AbstractIntegrat
 
     @Test
     void rejectsAnItemNotInTheRequest() throws Exception {
-        UUID request = pendingRequest("TRAVEL_PACKAGE");
-        mvc.perform(post("/api/bookings/" + request + "/items/" + UUID.randomUUID() + "/confirm")
+        UUID request = pendingRequest("CAR_RENTAL");
+        mvc.perform(post(carUrl(request, UUID.randomUUID()))
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID))
@@ -266,9 +268,9 @@ class BookingItemConfirmTravelPackageApiIntegrationTest extends AbstractIntegrat
 
     @Test
     void directorWithoutTheUpdateScopeIsForbidden() throws Exception {
-        UUID request = pendingRequest("TRAVEL_PACKAGE");
-        UUID item = itemId(request, "TRAVEL_PACKAGE");
-        mvc.perform(post("/api/bookings/" + request + "/items/" + item + "/confirm")
+        UUID request = pendingRequest("CAR_RENTAL");
+        UUID item = itemId(request, "CAR_RENTAL");
+        mvc.perform(post(carUrl(request, item))
                         .header("Authorization", "Bearer " + login("diretor", "diretor123"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID))
@@ -277,9 +279,9 @@ class BookingItemConfirmTravelPackageApiIntegrationTest extends AbstractIntegrat
 
     @Test
     void sellerIsForbidden() throws Exception {
-        UUID request = pendingRequest("TRAVEL_PACKAGE");
-        UUID item = itemId(request, "TRAVEL_PACKAGE");
-        mvc.perform(post("/api/bookings/" + request + "/items/" + item + "/confirm")
+        UUID request = pendingRequest("CAR_RENTAL");
+        UUID item = itemId(request, "CAR_RENTAL");
+        mvc.perform(post(carUrl(request, item))
                         .header("Authorization", "Bearer " + login("vendedor", "vendedor123"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID))
@@ -288,11 +290,11 @@ class BookingItemConfirmTravelPackageApiIntegrationTest extends AbstractIntegrat
 
     @Test
     void aUserWhoCannotSeeTheRequestIsForbidden() throws Exception {
-        UUID request = pendingRequest("TRAVEL_PACKAGE");
-        UUID item = itemId(request, "TRAVEL_PACKAGE");
+        UUID request = pendingRequest("CAR_RENTAL");
+        UUID item = itemId(request, "CAR_RENTAL");
         String token = tokens.issueAccessToken(new AuthenticatedUser(
                 UUID.randomUUID(), "other", Set.of("booking:request:update", "booking:request:read")));
-        mvc.perform(post("/api/bookings/" + request + "/items/" + item + "/confirm")
+        mvc.perform(post(carUrl(request, item))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID))
@@ -302,7 +304,7 @@ class BookingItemConfirmTravelPackageApiIntegrationTest extends AbstractIntegrat
 
     @Test
     void unknownRequestIsNotFound() throws Exception {
-        mvc.perform(post("/api/bookings/" + UUID.randomUUID() + "/items/" + UUID.randomUUID() + "/confirm")
+        mvc.perform(post(carUrl(UUID.randomUUID(), UUID.randomUUID()))
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID))
@@ -312,7 +314,7 @@ class BookingItemConfirmTravelPackageApiIntegrationTest extends AbstractIntegrat
 
     @Test
     void rejectsUnauthenticated() throws Exception {
-        mvc.perform(post("/api/bookings/" + UUID.randomUUID() + "/items/" + UUID.randomUUID() + "/confirm")
+        mvc.perform(post(carUrl(UUID.randomUUID(), UUID.randomUUID()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID))
                 .andExpect(status().isUnauthorized());
