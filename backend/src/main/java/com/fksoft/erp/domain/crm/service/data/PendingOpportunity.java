@@ -2,7 +2,6 @@ package com.fksoft.erp.domain.crm.service.data;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityPendingReason;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -20,7 +19,7 @@ public record PendingOpportunity(
         UUID id,
         UUID leadId,
         String name,
-        OpportunityStage stage,
+        String stage,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,

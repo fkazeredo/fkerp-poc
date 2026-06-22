@@ -6,7 +6,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.ProposalItemInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
@@ -28,7 +27,7 @@ class ProposalItemsTest {
 
     private Proposal draftProposal() {
         Opportunity opportunity = mock(Opportunity.class);
-        when(opportunity.stage()).thenReturn(OpportunityStage.READY_FOR_PROPOSAL);
+        when(opportunity.stage()).thenReturn("READY_FOR_PROPOSAL");
         when(opportunity.id()).thenReturn(UUID.randomUUID());
         when(opportunity.leadId()).thenReturn(UUID.randomUUID());
         CreateProposalCommand command = new CreateProposalCommand(null, ACTOR, "Proposta", null, null, null);

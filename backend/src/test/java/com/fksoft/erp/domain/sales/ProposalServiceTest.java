@@ -13,7 +13,6 @@ import com.fksoft.erp.domain.crm.exception.OpportunityAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.OpportunityAccessPolicy;
@@ -81,7 +80,7 @@ class ProposalServiceTest {
 
     private Opportunity readyOpportunity() {
         Opportunity o = mock(Opportunity.class);
-        when(o.stage()).thenReturn(OpportunityStage.READY_FOR_PROPOSAL);
+        when(o.stage()).thenReturn("READY_FOR_PROPOSAL");
         return o;
     }
 
@@ -133,7 +132,7 @@ class ProposalServiceTest {
     @Test
     void rejectsWhenTheOpportunityIsNotReadyForProposal() {
         Opportunity opp = mock(Opportunity.class);
-        when(opp.stage()).thenReturn(OpportunityStage.PRODUCT_FIT);
+        when(opp.stage()).thenReturn("PRODUCT_FIT");
         when(opportunities.findById(OPP_ID)).thenReturn(Optional.of(opp));
         when(opportunityAccessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean()))
                 .thenReturn(true);

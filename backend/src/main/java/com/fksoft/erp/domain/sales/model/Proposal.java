@@ -1,7 +1,6 @@
 package com.fksoft.erp.domain.sales.model;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
 import com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
@@ -45,7 +44,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 /**
  * A commercial Proposal: the formalized commercial offer to the client, created from an Opportunity that
- * is {@link OpportunityStage#READY_FOR_PROPOSAL}. It is the aggregate root of the Sales &amp; Proposals
+ * is {@code READY_FOR_PROPOSAL}. It is the aggregate root of the Sales &amp; Proposals
  * bounded context ({@code domain.sales}). It is NOT a Sale, Sales Order, Booking, Customer, Financial,
  * Payment or Commission record. The source Opportunity (and through it, the Lead) remains the system of
  * record for the negotiation; the Proposal references it by {@link #opportunityId} (never modified) and
@@ -195,7 +194,7 @@ public class Proposal {
      */
     public static Proposal createFromOpportunity(
             Opportunity opportunity, UUID responsiblePersonId, CreateProposalCommand command, UUID createdBy) {
-        if (opportunity.stage() != OpportunityStage.READY_FOR_PROPOSAL) {
+        if (!"READY_FOR_PROPOSAL".equals(opportunity.stage())) {
             throw new OpportunityNotReadyForProposalException();
         }
         Proposal proposal = new Proposal();

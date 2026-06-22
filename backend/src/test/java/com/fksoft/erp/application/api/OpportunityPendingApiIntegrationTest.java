@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -65,34 +64,34 @@ class OpportunityPendingApiIntegrationTest extends AbstractIntegrationTest {
         phoneSeq = 0;
 
         // No activity and old → WITHOUT_RECENT_ACTIVITY (PRODUCT_FIT isolates it from the stuck reasons).
-        insertOpportunity("NoActivityOld", OpportunityStage.PRODUCT_FIT, MANAGER, 30, null, null);
+        insertOpportunity("NoActivityOld", "PRODUCT_FIT", MANAGER, 30, null, null);
 
         // Recent but with a past-due next action → OVERDUE_NEXT_ACTION.
-        insertOpportunity("OverdueAction", OpportunityStage.PRODUCT_FIT, MANAGER, 1, daysFromNow(-2), null);
+        insertOpportunity("OverdueAction", "PRODUCT_FIT", MANAGER, 1, daysFromNow(-2), null);
 
         // Stuck in the first stages past the window → STUCK_IN_NEW / STUCK_IN_DISCOVERY.
-        insertOpportunity("StuckNew", OpportunityStage.NEW_OPPORTUNITY, MANAGER, 30, null, null);
-        insertOpportunity("StuckDiscovery", OpportunityStage.DISCOVERY, MANAGER, 30, null, null);
+        insertOpportunity("StuckNew", "NEW_OPPORTUNITY", MANAGER, 30, null, null);
+        insertOpportunity("StuckDiscovery", "DISCOVERY", MANAGER, 30, null, null);
 
         // Ready for a proposal (no time threshold) → READY_FOR_PROPOSAL.
-        insertOpportunity("ReadyProposal", OpportunityStage.READY_FOR_PROPOSAL, MANAGER, 1, null, null);
+        insertOpportunity("ReadyProposal", "READY_FOR_PROPOSAL", MANAGER, 1, null, null);
 
         // Expected closing date in the past → EXPECTED_CLOSE_OVERDUE.
-        insertOpportunity("CloseOverdue", OpportunityStage.PRODUCT_FIT, MANAGER, 1, null, daysFromNow(-2));
+        insertOpportunity("CloseOverdue", "PRODUCT_FIT", MANAGER, 1, null, daysFromNow(-2));
 
         // Recently created and active, nothing overdue → not pending.
-        UUID activeRecent = insertOpportunity("ActiveRecent", OpportunityStage.PRODUCT_FIT, MANAGER, 1, null, null);
+        UUID activeRecent = insertOpportunity("ActiveRecent", "PRODUCT_FIT", MANAGER, 1, null, null);
         insertActivity(activeRecent, 1);
 
         // Old, but a recent activity rescues it from WITHOUT_RECENT_ACTIVITY → not pending.
-        UUID oldButActive = insertOpportunity("OldButActive", OpportunityStage.PRODUCT_FIT, MANAGER, 30, null, null);
+        UUID oldButActive = insertOpportunity("OldButActive", "PRODUCT_FIT", MANAGER, 30, null, null);
         insertActivity(oldButActive, 1);
 
         // LOST is terminal and never pending, even when old with no activity.
-        insertOpportunity("LostExcluded", OpportunityStage.LOST, MANAGER, 30, null, null);
+        insertOpportunity("LostExcluded", "LOST", MANAGER, 30, null, null);
 
         // Owned by the representative, stuck in NEW → pending, but only the rep (and read-all) sees it.
-        insertOpportunity("RepPending", OpportunityStage.NEW_OPPORTUNITY, REPRESENTANTE, 30, null, null);
+        insertOpportunity("RepPending", "NEW_OPPORTUNITY", REPRESENTANTE, 30, null, null);
     }
 
     @Test
@@ -171,7 +170,7 @@ class OpportunityPendingApiIntegrationTest extends AbstractIntegrationTest {
 
     private UUID insertOpportunity(
             String name,
-            OpportunityStage stage,
+            String stage,
             UUID responsibleId,
             int createdDaysAgo,
             Date nextActionDate,
@@ -192,8 +191,8 @@ class OpportunityPendingApiIntegrationTest extends AbstractIntegrationTest {
                 originId.toString(),
                 responsibleId == null ? null : responsibleId.toString(),
                 "Pacote " + name,
-                stage.name(),
-                stage == OpportunityStage.LOST ? "OTHER" : null,
+                stage,
+                "LOST".equals(stage) ? "OTHER" : null,
                 nextActionDate,
                 expectedCloseDate,
                 createdDaysAgo,

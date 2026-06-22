@@ -1,6 +1,7 @@
 package com.fksoft.erp.domain.sales.service;
 
 import com.fksoft.erp.domain.crm.exception.LeadNotFoundException;
+import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedWonException;
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
@@ -24,6 +25,10 @@ import com.fksoft.erp.domain.sales.service.data.CommercialOrderDetail;
 import com.fksoft.erp.domain.sales.service.data.CommercialOrderListItem;
 import com.fksoft.erp.domain.sales.service.data.CommercialOrderSearchCriteria;
 import com.fksoft.erp.domain.sales.service.data.OrderIndicators;
+import com.fksoft.erp.domain.workflow.WorkflowContext;
+import com.fksoft.erp.domain.workflow.WorkflowEngine;
+import com.fksoft.erp.domain.workflow.WorkflowState;
+import com.fksoft.erp.domain.workflow.WorkflowTransitionNotAllowedException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -64,6 +69,7 @@ public class CommercialOrderService {
     private final LeadRepository leads;
     private final UserRepository users;
     private final ApplicationEventPublisher events;
+    private final WorkflowEngine workflow;
 
     /**
      * Creates a Commercial Order from an Accepted Proposal the caller is allowed to see, marks the source
@@ -95,7 +101,14 @@ public class CommercialOrderService {
         // Close the source Opportunity as won (same transaction); this creates no Finance or Booking behavior.
         Opportunity opportunity =
                 opportunities.findById(proposal.opportunityId()).orElseThrow(OpportunityNotFoundException::new);
-        opportunity.markWon(userId);
+        WorkflowState wonState;
+        try {
+            wonState = workflow.apply(
+                    "opportunity", opportunity.currentState(), "win", WorkflowContext.of(opportunity, userId));
+        } catch (WorkflowTransitionNotAllowedException e) {
+            throw new OpportunityCannotBeMarkedWonException();
+        }
+        opportunity.applyWin(wonState, userId);
         opportunities.save(opportunity);
         events.publishEvent(new CommercialOrderCreated(
                 order.id(),

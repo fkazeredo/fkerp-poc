@@ -1,6 +1,5 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Set;
@@ -27,7 +26,7 @@ import org.springframework.format.annotation.DateTimeFormat;
  *     contacts)
  */
 public record OpportunityListParams(
-        Set<OpportunityStage> stage,
+        Set<String> stage,
         String responsible,
         UUID originId,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,

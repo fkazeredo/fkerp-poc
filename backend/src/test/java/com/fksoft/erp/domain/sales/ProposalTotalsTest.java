@@ -6,7 +6,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
@@ -32,7 +31,7 @@ class ProposalTotalsTest {
 
     private Proposal draftProposal() {
         Opportunity opportunity = mock(Opportunity.class);
-        when(opportunity.stage()).thenReturn(OpportunityStage.READY_FOR_PROPOSAL);
+        when(opportunity.stage()).thenReturn("READY_FOR_PROPOSAL");
         when(opportunity.id()).thenReturn(UUID.randomUUID());
         when(opportunity.leadId()).thenReturn(UUID.randomUUID());
         CreateProposalCommand command = new CreateProposalCommand(null, ACTOR, "Proposta", null, null, null);
@@ -148,7 +147,7 @@ class ProposalTotalsTest {
     @Test
     void rejectsSubmittingForReviewWithoutAResponsible() {
         Opportunity opportunity = mock(Opportunity.class);
-        when(opportunity.stage()).thenReturn(OpportunityStage.READY_FOR_PROPOSAL);
+        when(opportunity.stage()).thenReturn("READY_FOR_PROPOSAL");
         when(opportunity.id()).thenReturn(UUID.randomUUID());
         when(opportunity.leadId()).thenReturn(UUID.randomUUID());
         CreateProposalCommand command = new CreateProposalCommand(null, null, "Proposta", null, null, null);

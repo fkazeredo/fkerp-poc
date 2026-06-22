@@ -6,7 +6,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotSentException;
@@ -26,7 +25,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /** Domain invariants of the Proposal aggregate factory (created from a READY_FOR_PROPOSAL Opportunity). */
 class ProposalTest {
@@ -36,7 +35,7 @@ class ProposalTest {
     private static final UUID OPP_ID = UUID.randomUUID();
     private static final UUID LEAD_ID = UUID.randomUUID();
 
-    private Opportunity opportunity(OpportunityStage stage) {
+    private Opportunity opportunity(String stage) {
         Opportunity o = mock(Opportunity.class);
         when(o.stage()).thenReturn(stage);
         return o;
@@ -49,7 +48,7 @@ class ProposalTest {
 
     @Test
     void createsFromReadyOpportunityAsDraft() {
-        Opportunity o = opportunity(OpportunityStage.READY_FOR_PROPOSAL);
+        Opportunity o = opportunity("READY_FOR_PROPOSAL");
         when(o.id()).thenReturn(OPP_ID);
         when(o.leadId()).thenReturn(LEAD_ID);
 
@@ -67,10 +66,8 @@ class ProposalTest {
     }
 
     @ParameterizedTest
-    @EnumSource(
-            value = OpportunityStage.class,
-            names = {"NEW_OPPORTUNITY", "DISCOVERY", "PRODUCT_FIT", "LOST"})
-    void rejectsCreatingFromANonReadyOpportunity(OpportunityStage stage) {
+    @ValueSource(strings = {"NEW_OPPORTUNITY", "DISCOVERY", "PRODUCT_FIT", "LOST"})
+    void rejectsCreatingFromANonReadyOpportunity(String stage) {
         Opportunity o = opportunity(stage);
 
         assertThatThrownBy(() -> Proposal.createFromOpportunity(o, RESPONSIBLE, command(), CREATOR))
@@ -268,7 +265,7 @@ class ProposalTest {
     }
 
     private Proposal readyDraft() {
-        Opportunity o = opportunity(OpportunityStage.READY_FOR_PROPOSAL);
+        Opportunity o = opportunity("READY_FOR_PROPOSAL");
         when(o.id()).thenReturn(OPP_ID);
         when(o.leadId()).thenReturn(LEAD_ID);
         return Proposal.createFromOpportunity(o, RESPONSIBLE, command(), CREATOR);

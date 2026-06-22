@@ -6,7 +6,6 @@ import com.fksoft.erp.domain.crm.model.OpportunityActivity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivityResult;
 import com.fksoft.erp.domain.crm.model.OpportunityActivityType;
 import com.fksoft.erp.domain.crm.model.OpportunityLossReason;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.model.OpportunityStageChange;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -36,7 +35,7 @@ public record OpportunityDetail(
         UUID id,
         UUID leadId,
         String name,
-        OpportunityStage stage,
+        String stage,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,
@@ -117,7 +116,7 @@ public record OpportunityDetail(
     public record LossInfo(OpportunityLossReason reason, Instant lostAt, String lostBy, String note) {}
 
     /** A single pipeline stage-movement entry. */
-    public record StageChange(OpportunityStage from, OpportunityStage to, Instant at, String by) {}
+    public record StageChange(String from, String to, Instant at, String by) {}
 
     /** A single commercial activity in the negotiation history. */
     public record ActivityItem(

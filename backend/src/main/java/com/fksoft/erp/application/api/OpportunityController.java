@@ -7,7 +7,6 @@ import com.fksoft.erp.application.api.dto.OpportunityResponse;
 import com.fksoft.erp.application.api.dto.OpportunityStageChangeRequest;
 import com.fksoft.erp.application.api.dto.RegisterOpportunityActivityRequest;
 import com.fksoft.erp.application.api.dto.UpdateOpportunityDetailsRequest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.service.OpportunityService;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
@@ -77,7 +76,7 @@ public class OpportunityController {
         UUID id = opportunityService.create(
                 command, userContext.currentUserId(), canSeeAllLeads(), canSeeUnassignedLeads());
         return ResponseEntity.created(URI.create("/api/opportunities/" + id))
-                .body(new OpportunityResponse(id, OpportunityStage.NEW_OPPORTUNITY));
+                .body(new OpportunityResponse(id, "NEW_OPPORTUNITY"));
     }
 
     /**

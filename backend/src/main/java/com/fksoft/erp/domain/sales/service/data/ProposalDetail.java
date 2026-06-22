@@ -2,7 +2,6 @@ package com.fksoft.erp.domain.sales.service.data;
 
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.model.CustomerRejectionReason;
 import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
@@ -130,7 +129,7 @@ public record ProposalDetail(
     }
 
     /** The source Opportunity, kept traceable from the Proposal. */
-    public record SourceOpportunity(UUID id, String name, OpportunityStage stage) {}
+    public record SourceOpportunity(UUID id, String name, String stage) {}
 
     /** The source Lead, kept traceable from the Proposal (the contact's system of record). */
     public record SourceLead(UUID id, String name, String phone, String whatsapp, String email, String status) {}

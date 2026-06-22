@@ -1,7 +1,6 @@
 package com.fksoft.erp.domain.crm.repository;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -11,7 +10,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,16 +41,16 @@ public class OpportunityIndicatorQueries {
      * @param to exclusive upper bound on creation (or {@code null})
      * @return counts keyed by stage
      */
-    public Map<OpportunityStage, Long> countByStage(Specification<Opportunity> visible, Instant from, Instant to) {
+    public Map<String, Long> countByStage(Specification<Opportunity> visible, Instant from, Instant to) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<Object[]> q = cb.createQuery(Object[].class);
         Root<Opportunity> root = q.from(Opportunity.class);
         q.multiselect(root.get("stage"), cb.count(root));
         q.where(where(cb, root, q, visible, from, to));
         q.groupBy(root.get("stage"));
-        Map<OpportunityStage, Long> result = new EnumMap<>(OpportunityStage.class);
+        Map<String, Long> result = new LinkedHashMap<>();
         for (Object[] row : em.createQuery(q).getResultList()) {
-            result.put((OpportunityStage) row[0], (Long) row[1]);
+            result.put((String) row[0], (Long) row[1]);
         }
         return result;
     }
@@ -167,7 +165,7 @@ public class OpportunityIndicatorQueries {
     }
 
     private static Predicate active(CriteriaBuilder cb, Root<Opportunity> root) {
-        return cb.not(root.get("stage").in(OpportunityStage.terminalStages()));
+        return cb.not(root.get("stage").in(List.of("WON", "LOST")));
     }
 
     private Predicate where(

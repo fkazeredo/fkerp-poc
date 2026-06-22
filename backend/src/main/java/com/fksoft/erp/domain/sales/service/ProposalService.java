@@ -6,7 +6,6 @@ import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.OpportunityAccessPolicy;
@@ -108,7 +107,7 @@ public class ProposalService {
                 opportunity, createdBy, canSeeAllOpportunities, canSeeUnassignedOpportunities)) {
             throw new OpportunityAccessDeniedException();
         }
-        if (opportunity.stage() != OpportunityStage.READY_FOR_PROPOSAL) {
+        if (!"READY_FOR_PROPOSAL".equals(opportunity.stage())) {
             throw new OpportunityNotReadyForProposalException();
         }
         proposals

@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -66,9 +65,9 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
         originId = origin.id();
         originLabel = origin.label();
         phoneSeq = 0;
-        managerOpp = insertOpportunity("Aurora", OpportunityStage.NEW_OPPORTUNITY, MANAGER, new BigDecimal("5000.00"));
-        repOpp = insertOpportunity("Beta", OpportunityStage.NEW_OPPORTUNITY, REPRESENTANTE, new BigDecimal("1500.00"));
-        lostOpp = insertOpportunity("Gamma", OpportunityStage.LOST, MANAGER, null);
+        managerOpp = insertOpportunity("Aurora", "NEW_OPPORTUNITY", MANAGER, new BigDecimal("5000.00"));
+        repOpp = insertOpportunity("Beta", "NEW_OPPORTUNITY", REPRESENTANTE, new BigDecimal("1500.00"));
+        lostOpp = insertOpportunity("Gamma", "LOST", MANAGER, null);
     }
 
     @Test
@@ -196,7 +195,7 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.code").value("opportunity.access-denied"));
     }
 
-    private UUID insertOpportunity(String name, OpportunityStage stage, UUID responsibleId, BigDecimal value) {
+    private UUID insertOpportunity(String name, String stage, UUID responsibleId, BigDecimal value) {
         UUID leadId = insertLead(name, responsibleId);
         UUID id = UUID.randomUUID();
         jdbc.update(
@@ -213,9 +212,9 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
                 originId.toString(),
                 responsibleId == null ? null : responsibleId.toString(),
                 "Interesse " + name,
-                stage.name(),
+                stage,
                 value,
-                stage == OpportunityStage.LOST ? "OTHER" : null,
+                "LOST".equals(stage) ? "OTHER" : null,
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

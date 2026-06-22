@@ -3,11 +3,11 @@ package com.fksoft.erp.domain.crm.service;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivity;
 import com.fksoft.erp.domain.crm.model.OpportunityPendingReasons;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import jakarta.persistence.criteria.Subquery;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -49,16 +49,16 @@ public final class OpportunityPendingSpecifications {
                     cb.isNotNull(root.get("nextActionDate")),
                     cb.lessThan(root.<LocalDate>get("nextActionDate"), today));
 
-            var stuckInNew = cb.and(cb.equal(stage, OpportunityStage.NEW_OPPORTUNITY), stale);
-            var stuckInDiscovery = cb.and(cb.equal(stage, OpportunityStage.DISCOVERY), stale);
-            var readyForProposal = cb.equal(stage, OpportunityStage.READY_FOR_PROPOSAL);
+            var stuckInNew = cb.and(cb.equal(stage, "NEW_OPPORTUNITY"), stale);
+            var stuckInDiscovery = cb.and(cb.equal(stage, "DISCOVERY"), stale);
+            var readyForProposal = cb.equal(stage, "READY_FOR_PROPOSAL");
 
             var expectedCloseOverdue = cb.and(
                     cb.isNotNull(root.get("expectedCloseDate")),
                     cb.lessThan(root.<LocalDate>get("expectedCloseDate"), today));
 
             return cb.and(
-                    cb.not(stage.in(OpportunityStage.terminalStages())),
+                    cb.not(stage.in(List.of("WON", "LOST"))),
                     cb.or(
                             withoutRecentActivity,
                             overdueNextAction,

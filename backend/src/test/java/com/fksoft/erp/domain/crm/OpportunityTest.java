@@ -1,34 +1,50 @@
 package com.fksoft.erp.domain.crm;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException;
-import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedWonException;
-import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivityResult;
 import com.fksoft.erp.domain.crm.model.OpportunityActivityType;
 import com.fksoft.erp.domain.crm.model.OpportunityLossReason;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
+import com.fksoft.erp.domain.workflow.WorkflowDefinition;
+import com.fksoft.erp.domain.workflow.WorkflowState;
+import com.fksoft.erp.domain.workflow.WorkflowStateCategory;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-/** Domain invariants of the Opportunity aggregate (the loss transition). */
+/**
+ * Domain invariants of the Opportunity aggregate. Since the workflow reform, the pipeline transitions are
+ * validated by the workflow engine in the application service; the entity exposes field-setting methods that
+ * move it to a (pre-validated) target state and record the stage history. The transition guards (strict
+ * forward funnel, no move from a terminal stage) are covered end-to-end by the API integration tests.
+ */
 class OpportunityTest {
 
     private static final UUID CREATOR = UUID.randomUUID();
     private static final UUID RESPONSIBLE = UUID.randomUUID();
     private final Origin origin = Origin.create("WEBSITE", "Website", 1);
     private final OpportunityLossReason reason = OpportunityLossReason.NO_RESPONSE;
+
+    private final WorkflowDefinition wf = WorkflowDefinition.of("opportunity", "Oportunidade");
+    private final WorkflowState newState =
+            WorkflowState.of(wf, "NEW_OPPORTUNITY", "Nova", WorkflowStateCategory.INITIAL, 1);
+    private final WorkflowState discovery =
+            WorkflowState.of(wf, "DISCOVERY", "Descoberta", WorkflowStateCategory.ACTIVE, 2);
+    private final WorkflowState productFit =
+            WorkflowState.of(wf, "PRODUCT_FIT", "Aderência", WorkflowStateCategory.ACTIVE, 3);
+    private final WorkflowState readyForProposal =
+            WorkflowState.of(wf, "READY_FOR_PROPOSAL", "Pronta", WorkflowStateCategory.ACTIVE, 4);
+    private final WorkflowState won = WorkflowState.of(wf, "WON", "Ganha", WorkflowStateCategory.TERMINAL_POSITIVE, 5);
+    private final WorkflowState lost =
+            WorkflowState.of(wf, "LOST", "Perdida", WorkflowStateCategory.TERMINAL_NEGATIVE, 6);
 
     private Opportunity newOpportunity() {
         Lead lead = mock(Lead.class);
@@ -39,132 +55,63 @@ class OpportunityTest {
         when(lead.mainInterest()).thenReturn("Pacote corporativo");
         CreateOpportunityCommand command =
                 new CreateOpportunityCommand(lead.id(), RESPONSIBLE, "Software", new BigDecimal("1500.00"), null, null);
-        return Opportunity.createFromLead(lead, RESPONSIBLE, command, CREATOR);
+        return Opportunity.createFromLead(lead, RESPONSIBLE, command, newState, CREATOR);
     }
 
     @Test
-    void marksAsLostWithReasonAndKeepsHistory() {
+    void startsAtTheInitialStage() {
+        Opportunity opportunity = newOpportunity();
+        assertThat(opportunity.stage()).isEqualTo("NEW_OPPORTUNITY");
+        assertThat(opportunity.currentState()).isSameAs(newState);
+        assertThat(opportunity.mainInterest()).isEqualTo("Pacote corporativo");
+    }
+
+    @Test
+    void applyLossSetsTheOutcomeAndRecordsTheMovement() {
         Opportunity opportunity = newOpportunity();
 
-        opportunity.markLost(reason, RESPONSIBLE, "sumiu");
+        opportunity.applyLoss(lost, reason, RESPONSIBLE, "sumiu");
 
-        assertThat(opportunity.stage()).isEqualTo(OpportunityStage.LOST);
+        assertThat(opportunity.stage()).isEqualTo("LOST");
+        assertThat(opportunity.currentState()).isSameAs(lost);
         assertThat(opportunity.lossReason()).isEqualTo(reason);
         assertThat(opportunity.lostBy()).isEqualTo(RESPONSIBLE);
         assertThat(opportunity.lostAt()).isNotNull();
         assertThat(opportunity.lossNote()).isEqualTo("sumiu");
-    }
-
-    @Test
-    void rejectsMarkingAnAlreadyLostOpportunityLost() {
-        Opportunity opportunity = newOpportunity();
-        opportunity.markLost(reason, RESPONSIBLE, null);
-
-        assertThatThrownBy(() -> opportunity.markLost(reason, RESPONSIBLE, null))
-                .isInstanceOf(OpportunityCannotBeMarkedLostException.class);
-    }
-
-    @Test
-    void marksLostRecordingTheMovementToLost() {
-        Opportunity opportunity = newOpportunity();
-
-        opportunity.markLost(reason, RESPONSIBLE, null);
-
         assertThat(opportunity.stageChanges()).hasSize(1);
-        assertThat(opportunity.stageChanges().get(0).fromStage()).isEqualTo(OpportunityStage.NEW_OPPORTUNITY);
-        assertThat(opportunity.stageChanges().get(0).toStage()).isEqualTo(OpportunityStage.LOST);
+        assertThat(opportunity.stageChanges().get(0).fromStage()).isEqualTo("NEW_OPPORTUNITY");
+        assertThat(opportunity.stageChanges().get(0).toStage()).isEqualTo("LOST");
         assertThat(opportunity.stageChanges().get(0).changedBy()).isEqualTo(RESPONSIBLE);
     }
 
     @Test
-    void marksAsWonRecordingTheMovementToWon() {
+    void applyWinSetsTheOutcomeAndRecordsTheMovement() {
         Opportunity opportunity = newOpportunity();
-        opportunity.moveToStage(OpportunityStage.DISCOVERY, RESPONSIBLE);
+        opportunity.applyStageAdvance(discovery, RESPONSIBLE);
 
-        opportunity.markWon(CREATOR);
+        opportunity.applyWin(won, CREATOR);
 
-        assertThat(opportunity.stage()).isEqualTo(OpportunityStage.WON);
-        assertThat(opportunity.stage().isTerminal()).isTrue();
+        assertThat(opportunity.stage()).isEqualTo("WON");
+        assertThat(opportunity.currentState()).isSameAs(won);
         var last = opportunity.stageChanges().get(opportunity.stageChanges().size() - 1);
-        assertThat(last.fromStage()).isEqualTo(OpportunityStage.DISCOVERY);
-        assertThat(last.toStage()).isEqualTo(OpportunityStage.WON);
+        assertThat(last.fromStage()).isEqualTo("DISCOVERY");
+        assertThat(last.toStage()).isEqualTo("WON");
         assertThat(last.changedBy()).isEqualTo(CREATOR);
     }
 
     @Test
-    void rejectsMarkingAnAlreadyClosedOpportunityWon() {
-        Opportunity won = newOpportunity();
-        won.markWon(CREATOR);
-        assertThatThrownBy(() -> won.markWon(CREATOR)).isInstanceOf(OpportunityCannotBeMarkedWonException.class);
-
-        Opportunity lost = newOpportunity();
-        lost.markLost(reason, RESPONSIBLE, null);
-        assertThatThrownBy(() -> lost.markWon(CREATOR)).isInstanceOf(OpportunityCannotBeMarkedWonException.class);
-    }
-
-    @Test
-    void rejectsMarkingAWonOpportunityLost() {
-        Opportunity opportunity = newOpportunity();
-        opportunity.markWon(CREATOR);
-
-        assertThatThrownBy(() -> opportunity.markLost(reason, RESPONSIBLE, null))
-                .isInstanceOf(OpportunityCannotBeMarkedLostException.class);
-    }
-
-    @Test
-    void advancesForwardThroughTheFunnelRecordingEachMovement() {
+    void applyStageAdvanceMovesForwardRecordingEachMovement() {
         Opportunity opportunity = newOpportunity();
 
-        opportunity.moveToStage(OpportunityStage.DISCOVERY, RESPONSIBLE);
-        opportunity.moveToStage(OpportunityStage.PRODUCT_FIT, RESPONSIBLE);
-        opportunity.moveToStage(OpportunityStage.READY_FOR_PROPOSAL, RESPONSIBLE);
+        opportunity.applyStageAdvance(discovery, RESPONSIBLE);
+        opportunity.applyStageAdvance(productFit, RESPONSIBLE);
+        opportunity.applyStageAdvance(readyForProposal, RESPONSIBLE);
 
-        assertThat(opportunity.stage()).isEqualTo(OpportunityStage.READY_FOR_PROPOSAL);
+        assertThat(opportunity.stage()).isEqualTo("READY_FOR_PROPOSAL");
+        assertThat(opportunity.currentState()).isSameAs(readyForProposal);
         assertThat(opportunity.stageChanges()).hasSize(3);
-        assertThat(opportunity.stageChanges().get(0).toStage()).isEqualTo(OpportunityStage.DISCOVERY);
-        assertThat(opportunity.stageChanges().get(2).toStage()).isEqualTo(OpportunityStage.READY_FOR_PROPOSAL);
-    }
-
-    @Test
-    void rejectsMovingBackward() {
-        Opportunity opportunity = newOpportunity();
-        opportunity.moveToStage(OpportunityStage.DISCOVERY, RESPONSIBLE);
-
-        assertThatThrownBy(() -> opportunity.moveToStage(OpportunityStage.NEW_OPPORTUNITY, RESPONSIBLE))
-                .isInstanceOf(OpportunityStageTransitionException.class);
-    }
-
-    @Test
-    void rejectsSkippingAStage() {
-        Opportunity opportunity = newOpportunity();
-
-        assertThatThrownBy(() -> opportunity.moveToStage(OpportunityStage.PRODUCT_FIT, RESPONSIBLE))
-                .isInstanceOf(OpportunityStageTransitionException.class);
-    }
-
-    @Test
-    void rejectsMovingToLostThroughTheStageTransition() {
-        Opportunity opportunity = newOpportunity();
-
-        assertThatThrownBy(() -> opportunity.moveToStage(OpportunityStage.LOST, RESPONSIBLE))
-                .isInstanceOf(OpportunityStageTransitionException.class);
-    }
-
-    @Test
-    void rejectsMovingAStageFromLost() {
-        Opportunity opportunity = newOpportunity();
-        opportunity.markLost(reason, RESPONSIBLE, null);
-
-        assertThatThrownBy(() -> opportunity.moveToStage(OpportunityStage.DISCOVERY, RESPONSIBLE))
-                .isInstanceOf(OpportunityStageTransitionException.class);
-    }
-
-    @Test
-    void rejectsMovingToTheSameStage() {
-        Opportunity opportunity = newOpportunity();
-
-        assertThatThrownBy(() -> opportunity.moveToStage(OpportunityStage.NEW_OPPORTUNITY, RESPONSIBLE))
-                .isInstanceOf(OpportunityStageTransitionException.class);
+        assertThat(opportunity.stageChanges().get(0).toStage()).isEqualTo("DISCOVERY");
+        assertThat(opportunity.stageChanges().get(2).toStage()).isEqualTo("READY_FOR_PROPOSAL");
     }
 
     @Test
@@ -183,7 +130,7 @@ class OpportunityTest {
         assertThat(opportunity.activities().get(0).type()).isEqualTo(OpportunityActivityType.PHONE_CALL);
         assertThat(opportunity.activities().get(0).registeredBy()).isEqualTo(RESPONSIBLE);
         assertThat(opportunity.nextActionDate()).isEqualTo(LocalDate.parse("2026-06-20"));
-        assertThat(opportunity.stage()).isEqualTo(OpportunityStage.NEW_OPPORTUNITY); // unchanged
+        assertThat(opportunity.stage()).isEqualTo("NEW_OPPORTUNITY"); // unchanged
     }
 
     @Test
@@ -221,7 +168,7 @@ class OpportunityTest {
         assertThat(opportunity.productType()).isEqualTo("Novo produto");
         assertThat(opportunity.notes()).isEqualTo("nota");
         assertThat(opportunity.mainInterest()).isEqualTo("Pacote corporativo"); // unchanged
-        assertThat(opportunity.stage()).isEqualTo(OpportunityStage.NEW_OPPORTUNITY); // unchanged
+        assertThat(opportunity.stage()).isEqualTo("NEW_OPPORTUNITY"); // unchanged
     }
 
     @Test

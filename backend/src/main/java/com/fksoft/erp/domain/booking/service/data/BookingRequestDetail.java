@@ -12,7 +12,6 @@ import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.Proposal;
@@ -144,7 +143,7 @@ public record BookingRequestDetail(
     public record SourceProposal(UUID id, String title, ProposalStatus status) {}
 
     /** The source Opportunity (commercial reference), kept traceable from the reservation. */
-    public record SourceOpportunity(UUID id, String name, OpportunityStage stage) {}
+    public record SourceOpportunity(UUID id, String name, String stage) {}
 
     /** The source Lead, kept traceable from the reservation. */
     public record SourceLead(UUID id, String name) {}

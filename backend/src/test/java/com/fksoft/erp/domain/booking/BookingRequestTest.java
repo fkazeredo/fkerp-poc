@@ -17,7 +17,6 @@ import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.Proposal;
@@ -269,7 +268,7 @@ class BookingRequestTest {
 
     private Proposal readyDraft() {
         Opportunity o = mock(Opportunity.class);
-        when(o.stage()).thenReturn(OpportunityStage.READY_FOR_PROPOSAL);
+        when(o.stage()).thenReturn("READY_FOR_PROPOSAL");
         when(o.id()).thenReturn(OPP_ID);
         when(o.leadId()).thenReturn(LEAD_ID);
         CreateProposalCommand command = new CreateProposalCommand(

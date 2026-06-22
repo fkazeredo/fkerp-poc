@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -56,9 +55,9 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
         leads.deleteAll();
         originId = origins.findByActiveTrueOrderBySortOrderAsc().get(0).id();
         phoneSeq = 0;
-        managerOpp = insertOpportunity("Aurora", OpportunityStage.NEW_OPPORTUNITY, MANAGER);
-        insertOpportunity("Beta", OpportunityStage.NEW_OPPORTUNITY, REPRESENTANTE);
-        lostOpp = insertOpportunity("Gamma", OpportunityStage.LOST, MANAGER);
+        managerOpp = insertOpportunity("Aurora", "NEW_OPPORTUNITY", MANAGER);
+        insertOpportunity("Beta", "NEW_OPPORTUNITY", REPRESENTANTE);
+        lostOpp = insertOpportunity("Gamma", "LOST", MANAGER);
     }
 
     @Test
@@ -223,7 +222,7 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
                 .header("Authorization", "Bearer " + token));
     }
 
-    private UUID insertOpportunity(String name, OpportunityStage stage, UUID responsibleId) {
+    private UUID insertOpportunity(String name, String stage, UUID responsibleId) {
         UUID leadId = insertLead(name, responsibleId);
         UUID id = UUID.randomUUID();
         jdbc.update(
@@ -239,8 +238,8 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
                 originId.toString(),
                 responsibleId == null ? null : responsibleId.toString(),
                 "Interesse " + name,
-                stage.name(),
-                stage == OpportunityStage.LOST ? "OTHER" : null,
+                stage,
+                "LOST".equals(stage) ? "OTHER" : null,
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

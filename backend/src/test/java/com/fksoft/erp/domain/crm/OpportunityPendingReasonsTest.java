@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityPendingReason;
 import com.fksoft.erp.domain.crm.model.OpportunityPendingReasons;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import java.time.Instant;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
@@ -25,7 +24,7 @@ class OpportunityPendingReasonsTest {
     private static final Instant RECENT = Instant.parse("2026-06-14T12:00:00Z"); // < 14 days before NOW
 
     private Opportunity opportunity(
-            OpportunityStage stage, Instant createdAt, LocalDate nextActionDate, LocalDate expectedCloseDate) {
+            String stage, Instant createdAt, LocalDate nextActionDate, LocalDate expectedCloseDate) {
         Opportunity o = mock(Opportunity.class);
         when(o.stage()).thenReturn(stage);
         when(o.createdAt()).thenReturn(createdAt);
@@ -36,34 +35,34 @@ class OpportunityPendingReasonsTest {
 
     @Test
     void lostIsNeverPending() {
-        Opportunity o = opportunity(OpportunityStage.LOST, OLD, LocalDate.parse("2026-06-01"), TODAY.minusDays(5));
+        Opportunity o = opportunity("LOST", OLD, LocalDate.parse("2026-06-01"), TODAY.minusDays(5));
         assertThat(OpportunityPendingReasons.of(o, NOW, TODAY, null)).isEmpty();
     }
 
     @Test
     void oldWithNoRecentActivityIsWithoutRecentActivity() {
-        Opportunity o = opportunity(OpportunityStage.PRODUCT_FIT, OLD, null, null);
+        Opportunity o = opportunity("PRODUCT_FIT", OLD, null, null);
         assertThat(OpportunityPendingReasons.of(o, NOW, TODAY, null))
                 .containsExactly(OpportunityPendingReason.WITHOUT_RECENT_ACTIVITY);
     }
 
     @Test
     void aRecentActivityRescuesAnOldOpportunity() {
-        Opportunity o = opportunity(OpportunityStage.PRODUCT_FIT, OLD, null, null);
+        Opportunity o = opportunity("PRODUCT_FIT", OLD, null, null);
         Instant recentActivity = Instant.parse("2026-06-10T12:00:00Z"); // within the 14-day window
         assertThat(OpportunityPendingReasons.of(o, NOW, TODAY, recentActivity)).isEmpty();
     }
 
     @Test
     void overdueNextActionIsPending() {
-        Opportunity o = opportunity(OpportunityStage.PRODUCT_FIT, RECENT, TODAY.minusDays(1), null);
+        Opportunity o = opportunity("PRODUCT_FIT", RECENT, TODAY.minusDays(1), null);
         assertThat(OpportunityPendingReasons.of(o, NOW, TODAY, null))
                 .containsExactly(OpportunityPendingReason.OVERDUE_NEXT_ACTION);
     }
 
     @Test
     void stuckInNewAlsoFlagsWithoutRecentActivity() {
-        Opportunity o = opportunity(OpportunityStage.NEW_OPPORTUNITY, OLD, null, null);
+        Opportunity o = opportunity("NEW_OPPORTUNITY", OLD, null, null);
         assertThat(OpportunityPendingReasons.of(o, NOW, TODAY, null))
                 .containsExactlyInAnyOrder(
                         OpportunityPendingReason.WITHOUT_RECENT_ACTIVITY, OpportunityPendingReason.STUCK_IN_NEW);
@@ -71,7 +70,7 @@ class OpportunityPendingReasonsTest {
 
     @Test
     void stuckInDiscoveryAlsoFlagsWithoutRecentActivity() {
-        Opportunity o = opportunity(OpportunityStage.DISCOVERY, OLD, null, null);
+        Opportunity o = opportunity("DISCOVERY", OLD, null, null);
         assertThat(OpportunityPendingReasons.of(o, NOW, TODAY, null))
                 .containsExactlyInAnyOrder(
                         OpportunityPendingReason.WITHOUT_RECENT_ACTIVITY, OpportunityPendingReason.STUCK_IN_DISCOVERY);
@@ -79,27 +78,27 @@ class OpportunityPendingReasonsTest {
 
     @Test
     void readyForProposalIsPending() {
-        Opportunity o = opportunity(OpportunityStage.READY_FOR_PROPOSAL, RECENT, null, null);
+        Opportunity o = opportunity("READY_FOR_PROPOSAL", RECENT, null, null);
         assertThat(OpportunityPendingReasons.of(o, NOW, TODAY, RECENT))
                 .containsExactly(OpportunityPendingReason.READY_FOR_PROPOSAL);
     }
 
     @Test
     void expectedCloseInThePastIsPending() {
-        Opportunity o = opportunity(OpportunityStage.PRODUCT_FIT, RECENT, null, TODAY.minusDays(1));
+        Opportunity o = opportunity("PRODUCT_FIT", RECENT, null, TODAY.minusDays(1));
         assertThat(OpportunityPendingReasons.of(o, NOW, TODAY, null))
                 .containsExactly(OpportunityPendingReason.EXPECTED_CLOSE_OVERDUE);
     }
 
     @Test
     void aRecentlyCreatedActiveOpportunityHasNoReason() {
-        Opportunity o = opportunity(OpportunityStage.PRODUCT_FIT, RECENT, null, null);
+        Opportunity o = opportunity("PRODUCT_FIT", RECENT, null, null);
         assertThat(OpportunityPendingReasons.of(o, NOW, TODAY, RECENT)).isEmpty();
     }
 
     @Test
     void aRecentlyCreatedNewOpportunityIsNotYetStuck() {
-        Opportunity o = opportunity(OpportunityStage.NEW_OPPORTUNITY, RECENT, null, null);
+        Opportunity o = opportunity("NEW_OPPORTUNITY", RECENT, null, null);
         assertThat(OpportunityPendingReasons.of(o, NOW, TODAY, null)).isEmpty();
     }
 }

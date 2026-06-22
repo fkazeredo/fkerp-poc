@@ -34,7 +34,7 @@ public final class OpportunityPendingReasons {
     public static List<OpportunityPendingReason> of(
             Opportunity opportunity, Instant now, LocalDate today, Instant lastActivityAt) {
         List<OpportunityPendingReason> reasons = new ArrayList<>();
-        if (opportunity.stage().isTerminal()) {
+        if ("WON".equals(opportunity.stage()) || "LOST".equals(opportunity.stage())) {
             return reasons;
         }
         Instant staleBefore = now.minus(STALE_DAYS, ChronoUnit.DAYS);
@@ -47,13 +47,13 @@ public final class OpportunityPendingReasons {
         if (opportunity.nextActionDate() != null && opportunity.nextActionDate().isBefore(today)) {
             reasons.add(OpportunityPendingReason.OVERDUE_NEXT_ACTION);
         }
-        if (opportunity.stage() == OpportunityStage.NEW_OPPORTUNITY && stale) {
+        if ("NEW_OPPORTUNITY".equals(opportunity.stage()) && stale) {
             reasons.add(OpportunityPendingReason.STUCK_IN_NEW);
         }
-        if (opportunity.stage() == OpportunityStage.DISCOVERY && stale) {
+        if ("DISCOVERY".equals(opportunity.stage()) && stale) {
             reasons.add(OpportunityPendingReason.STUCK_IN_DISCOVERY);
         }
-        if (opportunity.stage() == OpportunityStage.READY_FOR_PROPOSAL) {
+        if ("READY_FOR_PROPOSAL".equals(opportunity.stage())) {
             reasons.add(OpportunityPendingReason.READY_FOR_PROPOSAL);
         }
         if (opportunity.expectedCloseDate() != null

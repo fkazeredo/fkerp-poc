@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
@@ -75,18 +74,16 @@ class OpportunityIndicatorsApiIntegrationTest extends AbstractIntegrationTest {
         phoneSeq = 0;
 
         // Manager-owned mix across stages/origins, recent.
-        insertOpportunity("Alpha", OpportunityStage.NEW_OPPORTUNITY, MANAGER, website, val("1000.00"), future(), 0);
-        insertOpportunity("Bravo", OpportunityStage.DISCOVERY, MANAGER, website, val("2500.00"), past(), 0);
-        insertOpportunity(
-                "Charlie", OpportunityStage.READY_FOR_PROPOSAL, MANAGER, instagram, val("4000.00"), future(), 0);
-        insertOpportunity("Delta", OpportunityStage.NEW_OPPORTUNITY, null, website, val("500.00"), null, 0);
-        insertOpportunity("Echo", OpportunityStage.PRODUCT_FIT, VENDEDOR, instagram, null, null, 0);
-        insertOpportunity("Foxtrot", OpportunityStage.LOST, MANAGER, website, null, null, 0);
-        insertOpportunity(
-                "Gamma", OpportunityStage.READY_FOR_PROPOSAL, REPRESENTANTE, website, val("3000.00"), past(), 0);
+        insertOpportunity("Alpha", "NEW_OPPORTUNITY", MANAGER, website, val("1000.00"), future(), 0);
+        insertOpportunity("Bravo", "DISCOVERY", MANAGER, website, val("2500.00"), past(), 0);
+        insertOpportunity("Charlie", "READY_FOR_PROPOSAL", MANAGER, instagram, val("4000.00"), future(), 0);
+        insertOpportunity("Delta", "NEW_OPPORTUNITY", null, website, val("500.00"), null, 0);
+        insertOpportunity("Echo", "PRODUCT_FIT", VENDEDOR, instagram, null, null, 0);
+        insertOpportunity("Foxtrot", "LOST", MANAGER, website, null, null, 0);
+        insertOpportunity("Gamma", "READY_FOR_PROPOSAL", REPRESENTANTE, website, val("3000.00"), past(), 0);
 
         // Open, but created two months ago — excluded from the period volume, still in the snapshot.
-        insertOpportunity("OldOpen", OpportunityStage.PRODUCT_FIT, MANAGER, website, val("7000.00"), future(), 60);
+        insertOpportunity("OldOpen", "PRODUCT_FIT", MANAGER, website, val("7000.00"), future(), 60);
     }
 
     @Test
@@ -226,7 +223,7 @@ class OpportunityIndicatorsApiIntegrationTest extends AbstractIntegrationTest {
 
     private void insertOpportunity(
             String name,
-            OpportunityStage stage,
+            String stage,
             UUID responsibleId,
             UUID originId,
             BigDecimal estimatedValue,
@@ -247,10 +244,10 @@ class OpportunityIndicatorsApiIntegrationTest extends AbstractIntegrationTest {
                 originId.toString(),
                 responsibleId == null ? null : responsibleId.toString(),
                 "Pacote " + name,
-                stage.name(),
+                stage,
                 estimatedValue,
                 expectedCloseDate,
-                stage == OpportunityStage.LOST ? "OTHER" : null,
+                "LOST".equals(stage) ? "OTHER" : null,
                 createdDaysAgo,
                 MANAGER.toString(),
                 MANAGER.toString());

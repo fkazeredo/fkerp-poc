@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -66,11 +65,11 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
         phoneSeq = 0;
 
         UUID mgrLead = insertLead("Mgr", MANAGER);
-        UUID mgrOpp = insertOpportunity("Mgr", OpportunityStage.READY_FOR_PROPOSAL, MANAGER, mgrLead);
+        UUID mgrOpp = insertOpportunity("Mgr", "READY_FOR_PROPOSAL", MANAGER, mgrLead);
         mgrProposal = insertProposal(mgrOpp, mgrLead, MANAGER);
 
         UUID repLead = insertLead("Rep", REPRESENTANTE);
-        UUID repOpp = insertOpportunity("Rep", OpportunityStage.READY_FOR_PROPOSAL, REPRESENTANTE, repLead);
+        UUID repOpp = insertOpportunity("Rep", "READY_FOR_PROPOSAL", REPRESENTANTE, repLead);
         repProposal = insertProposal(repOpp, repLead, REPRESENTANTE);
     }
 
@@ -265,7 +264,7 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
         return id;
     }
 
-    private UUID insertOpportunity(String name, OpportunityStage stage, UUID responsibleId, UUID leadId) {
+    private UUID insertOpportunity(String name, String stage, UUID responsibleId, UUID leadId) {
         UUID id = UUID.randomUUID();
         jdbc.update(
                 """
@@ -280,7 +279,7 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
                 originId.toString(),
                 responsibleId == null ? null : responsibleId.toString(),
                 "Pacote " + name,
-                stage.name(),
+                stage,
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

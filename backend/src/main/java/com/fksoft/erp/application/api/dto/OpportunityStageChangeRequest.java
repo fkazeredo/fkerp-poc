@@ -1,11 +1,10 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 
 /**
  * Request to move an Opportunity to another pipeline stage.
  *
- * @param stage the destination stage (required; an unknown value is rejected as a 400)
+ * @param stage the destination stage code (required; an unknown/disallowed value is rejected)
  */
-public record OpportunityStageChangeRequest(@NotNull OpportunityStage stage) {}
+public record OpportunityStageChangeRequest(@NotBlank String stage) {}
