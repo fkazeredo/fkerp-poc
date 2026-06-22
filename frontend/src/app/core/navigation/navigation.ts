@@ -103,7 +103,8 @@ export class NavigationService {
       this.auth.canSeeLeads() ||
       this.auth.canSeeOpportunities() ||
       this.auth.canSeeProposals() ||
-      this.auth.canSeeOrders()
+      this.auth.canSeeOrders() ||
+      this.auth.canSeeBookings()
     ) {
       acompanhamento.push(
         link('Indicadores', 'pi pi-chart-bar', '/indicadores', false, 'Os números do funil, num lugar só.', 'indicators'),

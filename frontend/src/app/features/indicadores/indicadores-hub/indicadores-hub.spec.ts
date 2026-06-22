@@ -18,6 +18,7 @@ describe('IndicadoresHub', () => {
     canSeeOpportunities: vi.fn(() => false),
     canSeeProposals: vi.fn(() => false),
     canSeeOrders: vi.fn(() => false),
+    canSeeBookings: vi.fn(() => false),
   };
 
   function instance(): IndicadoresHub {
@@ -48,6 +49,7 @@ describe('IndicadoresHub', () => {
     auth.canSeeOpportunities.mockReset().mockReturnValue(false);
     auth.canSeeProposals.mockReset().mockReturnValue(false);
     auth.canSeeOrders.mockReset().mockReturnValue(false);
+    auth.canSeeBookings.mockReset().mockReturnValue(false);
   });
 
   it('shows only the tabs the profile can see, in funnel order', () => {
@@ -57,12 +59,19 @@ describe('IndicadoresHub', () => {
 
     auth.canSeeProposals.mockReturnValue(true);
     auth.canSeeOrders.mockReturnValue(true);
+    auth.canSeeBookings.mockReturnValue(true);
     expect(instance()['tabs']().map((t) => t.key)).toEqual([
       'leads',
       'oportunidades',
       'propostas',
       'pedidos',
+      'reservas',
     ]);
+  });
+
+  it('shows only the Reservas tab for a booking-operations-only profile', () => {
+    auth.canSeeBookings.mockReturnValue(true);
+    expect(instance()['tabs']().map((t) => t.key)).toEqual(['reservas']);
   });
 
   it('defaults the active tab to the first visible one', () => {

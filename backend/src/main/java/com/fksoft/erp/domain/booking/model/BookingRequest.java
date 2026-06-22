@@ -110,6 +110,11 @@ public class BookingRequest {
     @Column(name = "next_action_date")
     private LocalDate nextActionDate;
 
+    // The instant the request first reached CONFIRMED, denormalized so the indicators can compute the average
+    // creation→confirmation time without scanning the items. Null until the request is fully confirmed.
+    @Column(name = "confirmed_at")
+    private Instant confirmedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -318,6 +323,10 @@ public class BookingRequest {
                 .count();
         if (requiring > 0 && confirmed == requiring) {
             status = BookingRequestStatus.CONFIRMED;
+            // Stamp the first time the request reaches CONFIRMED (feeds the average creation→confirmation metric).
+            if (confirmedAt == null) {
+                confirmedAt = Instant.now();
+            }
         } else if (confirmed > 0) {
             status = BookingRequestStatus.PARTIALLY_CONFIRMED;
         } else if (failed > 0) {

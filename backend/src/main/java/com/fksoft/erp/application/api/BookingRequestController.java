@@ -9,6 +9,7 @@ import com.fksoft.erp.application.api.dto.FailBookingItemRequest;
 import com.fksoft.erp.application.api.dto.RegisterBookingAttemptRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.service.BookingRequestService;
+import com.fksoft.erp.domain.booking.service.data.BookingIndicators;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestDetail;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestListItem;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
@@ -29,12 +30,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -129,6 +132,29 @@ public class BookingRequestController {
                 bookingService.pending(
                         pageable, userContext.currentUserId(), canSeeAllBookings(), canSeeUnassignedBookings()),
                 item -> item);
+    }
+
+    /**
+     * Minimum Booking Operations indicators over the requests visible to the caller: the volume figures (total,
+     * by status, items by type, failed items, average creation→confirmation time) over the requested period, plus
+     * a current snapshot of the requests ready for Financial Operations (CONFIRMED). Gated by the Booking read
+     * tiers (the policy narrows visibility). Operational, not an executive dashboard: read-only, no Financial,
+     * Payment, Commission or external-integration data.
+     *
+     * @param createdFrom optional inclusive lower bound on the creation date (ISO date)
+     * @param createdTo optional inclusive upper bound on the creation date (ISO date)
+     * @return the indicators
+     */
+    @GetMapping("/indicators")
+    public BookingIndicators indicators(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdTo) {
+        return bookingService.indicators(
+                userContext.currentUserId(),
+                canSeeAllBookings(),
+                canSeeUnassignedBookings(),
+                toStartOfDayUtc(createdFrom),
+                toStartOfDayUtc(createdTo != null ? createdTo.plusDays(1) : null));
     }
 
     /**
