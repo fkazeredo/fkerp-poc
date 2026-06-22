@@ -3,12 +3,12 @@
 > **Público:** usuários finais do sistema FKERP (equipe comercial / vendas).
 > **Idioma:** Português (pt-BR). Há uma edição em inglês mantida em paralelo
 > (`fkerp-user-manual.en-US.md`).
-> **Escopo:** cobre tudo que foi liberado até a **v0.46.0** — o **Comercial / CRM** (ciclo de vida completo
+> **Escopo:** cobre tudo que foi liberado até a **v0.47.0** — o **Comercial / CRM** (ciclo de vida completo
 > de Leads e de Oportunidades), **Vendas & Propostas** (propostas, itens, valores e descontos, fluxo de
 > aprovação/envio/aceite e os pedidos comerciais) e as **Operações de reserva** (o módulo Reservas: a fila de
 > trabalho, o detalhe, o histórico de tentativas, a confirmação de itens de Pacote e Locação, o registro de
-> falhas com retry, o **status consolidado da reserva refletido no Pedido** e a visão de **Reservas pendentes**).
-> Será ampliado à medida que novos recursos forem lançados.
+> falhas com retry, o **status consolidado da reserva refletido no Pedido**, a visão de **Reservas pendentes** e
+> os **Indicadores de reservas**). Será ampliado à medida que novos recursos forem lançados.
 
 ---
 
@@ -131,8 +131,8 @@ acesso. Os módulos seguem o **fluxo de trabalho**:
 - **Reservas** — a fila operacional das reservas a operar, nascidas dos pedidos fechados (seção 10).
 - **Acompanhamento** — o monitoramento de todo o funil reunido em dois hubs: **Pendências** (o que precisa de
   ação — Leads, Oportunidades e **Reservas**) e **Indicadores** (os números do funil — Leads, Oportunidades,
-  Propostas, Pedidos). Cada hub é uma página com **abas** por área — você vê apenas as abas que o seu perfil
-  pode ver.
+  Propostas, Pedidos e **Reservas**). Cada hub é uma página com **abas** por área — você vê apenas as abas que o
+  seu perfil pode ver.
 - **Cadastros** — as listas de apoio que alimentam os fluxos (seção 11).
 
 Clicar em um card abre a **home daquele módulo**, com os atalhos para suas telas.
@@ -810,6 +810,24 @@ visão **operacional** (não um painel executivo): **somente leitura**, sem aler
 notificação ou SLA e sem novas tentativas automáticas. Valem as mesmas **regras de visibilidade** das reservas —
 quem não tem acesso a reservas (vendedores, representantes, financeiro) não vê esta lista.
 
+### 10.9 Indicadores de reservas (carga e problemas)
+
+Para o gestor de operações acompanhar a **carga de trabalho e os problemas** das reservas, há os **Indicadores de
+reservas**, na aba **Reservas** do hub **Acompanhamento → Indicadores**. Como nos demais indicadores, há **dois
+blocos**:
+
+- **Volume no período** (pela data de criação; padrão = mês atual): o **Total** de reservas, a quebra **Por
+  status** (Pendente, Em andamento, Parcialmente confirmada, Confirmada, Falhou, Cancelada), os **Itens por tipo**
+  (Pacote de viagem, Locação de veículo, Taxa de serviço, Outro), os **Itens com falha** e o **Tempo médio até a
+  confirmação** (a média do tempo entre criar a reserva e confirmá-la, no período). Ajuste o período pelos campos
+  **Criado de / até** ou clique em **Todo o período**.
+- **Em andamento** (retrato de hoje, **independe do período**): **Prontas p/ Financeiro** — as reservas hoje
+  **Confirmadas**, que podem seguir para o Financeiro.
+
+Valem as mesmas **regras de visibilidade**: gestores de operações e comerciais veem os números globais; quem não
+tem acesso a reservas não vê estes indicadores. É uma visão **operacional**, não um painel executivo — **sem**
+dados financeiros, de pagamento, de comissão ou de integração externa (integrações ainda não existem).
+
 ## 11. Gerenciando cadastros
 
 Os cadastros são as listas que alimentam o formulário de Lead e fluxos futuros. São quatro, todas
@@ -916,12 +934,12 @@ de trabalho** das solicitações de reserva nascidas dos pedidos fechados, o **d
 origens rastreáveis, o **histórico de tentativas**, a **confirmação** de itens de **Pacote de viagem** e de
 **Locação de veículo**, o **registro de falhas com retry**, o **reflexo do status consolidado da reserva no
 Pedido Comercial** (seção 10.7) — deixando o pedido identificável como *pronto para o Financeiro* ou *com
-problema de reserva* — e a visão de **Reservas pendentes** (seção 10.8), no hub Acompanhamento → Pendências. As
-próximas etapas trarão o restante do ciclo de reserva (atribuição de operador e cancelamento) e, adiante, o
-financeiro. Este manual será atualizado a cada lançamento.
+problema de reserva* —, a visão de **Reservas pendentes** (seção 10.8) e os **Indicadores de reservas** (seção
+10.9), no hub Acompanhamento. As próximas etapas trarão o restante do ciclo de reserva (atribuição de operador e
+cancelamento) e, adiante, o financeiro. Este manual será atualizado a cada lançamento.
 
 ---
 
 *Status do documento: Sprints 1, 2 e 3 concluídas; Sprint 4 (Operações de reserva) em andamento — o módulo
 Reservas com tentativas, confirmação de itens, registro de falhas com retry, o reflexo do status da reserva no
-Pedido e a visão de Reservas pendentes. Mantido junto com o produto.*
+Pedido, a visão de Reservas pendentes e os Indicadores de reservas. Mantido junto com o produto.*

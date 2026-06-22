@@ -293,6 +293,34 @@ export interface BookingRequestDetail {
   sourceLead: BookingSourceLead;
 }
 
+/** A Booking Request count for a lifecycle status (indicators). */
+export interface BookingStatusCount {
+  status: BookingRequestStatus;
+  count: number;
+}
+
+/** A booking-item count for an item type (indicators). */
+export interface BookingItemTypeCount {
+  type: ProposalItemType;
+  count: number;
+}
+
+/**
+ * Minimum Booking Operations indicators. Two scopes: the **volume** figures ({@code total}, {@code byStatus},
+ * {@code itemsByType}, {@code failedItems}, {@code avgConfirmationSeconds}) cover the selected period (by
+ * creation date); the **operational** figure ({@code readyForFinance} — currently CONFIRMED requests) is a
+ * current snapshot, independent of the period. Operational reservation figures only — never Financial, Payment
+ * or Commission data. {@code avgConfirmationSeconds} is null when no request was confirmed in the period.
+ */
+export interface BookingIndicators {
+  total: number;
+  byStatus: BookingStatusCount[];
+  itemsByType: BookingItemTypeCount[];
+  failedItems: number;
+  readyForFinance: number;
+  avgConfirmationSeconds: number | null;
+}
+
 /** API client for the Booking Request endpoints (Booking Operations). */
 @Injectable({ providedIn: 'root' })
 export class BookingService {
@@ -373,5 +401,20 @@ export class BookingService {
   pending(page = 0, size = 20): Observable<PageResponse<PendingBookingRequest>> {
     const params = new HttpParams().set('page', page).set('size', size);
     return this.http.get<PageResponse<PendingBookingRequest>>('/api/bookings/pending', { params });
+  }
+
+  /** Minimum Booking Operations indicators in an optional period (ISO dates); absent dates = all-time. */
+  indicators(
+    createdFrom: string | null = null,
+    createdTo: string | null = null,
+  ): Observable<BookingIndicators> {
+    let params = new HttpParams();
+    if (createdFrom) {
+      params = params.set('createdFrom', createdFrom);
+    }
+    if (createdTo) {
+      params = params.set('createdTo', createdTo);
+    }
+    return this.http.get<BookingIndicators>('/api/bookings/indicators', { params });
   }
 }

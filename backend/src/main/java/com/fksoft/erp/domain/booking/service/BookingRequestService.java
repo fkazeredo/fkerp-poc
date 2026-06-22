@@ -13,9 +13,11 @@ import com.fksoft.erp.domain.booking.model.BookingRequestCreated;
 import com.fksoft.erp.domain.booking.model.BookingRequestPendingReasons;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.model.BookingStatusConsolidated;
+import com.fksoft.erp.domain.booking.repository.BookingIndicatorQueries;
 import com.fksoft.erp.domain.booking.repository.BookingItemCountsRow;
 import com.fksoft.erp.domain.booking.repository.BookingPendingItemCountsRow;
 import com.fksoft.erp.domain.booking.repository.BookingRequestRepository;
+import com.fksoft.erp.domain.booking.service.data.BookingIndicators;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestDetail;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestListItem;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
@@ -72,6 +74,7 @@ public class BookingRequestService {
     private static final Set<BookingRequestStatus> ACTIVE_STATUSES = BookingRequestStatus.activeStatuses();
 
     private final BookingRequestRepository bookingRequests;
+    private final BookingIndicatorQueries indicatorQueries;
     private final CommercialOrderRepository orders;
     private final OrderAccessPolicy orderAccessPolicy;
     private final BookingRequestAccessPolicy accessPolicy;
@@ -241,6 +244,46 @@ public class BookingRequestService {
     }
 
     private static final long[] EMPTY_PENDING_COUNTS = {0L, 0L, 0L, 0L};
+
+    /**
+     * Minimum Booking Operations indicators over the requests visible to the caller. The volume figures (total,
+     * by status, items by type, failed items, average creation→confirmation time) cover the requested period (by
+     * creation date); the operational figure (ready for Financial Operations = currently CONFIRMED) is a current
+     * snapshot of all the visible requests. Read-only; exposes operational reservation figures only — never
+     * Financial, Payment, Commission, Customer Care or external-integration data.
+     *
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every request
+     * @param canSeeUnassigned whether the caller may also see the unassigned (no-operator) pool
+     * @param from inclusive lower bound on creation (or {@code null})
+     * @param to exclusive upper bound on creation (or {@code null})
+     * @return the indicators
+     */
+    @Transactional(readOnly = true)
+    public BookingIndicators indicators(
+            UUID userId, boolean canSeeAll, boolean canSeeUnassigned, Instant from, Instant to) {
+        Specification<BookingRequest> visible = accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned);
+
+        // Volume — over the period.
+        Map<BookingRequestStatus, Long> countByStatus = indicatorQueries.countByStatus(visible, from, to);
+        long total = countByStatus.values().stream().mapToLong(Long::longValue).sum();
+        List<BookingIndicators.StatusCount> byStatus = countByStatus.entrySet().stream()
+                .map(e -> new BookingIndicators.StatusCount(e.getKey(), e.getValue()))
+                .toList();
+        List<BookingIndicators.ItemTypeCount> itemsByType =
+                indicatorQueries.countItemsByType(visible, from, to).entrySet().stream()
+                        .map(e -> new BookingIndicators.ItemTypeCount(e.getKey(), e.getValue()))
+                        .toList();
+        long failedItems = indicatorQueries.countFailedItems(visible, from, to);
+        Long avgConfirmationSeconds = indicatorQueries.avgConfirmationSeconds(visible, from, to);
+
+        // Operational — current snapshot (no period): how many are ready for Financial Operations now.
+        long readyForFinance =
+                indicatorQueries.countByStatus(visible, null, null).getOrDefault(BookingRequestStatus.CONFIRMED, 0L);
+
+        return new BookingIndicators(
+                total, byStatus, itemsByType, failedItems, readyForFinance, avgConfirmationSeconds);
+    }
 
     /**
      * Full detail of a Booking Request the caller is allowed to see, with the source Commercial Order,
