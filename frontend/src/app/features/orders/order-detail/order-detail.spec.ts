@@ -24,6 +24,7 @@ describe('OrderDetailPage', () => {
     leadId: 'l1',
     status: 'PENDING_BOOKING',
     requiresBooking: true,
+    bookingStatus: null,
     responsibleId: 'u1',
     responsibleName: 'comercial',
     unassigned: false,
@@ -138,6 +139,46 @@ describe('OrderDetailPage', () => {
     comp.ngOnInit();
     comp['back']();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/propostas/p1');
+  });
+
+  describe('booking status reflection', () => {
+    it('maps the booking status labels and severities to pt-BR', () => {
+      const comp = build();
+      expect(comp['bookingStatusLabel']('CONFIRMED')).toBe('Confirmada');
+      expect(comp['bookingStatusLabel']('PARTIALLY_CONFIRMED')).toBe('Parcialmente confirmada');
+      expect(comp['bookingStatusLabel']('FAILED')).toBe('Falhou');
+      expect(comp['bookingStatusSeverity']('CONFIRMED')).toBe('success');
+      expect(comp['bookingStatusSeverity']('FAILED')).toBe('danger');
+    });
+
+    it('gives a ready-for-finance hint when confirmed and a problem hint when failed', () => {
+      const comp = build();
+      expect(comp['bookingHint']('CONFIRMED')).toContain('Financeiro');
+      expect(comp['bookingHint']('FAILED')).toContain('Problema');
+      expect(comp['bookingHint'](null)).toContain('não iniciada');
+    });
+
+    it('renders the confirmed booking status and the ready-for-finance hint (DOM)', () => {
+      orders.detail.mockReturnValue(of({ ...sample, bookingStatus: 'CONFIRMED' } satisfies CommercialOrderDetail));
+      const el = render();
+      expect(el.textContent).toContain('Status da reserva');
+      expect(el.textContent).toContain('Confirmada');
+      expect(el.textContent).toContain('pode seguir para o Financeiro');
+    });
+
+    it('renders the failed booking status as a problem (DOM)', () => {
+      orders.detail.mockReturnValue(of({ ...sample, bookingStatus: 'FAILED' } satisfies CommercialOrderDetail));
+      const el = render();
+      expect(el.textContent).toContain('Falhou');
+      expect(el.textContent).toContain('Problema na reserva');
+    });
+
+    it('renders "não iniciada" when there is no booking request yet (DOM)', () => {
+      orders.detail.mockReturnValue(of(sample)); // bookingStatus = null
+      const el = render();
+      expect(el.textContent).toContain('Status da reserva');
+      expect(el.textContent).toContain('Reserva ainda não iniciada');
+    });
   });
 
   describe('DOM rendering', () => {

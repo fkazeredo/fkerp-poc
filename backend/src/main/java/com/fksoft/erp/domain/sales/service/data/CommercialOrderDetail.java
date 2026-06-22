@@ -1,5 +1,6 @@
 package com.fksoft.erp.domain.sales.service.data;
 
+import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
@@ -27,6 +28,9 @@ import java.util.UUID;
  *
  * @param requiresBooking whether the Order still needs a reservation (the explicit booking-need indicator;
  *     {@code true} when the status is PENDING_BOOKING) — what Sprint 4 Booking Operations keys off
+ * @param bookingStatus the consolidated booking status reflected from Booking Operations, or {@code null} when
+ *     no Booking Request exists yet; {@code CONFIRMED} marks the Order ready for Financial Operations and
+ *     {@code FAILED} marks a booking problem (a read-only reflection — it never drives the Order's own status)
  * @param items the order lines (snapshot of the Proposal's items), each with its computed line total
  * @param subtotal the items subtotal (snapshot from the Proposal)
  * @param total the order total (snapshot from the Proposal)
@@ -43,6 +47,7 @@ public record CommercialOrderDetail(
         UUID leadId,
         CommercialOrderStatus status,
         boolean requiresBooking,
+        BookingRequestStatus bookingStatus,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,
@@ -79,6 +84,7 @@ public record CommercialOrderDetail(
                 o.leadId(),
                 o.status(),
                 o.status() == CommercialOrderStatus.PENDING_BOOKING,
+                o.bookingStatus(),
                 o.responsiblePersonId(),
                 nameOf(names, o.responsiblePersonId()),
                 o.responsiblePersonId() == null,

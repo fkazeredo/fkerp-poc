@@ -10,6 +10,12 @@
     <div class="head-main">
       <h1>Pedido {{ orderCode(o.number) }}</h1>
       <p-tag [value]="statusLabel(o.status)" [severity]="statusSeverity(o.status)" />
+      @if (o.bookingStatus) {
+        <p-tag
+          [value]="'Reserva: ' + bookingStatusLabel(o.bookingStatus)"
+          [severity]="bookingStatusSeverity(o.bookingStatus)"
+        />
+      }
     </div>
   </header>
 
@@ -24,6 +30,16 @@
         <dd>{{ statusLabel(o.status) }}</dd>
         <dt>Necessita reserva</dt>
         <dd>{{ o.requiresBooking ? 'Sim' : 'Não' }}</dd>
+        <dt>Status da reserva</dt>
+        <dd class="booking-status">
+          @if (o.bookingStatus) {
+            <p-tag
+              [value]="bookingStatusLabel(o.bookingStatus)"
+              [severity]="bookingStatusSeverity(o.bookingStatus)"
+            />
+          }
+          <span class="hint muted">{{ bookingHint(o.bookingStatus) }}</span>
+        </dd>
         <dt>Próximo passo</dt>
         <dd class="next-step">{{ nextStep(o.status) }}</dd>
         <dt>Criado em</dt>

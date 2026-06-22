@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { PageResponse, Responsible } from './lead.service';
+import { BookingRequestStatus } from './booking.service';
 import { OpportunityStage } from './opportunity.service';
 import { DiscountType, ProposalItemType, ProposalStatus } from './proposal.service';
 
@@ -68,6 +69,7 @@ export interface CommercialOrderListItem {
   unassigned: boolean;
   total: number;
   requiresBooking: boolean;
+  bookingStatus: BookingRequestStatus | null;
   createdAt: string;
 }
 
@@ -96,6 +98,7 @@ export interface CommercialOrderDetail {
   leadId: string;
   status: CommercialOrderStatus;
   requiresBooking: boolean;
+  bookingStatus: BookingRequestStatus | null;
   responsibleId: string | null;
   responsibleName: string | null;
   unassigned: boolean;

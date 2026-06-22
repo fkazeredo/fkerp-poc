@@ -11,6 +11,7 @@ import com.fksoft.erp.domain.booking.model.BookingItemFailure;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestCreated;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
+import com.fksoft.erp.domain.booking.model.BookingStatusConsolidated;
 import com.fksoft.erp.domain.booking.repository.BookingItemCountsRow;
 import com.fksoft.erp.domain.booking.repository.BookingRequestRepository;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestDetail;
@@ -131,6 +132,8 @@ public class BookingRequestService {
                 order.leadId(),
                 userId,
                 order.responsiblePersonId()));
+        // Reflect the initial (PENDING) booking status onto the source Commercial Order (Sales owns the write).
+        publishConsolidated(request);
         return request.id();
     }
 
@@ -232,7 +235,7 @@ public class BookingRequestService {
                 command.occurredAt(),
                 command.nextActionDate(),
                 userId);
-        return toDetail(bookingRequests.saveAndFlush(request));
+        return saveAndReflect(request);
     }
 
     /**
@@ -277,7 +280,7 @@ public class BookingRequestService {
                 .operationalNotes(command.operationalNotes())
                 .build();
         request.confirmTravelPackageItem(itemId, confirmation, userId);
-        return toDetail(bookingRequests.saveAndFlush(request));
+        return saveAndReflect(request);
     }
 
     /**
@@ -324,7 +327,7 @@ public class BookingRequestService {
                 .operationalNotes(command.operationalNotes())
                 .build();
         request.confirmCarRentalItem(itemId, confirmation, userId);
-        return toDetail(bookingRequests.saveAndFlush(request));
+        return saveAndReflect(request);
     }
 
     /**
@@ -364,7 +367,19 @@ public class BookingRequestService {
                 .failedAt(command.failedAt())
                 .build();
         request.failBookingItem(itemId, failure, userId);
-        return toDetail(bookingRequests.saveAndFlush(request));
+        return saveAndReflect(request);
+    }
+
+    // Persists the request, reflects its consolidated status onto the source Commercial Order (Sales-owned,
+    // via a synchronous domain-event reaction in the same transaction), and returns the refreshed detail.
+    private BookingRequestDetail saveAndReflect(BookingRequest request) {
+        BookingRequest saved = bookingRequests.saveAndFlush(request);
+        publishConsolidated(saved);
+        return toDetail(saved);
+    }
+
+    private void publishConsolidated(BookingRequest request) {
+        events.publishEvent(new BookingStatusConsolidated(request.id(), request.commercialOrderId(), request.status()));
     }
 
     private BookingRequest loadVisible(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {

@@ -3,11 +3,12 @@
 > **Audience:** end users of the FKERP system (commercial / sales team).
 > **Language:** English (en-US). A Portuguese edition is maintained alongside
 > (`fkerp-user-manual.pt-BR.md`).
-> **Scope:** covers everything released through **v0.44.0** — the **Commercial / CRM** (the full lead and
+> **Scope:** covers everything released through **v0.45.0** — the **Commercial / CRM** (the full lead and
 > opportunity lifecycle), **Sales & Proposals** (proposals, items, amounts and discounts, the
 > approval/send/acceptance flow and the commercial orders), and **Booking operations** (the Reservas module:
-> the worklist, the detail, the attempt history, confirming Travel package and Car rental items, and
-> registering failures with retry). It grows as new capabilities ship.
+> the worklist, the detail, the attempt history, confirming Travel package and Car rental items, registering
+> failures with retry, and the **consolidated booking status reflected onto the Order**). It grows as new
+> capabilities ship.
 
 ---
 
@@ -623,8 +624,9 @@ The commercial orders live under **Comercial → Pedidos** (keyboard shortcut **
 order: the **Identificador** (Identifier — a friendly number such as **PC-0001**, linking to the detail), the
 **Resumo** (Summary — the source proposal's title), the **Oportunidade** (Opportunity), the **Responsável**
 (Responsible), the **Total**, the **Status**, the **Reserva** (Booking) indicator (*Exige reserva* / Requires
-booking when it has a travel package or a car rental; otherwise *Não exige* / Not required) and the **creation
-date**.
+booking when it has a travel package or a car rental; otherwise *Não exige* / Not required), the **Status da
+reserva** (Booking status — the progress of the booking operations: *Pending*, *In progress*, *Partially
+confirmed*, *Confirmed* or *Failed*; *Not started* until the booking begins) and the **creation date**.
 
 - **Filters:** by **status**, **booking need**, **responsible**, **creation period** and **amount range**, plus
   a **search** over the summary (proposal title). Use **Limpar** (Clear) to reset.
@@ -637,11 +639,17 @@ the source references (proposal/opportunity/lead) and a **next-step** note (when
 that the next step can start the booking operations). So it arrives **ready for the booking step** without
 re-typing anything, the detail also gathers the **commercial context from the source proposal** — the
 **commercial terms**, the **validity**, the **notes** and the **payment notes** (when filled in) — plus an
-explicit **booking-need** indicator (*Sim/Não* — Yes/No). The list and the detail show **order data only** —
-never booking, finance, payment or commission.
+explicit **booking-need** indicator (*Sim/Não* — Yes/No).
+
+The detail also shows the **Status da reserva** (Booking status) — the reflection of how the booking operations
+are going (section 10) — with clear guidance: when the booking is **Confirmed**, the order is **ready to move on
+to Finance**; when it **Failed**, the order shows a **booking problem** that needs attention. This status is a
+**read-only reflection**: it does **not** change the order's own situation (still owned by the Commercial area),
+does **not** cancel the order and creates **nothing** financial. The list and the detail show **order data + that
+booking reflection** — never finance, payment or commission.
 
 > From a **Pending booking** order, the **booking operations** are already available in the **Reservas** module
-> (section 10).
+> (section 10); as the booking is confirmed or fails there, the order's **Booking status** updates automatically.
 
 ### 9.10 Proposal indicators
 
@@ -780,6 +788,15 @@ booking. The booking then becomes **Partially confirmed** (if some other item wa
 *Confirmed*. Registering a failure does **not** cancel the commercial order and creates **nothing** financial,
 payment, commission or customer care.
 
+### 10.7 How the booking shows on the Order
+
+The **consolidated** booking status (*Pending* · *In progress* · *Partially confirmed* · *Confirmed* · *Failed*)
+is **reflected automatically** onto the source **Commercial Order** (section 9), so the whole team can see where
+the booking stands without leaving the order screen. A **Confirmed** booking makes the order **ready to move on
+to Finance**; a **Failed** booking marks the order with a **booking problem** to handle. This reflection is
+**read-only**: the order stays **owned by the Commercial area**, its own situation does not change because of the
+booking, and it is **never** cancelled automatically — nor is any financial record created.
+
 ## 11. Managing reference data (*cadastros*)
 
 Reference data are the lists that feed the lead form and future workflows. There are
@@ -880,11 +897,14 @@ Opportunity as **won**), and **consult the orders list** (**Comercial → Pedido
 
 **Sprint 4 — Booking operations** is underway and already delivers the **Reservas** module (section 10): the
 **worklist** of booking requests born from closed orders, the booking **detail** with its traceable sources, the
-**attempt history**, **confirming** Travel package and Car rental items, and **registering failures with retry**.
-The next steps will bring the rest of the booking cycle (operator assignment, cancellation and reflecting the
-status back on the order) and, later, finance. This manual will be updated as each ships.
+**attempt history**, **confirming** Travel package and Car rental items, **registering failures with retry**, and
+the **consolidated booking status reflected onto the Commercial Order** (section 10.7) — making the order
+identifiable as *ready for Finance* or *having a booking problem*. The next steps will bring the rest of the
+booking cycle (operator assignment and cancellation) and, later, finance. This manual will be updated as each
+ships.
 
 ---
 
 *Document status: Sprints 1, 2 and 3 closed; Sprint 4 (Booking operations) in progress — the Reservas module
-with attempts, item confirmation and failure registration with retry. Maintained alongside the product.*
+with attempts, item confirmation, failure registration with retry, and the booking status reflected onto the
+Order. Maintained alongside the product.*

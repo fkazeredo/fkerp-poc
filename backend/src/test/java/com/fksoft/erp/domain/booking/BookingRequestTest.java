@@ -7,7 +7,12 @@ import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.booking.exception.BookingItemNotMarkableException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
+import com.fksoft.erp.domain.booking.model.BookingAttemptResult;
+import com.fksoft.erp.domain.booking.model.BookingAttemptType;
+import com.fksoft.erp.domain.booking.model.BookingFailureReason;
 import com.fksoft.erp.domain.booking.model.BookingItem;
+import com.fksoft.erp.domain.booking.model.BookingItemConfirmation;
+import com.fksoft.erp.domain.booking.model.BookingItemFailure;
 import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
@@ -21,6 +26,7 @@ import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
@@ -118,6 +124,97 @@ class BookingRequestTest {
 
         assertThatThrownBy(() -> BookingRequest.createFromOrder(notRequired, null, null, Set.of(), CREATOR))
                 .isInstanceOf(CommercialOrderNotPendingBookingException.class);
+    }
+
+    @Test
+    void aFreshRequestWithNoAttemptStaysPending() {
+        BookingRequest request = BookingRequest.createFromOrder(
+                pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.PENDING);
+    }
+
+    @Test
+    void recordingAnAttemptConsolidatesToInProgress() {
+        BookingRequest request = BookingRequest.createFromOrder(
+                pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
+
+        request.recordAttempt(
+                null,
+                BookingAttemptType.INTERNAL_VERIFICATION,
+                BookingAttemptResult.STARTED,
+                "Checando disponibilidade",
+                Instant.parse("2026-06-10T10:00:00Z"),
+                null,
+                CREATOR);
+
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.IN_PROGRESS);
+    }
+
+    @Test
+    void confirmingEveryRequiringItemConsolidatesToConfirmed() {
+        BookingRequest request = BookingRequest.createFromOrder(
+                pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
+
+        request.confirmTravelPackageItem(
+                itemOfType(request, ProposalItemType.TRAVEL_PACKAGE).id(), confirmation(), CREATOR);
+
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.CONFIRMED);
+    }
+
+    @Test
+    void confirmingSomeButNotAllRequiringItemsConsolidatesToPartiallyConfirmed() {
+        BookingRequest request = BookingRequest.createFromOrder(
+                pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE, ProposalItemType.CAR_RENTAL),
+                null,
+                null,
+                Set.of(),
+                CREATOR);
+
+        request.confirmTravelPackageItem(
+                itemOfType(request, ProposalItemType.TRAVEL_PACKAGE).id(), confirmation(), CREATOR);
+
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.PARTIALLY_CONFIRMED);
+    }
+
+    @Test
+    void failingWithNothingConfirmedConsolidatesToFailed() {
+        BookingRequest request = BookingRequest.createFromOrder(
+                pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
+
+        request.failBookingItem(
+                itemOfType(request, ProposalItemType.TRAVEL_PACKAGE).id(), failure(), CREATOR);
+
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.FAILED);
+    }
+
+    @Test
+    void confirmingAFailedItemReconsolidatesTheRequest() {
+        BookingRequest request = BookingRequest.createFromOrder(
+                pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
+        UUID itemId = itemOfType(request, ProposalItemType.TRAVEL_PACKAGE).id();
+        request.failBookingItem(itemId, failure(), CREATOR);
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.FAILED);
+
+        request.confirmTravelPackageItem(itemId, confirmation(), CREATOR);
+
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.CONFIRMED);
+    }
+
+    private static BookingItemConfirmation confirmation() {
+        return BookingItemConfirmation.builder()
+                .externalSystem("Amadeus")
+                .externalLocator("ABC123")
+                .confirmedAt(Instant.parse("2026-06-10T10:00:00Z"))
+                .confirmedBy(CREATOR)
+                .build();
+    }
+
+    private static BookingItemFailure failure() {
+        return BookingItemFailure.builder()
+                .failureReason(BookingFailureReason.NO_AVAILABILITY)
+                .failedBy(CREATOR)
+                .failedAt(Instant.parse("2026-06-10T10:00:00Z"))
+                .build();
     }
 
     @Test
