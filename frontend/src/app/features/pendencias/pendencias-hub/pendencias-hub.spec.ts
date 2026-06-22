@@ -16,6 +16,7 @@ describe('PendenciasHub', () => {
   const auth = {
     canSeeLeads: vi.fn(() => false),
     canSeeOpportunities: vi.fn(() => false),
+    canSeeBookings: vi.fn(() => false),
   };
 
   function instance(): PendenciasHub {
@@ -44,6 +45,7 @@ describe('PendenciasHub', () => {
   beforeEach(() => {
     auth.canSeeLeads.mockReset().mockReturnValue(false);
     auth.canSeeOpportunities.mockReset().mockReturnValue(false);
+    auth.canSeeBookings.mockReset().mockReturnValue(false);
   });
 
   it('shows only the tabs the profile can see, in funnel order', () => {
@@ -51,7 +53,13 @@ describe('PendenciasHub', () => {
     expect(instance()['tabs']().map((t) => t.key)).toEqual(['oportunidades']);
 
     auth.canSeeLeads.mockReturnValue(true);
-    expect(instance()['tabs']().map((t) => t.key)).toEqual(['leads', 'oportunidades']);
+    auth.canSeeBookings.mockReturnValue(true);
+    expect(instance()['tabs']().map((t) => t.key)).toEqual(['leads', 'oportunidades', 'reservas']);
+  });
+
+  it('shows only the Reservas tab for a booking-operations-only profile', () => {
+    auth.canSeeBookings.mockReturnValue(true);
+    expect(instance()['tabs']().map((t) => t.key)).toEqual(['reservas']);
   });
 
   it('defaults the active tab to the first visible one and switches on select', () => {

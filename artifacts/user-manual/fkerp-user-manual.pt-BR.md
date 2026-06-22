@@ -3,12 +3,12 @@
 > **Público:** usuários finais do sistema FKERP (equipe comercial / vendas).
 > **Idioma:** Português (pt-BR). Há uma edição em inglês mantida em paralelo
 > (`fkerp-user-manual.en-US.md`).
-> **Escopo:** cobre tudo que foi liberado até a **v0.45.0** — o **Comercial / CRM** (ciclo de vida completo
+> **Escopo:** cobre tudo que foi liberado até a **v0.46.0** — o **Comercial / CRM** (ciclo de vida completo
 > de Leads e de Oportunidades), **Vendas & Propostas** (propostas, itens, valores e descontos, fluxo de
 > aprovação/envio/aceite e os pedidos comerciais) e as **Operações de reserva** (o módulo Reservas: a fila de
 > trabalho, o detalhe, o histórico de tentativas, a confirmação de itens de Pacote e Locação, o registro de
-> falhas com retry, e o **status consolidado da reserva refletido no Pedido**). Será ampliado à medida que novos
-> recursos forem lançados.
+> falhas com retry, o **status consolidado da reserva refletido no Pedido** e a visão de **Reservas pendentes**).
+> Será ampliado à medida que novos recursos forem lançados.
 
 ---
 
@@ -130,8 +130,9 @@ acesso. Os módulos seguem o **fluxo de trabalho**:
   **Novo lead**).
 - **Reservas** — a fila operacional das reservas a operar, nascidas dos pedidos fechados (seção 10).
 - **Acompanhamento** — o monitoramento de todo o funil reunido em dois hubs: **Pendências** (o que precisa de
-  ação) e **Indicadores** (os números do funil). Cada hub é uma página com **abas** por área (Leads,
-  Oportunidades, Propostas, Pedidos) — você vê apenas as abas que o seu perfil pode ver.
+  ação — Leads, Oportunidades e **Reservas**) e **Indicadores** (os números do funil — Leads, Oportunidades,
+  Propostas, Pedidos). Cada hub é uma página com **abas** por área — você vê apenas as abas que o seu perfil
+  pode ver.
 - **Cadastros** — as listas de apoio que alimentam os fluxos (seção 11).
 
 Clicar em um card abre a **home daquele módulo**, com os atalhos para suas telas.
@@ -792,6 +793,23 @@ seguir ao Financeiro**; uma reserva que **Falhou** marca o pedido com um **probl
 reflexo é apenas **leitura**: o Pedido continua **sob a área Comercial**, a sua situação não muda por causa da
 reserva e ele **nunca** é cancelado automaticamente — nem é criado qualquer registro financeiro.
 
+### 10.8 Reservas pendentes (o que precisa de ação)
+
+Para que nenhuma reserva trave em silêncio, há uma visão de **Reservas pendentes**: a lista das solicitações de
+reserva que **precisam de ação**, cada uma marcada com os **motivos** da pendência. Ela vive como a aba
+**Reservas** do hub **Acompanhamento → Pendências** (atalho `Ctrl K`), ao lado de Leads e Oportunidades.
+
+Uma reserva aparece como pendente quando: está **sem operador** responsável; está **Pendente sem nenhuma
+tentativa**; está **Em andamento sem tentativa recente** (sem atividade há mais de **7 dias**); tem um **item com
+falha**; tem um **item que exige reserva ainda pendente**; está **Parcialmente confirmada**; ou tem uma **próxima
+ação atrasada**. As reservas já **Confirmadas** ou **Canceladas** não aparecem (não precisam de ação).
+
+Cada linha mostra o pedido (PC-000n, com link para o detalhe da reserva), a proposta, o status, o operador, o
+responsável, os itens a reservar, a próxima ação e a última tentativa, além das **etiquetas de motivo**. É uma
+visão **operacional** (não um painel executivo): **somente leitura**, sem alertas por e-mail, sem motor de
+notificação ou SLA e sem novas tentativas automáticas. Valem as mesmas **regras de visibilidade** das reservas —
+quem não tem acesso a reservas (vendedores, representantes, financeiro) não vê esta lista.
+
 ## 11. Gerenciando cadastros
 
 Os cadastros são as listas que alimentam o formulário de Lead e fluxos futuros. São quatro, todas
@@ -896,13 +914,14 @@ revisão interna**, **aprovar ou rejeitar**, **marcar uma proposta aprovada como
 A **Sprint 4 — Operações de reserva** está em andamento e já entrega o módulo **Reservas** (seção 10): a **fila
 de trabalho** das solicitações de reserva nascidas dos pedidos fechados, o **detalhe** da reserva com suas
 origens rastreáveis, o **histórico de tentativas**, a **confirmação** de itens de **Pacote de viagem** e de
-**Locação de veículo**, o **registro de falhas com retry**, e o **reflexo do status consolidado da reserva no
+**Locação de veículo**, o **registro de falhas com retry**, o **reflexo do status consolidado da reserva no
 Pedido Comercial** (seção 10.7) — deixando o pedido identificável como *pronto para o Financeiro* ou *com
-problema de reserva*. As próximas etapas trarão o restante do ciclo de reserva (atribuição de operador e
-cancelamento) e, adiante, o financeiro. Este manual será atualizado a cada lançamento.
+problema de reserva* — e a visão de **Reservas pendentes** (seção 10.8), no hub Acompanhamento → Pendências. As
+próximas etapas trarão o restante do ciclo de reserva (atribuição de operador e cancelamento) e, adiante, o
+financeiro. Este manual será atualizado a cada lançamento.
 
 ---
 
 *Status do documento: Sprints 1, 2 e 3 concluídas; Sprint 4 (Operações de reserva) em andamento — o módulo
-Reservas com tentativas, confirmação de itens, registro de falhas com retry e o reflexo do status da reserva no
-Pedido. Mantido junto com o produto.*
+Reservas com tentativas, confirmação de itens, registro de falhas com retry, o reflexo do status da reserva no
+Pedido e a visão de Reservas pendentes. Mantido junto com o produto.*

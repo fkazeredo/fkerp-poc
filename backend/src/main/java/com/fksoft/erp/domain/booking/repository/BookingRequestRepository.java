@@ -45,4 +45,27 @@ public interface BookingRequestRepository
                     """,
             nativeQuery = true)
     List<BookingItemCountsRow> findItemCounts(@Param("bookingRequestIds") Collection<UUID> bookingRequestIds);
+
+    /**
+     * Item counts for the pending-items worklist (requiring / confirmed / failed / requiring-but-still-pending)
+     * per Booking Request, in one grouped query over the given ids (no N+1).
+     *
+     * @param bookingRequestIds the Booking Request ids to count items for
+     * @return one row per request that has items, with the four counts
+     */
+    @Query(
+            value =
+                    """
+                    SELECT i.booking_request_id AS bookingRequestId,
+                           COUNT(*) FILTER (WHERE i.requires_booking)                          AS requiring,
+                           COUNT(*) FILTER (WHERE i.status = 'CONFIRMED')                      AS confirmed,
+                           COUNT(*) FILTER (WHERE i.status = 'FAILED')                         AS failed,
+                           COUNT(*) FILTER (WHERE i.requires_booking AND i.status = 'PENDING') AS pendingRequired
+                    FROM booking_items i
+                    WHERE i.booking_request_id IN (:bookingRequestIds)
+                    GROUP BY i.booking_request_id
+                    """,
+            nativeQuery = true)
+    List<BookingPendingItemCountsRow> findPendingItemCounts(
+            @Param("bookingRequestIds") Collection<UUID> bookingRequestIds);
 }
