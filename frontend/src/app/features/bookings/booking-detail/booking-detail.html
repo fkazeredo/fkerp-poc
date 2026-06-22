@@ -11,6 +11,16 @@
       <h1>Reserva {{ orderCode(b.commercialOrderNumber) }}</h1>
       <p-tag [value]="statusLabel(b.status)" [severity]="statusSeverity(b.status)" />
     </div>
+    @if (canRegisterAttempt()) {
+      <div class="head-actions">
+        <p-button
+          label="Registrar tentativa"
+          icon="pi pi-plus"
+          size="small"
+          (onClick)="openAttempt()"
+        />
+      </div>
+    }
   </header>
 
   <div class="grid">
@@ -113,7 +123,117 @@
     </p-table>
   </p-card>
 
+  <p-card header="Histórico de tentativas" styleClass="section">
+    @if (b.attempts.length === 0) {
+      <p class="muted">Nenhuma tentativa registrada ainda.</p>
+    } @else {
+      <ul class="history">
+        @for (a of b.attempts; track a.id) {
+          <li>
+            <span class="when">{{ a.occurredAt | date: 'short' }}</span>
+            <span class="what">
+              <strong>{{ attemptTypeLabel(a.type) }}</strong>
+              <span class="muted"> · {{ attemptResultLabel(a.result) }}</span>
+            </span>
+            <span class="note">{{ a.description }}</span>
+            <span class="muted scope">{{ attemptItemLabel(a.bookingItemId) }}</span>
+            @if (a.nextActionDate) {
+              <span class="muted">Próxima ação: {{ a.nextActionDate | date: 'shortDate' }}</span>
+            }
+            <span class="who muted">{{ a.registeredByName ?? '' }}</span>
+          </li>
+        }
+      </ul>
+    }
+  </p-card>
+
   <div class="back">
     <p-button label="Voltar para reservas" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
   </div>
+
+  <p-dialog
+    header="Registrar tentativa"
+    [(visible)]="attemptOpen"
+    [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
+    [style]="{ width: '32rem' }"
+  >
+    <div class="field">
+      <label for="atype">Tipo <span class="req">*</span></label>
+      <p-select
+        inputId="atype"
+        [options]="attemptTypeOptions"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="attemptType"
+        placeholder="Selecione o tipo"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="aresult">Resultado <span class="req">*</span></label>
+      <p-select
+        inputId="aresult"
+        [options]="attemptResultOptions"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="attemptResult"
+        placeholder="Selecione o resultado"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="aitem">Item</label>
+      <p-select
+        inputId="aitem"
+        [options]="itemOptions()"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="attemptItemId"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="awhen">Data <span class="req">*</span></label>
+      <p-datepicker
+        inputId="awhen"
+        [(ngModel)]="attemptOccurredAt"
+        [showTime]="true"
+        [maxDate]="now"
+        dateFormat="dd/mm/yy"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="adesc">Descrição <span class="req">*</span></label>
+      <textarea pTextarea id="adesc" [(ngModel)]="attemptDescription" rows="3" class="w-full"></textarea>
+    </div>
+    <div class="field">
+      <label for="anext">Próxima ação (opcional)</label>
+      <p-datepicker
+        inputId="anext"
+        [(ngModel)]="attemptNextActionDate"
+        dateFormat="dd/mm/yy"
+        [showButtonBar]="true"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="dialog-actions">
+      <p-button
+        label="Registrar"
+        icon="pi pi-check"
+        [disabled]="!canSaveAttempt()"
+        [loading]="acting()"
+        (onClick)="confirmAttempt()"
+      />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestClose()" />
+    </div>
+  </p-dialog>
 }
