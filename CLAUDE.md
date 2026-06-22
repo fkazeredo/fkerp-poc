@@ -620,6 +620,20 @@ terminal `CONFIRMED`/`CANCELLED` requests are excluded. "Overdue next action" re
 retry, and creates no Financial/Payment/Commission/Customer Care data. In the frontend it is the **Reservas** tab
 of the **Acompanhamento → Pendências** hub (gated by `canSeeBookings()`).
 
+**Booking Operations indicators (normative).** The minimum indicators (`GET /api/bookings/indicators`) are a read
+view gated by the same Booking read tiers (the policy narrows visibility at the query level — a manager sees the
+global numbers; Sellers/Representatives and Finance/HR/IT, with no booking read tier, get 403). They carry **two
+scopes** like the other indicator views — **volume in the period** (by creation date): `total`, `byStatus` (the
+per-status counts: pending / in progress / partially confirmed / confirmed / failed / cancelled), `itemsByType`
+(booking items per type), `failedItems`, and the **average creation→confirmation time** (`avgConfirmationSeconds`,
+null when none confirmed in the period); plus a **current snapshot**: `readyForFinance` (the requests currently
+`CONFIRMED` — ready for Financial Operations). The average reads a **denormalized `confirmed_at`** on the request
+(mirrors `last_attempt_at`/`next_action_date`: stamped the first time the request reaches `CONFIRMED` in
+`consolidateStatus`). They expose **operational reservation figures only** — never Financial, Payment, Commission,
+Customer Care or external-integration data (integrations do not exist yet) — and are **not** an executive
+dashboard. In the frontend they are the **Reservas** tab of the **Acompanhamento → Indicadores** hub (gated by
+`canSeeBookings()`).
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

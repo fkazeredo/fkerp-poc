@@ -4,8 +4,9 @@ import { LeadIndicatorsPage } from '../../leads/lead-indicators/lead-indicators'
 import { OpportunityIndicatorsPage } from '../../opportunities/opportunity-indicators/opportunity-indicators';
 import { ProposalIndicatorsPage } from '../../proposals/proposal-indicators/proposal-indicators';
 import { OrderIndicatorsPage } from '../../orders/order-indicators/order-indicators';
+import { BookingIndicatorsPage } from '../../bookings/booking-indicators/booking-indicators';
 
-type IndicadoresTab = 'leads' | 'oportunidades' | 'propostas' | 'pedidos';
+type IndicadoresTab = 'leads' | 'oportunidades' | 'propostas' | 'pedidos' | 'reservas';
 
 interface TabDef {
   key: IndicadoresTab;
@@ -25,6 +26,7 @@ interface TabDef {
     OpportunityIndicatorsPage,
     ProposalIndicatorsPage,
     OrderIndicatorsPage,
+    BookingIndicatorsPage,
   ],
   templateUrl: './indicadores-hub.html',
   styleUrl: './indicadores-hub.css',
@@ -39,6 +41,7 @@ export class IndicadoresHub {
     if (this.auth.canSeeOpportunities()) tabs.push({ key: 'oportunidades', label: 'Oportunidades' });
     if (this.auth.canSeeProposals()) tabs.push({ key: 'propostas', label: 'Propostas' });
     if (this.auth.canSeeOrders()) tabs.push({ key: 'pedidos', label: 'Pedidos' });
+    if (this.auth.canSeeBookings()) tabs.push({ key: 'reservas', label: 'Reservas' });
     return tabs;
   });
 
