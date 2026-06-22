@@ -80,4 +80,32 @@ class WorkflowSeedIntegrationTest extends AbstractIntegrationTest {
                 .orElseThrow();
         assertThat(contact.trigger()).isEqualTo(TransitionTrigger.SYSTEM);
     }
+
+    @Test
+    void seedsTheOpportunityFunnelWithMultiSourceLoseAndSystemWin() {
+        List<WorkflowState> stages = states.findByDefinition_CodeOrderBySortOrderAsc("opportunity");
+        assertThat(stages)
+                .extracting(WorkflowState::code)
+                .containsExactly("NEW_OPPORTUNITY", "DISCOVERY", "PRODUCT_FIT", "READY_FOR_PROPOSAL", "WON", "LOST");
+        WorkflowState won =
+                stages.stream().filter(s -> s.code().equals("WON")).findFirst().orElseThrow();
+        assertThat(won.category()).isEqualTo(WorkflowStateCategory.TERMINAL_POSITIVE);
+
+        // strict forward funnel: a single "advance" edge out of each active stage, none from READY_FOR_PROPOSAL
+        WorkflowTransition advanceFromNew = transitions
+                .findByDefinition_CodeAndFromState_CodeAndCode("opportunity", "NEW_OPPORTUNITY", "advance")
+                .orElseThrow();
+        assertThat(advanceFromNew.toState().code()).isEqualTo("DISCOVERY");
+        assertThat(transitions.findByDefinition_CodeAndFromState_CodeAndCode(
+                        "opportunity", "READY_FOR_PROPOSAL", "advance"))
+                .isEmpty();
+
+        // win is a system transition from each active stage; lose never leaves the terminal LOST
+        WorkflowTransition win = transitions
+                .findByDefinition_CodeAndFromState_CodeAndCode("opportunity", "DISCOVERY", "win")
+                .orElseThrow();
+        assertThat(win.trigger()).isEqualTo(TransitionTrigger.SYSTEM);
+        assertThat(transitions.findByDefinition_CodeAndFromState_CodeAndCode("opportunity", "LOST", "lose"))
+                .isEmpty();
+    }
 }
