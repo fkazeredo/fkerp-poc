@@ -24,20 +24,20 @@ public final class PendingLeadReasons {
      */
     public static List<PendingReason> of(Lead lead, Instant now, boolean hasInteractions) {
         List<PendingReason> reasons = new ArrayList<>();
-        LeadStatus status = lead.status();
-        if (lead.responsiblePersonId() == null && status != LeadStatus.LOST) {
+        String status = lead.status();
+        if (lead.responsiblePersonId() == null && !"LOST".equals(status)) {
             reasons.add(PendingReason.UNASSIGNED);
         }
-        if (status == LeadStatus.NEW && !hasInteractions) {
+        if ("NEW".equals(status) && !hasInteractions) {
             reasons.add(PendingReason.NEW_WITHOUT_INTERACTION);
         }
         if (lead.nextContactAt() != null
                 && lead.nextContactAt().isBefore(now)
-                && status != LeadStatus.QUALIFIED
-                && status != LeadStatus.LOST) {
+                && !"QUALIFIED".equals(status)
+                && !"LOST".equals(status)) {
             reasons.add(PendingReason.OVERDUE_NEXT_CONTACT);
         }
-        if (status == LeadStatus.CONTACTED && lead.nextContactAt() == null) {
+        if ("CONTACTED".equals(status) && lead.nextContactAt() == null) {
             reasons.add(PendingReason.CONTACTED_WITHOUT_OUTCOME);
         }
         return reasons;

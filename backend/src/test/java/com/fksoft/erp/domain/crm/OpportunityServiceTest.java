@@ -16,7 +16,6 @@ import com.fksoft.erp.domain.crm.exception.OpportunityAlreadyExistsForLeadExcept
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.crm.model.Lead;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivityResult;
 import com.fksoft.erp.domain.crm.model.OpportunityActivityType;
@@ -83,7 +82,7 @@ class OpportunityServiceTest {
     void createsOpportunityFromQualifiedLeadSeedingLeadData() {
         Lead lead = mock(Lead.class);
         when(lead.id()).thenReturn(LEAD_ID);
-        when(lead.status()).thenReturn(LeadStatus.QUALIFIED);
+        when(lead.status()).thenReturn("QUALIFIED");
         when(lead.name()).thenReturn("Maria");
         when(lead.origin()).thenReturn(ORIGIN);
         when(lead.mainInterest()).thenReturn("Pacote corporativo");
@@ -110,7 +109,7 @@ class OpportunityServiceTest {
     @Test
     void rejectsCreatingFromANonQualifiedLead() {
         Lead lead = mock(Lead.class);
-        when(lead.status()).thenReturn(LeadStatus.CONTACTED);
+        when(lead.status()).thenReturn("CONTACTED");
         when(leads.findById(LEAD_ID)).thenReturn(Optional.of(lead));
         when(leadAccessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(true);
 
@@ -134,7 +133,7 @@ class OpportunityServiceTest {
     void rejectsASecondOpportunityForTheSameLead() {
         Lead lead = mock(Lead.class);
         when(lead.id()).thenReturn(LEAD_ID);
-        when(lead.status()).thenReturn(LeadStatus.QUALIFIED);
+        when(lead.status()).thenReturn("QUALIFIED");
         when(leads.findById(LEAD_ID)).thenReturn(Optional.of(lead));
         when(leadAccessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(true);
         Opportunity existing = mock(Opportunity.class);
@@ -150,7 +149,7 @@ class OpportunityServiceTest {
     void rejectsAnUnknownResponsibleOverride() {
         Lead lead = mock(Lead.class);
         when(lead.id()).thenReturn(LEAD_ID);
-        when(lead.status()).thenReturn(LeadStatus.QUALIFIED);
+        when(lead.status()).thenReturn("QUALIFIED");
         when(leads.findById(LEAD_ID)).thenReturn(Optional.of(lead));
         when(leadAccessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(true);
         when(opportunities.findByLeadId(LEAD_ID)).thenReturn(Optional.empty());

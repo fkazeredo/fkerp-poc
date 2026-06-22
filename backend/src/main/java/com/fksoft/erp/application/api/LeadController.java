@@ -6,7 +6,6 @@ import com.fksoft.erp.application.api.dto.LoseRequest;
 import com.fksoft.erp.application.api.dto.QualifyRequest;
 import com.fksoft.erp.application.api.dto.ReassignRequest;
 import com.fksoft.erp.application.api.dto.RegisterInteractionRequest;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.service.LeadService;
 import com.fksoft.erp.domain.crm.service.data.LeadDetail;
 import com.fksoft.erp.domain.crm.service.data.LeadIndicators;
@@ -72,8 +71,7 @@ public class LeadController {
                 request.responsiblePersonId(),
                 request.initialNote());
         UUID id = leadService.register(command, createdBy);
-        return ResponseEntity.created(URI.create("/api/leads/" + id))
-                .body(new LeadResponse(id, request.name(), LeadStatus.NEW));
+        return ResponseEntity.created(URI.create("/api/leads/" + id)).body(new LeadResponse(id, request.name(), "NEW"));
     }
 
     /**
@@ -91,7 +89,7 @@ public class LeadController {
      */
     @GetMapping
     public PageResponse<LeadListItem> list(
-            @RequestParam(required = false) Set<LeadStatus> status,
+            @RequestParam(required = false) Set<String> status,
             @RequestParam(required = false) UUID originId,
             @RequestParam(required = false) String responsible,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,

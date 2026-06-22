@@ -8,7 +8,6 @@ import com.fksoft.erp.domain.crm.exception.OpportunityAlreadyExistsForLeadExcept
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.crm.model.Lead;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivity;
 import com.fksoft.erp.domain.crm.model.OpportunityCreated;
@@ -90,7 +89,7 @@ public class OpportunityService {
         if (!leadAccessPolicy.canSee(lead, createdBy, canSeeAllLeads, canSeeUnassignedLeads)) {
             throw new LeadAccessDeniedException();
         }
-        if (lead.status() != LeadStatus.QUALIFIED) {
+        if (!"QUALIFIED".equals(lead.status())) {
             throw new LeadNotQualifiedForOpportunityException();
         }
         opportunities.findByLeadId(lead.id()).ifPresent(existing -> {

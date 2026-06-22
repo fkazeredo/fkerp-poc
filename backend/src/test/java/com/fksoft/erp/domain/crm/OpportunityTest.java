@@ -9,7 +9,6 @@ import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostExceptio
 import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedWonException;
 import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.model.Lead;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivityResult;
 import com.fksoft.erp.domain.crm.model.OpportunityActivityType;
@@ -33,7 +32,7 @@ class OpportunityTest {
 
     private Opportunity newOpportunity() {
         Lead lead = mock(Lead.class);
-        when(lead.status()).thenReturn(LeadStatus.QUALIFIED);
+        when(lead.status()).thenReturn("QUALIFIED");
         when(lead.id()).thenReturn(UUID.randomUUID());
         when(lead.name()).thenReturn("Maria");
         when(lead.origin()).thenReturn(origin);

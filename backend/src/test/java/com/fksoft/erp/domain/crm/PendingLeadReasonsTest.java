@@ -10,6 +10,9 @@ import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.model.PendingLeadReasons;
 import com.fksoft.erp.domain.crm.model.PendingReason;
 import com.fksoft.erp.domain.crm.service.data.RegisterLeadCommand;
+import com.fksoft.erp.domain.workflow.WorkflowDefinition;
+import com.fksoft.erp.domain.workflow.WorkflowState;
+import com.fksoft.erp.domain.workflow.WorkflowStateCategory;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -21,11 +24,20 @@ class PendingLeadReasonsTest {
     private final InteractionResult contactMade = InteractionResult.create("CONTACT_MADE", "Contato realizado", 1);
     private final Instant now = Instant.parse("2026-06-15T12:00:00Z");
     private final UUID creator = UUID.randomUUID();
+    private final WorkflowDefinition wf = WorkflowDefinition.of("lead", "Lead");
+    private final WorkflowState newState = WorkflowState.of(wf, "NEW", "Novo", WorkflowStateCategory.INITIAL, 1);
+    private final WorkflowState contacted =
+            WorkflowState.of(wf, "CONTACTED", "Contatado", WorkflowStateCategory.ACTIVE, 2);
+    private final WorkflowState qualified =
+            WorkflowState.of(wf, "QUALIFIED", "Qualificado", WorkflowStateCategory.ACTIVE, 3);
+    private final WorkflowState lost =
+            WorkflowState.of(wf, "LOST", "Perdido", WorkflowStateCategory.TERMINAL_NEGATIVE, 4);
 
     private Lead newLead(UUID responsible) {
         return Lead.register(
                 new RegisterLeadCommand("X", "11999999999", null, null, UUID.randomUUID(), responsible, null),
                 origin,
+                newState,
                 creator);
     }
 
@@ -51,6 +63,7 @@ class PendingLeadReasonsTest {
         UUID resp = UUID.randomUUID();
         Lead lead = newLead(resp);
         lead.recordInteraction(call, contactMade, "x", now.minusSeconds(60), null, resp);
+        lead.markContacted(contacted, resp); // the engine performs this NEW -> CONTACTED move in the service
         assertThat(PendingLeadReasons.of(lead, now, true)).containsExactly(PendingReason.CONTACTED_WITHOUT_OUTCOME);
     }
 
@@ -75,14 +88,14 @@ class PendingLeadReasonsTest {
         UUID resp = UUID.randomUUID();
         Lead lead = newLead(resp);
         lead.recordInteraction(call, contactMade, "x", now.minusSeconds(60), now.minusSeconds(30), resp);
-        lead.qualify(resp, "Pacote", null);
+        lead.applyQualification(qualified, "Pacote", null, resp);
         assertThat(PendingLeadReasons.of(lead, now, true)).isEmpty();
     }
 
     @Test
     void lostLeadIsNeverPending() {
         Lead lead = newLead(null); // unassigned, but...
-        lead.markLost(LossReason.create("NO_RESPONSE", "Sem resposta", 1), creator, null);
+        lead.applyLoss(lost, LossReason.create("NO_RESPONSE", "Sem resposta", 1), creator, null);
         assertThat(PendingLeadReasons.of(lead, now, false)).isEmpty();
     }
 }

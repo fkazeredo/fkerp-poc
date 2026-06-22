@@ -2,7 +2,6 @@ package com.fksoft.erp.domain.sales.service.data;
 
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Lead;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
@@ -127,7 +126,7 @@ public record CommercialOrderDetail(
     public record SourceOpportunity(UUID id, String name, OpportunityStage stage) {}
 
     /** The source Lead, kept traceable from the Order (the contact's system of record). */
-    public record SourceLead(UUID id, String name, String phone, String whatsapp, String email, LeadStatus status) {}
+    public record SourceLead(UUID id, String name, String phone, String whatsapp, String email, String status) {}
 
     /** A single order line (snapshot of a Proposal item), with its computed line total. */
     public record Item(

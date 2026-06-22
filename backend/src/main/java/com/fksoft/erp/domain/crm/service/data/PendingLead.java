@@ -1,7 +1,6 @@
 package com.fksoft.erp.domain.crm.service.data;
 
 import com.fksoft.erp.domain.crm.model.Lead;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.PendingReason;
 import java.time.Instant;
 import java.util.List;
@@ -16,7 +15,7 @@ public record PendingLead(
         UUID id,
         String name,
         String mainContact,
-        LeadStatus status,
+        String status,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,

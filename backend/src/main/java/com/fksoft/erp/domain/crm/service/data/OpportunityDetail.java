@@ -1,7 +1,6 @@
 package com.fksoft.erp.domain.crm.service.data;
 
 import com.fksoft.erp.domain.crm.model.Lead;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivityResult;
@@ -112,7 +111,7 @@ public record OpportunityDetail(
     }
 
     /** The source Lead, kept traceable from the Opportunity. */
-    public record SourceLead(UUID id, String name, String phone, String whatsapp, String email, LeadStatus status) {}
+    public record SourceLead(UUID id, String name, String phone, String whatsapp, String email, String status) {}
 
     /** Loss outcome (present only when the Opportunity is LOST). */
     public record LossInfo(OpportunityLossReason reason, Instant lostAt, String lostBy, String note) {}

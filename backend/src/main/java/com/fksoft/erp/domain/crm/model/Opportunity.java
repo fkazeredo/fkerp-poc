@@ -154,7 +154,7 @@ public class Opportunity {
      */
     public static Opportunity createFromLead(
             Lead lead, UUID responsiblePersonId, CreateOpportunityCommand command, UUID createdBy) {
-        if (lead.status() != LeadStatus.QUALIFIED) {
+        if (!"QUALIFIED".equals(lead.status())) {
             throw new LeadNotQualifiedForOpportunityException();
         }
         Opportunity opportunity = new Opportunity();

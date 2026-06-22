@@ -2,7 +2,6 @@ package com.fksoft.erp.domain.crm.service;
 
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadInteraction;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.PendingLeadReasons;
 import jakarta.persistence.criteria.Subquery;
 import java.time.Instant;
@@ -26,21 +25,20 @@ public final class LeadPendingSpecifications {
         return (root, query, cb) -> {
             var status = root.get("status");
 
-            var unassigned = cb.and(cb.isNull(root.get("responsiblePersonId")), cb.notEqual(status, LeadStatus.LOST));
+            var unassigned = cb.and(cb.isNull(root.get("responsiblePersonId")), cb.notEqual(status, "LOST"));
 
             Subquery<UUID> interactions = query.subquery(UUID.class);
             var li = interactions.from(LeadInteraction.class);
             interactions.select(li.get("leadId")).where(cb.equal(li.get("leadId"), root.get("id")));
-            var newWithoutInteraction = cb.and(cb.equal(status, LeadStatus.NEW), cb.not(cb.exists(interactions)));
+            var newWithoutInteraction = cb.and(cb.equal(status, "NEW"), cb.not(cb.exists(interactions)));
 
             var overdue = cb.and(
                     cb.isNotNull(root.get("nextContactAt")),
                     cb.lessThan(root.<Instant>get("nextContactAt"), now),
-                    cb.notEqual(status, LeadStatus.QUALIFIED),
-                    cb.notEqual(status, LeadStatus.LOST));
+                    cb.notEqual(status, "QUALIFIED"),
+                    cb.notEqual(status, "LOST"));
 
-            var contactedWithoutOutcome =
-                    cb.and(cb.equal(status, LeadStatus.CONTACTED), cb.isNull(root.get("nextContactAt")));
+            var contactedWithoutOutcome = cb.and(cb.equal(status, "CONTACTED"), cb.isNull(root.get("nextContactAt")));
 
             return cb.or(unassigned, newWithoutInteraction, overdue, contactedWithoutOutcome);
         };
