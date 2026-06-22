@@ -40,6 +40,12 @@ export const routes: Routes = [
           import('./features/bookings/booking-list/booking-list').then((m) => m.BookingList),
       },
       {
+        path: 'reservas/:id',
+        canActivate: [bookingReadGuard],
+        loadComponent: () =>
+          import('./features/bookings/booking-detail/booking-detail').then((m) => m.BookingDetail),
+      },
+      {
         path: 'pendencias',
         loadComponent: () =>
           import('./features/pendencias/pendencias-hub/pendencias-hub').then((m) => m.PendenciasHub),

@@ -1,0 +1,119 @@
+@if (loading()) {
+  <p class="loading">Carregando…</p>
+} @else if (error()) {
+  <p-message severity="error" [text]="error()!" />
+  <div class="back">
+    <p-button label="Voltar" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
+  </div>
+} @else if (booking(); as b) {
+  <header class="head">
+    <div class="head-main">
+      <h1>Reserva {{ orderCode(b.commercialOrderNumber) }}</h1>
+      <p-tag [value]="statusLabel(b.status)" [severity]="statusSeverity(b.status)" />
+    </div>
+  </header>
+
+  <div class="grid">
+    <p-card header="Resumo da reserva">
+      <dl class="data">
+        <dt>Pedido</dt>
+        <dd>{{ orderCode(b.commercialOrderNumber) }}</dd>
+        <dt>Status</dt>
+        <dd>{{ statusLabel(b.status) }}</dd>
+        <dt>Operador</dt>
+        <dd>{{ b.operatorUnassigned ? 'Sem operador' : (b.bookingOperatorName ?? '—') }}</dd>
+        <dt>Responsável comercial</dt>
+        <dd>{{ b.responsibleName ?? '—' }}</dd>
+        <dt>Itens p/ reservar</dt>
+        <dd>{{ b.itemsRequiringBooking }}</dd>
+        <dt>Confirmados</dt>
+        <dd>{{ b.itemsConfirmed }}</dd>
+        <dt>Com falha</dt>
+        <dd>{{ b.itemsFailed }}</dd>
+        @if (b.notes) {
+          <dt>Observações</dt>
+          <dd class="notes">{{ b.notes }}</dd>
+        }
+        <dt>Criada em</dt>
+        <dd>{{ b.createdAt | date: 'short' }}</dd>
+        <dt>Atualizada em</dt>
+        <dd>{{ b.updatedAt | date: 'short' }}</dd>
+        <dt>Criada por</dt>
+        <dd>{{ b.createdByName ?? '—' }}</dd>
+      </dl>
+    </p-card>
+
+    <p-card header="Pedido de origem">
+      <dl class="data">
+        <dt>Pedido</dt>
+        <dd>{{ orderCode(b.sourceOrder.number) }}</dd>
+        <dt>Situação</dt>
+        <dd>{{ orderStatusLabel(b.sourceOrder.status) }}</dd>
+      </dl>
+      <div class="trace">
+        <a class="link" [routerLink]="['/pedidos', b.commercialOrderId]">Ver pedido de origem</a>
+      </div>
+    </p-card>
+
+    <p-card header="Proposta de origem">
+      <dl class="data">
+        <dt>Proposta</dt>
+        <dd>{{ b.sourceProposal.title }}</dd>
+        <dt>Situação</dt>
+        <dd>{{ proposalStatusLabel(b.sourceProposal.status) }}</dd>
+      </dl>
+      <div class="trace">
+        <a class="link" [routerLink]="['/propostas', b.sourceProposal.id]">Ver proposta de origem</a>
+      </div>
+    </p-card>
+
+    <p-card header="Oportunidade de origem">
+      <dl class="data">
+        <dt>Oportunidade</dt>
+        <dd>{{ b.sourceOpportunity.name }}</dd>
+        <dt>Estágio</dt>
+        <dd>{{ stageLabel(b.sourceOpportunity.stage) }}</dd>
+      </dl>
+      <div class="trace">
+        <a class="link" [routerLink]="['/oportunidades', b.sourceOpportunity.id]">Ver oportunidade de origem</a>
+      </div>
+    </p-card>
+  </div>
+
+  <p-card header="Itens da reserva" styleClass="section">
+    <p-table [value]="b.items" styleClass="p-datatable-sm items-table" [tableStyle]="{ 'min-width': '44rem' }">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Tipo</th>
+          <th>Descrição</th>
+          <th class="num">Qtd.</th>
+          <th>Requer reserva</th>
+          <th>Status</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-item>
+        <tr>
+          <td>{{ itemTypeLabel(item.type) }}</td>
+          <td>{{ item.description }}</td>
+          <td class="num">{{ item.quantity }}</td>
+          <td>{{ item.requiresBooking ? 'Sim' : 'Não' }}</td>
+          <td>
+            <p-tag
+              [value]="itemStatusLabel(item.status)"
+              [severity]="itemStatusSeverity(item.status)"
+            />
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5" class="empty">Sem itens.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+
+  <div class="back">
+    <p-button label="Voltar para reservas" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
+  </div>
+}
