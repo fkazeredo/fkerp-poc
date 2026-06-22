@@ -153,7 +153,11 @@ public class SecurityConfig {
                         .hasAnyAuthority(ORDER_READ_SCOPES)
                         .requestMatchers(HttpMethod.POST, "/api/bookings")
                         .hasAuthority("SCOPE_booking:request:create")
-                        .requestMatchers(HttpMethod.POST, "/api/bookings/*/attempts", "/api/bookings/*/items/*/confirm")
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/bookings/*/attempts",
+                                "/api/bookings/*/items/*/confirm",
+                                "/api/bookings/*/items/*/confirm-car-rental")
                         .hasAuthority("SCOPE_booking:request:update")
                         .requestMatchers(HttpMethod.GET, "/api/bookings", "/api/bookings/**")
                         .hasAnyAuthority(BOOKING_READ_SCOPES)

@@ -176,6 +176,12 @@ public record BookingRequestDetail(
                             c.travelStartDate(),
                             c.travelEndDate(),
                             c.travelerNotes(),
+                            c.rentalCompany(),
+                            c.pickupLocation(),
+                            c.dropoffLocation(),
+                            c.pickupAt(),
+                            c.dropoffAt(),
+                            c.carCategory(),
                             c.operationalNotes());
             return new Item(
                     i.id(),
@@ -190,9 +196,11 @@ public record BookingRequestDetail(
     }
 
     /**
-     * The external reservation result recorded when a Travel Package item is manually confirmed: the external
-     * system/supplier and locator, the confirmation date and author, plus optional travel metadata. Carries
-     * <b>no monetary data</b>.
+     * The external reservation result recorded when a booking item is manually confirmed: the external
+     * system/supplier and locator, the confirmation date and author, plus optional type-specific metadata —
+     * Travel Package (package description, travel dates, traveler notes) and Car Rental (rental company,
+     * pickup/dropoff location and date-time, car category) — the fields not relevant to the item's type stay
+     * null. Carries <b>no monetary data</b>.
      */
     public record Confirmation(
             String externalSystem,
@@ -203,6 +211,12 @@ public record BookingRequestDetail(
             LocalDate travelStartDate,
             LocalDate travelEndDate,
             String travelerNotes,
+            String rentalCompany,
+            String pickupLocation,
+            String dropoffLocation,
+            Instant pickupAt,
+            Instant dropoffAt,
+            String carCategory,
             String operationalNotes) {}
 
     /**

@@ -5,7 +5,11 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 import { NEVER, of, throwError } from 'rxjs';
 import { BookingDetail } from './booking-detail';
-import { BookingRequestDetail, BookingService } from '../../../core/api/booking.service';
+import {
+  BookingRequestDetail,
+  BookingRequestItem,
+  BookingService,
+} from '../../../core/api/booking.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
@@ -15,7 +19,12 @@ import { AuthService } from '../../../core/auth/auth.service';
 };
 
 describe('BookingDetail', () => {
-  const bookings = { detail: vi.fn(), registerAttempt: vi.fn(), confirmTravelPackage: vi.fn() };
+  const bookings = {
+    detail: vi.fn(),
+    registerAttempt: vi.fn(),
+    confirmTravelPackage: vi.fn(),
+    confirmCarRental: vi.fn(),
+  };
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
   const auth = { canOperateBookings: vi.fn(() => false) };
@@ -106,6 +115,8 @@ describe('BookingDetail', () => {
   beforeEach(() => {
     bookings.detail.mockReset();
     bookings.registerAttempt.mockReset();
+    bookings.confirmTravelPackage.mockReset();
+    bookings.confirmCarRental.mockReset();
     router.navigateByUrl.mockReset();
     messages.add.mockReset();
     auth.canOperateBookings.mockReset().mockReturnValue(false);
@@ -221,6 +232,12 @@ describe('BookingDetail', () => {
               travelStartDate: '2026-07-01',
               travelEndDate: '2026-07-08',
               travelerNotes: '2 adultos',
+              rentalCompany: null,
+              pickupLocation: null,
+              dropoffLocation: null,
+              pickupAt: null,
+              dropoffAt: null,
+              carCategory: null,
               operationalNotes: null,
             },
           },
@@ -231,16 +248,29 @@ describe('BookingDetail', () => {
       return sample().items[0];
     }
 
-    it('only offers confirm for a confirmable travel package item with the update scope', () => {
+    function carItem(): BookingRequestItem {
+      return {
+        id: 'i2',
+        orderItemId: 'oi2',
+        type: 'CAR_RENTAL',
+        description: 'Locação SUV',
+        quantity: 1,
+        requiresBooking: true,
+        status: 'PENDING',
+        confirmation: null,
+      };
+    }
+
+    it('offers confirm for a confirmable travel package OR car rental item with the update scope', () => {
       const comp = build();
       comp.ngOnInit();
       expect(comp['canConfirmItem'](pkgItem())).toBe(false); // no scope
       auth.canOperateBookings.mockReturnValue(true);
       expect(comp['canConfirmItem'](pkgItem())).toBe(true);
-      // A car rental item is not confirmable through this flow.
-      expect(
-        comp['canConfirmItem']({ ...pkgItem(), type: 'CAR_RENTAL' }),
-      ).toBe(false);
+      // A car rental item is now also confirmable (Slice 7).
+      expect(comp['canConfirmItem'](carItem())).toBe(true);
+      // A service fee item is not confirmable.
+      expect(comp['canConfirmItem']({ ...pkgItem(), type: 'SERVICE_FEE' })).toBe(false);
       // An already-confirmed item is not confirmable.
       expect(comp['canConfirmItem']({ ...pkgItem(), status: 'CONFIRMED' })).toBe(false);
     });
@@ -292,6 +322,92 @@ describe('BookingDetail', () => {
       bookings.detail.mockReturnValue(of(sample()));
       const el = render();
       expect(el.textContent).toContain('Confirmar');
+    });
+  });
+
+  describe('confirm car rental', () => {
+    const carConfirmed = () =>
+      sample({
+        status: 'CONFIRMED',
+        itemsConfirmed: 1,
+        items: [
+          {
+            id: 'i2',
+            orderItemId: 'oi2',
+            type: 'CAR_RENTAL',
+            description: 'Locação SUV',
+            quantity: 1,
+            requiresBooking: true,
+            status: 'CONFIRMED',
+            confirmation: {
+              externalSystem: 'Localiza Connect',
+              externalLocator: 'CAR-77',
+              confirmedAt: '2026-06-21T08:00:00Z',
+              confirmedByName: 'operacoes',
+              packageDescription: null,
+              travelStartDate: null,
+              travelEndDate: null,
+              travelerNotes: null,
+              rentalCompany: 'Localiza',
+              pickupLocation: 'GRU Aeroporto',
+              dropoffLocation: 'Centro',
+              pickupAt: '2026-07-01T12:00:00Z',
+              dropoffAt: '2026-07-08T12:00:00Z',
+              carCategory: 'SUV',
+              operationalNotes: null,
+            },
+          },
+        ],
+      });
+
+    function carItem(): BookingRequestItem {
+      return {
+        id: 'i2',
+        orderItemId: 'oi2',
+        type: 'CAR_RENTAL',
+        description: 'Locação SUV',
+        quantity: 1,
+        requiresBooking: true,
+        status: 'PENDING',
+        confirmation: null,
+      };
+    }
+
+    it('opens the dialog in car-rental mode and confirms via confirmCarRental', () => {
+      bookings.confirmCarRental.mockReturnValue(of(carConfirmed()));
+      const comp = build();
+      comp.ngOnInit();
+      comp['openConfirm'](carItem());
+      expect(comp['confirmItemType']).toBe('CAR_RENTAL');
+      comp['confirmExternalSystem'] = 'Localiza Connect';
+      comp['confirmExternalLocator'] = 'CAR-77';
+      comp['confirmDate'] = new Date('2026-06-21T08:00:00Z');
+      comp['confirmRentalCompany'] = 'Localiza';
+      comp['confirmCarCategory'] = 'SUV';
+      comp['confirmItem']();
+      expect(bookings.confirmCarRental).toHaveBeenCalledWith(
+        'bk1',
+        'i2',
+        expect.objectContaining({
+          externalSystem: 'Localiza Connect',
+          externalLocator: 'CAR-77',
+          rentalCompany: 'Localiza',
+          carCategory: 'SUV',
+        }),
+      );
+      expect(bookings.confirmTravelPackage).not.toHaveBeenCalled();
+      expect(comp['confirmOpen']()).toBe(false);
+      expect(comp['booking']()?.status).toBe('CONFIRMED');
+    });
+
+    it('renders the car-rental confirmation block for a confirmed car item (DOM)', () => {
+      bookings.detail.mockReturnValue(of(carConfirmed()));
+      const el = render();
+      expect(el.textContent).toContain('Localiza Connect');
+      expect(el.textContent).toContain('CAR-77');
+      expect(el.textContent).toContain('Localiza'); // rental company
+      expect(el.textContent).toContain('SUV'); // car category
+      expect(el.textContent).toContain('GRU Aeroporto'); // pickup location
     });
   });
 
