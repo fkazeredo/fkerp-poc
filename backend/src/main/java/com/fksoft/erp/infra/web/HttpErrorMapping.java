@@ -25,9 +25,12 @@ import com.fksoft.erp.domain.crm.exception.LeadNotQualifiedForOpportunityExcepti
 import com.fksoft.erp.domain.crm.exception.LeadQualificationRequiresResponsibleException;
 import com.fksoft.erp.domain.crm.exception.LossReasonNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAccessDeniedException;
+import com.fksoft.erp.domain.crm.exception.OpportunityActivityResultNotAvailableException;
+import com.fksoft.erp.domain.crm.exception.OpportunityActivityTypeNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAlreadyExistsForLeadException;
 import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException;
 import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedWonException;
+import com.fksoft.erp.domain.crm.exception.OpportunityLossReasonNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.exception.OriginNotAvailableException;
@@ -92,6 +95,9 @@ public class HttpErrorMapping {
             entry(OpportunityAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(OpportunityCannotBeMarkedLostException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(OpportunityCannotBeMarkedWonException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(OpportunityLossReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(OpportunityActivityTypeNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(OpportunityActivityResultNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(OpportunityStageTransitionException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(OpportunityNotReadyForProposalException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalAlreadyExistsForOpportunityException.class, HttpStatus.CONFLICT),

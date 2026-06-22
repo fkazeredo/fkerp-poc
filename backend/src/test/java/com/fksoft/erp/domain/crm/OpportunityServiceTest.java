@@ -17,10 +17,7 @@ import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityActivityResult;
-import com.fksoft.erp.domain.crm.model.OpportunityActivityType;
 import com.fksoft.erp.domain.crm.model.OpportunityCreated;
-import com.fksoft.erp.domain.crm.model.OpportunityLossReason;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
@@ -204,7 +201,7 @@ class OpportunityServiceTest {
         when(opportunities.findById(id)).thenReturn(Optional.of(mock(Opportunity.class)));
         when(accessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(false);
 
-        assertThatThrownBy(() -> service.markLost(id, OpportunityLossReason.OTHER, null, ACTOR, false, false))
+        assertThatThrownBy(() -> service.markLost(id, UUID.randomUUID(), null, ACTOR, false, false))
                 .isInstanceOf(OpportunityAccessDeniedException.class);
         verify(opportunities, never()).saveAndFlush(any());
     }
@@ -250,8 +247,7 @@ class OpportunityServiceTest {
     }
 
     private RecordActivityCommand activityCommand() {
-        return new RecordActivityCommand(
-                OpportunityActivityType.OTHER, OpportunityActivityResult.OTHER, "x", Instant.now(), null);
+        return new RecordActivityCommand(UUID.randomUUID(), UUID.randomUUID(), "x", Instant.now(), null);
     }
 
     @Test

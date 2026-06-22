@@ -6,8 +6,6 @@ import com.fksoft.erp.domain.workflow.WorkflowState;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -109,8 +107,8 @@ public class Opportunity {
     @Column(name = "lost_by")
     private UUID lostBy;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "loss_reason")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "loss_reason_id")
     private OpportunityLossReason lossReason;
 
     @Size(max = 2000)

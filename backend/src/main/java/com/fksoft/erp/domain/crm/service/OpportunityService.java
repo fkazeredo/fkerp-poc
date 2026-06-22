@@ -4,21 +4,29 @@ import com.fksoft.erp.domain.crm.exception.LeadAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.LeadNotFoundException;
 import com.fksoft.erp.domain.crm.exception.LeadNotQualifiedForOpportunityException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAccessDeniedException;
+import com.fksoft.erp.domain.crm.exception.OpportunityActivityResultNotAvailableException;
+import com.fksoft.erp.domain.crm.exception.OpportunityActivityTypeNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAlreadyExistsForLeadException;
 import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException;
+import com.fksoft.erp.domain.crm.exception.OpportunityLossReasonNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivity;
+import com.fksoft.erp.domain.crm.model.OpportunityActivityResult;
+import com.fksoft.erp.domain.crm.model.OpportunityActivityType;
 import com.fksoft.erp.domain.crm.model.OpportunityCreated;
 import com.fksoft.erp.domain.crm.model.OpportunityLossReason;
 import com.fksoft.erp.domain.crm.model.OpportunityPendingReasons;
 import com.fksoft.erp.domain.crm.model.OpportunityStageChange;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
+import com.fksoft.erp.domain.crm.repository.OpportunityActivityResultRepository;
+import com.fksoft.erp.domain.crm.repository.OpportunityActivityTypeRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityIndicatorQueries;
 import com.fksoft.erp.domain.crm.repository.OpportunityLastActivityRow;
+import com.fksoft.erp.domain.crm.repository.OpportunityLossReasonRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
@@ -30,6 +38,7 @@ import com.fksoft.erp.domain.crm.service.data.RecordActivityCommand;
 import com.fksoft.erp.domain.crm.service.data.UpdateOpportunityDetailsCommand;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
+import com.fksoft.erp.domain.reference.ReferenceData;
 import com.fksoft.erp.domain.workflow.WorkflowContext;
 import com.fksoft.erp.domain.workflow.WorkflowEngine;
 import com.fksoft.erp.domain.workflow.WorkflowState;
@@ -73,6 +82,9 @@ public class OpportunityService {
     private final ApplicationEventPublisher events;
     private final WorkflowEngine workflow;
     private final WorkflowStateRepository workflowStates;
+    private final OpportunityActivityTypeRepository activityTypes;
+    private final OpportunityActivityResultRepository activityResults;
+    private final OpportunityLossReasonRepository lossReasons;
 
     /** The workflow definition code for the Opportunity lifecycle. */
     private static final String OPPORTUNITY_WORKFLOW = "opportunity";
@@ -319,13 +331,12 @@ public class OpportunityService {
      */
     @Transactional
     public OpportunityDetail markLost(
-            UUID id,
-            OpportunityLossReason reason,
-            String note,
-            UUID userId,
-            boolean canSeeAll,
-            boolean canSeeUnassigned) {
+            UUID id, UUID lossReasonId, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Opportunity opportunity = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
+        OpportunityLossReason reason = lossReasons
+                .findById(lossReasonId)
+                .filter(ReferenceData::active)
+                .orElseThrow(OpportunityLossReasonNotAvailableException::new);
         WorkflowState target;
         try {
             target = workflow.apply(
@@ -392,13 +403,16 @@ public class OpportunityService {
     public OpportunityDetail recordActivity(
             UUID id, RecordActivityCommand command, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Opportunity opportunity = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
+        OpportunityActivityType type = activityTypes
+                .findById(command.typeId())
+                .filter(ReferenceData::active)
+                .orElseThrow(OpportunityActivityTypeNotAvailableException::new);
+        OpportunityActivityResult result = activityResults
+                .findById(command.resultId())
+                .filter(ReferenceData::active)
+                .orElseThrow(OpportunityActivityResultNotAvailableException::new);
         opportunity.recordActivity(
-                command.type(),
-                command.result(),
-                command.description(),
-                command.occurredAt(),
-                command.nextActionDate(),
-                userId);
+                type, result, command.description(), command.occurredAt(), command.nextActionDate(), userId);
         return toDetail(opportunities.saveAndFlush(opportunity));
     }
 

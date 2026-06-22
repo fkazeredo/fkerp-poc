@@ -31,7 +31,16 @@ class OpportunityTest {
     private static final UUID CREATOR = UUID.randomUUID();
     private static final UUID RESPONSIBLE = UUID.randomUUID();
     private final Origin origin = Origin.create("WEBSITE", "Website", 1);
-    private final OpportunityLossReason reason = OpportunityLossReason.NO_RESPONSE;
+    private final OpportunityLossReason reason = OpportunityLossReason.create("NO_RESPONSE", "Sem resposta", 1);
+    private final OpportunityActivityType phoneCall = OpportunityActivityType.create("PHONE_CALL", "Ligação", 1);
+    private final OpportunityActivityType meeting = OpportunityActivityType.create("MEETING", "Reunião", 2);
+    private final OpportunityActivityType email = OpportunityActivityType.create("EMAIL", "E-mail", 3);
+    private final OpportunityActivityResult clientEngaged =
+            OpportunityActivityResult.create("CLIENT_ENGAGED", "Cliente engajado", 1);
+    private final OpportunityActivityResult productFitResult =
+            OpportunityActivityResult.create("PRODUCT_FIT_IDENTIFIED", "Aderência identificada", 2);
+    private final OpportunityActivityResult waitingForClient =
+            OpportunityActivityResult.create("WAITING_FOR_CLIENT", "Aguardando cliente", 3);
 
     private final WorkflowDefinition wf = WorkflowDefinition.of("opportunity", "Oportunidade");
     private final WorkflowState newState =
@@ -119,15 +128,15 @@ class OpportunityTest {
         Opportunity opportunity = newOpportunity();
 
         opportunity.recordActivity(
-                OpportunityActivityType.PHONE_CALL,
-                OpportunityActivityResult.CLIENT_ENGAGED,
+                phoneCall,
+                clientEngaged,
                 "ligação inicial",
                 Instant.parse("2026-06-10T13:00:00Z"),
                 LocalDate.parse("2026-06-20"),
                 RESPONSIBLE);
 
         assertThat(opportunity.activities()).hasSize(1);
-        assertThat(opportunity.activities().get(0).type()).isEqualTo(OpportunityActivityType.PHONE_CALL);
+        assertThat(opportunity.activities().get(0).type().code()).isEqualTo("PHONE_CALL");
         assertThat(opportunity.activities().get(0).registeredBy()).isEqualTo(RESPONSIBLE);
         assertThat(opportunity.nextActionDate()).isEqualTo(LocalDate.parse("2026-06-20"));
         assertThat(opportunity.stage()).isEqualTo("NEW_OPPORTUNITY"); // unchanged
@@ -137,20 +146,15 @@ class OpportunityTest {
     void recordingAnActivityWithoutNextActionKeepsThePreviousOne() {
         Opportunity opportunity = newOpportunity();
         opportunity.recordActivity(
-                OpportunityActivityType.MEETING,
-                OpportunityActivityResult.PRODUCT_FIT_IDENTIFIED,
+                meeting,
+                productFitResult,
                 "reunião",
                 Instant.parse("2026-06-10T13:00:00Z"),
                 LocalDate.parse("2026-06-20"),
                 RESPONSIBLE);
 
         opportunity.recordActivity(
-                OpportunityActivityType.EMAIL,
-                OpportunityActivityResult.WAITING_FOR_CLIENT,
-                "e-mail",
-                Instant.parse("2026-06-12T13:00:00Z"),
-                null,
-                RESPONSIBLE);
+                email, waitingForClient, "e-mail", Instant.parse("2026-06-12T13:00:00Z"), null, RESPONSIBLE);
 
         assertThat(opportunity.activities()).hasSize(2);
         assertThat(opportunity.nextActionDate()).isEqualTo(LocalDate.parse("2026-06-20"));

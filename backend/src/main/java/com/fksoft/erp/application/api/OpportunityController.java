@@ -185,7 +185,7 @@ public class OpportunityController {
     public OpportunityDetail lose(@PathVariable UUID id, @Valid @RequestBody LoseOpportunityRequest request) {
         return opportunityService.markLost(
                 id,
-                request.reason(),
+                request.lossReasonId(),
                 request.note(),
                 userContext.currentUserId(),
                 canSeeAllOpportunities(),
@@ -223,8 +223,8 @@ public class OpportunityController {
     public OpportunityDetail registerActivity(
             @PathVariable UUID id, @Valid @RequestBody RegisterOpportunityActivityRequest request) {
         RecordActivityCommand command = new RecordActivityCommand(
-                request.type(),
-                request.result(),
+                request.typeId(),
+                request.resultId(),
                 request.description(),
                 request.occurredAt(),
                 request.nextActionDate());

@@ -131,14 +131,15 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void marksAsLostWithAReasonAndShowsLoss() throws Exception {
-        String body = "{\"reason\":\"COMPETITOR_CHOSEN\",\"note\":\"Cliente fechou com concorrente\"}";
+        String body = "{\"lossReasonId\":\"%s\",\"note\":\"Cliente fechou com concorrente\"}"
+                .formatted(lossReasonId("COMPETITOR_CHOSEN"));
         mvc.perform(post("/api/opportunities/" + managerOpp + "/lose")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body)
                         .header("Authorization", "Bearer " + manager()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stage").value("LOST"))
-                .andExpect(jsonPath("$.loss.reason").value("COMPETITOR_CHOSEN"))
+                .andExpect(jsonPath("$.loss.reason").value("Escolheu concorrente"))
                 .andExpect(jsonPath("$.loss.lostBy").value("comercial"))
                 .andExpect(jsonPath("$.loss.lostAt").value(notNullValue()))
                 .andExpect(jsonPath("$.loss.note").value("Cliente fechou com concorrente"));
@@ -148,19 +149,20 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
     void rejectsLosingAnAlreadyLostOpportunity() throws Exception {
         mvc.perform(post("/api/opportunities/" + lostOpp + "/lose")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"NO_BUDGET\"}")
+                        .content("{\"lossReasonId\":\"%s\"}".formatted(lossReasonId("NO_BUDGET")))
                         .header("Authorization", "Bearer " + manager()))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("opportunity.cannot-mark-lost"));
     }
 
     @Test
-    void rejectsLoseWithUnknownReasonValue() throws Exception {
+    void rejectsLoseWithUnknownReasonId() throws Exception {
         mvc.perform(post("/api/opportunities/" + managerOpp + "/lose")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"BOGUS\"}")
+                        .content("{\"lossReasonId\":\"%s\"}".formatted(UUID.randomUUID()))
                         .header("Authorization", "Bearer " + manager()))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("opportunity.loss-reason-not-available"));
     }
 
     @Test
@@ -178,7 +180,7 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
         String dir = login("diretor", "diretor123");
         mvc.perform(post("/api/opportunities/" + managerOpp + "/lose")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"OTHER\"}")
+                        .content("{\"lossReasonId\":\"%s\"}".formatted(lossReasonId("OTHER")))
                         .header("Authorization", "Bearer " + dir))
                 .andExpect(status().isForbidden());
     }
@@ -189,10 +191,15 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
         String rep = login("representante", "representante123");
         mvc.perform(post("/api/opportunities/" + managerOpp + "/lose")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"OTHER\"}")
+                        .content("{\"lossReasonId\":\"%s\"}".formatted(lossReasonId("OTHER")))
                         .header("Authorization", "Bearer " + rep))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("opportunity.access-denied"));
+    }
+
+    private UUID lossReasonId(String code) {
+        return UUID.fromString(jdbc.queryForObject(
+                "SELECT id::text FROM opportunity_loss_reasons WHERE code = ?", String.class, code));
     }
 
     private UUID insertOpportunity(String name, String stage, UUID responsibleId, BigDecimal value) {

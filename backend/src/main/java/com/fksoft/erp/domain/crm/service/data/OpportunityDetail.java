@@ -3,9 +3,6 @@ package com.fksoft.erp.domain.crm.service.data;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivity;
-import com.fksoft.erp.domain.crm.model.OpportunityActivityResult;
-import com.fksoft.erp.domain.crm.model.OpportunityActivityType;
-import com.fksoft.erp.domain.crm.model.OpportunityLossReason;
 import com.fksoft.erp.domain.crm.model.OpportunityStageChange;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -66,7 +63,11 @@ public record OpportunityDetail(
                 new SourceLead(lead.id(), lead.name(), lead.phone(), lead.whatsapp(), lead.email(), lead.status());
         LossInfo loss = o.lostAt() == null
                 ? null
-                : new LossInfo(o.lossReason(), o.lostAt(), nameOf(names, o.lostBy()), o.lossNote());
+                : new LossInfo(
+                        o.lossReason() == null ? null : o.lossReason().label(),
+                        o.lostAt(),
+                        nameOf(names, o.lostBy()),
+                        o.lossNote());
         List<StageChange> stageHistory = o.stageChanges().stream()
                 .sorted(Comparator.comparing(OpportunityStageChange::changedAt).reversed())
                 .map(c -> new StageChange(c.fromStage(), c.toStage(), c.changedAt(), nameOf(names, c.changedBy())))
@@ -75,8 +76,8 @@ public record OpportunityDetail(
                 .sorted(Comparator.comparing(OpportunityActivity::occurredAt).reversed())
                 .map(a -> new ActivityItem(
                         a.id(),
-                        a.type(),
-                        a.result(),
+                        a.type().label(),
+                        a.result().label(),
                         a.description(),
                         a.occurredAt(),
                         a.nextActionDate(),
@@ -112,17 +113,17 @@ public record OpportunityDetail(
     /** The source Lead, kept traceable from the Opportunity. */
     public record SourceLead(UUID id, String name, String phone, String whatsapp, String email, String status) {}
 
-    /** Loss outcome (present only when the Opportunity is LOST). */
-    public record LossInfo(OpportunityLossReason reason, Instant lostAt, String lostBy, String note) {}
+    /** Loss outcome (present only when the Opportunity is LOST). {@code reason} is the cadastro label. */
+    public record LossInfo(String reason, Instant lostAt, String lostBy, String note) {}
 
     /** A single pipeline stage-movement entry. */
     public record StageChange(String from, String to, Instant at, String by) {}
 
-    /** A single commercial activity in the negotiation history. */
+    /** A single commercial activity in the negotiation history ({@code type}/{@code result} are cadastro labels). */
     public record ActivityItem(
             UUID id,
-            OpportunityActivityType type,
-            OpportunityActivityResult result,
+            String type,
+            String result,
             String description,
             Instant occurredAt,
             LocalDate nextActionDate,

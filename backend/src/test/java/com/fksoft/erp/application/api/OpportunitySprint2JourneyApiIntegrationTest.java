@@ -14,6 +14,9 @@ import com.fksoft.erp.AbstractIntegrationTest;
 import com.fksoft.erp.domain.crm.repository.InteractionResultRepository;
 import com.fksoft.erp.domain.crm.repository.InteractionTypeRepository;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
+import com.fksoft.erp.domain.crm.repository.OpportunityActivityResultRepository;
+import com.fksoft.erp.domain.crm.repository.OpportunityActivityTypeRepository;
+import com.fksoft.erp.domain.crm.repository.OpportunityLossReasonRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
 import com.jayway.jsonpath.JsonPath;
@@ -52,6 +55,15 @@ class OpportunitySprint2JourneyApiIntegrationTest extends AbstractIntegrationTes
 
     @Autowired
     private OpportunityRepository opportunities;
+
+    @Autowired
+    private OpportunityActivityTypeRepository activityTypes;
+
+    @Autowired
+    private OpportunityActivityResultRepository activityResults;
+
+    @Autowired
+    private OpportunityLossReasonRepository lossReasons;
 
     @Autowired
     private LeadRepository leads;
@@ -101,8 +113,8 @@ class OpportunitySprint2JourneyApiIntegrationTest extends AbstractIntegrationTes
         String next = LocalDate.now().plusDays(7).toString();
         activity(oppId, manager, "MEETING", "CLIENT_ENGAGED", "Reunião de descoberta", next)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.activities[0].type").value("MEETING"))
-                .andExpect(jsonPath("$.activities[0].result").value("CLIENT_ENGAGED"))
+                .andExpect(jsonPath("$.activities[0].type").value("Reunião"))
+                .andExpect(jsonPath("$.activities[0].result").value("Cliente engajado"))
                 .andExpect(jsonPath("$.activities[0].registeredBy").value("comercial"))
                 .andExpect(jsonPath("$.nextActionDate").value(next))
                 .andExpect(jsonPath("$.stage").value("DISCOVERY")); // an activity never moves the stage
@@ -125,7 +137,7 @@ class OpportunitySprint2JourneyApiIntegrationTest extends AbstractIntegrationTes
         // 8. Another activity identifies the fit.
         activity(oppId, manager, "MEETING", "PRODUCT_FIT_IDENTIFIED", "Aderência confirmada", null)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.activities[0].result").value("PRODUCT_FIT_IDENTIFIED"));
+                .andExpect(jsonPath("$.activities[0].result").value("Aderência identificada"));
 
         // 9. Forward to Ready for Proposal — the funnel's last active stage.
         stage(oppId, "READY_FOR_PROPOSAL", manager)
@@ -179,10 +191,17 @@ class OpportunitySprint2JourneyApiIntegrationTest extends AbstractIntegrationTes
 
         // Marking Lost requires a reason — the empty request is rejected, a valid reason succeeds.
         lose(oppId, "{}", manager).andExpect(status().isBadRequest());
-        lose(oppId, "{\"reason\":\"PRODUCT_MISMATCH\",\"note\":\"Produto não atende ao perfil\"}", manager)
+        lose(
+                        oppId,
+                        "{\"lossReasonId\":\"%s\",\"note\":\"Produto não atende ao perfil\"}"
+                                .formatted(lossReasons
+                                        .findByCode("PRODUCT_MISMATCH")
+                                        .orElseThrow()
+                                        .id()),
+                        manager)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stage").value("LOST"))
-                .andExpect(jsonPath("$.loss.reason").value("PRODUCT_MISMATCH"))
+                .andExpect(jsonPath("$.loss.reason").value("Produto não aderente"))
                 .andExpect(jsonPath("$.loss.lostBy").value("comercial"))
                 .andExpect(jsonPath("$.loss.lostAt").value(notNullValue()))
                 .andExpect(jsonPath("$.loss.note").value("Produto não atende ao perfil"));
@@ -209,7 +228,14 @@ class OpportunitySprint2JourneyApiIntegrationTest extends AbstractIntegrationTes
                 .andExpect(jsonPath("$.status").value("QUALIFIED"));
 
         // Losing again is rejected — LOST is terminal.
-        lose(oppId, "{\"reason\":\"OTHER\"}", manager)
+        lose(
+                        oppId,
+                        "{\"lossReasonId\":\"%s\"}"
+                                .formatted(lossReasons
+                                        .findByCode("OTHER")
+                                        .orElseThrow()
+                                        .id()),
+                        manager)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("opportunity.cannot-mark-lost"));
     }
@@ -243,8 +269,8 @@ class OpportunitySprint2JourneyApiIntegrationTest extends AbstractIntegrationTes
             String oppId, String token, String type, String result, String description, String nextActionDate)
             throws Exception {
         Map<String, Object> body = new HashMap<>();
-        body.put("type", type);
-        body.put("result", result);
+        body.put("typeId", activityTypes.findByCode(type).orElseThrow().id());
+        body.put("resultId", activityResults.findByCode(result).orElseThrow().id());
         body.put("description", description);
         body.put("occurredAt", Instant.now().minusSeconds(60).toString());
         if (nextActionDate != null) {

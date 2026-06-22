@@ -164,7 +164,10 @@ class OpportunityStageApiIntegrationTest extends AbstractIntegrationTest {
         String token = manager();
         mvc.perform(post("/api/opportunities/" + managerOpp + "/lose")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"NO_BUDGET\"}")
+                        .content("{\"lossReasonId\":\"%s\"}"
+                                .formatted(UUID.fromString(jdbc.queryForObject(
+                                        "SELECT id::text FROM opportunity_loss_reasons WHERE code = 'NO_BUDGET'",
+                                        String.class))))
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stage").value("LOST"))

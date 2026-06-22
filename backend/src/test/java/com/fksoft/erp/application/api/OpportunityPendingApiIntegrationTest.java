@@ -204,9 +204,11 @@ class OpportunityPendingApiIntegrationTest extends AbstractIntegrationTest {
     private void insertActivity(UUID opportunityId, int occurredDaysAgo) {
         jdbc.update(
                 """
-                INSERT INTO opportunity_activities (id, opportunity_id, type, result, description,
+                INSERT INTO opportunity_activities (id, opportunity_id, type_id, result_id, description,
                                                     occurred_at, registered_by)
-                VALUES (cast(? as uuid), cast(? as uuid), 'PHONE_CALL', 'NEEDS_FOLLOW_UP', 'x',
+                VALUES (cast(? as uuid), cast(? as uuid),
+                        (SELECT id FROM opportunity_activity_types WHERE code = 'PHONE_CALL'),
+                        (SELECT id FROM opportunity_activity_results WHERE code = 'NEEDS_FOLLOW_UP'), 'x',
                         now() - make_interval(days => ?), cast(? as uuid))
                 """,
                 UUID.randomUUID().toString(),
