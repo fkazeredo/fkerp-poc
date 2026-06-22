@@ -4,6 +4,7 @@ import com.fksoft.erp.domain.booking.model.BookingAttempt;
 import com.fksoft.erp.domain.booking.model.BookingAttemptResult;
 import com.fksoft.erp.domain.booking.model.BookingAttemptType;
 import com.fksoft.erp.domain.booking.model.BookingItem;
+import com.fksoft.erp.domain.booking.model.BookingItemConfirmation;
 import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
@@ -84,7 +85,7 @@ public record BookingRequestDetail(
             Map<UUID, String> names) {
         List<Item> items = r.items().stream()
                 .sorted(Comparator.comparing(BookingItem::createdAt))
-                .map(Item::from)
+                .map(i -> Item.from(i, names))
                 .toList();
         List<AttemptItem> attempts = r.attempts().stream()
                 .sorted(Comparator.comparing(BookingAttempt::occurredAt).reversed())
@@ -148,8 +149,9 @@ public record BookingRequestDetail(
 
     /**
      * A booking line: a snapshot of a Commercial Order item, traceable to it via {@code orderItemId}, with its
-     * booking classification ({@code requiresBooking}) and its current booking status (the per-item
-     * confirmation/failure signal). Carries <b>no monetary data</b>.
+     * booking classification ({@code requiresBooking}), its current booking status (the per-item
+     * confirmation/failure signal) and, when confirmed, its {@code confirmation} (the external reservation
+     * result). Carries <b>no monetary data</b>.
      */
     public record Item(
             UUID id,
@@ -158,13 +160,50 @@ public record BookingRequestDetail(
             String description,
             int quantity,
             boolean requiresBooking,
-            BookingItemStatus status) {
+            BookingItemStatus status,
+            Confirmation confirmation) {
 
-        static Item from(BookingItem i) {
+        static Item from(BookingItem i, Map<UUID, String> names) {
+            BookingItemConfirmation c = i.confirmation();
+            Confirmation confirmation = c == null
+                    ? null
+                    : new Confirmation(
+                            c.externalSystem(),
+                            c.externalLocator(),
+                            c.confirmedAt(),
+                            nameOf(names, c.confirmedBy()),
+                            c.packageDescription(),
+                            c.travelStartDate(),
+                            c.travelEndDate(),
+                            c.travelerNotes(),
+                            c.operationalNotes());
             return new Item(
-                    i.id(), i.orderItemId(), i.type(), i.description(), i.quantity(), i.requiresBooking(), i.status());
+                    i.id(),
+                    i.orderItemId(),
+                    i.type(),
+                    i.description(),
+                    i.quantity(),
+                    i.requiresBooking(),
+                    i.status(),
+                    confirmation);
         }
     }
+
+    /**
+     * The external reservation result recorded when a Travel Package item is manually confirmed: the external
+     * system/supplier and locator, the confirmation date and author, plus optional travel metadata. Carries
+     * <b>no monetary data</b>.
+     */
+    public record Confirmation(
+            String externalSystem,
+            String externalLocator,
+            Instant confirmedAt,
+            String confirmedByName,
+            String packageDescription,
+            LocalDate travelStartDate,
+            LocalDate travelEndDate,
+            String travelerNotes,
+            String operationalNotes) {}
 
     /**
      * A single manual booking attempt in the operational history (append-only). {@code bookingItemId} is the

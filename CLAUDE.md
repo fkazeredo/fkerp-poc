@@ -534,9 +534,19 @@ link to **one booking item or the whole request** (an item outside the request �
 **404**), and may define a **next action date**. Registering an attempt **may move the request `PENDING →
 IN_PROGRESS`** but **never** confirms the booking, **never** changes a booking item's status (even an attempt
 `result` of `FAILED` is history only) and **never** creates Financial/Commission data; the history is never
-deleted. The **list** now exposes the **latest attempt** (`lastBookingAttemptAt`, denormalized). The confirmation
-reference / failure-reason richer model remains a later slice (BOOK4‑006..). A Booking Request **preserves** its
-source `commercialOrderId` (never
+deleted. The **list** now exposes the **latest attempt** (`lastBookingAttemptAt`, denormalized). **Manually
+confirming a Travel Package item** (`POST /api/bookings/{id}/items/{itemId}/confirm`, gated by the same
+`booking:request:update` + visibility) records the **external reservation result** on the item — external
+system/supplier and locator (**both required**, else 400), the confirmation date (operator-supplied,
+`@PastOrPresent`) and author, plus optional travel metadata (package description, travel dates, traveler notes)
+and operational notes (an `@Embeddable` value object on the item; **no monetary data**). It moves the item to
+`CONFIRMED` and **consolidates** the request status (all items requiring booking confirmed → `CONFIRMED`,
+otherwise `PARTIALLY_CONFIRMED`). **Only** a `TRAVEL_PACKAGE` item that requires booking and is not already
+resolved can be confirmed (else `booking.item-not-confirmable` **422**); a confirmed/cancelled item rejects a
+re-confirm (`booking.item-already-resolved` **422**). It calls **no** external system and creates **no**
+Financial/Payment/Commission/Customer Care data and **no** voucher. Confirming a `CAR_RENTAL`/`SERVICE_FEE`/
+`OTHER` item, item failure and cancellation remain later slices. A Booking Request **preserves** its source
+`commercialOrderId` (never
 modified), the source `proposalId` / `opportunityId` / `leadId` and the commercial `responsiblePersonId`, takes
 an optional `bookingOperatorId` (assignment is a later slice; validated when present, else
 `booking.operator-not-found`, **422**) and optional notes, snapshots the Order's items as **booking items**

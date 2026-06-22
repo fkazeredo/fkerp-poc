@@ -10,6 +10,7 @@ import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
+import { InputTextModule } from 'primeng/inputtext';
 import { DatePickerModule } from 'primeng/datepicker';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
@@ -19,6 +20,7 @@ import {
   BookingAttemptType,
   BookingItemStatus,
   BookingRequestDetail,
+  BookingRequestItem,
   BookingRequestStatus,
   BookingService,
 } from '../../../core/api/booking.service';
@@ -150,6 +152,7 @@ const WHOLE_REQUEST = '';
     DialogModule,
     SelectModule,
     TextareaModule,
+    InputTextModule,
     DatePickerModule,
     MessageModule,
   ],
@@ -179,14 +182,31 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
   protected attemptItemId: string = WHOLE_REQUEST;
   protected attemptNextActionDate: Date | null = null;
 
-  /** Upper bound for the attempt date picker — an attempt cannot have happened in the future. */
+  // Confirm-travel-package dialog state.
+  protected readonly confirmOpen = signal(false);
+  protected confirmItemId = '';
+  protected confirmItemLabel = '';
+  protected confirmExternalSystem = '';
+  protected confirmExternalLocator = '';
+  protected confirmDate: Date = new Date();
+  protected confirmPackageDescription = '';
+  protected confirmTravelStart: Date | null = null;
+  protected confirmTravelEnd: Date | null = null;
+  protected confirmTravelerNotes = '';
+  protected confirmOperationalNotes = '';
+
+  /** Upper bound for the date pickers — an attempt/confirmation cannot have happened in the future. */
   protected readonly now = new Date();
 
   private bookingId = '';
   private editSnapshot = '';
 
   constructor() {
-    effect(() => this.unsaved.set(this.attemptOpen()));
+    effect(() => this.unsaved.set(this.anyDialogOpen()));
+  }
+
+  private anyDialogOpen(): boolean {
+    return this.attemptOpen() || this.confirmOpen();
   }
 
   ngOnInit(): void {
@@ -206,12 +226,20 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
       this.attemptOccurredAt,
       this.attemptItemId,
       this.attemptNextActionDate,
+      this.confirmExternalSystem,
+      this.confirmExternalLocator,
+      this.confirmDate,
+      this.confirmPackageDescription,
+      this.confirmTravelStart,
+      this.confirmTravelEnd,
+      this.confirmTravelerNotes,
+      this.confirmOperationalNotes,
     ]);
   }
 
-  /** Whether the attempt dialog is open AND its fields changed since it opened. */
+  /** Whether a dialog is open AND its fields changed since it opened. */
   hasUnsavedChanges(): boolean {
-    return this.attemptOpen() && this.editSnapshot !== this.liveSnapshot();
+    return this.anyDialogOpen() && this.editSnapshot !== this.liveSnapshot();
   }
 
   protected statusLabel(status: BookingRequestStatus): string {
@@ -316,33 +344,102 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
         nextActionDate: toIsoDate(this.attemptNextActionDate),
       }),
       'Tentativa registrada',
+      this.attemptOpen,
     );
   }
 
-  /** Closes the attempt dialog, confirming first if it has unsaved edits. */
-  protected async requestClose(): Promise<void> {
+  /** The confirmed booking items (those carrying a confirmation block), for the confirmations card. */
+  protected confirmations(): BookingRequestItem[] {
+    return this.booking()?.items.filter((i) => i.confirmation) ?? [];
+  }
+
+  /** Whether this booking item can be confirmed through the Travel Package flow by the current user. */
+  protected canConfirmItem(item: BookingRequestItem): boolean {
+    return (
+      this.auth.canOperateBookings() &&
+      item.type === 'TRAVEL_PACKAGE' &&
+      item.requiresBooking &&
+      item.status !== 'CONFIRMED' &&
+      item.status !== 'CANCELLED'
+    );
+  }
+
+  protected openConfirm(item: BookingRequestItem): void {
+    this.confirmItemId = item.id;
+    this.confirmItemLabel = `${ITEM_TYPE_LABELS[item.type]} — ${item.description}`;
+    this.confirmExternalSystem = '';
+    this.confirmExternalLocator = '';
+    this.confirmDate = new Date();
+    this.confirmPackageDescription = '';
+    this.confirmTravelStart = null;
+    this.confirmTravelEnd = null;
+    this.confirmTravelerNotes = '';
+    this.confirmOperationalNotes = '';
+    this.confirmOpen.set(true);
+    this.editSnapshot = this.liveSnapshot();
+  }
+
+  protected canSaveConfirm(): boolean {
+    return (
+      this.confirmExternalSystem.trim().length > 0 &&
+      this.confirmExternalLocator.trim().length > 0 &&
+      !!this.confirmDate
+    );
+  }
+
+  protected confirmItem(): void {
+    if (!this.canSaveConfirm()) {
+      return;
+    }
+    this.act(
+      this.bookings.confirmTravelPackage(this.bookingId, this.confirmItemId, {
+        externalSystem: this.confirmExternalSystem.trim(),
+        externalLocator: this.confirmExternalLocator.trim(),
+        confirmedAt: this.confirmDate.toISOString(),
+        packageDescription: this.confirmPackageDescription.trim() || null,
+        travelStartDate: toIsoDate(this.confirmTravelStart),
+        travelEndDate: toIsoDate(this.confirmTravelEnd),
+        travelerNotes: this.confirmTravelerNotes.trim() || null,
+        operationalNotes: this.confirmOperationalNotes.trim() || null,
+      }),
+      'Reserva confirmada',
+      this.confirmOpen,
+    );
+  }
+
+  /** Closes a dialog, confirming first if it has unsaved edits. */
+  protected async requestClose(open: { set: (v: boolean) => void }): Promise<void> {
     if (this.hasUnsavedChanges() && !(await this.unsaved.confirmDiscard())) {
       return;
     }
-    this.attemptOpen.set(false);
+    open.set(false);
+  }
+
+  private closeOpenDialog(): void {
+    for (const open of [this.attemptOpen, this.confirmOpen]) {
+      if (open()) {
+        void this.requestClose(open);
+        return;
+      }
+    }
   }
 
   protected back(): void {
     this.router.navigateByUrl('/reservas');
   }
 
-  /** Shortcuts: a register attempt, Esc closes the dialog (guarded) or returns to the list. */
+  /** Shortcuts: a register attempt, Esc closes the open dialog (guarded) or returns to the list. */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && this.attemptOpen()) {
-      void this.requestClose();
+    if (event.key === 'Escape' && this.anyDialogOpen()) {
+      this.closeOpenDialog();
       return;
     }
     const target = event.target as HTMLElement | null;
     const typing =
       !!target &&
       (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
-    if (typing || event.ctrlKey || event.metaKey || event.altKey || this.attemptOpen()) {
+    if (typing || event.ctrlKey || event.metaKey || event.altKey || this.anyDialogOpen()) {
       return;
     }
     if (event.key === 'a' && this.canRegisterAttempt()) {
@@ -373,13 +470,17 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
     });
   }
 
-  private act(action: Observable<BookingRequestDetail>, successSummary: string): void {
+  private act(
+    action: Observable<BookingRequestDetail>,
+    successSummary: string,
+    dialog: { set: (v: boolean) => void },
+  ): void {
     this.acting.set(true);
     action.subscribe({
       next: (detail) => {
         this.booking.set(detail);
         this.acting.set(false);
-        this.attemptOpen.set(false);
+        dialog.set(false);
         this.messages.add({ severity: 'success', summary: successSummary });
       },
       error: (err: HttpErrorResponse) => {
