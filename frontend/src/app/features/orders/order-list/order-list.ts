@@ -22,6 +22,7 @@ import {
   OrderFilters,
   OrderService,
 } from '../../../core/api/order.service';
+import { BookingRequestStatus } from '../../../core/api/booking.service';
 
 const STATUS_LABELS: Record<CommercialOrderStatus, string> = {
   PENDING_BOOKING: 'Pendente de reserva',
@@ -35,6 +36,24 @@ const STATUS_SEVERITY: Record<CommercialOrderStatus, TagSeverity> = {
   PENDING_BOOKING: 'warn',
   BOOKING_NOT_REQUIRED: 'success',
   CANCELLED: 'danger',
+};
+
+const BOOKING_STATUS_LABELS: Record<BookingRequestStatus, string> = {
+  PENDING: 'Pendente',
+  IN_PROGRESS: 'Em andamento',
+  PARTIALLY_CONFIRMED: 'Parcialmente confirmada',
+  CONFIRMED: 'Confirmada',
+  FAILED: 'Falhou',
+  CANCELLED: 'Cancelada',
+};
+
+const BOOKING_STATUS_SEVERITY: Record<BookingRequestStatus, TagSeverity> = {
+  PENDING: 'warn',
+  IN_PROGRESS: 'info',
+  PARTIALLY_CONFIRMED: 'info',
+  CONFIRMED: 'success',
+  FAILED: 'danger',
+  CANCELLED: 'secondary',
 };
 
 const UNASSIGNED = 'unassigned';
@@ -121,6 +140,14 @@ export class OrderList implements OnInit {
 
   protected statusSeverity(status: CommercialOrderStatus): TagSeverity {
     return STATUS_SEVERITY[status];
+  }
+
+  protected bookingStatusLabel(status: BookingRequestStatus): string {
+    return BOOKING_STATUS_LABELS[status];
+  }
+
+  protected bookingStatusSeverity(status: BookingRequestStatus): TagSeverity {
+    return BOOKING_STATUS_SEVERITY[status];
   }
 
   /** Single loader: fires on first render and on pagination (lazy table). */

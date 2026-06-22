@@ -102,6 +102,8 @@ class CommercialOrderApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PENDING_BOOKING"))
                 .andExpect(jsonPath("$.requiresBooking").value(true)) // explicit booking-need indicator
+                .andExpect(
+                        jsonPath("$.bookingStatus").value(org.hamcrest.Matchers.nullValue())) // no Booking Request yet
                 .andExpect(jsonPath("$.number").isNumber()) // the sequential PC-000n number
                 .andExpect(jsonPath("$.proposalId").value(proposal.toString()))
                 .andExpect(jsonPath("$.opportunityId").value(opp.toString()))

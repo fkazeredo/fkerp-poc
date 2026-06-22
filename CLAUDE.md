@@ -583,10 +583,28 @@ data, and never modifies the Order. **Persona → scopes (Sprint 4):** a new bac
 `booking:request:read:all` to work the list); the commercial **Manager** (001) also holds
 `booking:request:create` + `booking:request:read:all` (oversight); the **Board/Director** (004) holds
 `booking:request:read:all` (consultation); Sellers/Representatives and Finance/HR/IT have **no** booking read
-tier (they do not see reservations). The lifecycle (`PENDING → IN_PROGRESS → PARTIALLY_CONFIRMED → CONFIRMED`, plus `FAILED` /
-`CANCELLED`) and the **reflection of the booking status back onto the Commercial Order** are later slices; a
-**Confirmed** Booking Request may prepare the Order for **Financial Operations in Sprint 5**, but Finance is not
-implemented now.
+tier (they do not see reservations).
+
+**Booking Request status consolidation (normative).** The Booking Request status is **state-derived** from its
+items requiring booking + its attempt history (a single `consolidateStatus()` on the aggregate, run after every
+attempt/confirm/fail; it never overrides an explicit `CANCELLED`): every requiring item confirmed → `CONFIRMED`;
+≥1 (but not all) confirmed → `PARTIALLY_CONFIRMED`; none confirmed but ≥1 failed → `FAILED` (the operation can't
+proceed until retried); nothing confirmed/failed yet but ≥1 attempt → `IN_PROGRESS`; otherwise (all pending, no
+attempt) → `PENDING`. `CANCELLED` is reserved for an explicit cancellation (a later slice). Confirming a
+previously failed item reconsolidates the request.
+
+**Reflecting the booking status onto the Commercial Order (normative).** The Commercial Order **shows** the
+consolidated booking status while **staying owned by Sales & Proposals** — Booking Operations **never** takes
+ownership of (or writes) the Order. Booking publishes a domain event (`BookingStatusConsolidated{bookingRequestId,
+commercialOrderId, status}`) on every consolidation (and on create, reflecting `PENDING`); a **Sales-owned**
+`@EventListener` (`CommercialOrderBookingStatusListener`, synchronous → atomic with the booking change) writes the
+Order's own nullable `booking_status` column via `CommercialOrder.reflectBookingStatus(...)`. This is a **read-only
+reflection**: it **never** changes the Order's own lifecycle (`status`) and **never** cancels the Order. The Order
+detail/list expose `bookingStatus` (null = no Booking Request yet): a **`CONFIRMED`** booking makes the Order
+**identifiable as ready for Financial Operations** (Sprint 5) and a **`FAILED`** booking marks it as **having a
+booking problem**. A confirmed booking **must not** create a Receivable, Payment or Commission now, and a failed
+booking **must not** cancel the Order automatically; Finance is not implemented now. The lifecycle transitions
+beyond the consolidated status, the explicit **cancellation** flow, and Financial Operations remain later slices.
 
 ## 11. Observability & performance
 

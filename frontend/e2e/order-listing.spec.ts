@@ -30,7 +30,9 @@ test('the order list is reachable from the Comercial module and shows its operat
   await expect(page.getByRole('heading', { name: 'Pedidos' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Identificador' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Resumo' })).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: 'Reserva' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Reserva', exact: true })).toBeVisible();
+  // The consolidated booking status reflected from Booking Operations (Sprint 4 / Slice 9).
+  await expect(page.getByRole('columnheader', { name: 'Status da reserva' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Total' })).toBeVisible();
   // The filter bar (status, booking need, search) is present.
   await expect(page.locator('.filters')).toContainText('Status');

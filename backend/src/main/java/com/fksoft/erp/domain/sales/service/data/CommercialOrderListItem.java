@@ -1,5 +1,6 @@
 package com.fksoft.erp.domain.sales.service.data;
 
+import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import java.math.BigDecimal;
@@ -14,6 +15,8 @@ import java.util.UUID;
  * Receivable, Payment, Commission or Customer Care data.
  *
  * @param requiresBooking whether the Order still needs a booking operation (status PENDING_BOOKING)
+ * @param bookingStatus the consolidated booking status reflected from Booking Operations, or {@code null} when
+ *     no Booking Request exists yet (a read-only reflection; never drives the Order's own status)
  */
 public record CommercialOrderListItem(
         UUID id,
@@ -28,6 +31,7 @@ public record CommercialOrderListItem(
         boolean unassigned,
         BigDecimal total,
         boolean requiresBooking,
+        BookingRequestStatus bookingStatus,
         Instant createdAt) {
 
     /**
@@ -55,6 +59,7 @@ public record CommercialOrderListItem(
                 o.responsiblePersonId() == null,
                 o.total(),
                 o.status() == CommercialOrderStatus.PENDING_BOOKING,
+                o.bookingStatus(),
                 o.createdAt());
     }
 }

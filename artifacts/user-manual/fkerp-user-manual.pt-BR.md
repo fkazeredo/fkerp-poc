@@ -3,11 +3,12 @@
 > **Público:** usuários finais do sistema FKERP (equipe comercial / vendas).
 > **Idioma:** Português (pt-BR). Há uma edição em inglês mantida em paralelo
 > (`fkerp-user-manual.en-US.md`).
-> **Escopo:** cobre tudo que foi liberado até a **v0.44.0** — o **Comercial / CRM** (ciclo de vida completo
+> **Escopo:** cobre tudo que foi liberado até a **v0.45.0** — o **Comercial / CRM** (ciclo de vida completo
 > de Leads e de Oportunidades), **Vendas & Propostas** (propostas, itens, valores e descontos, fluxo de
 > aprovação/envio/aceite e os pedidos comerciais) e as **Operações de reserva** (o módulo Reservas: a fila de
-> trabalho, o detalhe, o histórico de tentativas, a confirmação de itens de Pacote e Locação, e o registro de
-> falhas com retry). Será ampliado à medida que novos recursos forem lançados.
+> trabalho, o detalhe, o histórico de tentativas, a confirmação de itens de Pacote e Locação, o registro de
+> falhas com retry, e o **status consolidado da reserva refletido no Pedido**). Será ampliado à medida que novos
+> recursos forem lançados.
 
 ---
 
@@ -616,8 +617,9 @@ fechado. As reservas e o financeiro virão em próximas versões. Só uma propos
 Os pedidos comerciais ficam em **Comercial → Pedidos** (atalho de teclado **`g d`**). A lista mostra, para cada
 pedido: o **Identificador** (um número amigável, ex.: **PC-0001**, que leva ao detalhe), o **Resumo** (o título
 da proposta de origem), a **Oportunidade**, o **Responsável**, o **Total**, o **Status**, o indicador de
-**Reserva** (*Exige reserva* quando há item de Pacote de viagem ou Locação; senão *Não exige*) e a **data de
-criação**.
+**Reserva** (*Exige reserva* quando há item de Pacote de viagem ou Locação; senão *Não exige*), o **Status da
+reserva** (o andamento das operações de reserva — *Pendente*, *Em andamento*, *Parcialmente confirmada*,
+*Confirmada* ou *Falhou*; *Não iniciada* enquanto a reserva não começou) e a **data de criação**.
 
 - **Filtros:** por **status**, **necessidade de reserva**, **responsável**, **período de criação** e **faixa de
   valor**, além de uma **busca** pelo resumo (título da proposta). Use **Limpar** para zerar.
@@ -630,11 +632,18 @@ origens (proposta/oportunidade/lead) e uma nota de **próximo passo** (quando *P
 próxima etapa pode iniciar as operações de reserva). Para já chegar **pronto à etapa de reserva** sem redigitar
 nada, o detalhe também reúne o **contexto comercial vindo da proposta de origem** — os **termos comerciais**, a
 **validade**, as **notas** e as **observações de pagamento** (quando preenchidos) — e um indicador explícito de
-**necessidade de reserva** (*Sim/Não*). A lista e o detalhe mostram **apenas dados do pedido** — nunca reserva,
-financeiro, pagamento ou comissão.
+**necessidade de reserva** (*Sim/Não*).
+
+O detalhe traz ainda o **Status da reserva** — o reflexo do andamento das operações de reserva (seção 10) — com
+uma orientação clara: quando a reserva está **Confirmada**, o pedido fica **pronto para seguir ao Financeiro**;
+quando **Falhou**, o pedido aparece com um **problema na reserva** que precisa de atenção. Esse status é apenas
+um **reflexo de leitura**: ele **não** altera a situação do pedido (que continua sob a área Comercial), **não**
+cancela o pedido e **não** cria nada de financeiro. A lista e o detalhe mostram **dados do pedido + esse reflexo
+da reserva** — nunca financeiro, pagamento ou comissão.
 
 > A partir de um pedido **Pendente de reserva**, as **operações de reserva** já estão disponíveis no módulo
-> **Reservas** (seção 10).
+> **Reservas** (seção 10); conforme a reserva é confirmada ou falha por lá, o **Status da reserva** do pedido se
+> atualiza automaticamente.
 
 ### 9.10 Indicadores de propostas
 
@@ -774,6 +783,15 @@ A reserva, então, fica **Parcialmente confirmada** (se algum outro item já est
 *Parcialmente confirmada* ou *Confirmada*. Registrar uma falha **não** cancela o pedido comercial e **não**
 cria nada de financeiro, pagamento, comissão ou atendimento ao cliente.
 
+### 10.7 Como a reserva aparece no Pedido
+
+O **status consolidado** da reserva (*Pendente* · *Em andamento* · *Parcialmente confirmada* · *Confirmada* ·
+*Falhou*) é **refletido automaticamente** no **Pedido Comercial** de origem (seção 9.9), para que toda a equipe
+veja em que pé está a reserva sem sair da tela do pedido. Uma reserva **Confirmada** deixa o pedido **pronto para
+seguir ao Financeiro**; uma reserva que **Falhou** marca o pedido com um **problema de reserva** a tratar. Esse
+reflexo é apenas **leitura**: o Pedido continua **sob a área Comercial**, a sua situação não muda por causa da
+reserva e ele **nunca** é cancelado automaticamente — nem é criado qualquer registro financeiro.
+
 ## 11. Gerenciando cadastros
 
 Os cadastros são as listas que alimentam o formulário de Lead e fluxos futuros. São quatro, todas
@@ -878,11 +896,13 @@ revisão interna**, **aprovar ou rejeitar**, **marcar uma proposta aprovada como
 A **Sprint 4 — Operações de reserva** está em andamento e já entrega o módulo **Reservas** (seção 10): a **fila
 de trabalho** das solicitações de reserva nascidas dos pedidos fechados, o **detalhe** da reserva com suas
 origens rastreáveis, o **histórico de tentativas**, a **confirmação** de itens de **Pacote de viagem** e de
-**Locação de veículo**, e o **registro de falhas com retry**. As próximas etapas trarão o restante do ciclo de
-reserva (atribuição de operador, cancelamento e o reflexo do status no pedido) e, adiante, o financeiro. Este
-manual será atualizado a cada lançamento.
+**Locação de veículo**, o **registro de falhas com retry**, e o **reflexo do status consolidado da reserva no
+Pedido Comercial** (seção 10.7) — deixando o pedido identificável como *pronto para o Financeiro* ou *com
+problema de reserva*. As próximas etapas trarão o restante do ciclo de reserva (atribuição de operador e
+cancelamento) e, adiante, o financeiro. Este manual será atualizado a cada lançamento.
 
 ---
 
 *Status do documento: Sprints 1, 2 e 3 concluídas; Sprint 4 (Operações de reserva) em andamento — o módulo
-Reservas com tentativas, confirmação de itens e registro de falhas com retry. Mantido junto com o produto.*
+Reservas com tentativas, confirmação de itens, registro de falhas com retry e o reflexo do status da reserva no
+Pedido. Mantido junto com o produto.*
