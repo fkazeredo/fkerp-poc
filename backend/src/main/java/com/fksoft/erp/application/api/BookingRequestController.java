@@ -7,7 +7,6 @@ import com.fksoft.erp.application.api.dto.ConfirmTravelPackageRequest;
 import com.fksoft.erp.application.api.dto.CreateBookingRequestRequest;
 import com.fksoft.erp.application.api.dto.FailBookingItemRequest;
 import com.fksoft.erp.application.api.dto.RegisterBookingAttemptRequest;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.service.BookingRequestService;
 import com.fksoft.erp.domain.booking.service.data.BookingIndicators;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestDetail;
@@ -71,7 +70,7 @@ public class BookingRequestController {
                 canSeeAllOrders(),
                 canSeeUnassignedOrders());
         return ResponseEntity.created(URI.create("/api/bookings/" + id))
-                .body(new BookingRequestResponse(id, BookingRequestStatus.PENDING));
+                .body(new BookingRequestResponse(id, "PENDING"));
     }
 
     /**

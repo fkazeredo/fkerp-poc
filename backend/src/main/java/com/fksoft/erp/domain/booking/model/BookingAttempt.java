@@ -22,8 +22,8 @@ import lombok.NoArgsConstructor;
  * booking item (or the whole request when {@code null}) and an optional next action date. It preserves the
  * operational history (append-only) before confirmation or failure. It carries <b>no monetary data</b>, never
  * confirms a booking, never creates Financial or Commission data, and never changes a booking item's status —
- * registering it only ever moves the request from {@link BookingRequestStatus#PENDING} to
- * {@link BookingRequestStatus#IN_PROGRESS}.
+ * registering it only ever moves the request from {@code PENDING} to
+ * {@code IN_PROGRESS}.
  */
 @Entity
 @Table(name = "booking_attempts")

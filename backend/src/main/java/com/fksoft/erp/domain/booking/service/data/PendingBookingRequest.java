@@ -2,7 +2,6 @@ package com.fksoft.erp.domain.booking.service.data;
 
 import com.fksoft.erp.domain.booking.model.BookingPendingReason;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -23,7 +22,7 @@ public record PendingBookingRequest(
         long commercialOrderNumber,
         UUID proposalId,
         String proposalTitle,
-        BookingRequestStatus status,
+        String status,
         UUID bookingOperatorId,
         String bookingOperatorName,
         boolean operatorUnassigned,

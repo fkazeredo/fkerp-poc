@@ -1,6 +1,5 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import java.time.LocalDate;
 import java.util.Set;
@@ -22,7 +21,7 @@ import org.springframework.format.annotation.DateTimeFormat;
  * @param hasFailedItems restrict to requests that contain at least one failed item
  */
 public record BookingRequestListParams(
-        Set<BookingRequestStatus> status,
+        Set<String> status,
         String operator,
         UUID responsible,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,

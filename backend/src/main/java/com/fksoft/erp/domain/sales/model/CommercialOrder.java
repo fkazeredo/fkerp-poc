@@ -1,13 +1,10 @@
 package com.fksoft.erp.domain.sales.model;
 
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.sales.exception.ProposalNotAcceptedException;
 import com.fksoft.erp.domain.workflow.WorkflowState;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -86,12 +83,12 @@ public class CommercialOrder {
     @JoinColumn(name = "current_state_id", nullable = false)
     private WorkflowState currentState;
 
-    // The consolidated booking status, reflected from the Booking Operations context (Sales owns this column; it
-    // is set by a Sales event listener, never by Booking). Null until a Booking Request exists for this Order.
+    // The consolidated booking status code, reflected from the Booking Operations context (Sales owns this column;
+    // it is set by a Sales event listener, never by Booking). Null until a Booking Request exists for this Order.
     // This is a read-only reflection — it never drives the Order's own lifecycle ({@link #status}).
-    @Enumerated(EnumType.STRING)
+    @Size(max = 60)
     @Column(name = "booking_status")
-    private BookingRequestStatus bookingStatus;
+    private String bookingStatus;
 
     // The order lines — an immutable snapshot of the Proposal's items at creation time.
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
@@ -178,9 +175,9 @@ public class CommercialOrder {
      * identifiable (e.g. as ready for Financial Operations when {@code CONFIRMED}). It never changes the Order's
      * own lifecycle {@link #status}, never cancels the Order, and creates no Receivable, Payment or Commission data.
      *
-     * @param bookingStatus the consolidated Booking Request status to reflect
+     * @param bookingStatus the consolidated Booking Request status code to reflect
      */
-    public void reflectBookingStatus(BookingRequestStatus bookingStatus) {
+    public void reflectBookingStatus(String bookingStatus) {
         this.bookingStatus = bookingStatus;
     }
 

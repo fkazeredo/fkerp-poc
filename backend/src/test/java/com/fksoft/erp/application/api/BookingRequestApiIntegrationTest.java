@@ -7,9 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.repository.BookingRequestRepository;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
@@ -110,7 +108,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
 
         // The saved aggregate preserves the source references and the commercial responsible, and starts PENDING.
         BookingRequest request = bookingRequests.findById(requestId).orElseThrow();
-        assertThat(request.status()).isEqualTo(BookingRequestStatus.PENDING);
+        assertThat(request.status()).isEqualTo("PENDING");
         assertThat(request.commercialOrderId()).isEqualTo(order);
         assertThat(request.proposalId()).isNotNull();
         assertThat(request.opportunityId()).isNotNull();
@@ -128,13 +126,13 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(pkg.get("requires_booking")).isEqualTo(true);
-        assertThat(pkg.get("status")).isEqualTo(BookingItemStatus.PENDING.name());
+        assertThat(pkg.get("status")).isEqualTo("PENDING");
         Map<String, Object> fee = items.stream()
                 .filter(i -> "SERVICE_FEE".equals(i.get("type")))
                 .findFirst()
                 .orElseThrow();
         assertThat(fee.get("requires_booking")).isEqualTo(false);
-        assertThat(fee.get("status")).isEqualTo(BookingItemStatus.NOT_REQUIRED.name());
+        assertThat(fee.get("status")).isEqualTo("NOT_REQUIRED");
     }
 
     @Test
@@ -239,7 +237,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(other.get("requires_booking")).isEqualTo(true);
-        assertThat(other.get("status")).isEqualTo(BookingItemStatus.PENDING.name());
+        assertThat(other.get("status")).isEqualTo("PENDING");
         // The travel package still requires booking; the service fee is still NOT_REQUIRED (rules are fixed).
         Map<String, Object> pkg = items.stream()
                 .filter(i -> "TRAVEL_PACKAGE".equals(i.get("type")))
@@ -251,7 +249,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(fee.get("requires_booking")).isEqualTo(false);
-        assertThat(fee.get("status")).isEqualTo(BookingItemStatus.NOT_REQUIRED.name());
+        assertThat(fee.get("status")).isEqualTo("NOT_REQUIRED");
     }
 
     @Test
@@ -273,7 +271,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
                         requestId.toString())
                 .get(0);
         assertThat(other.get("requires_booking")).isEqualTo(false);
-        assertThat(other.get("status")).isEqualTo(BookingItemStatus.NOT_REQUIRED.name());
+        assertThat(other.get("status")).isEqualTo("NOT_REQUIRED");
     }
 
     @Test

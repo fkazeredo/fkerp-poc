@@ -29,8 +29,8 @@ import org.hibernate.annotations.CreationTimestamp;
  * carries <b>no monetary data</b> — a Booking Request is not financial data; the money stays on the
  * Commercial Order. The booking requirement follows the type: a travel package or a car rental always require
  * booking, a service fee never does, and an OTHER item only when the operations team explicitly marked it at
- * creation. Items that require booking start {@link BookingItemStatus#PENDING}; the others
- * {@link BookingItemStatus#NOT_REQUIRED}.
+ * creation. Items that require booking start {@code PENDING}; the others
+ * {@code NOT_REQUIRED}.
  */
 @Entity
 @Table(name = "booking_items")
@@ -63,10 +63,13 @@ public class BookingItem {
     @Column(name = "requires_booking", nullable = false)
     private boolean requiresBooking;
 
-    @NotNull
-    @Enumerated(EnumType.STRING)
+    // Denormalized status code (mirrors a 'booking_item' workflow state); the current_state_id FK is kept in
+    // sync from this code by a DB trigger. The item's status is computed by its own transitions (it is never a
+    // user-chosen target), so the code stays the entity's source value and the FK is derived (data-driven storage).
+    @NotBlank
+    @Size(max = 60)
     @Column(nullable = false)
-    private BookingItemStatus status;
+    private String status;
 
     // The manual confirmation of the external reservation — populated only when the item is confirmed (null
     // otherwise). Carries no monetary data.
@@ -101,7 +104,7 @@ public class BookingItem {
         item.description = source.description();
         item.quantity = source.quantity();
         item.requiresBooking = requiresBooking(source.type(), explicitlyRequired);
-        item.status = item.requiresBooking ? BookingItemStatus.PENDING : BookingItemStatus.NOT_REQUIRED;
+        item.status = item.requiresBooking ? "PENDING" : "NOT_REQUIRED";
         return item;
     }
 
@@ -123,7 +126,7 @@ public class BookingItem {
 
     /**
      * Manually confirms this item's external reservation through the Travel Package flow: records the
-     * confirmation and moves the item to {@link BookingItemStatus#CONFIRMED}. Only a Travel Package item that
+     * confirmation and moves the item to {@code CONFIRMED}. Only a Travel Package item that
      * requires booking and is not already confirmed/cancelled can be confirmed; the item protects its own
      * invariant. No monetary/Financial/Commission/Customer Care data is created and no external call is made.
      *
@@ -137,7 +140,7 @@ public class BookingItem {
 
     /**
      * Manually confirms this item's external reservation through the Car Rental flow: records the confirmation
-     * and moves the item to {@link BookingItemStatus#CONFIRMED}. Only a Car Rental item that requires booking
+     * and moves the item to {@code CONFIRMED}. Only a Car Rental item that requires booking
      * and is not already confirmed/cancelled can be confirmed. No monetary/Financial/Commission/Customer Care
      * data is created and no external call is made.
      *
@@ -155,16 +158,16 @@ public class BookingItem {
         if (type != expectedType || !requiresBooking) {
             throw new BookingItemNotConfirmableException();
         }
-        if (status == BookingItemStatus.CONFIRMED || status == BookingItemStatus.CANCELLED) {
+        if ("CONFIRMED".equals(status) || "CANCELLED".equals(status)) {
             throw new BookingItemAlreadyResolvedException();
         }
         this.confirmation = confirmation;
-        this.status = BookingItemStatus.CONFIRMED;
+        this.status = "CONFIRMED";
     }
 
     /**
      * Manually marks this item as failed: records the failure and moves the item to
-     * {@link BookingItemStatus#FAILED}. Only an item that requires booking and is not already
+     * {@code FAILED}. Only an item that requires booking and is not already
      * confirmed/cancelled can be failed; a failed item stays visible as an operational problem and may later
      * receive new attempts or be confirmed (the failure does not bar a retry). No external call is made and no
      * Financial/Commission/Customer Care data is created; the Commercial Order is not cancelled.
@@ -177,10 +180,10 @@ public class BookingItem {
         if (!requiresBooking) {
             throw new BookingItemNotFailableException();
         }
-        if (status == BookingItemStatus.CONFIRMED || status == BookingItemStatus.CANCELLED) {
+        if ("CONFIRMED".equals(status) || "CANCELLED".equals(status)) {
             throw new BookingItemAlreadyResolvedException();
         }
         this.failure = failure;
-        this.status = BookingItemStatus.FAILED;
+        this.status = "FAILED";
     }
 }

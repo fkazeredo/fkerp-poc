@@ -1,6 +1,5 @@
 package com.fksoft.erp.domain.sales.service.data;
 
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
@@ -43,7 +42,7 @@ public record CommercialOrderDetail(
         UUID leadId,
         String status,
         boolean requiresBooking,
-        BookingRequestStatus bookingStatus,
+        String bookingStatus,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,

@@ -1,9 +1,7 @@
 package com.fksoft.erp.domain.booking.repository;
 
 import com.fksoft.erp.domain.booking.model.BookingItem;
-import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -15,6 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -45,17 +44,16 @@ public class BookingIndicatorQueries {
      * @param to exclusive upper bound on creation (or {@code null})
      * @return counts keyed by status
      */
-    public Map<BookingRequestStatus, Long> countByStatus(
-            Specification<BookingRequest> visible, Instant from, Instant to) {
+    public Map<String, Long> countByStatus(Specification<BookingRequest> visible, Instant from, Instant to) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<Object[]> q = cb.createQuery(Object[].class);
         Root<BookingRequest> root = q.from(BookingRequest.class);
         q.multiselect(root.get("status"), cb.count(root));
         q.where(where(cb, root, q, visible, from, to));
         q.groupBy(root.get("status"));
-        Map<BookingRequestStatus, Long> result = new EnumMap<>(BookingRequestStatus.class);
+        Map<String, Long> result = new LinkedHashMap<>();
         for (Object[] row : em.createQuery(q).getResultList()) {
-            result.put((BookingRequestStatus) row[0], (Long) row[1]);
+            result.put((String) row[0], (Long) row[1]);
         }
         return result;
     }
@@ -99,7 +97,7 @@ public class BookingIndicatorQueries {
         Join<BookingRequest, BookingItem> items = root.join("items");
         q.select(cb.count(items));
         Predicate base = where(cb, root, q, visible, from, to);
-        q.where(cb.and(base, cb.equal(items.get("status"), BookingItemStatus.FAILED)));
+        q.where(cb.and(base, cb.equal(items.get("status"), "FAILED")));
         return em.createQuery(q).getSingleResult();
     }
 
@@ -119,10 +117,7 @@ public class BookingIndicatorQueries {
         Root<BookingRequest> root = q.from(BookingRequest.class);
         q.multiselect(root.get("createdAt"), root.get("confirmedAt"));
         Predicate base = where(cb, root, q, visible, from, to);
-        q.where(cb.and(
-                base,
-                cb.equal(root.get("status"), BookingRequestStatus.CONFIRMED),
-                cb.isNotNull(root.get("confirmedAt"))));
+        q.where(cb.and(base, cb.equal(root.get("status"), "CONFIRMED"), cb.isNotNull(root.get("confirmedAt"))));
         List<Object[]> rows = em.createQuery(q).getResultList();
         if (rows.isEmpty()) {
             return null;

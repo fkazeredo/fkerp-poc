@@ -34,17 +34,17 @@ public final class BookingRequestPendingReasons {
     public static List<BookingPendingReason> of(
             BookingRequest r, Instant now, LocalDate today, boolean hasFailedItem, boolean hasPendingRequiredItem) {
         List<BookingPendingReason> reasons = new ArrayList<>();
-        if (r.status() == BookingRequestStatus.CONFIRMED || r.status() == BookingRequestStatus.CANCELLED) {
+        if ("CONFIRMED".equals(r.status()) || "CANCELLED".equals(r.status())) {
             return reasons;
         }
         if (r.bookingOperatorId() == null) {
             reasons.add(BookingPendingReason.UNASSIGNED_OPERATOR);
         }
-        if (r.status() == BookingRequestStatus.PENDING) {
+        if ("PENDING".equals(r.status())) {
             reasons.add(BookingPendingReason.PENDING_WITHOUT_ATTEMPT);
         }
         Instant staleBefore = now.minus(STALE_DAYS, ChronoUnit.DAYS);
-        if (r.status() == BookingRequestStatus.IN_PROGRESS
+        if ("IN_PROGRESS".equals(r.status())
                 && (r.lastAttemptAt() == null || r.lastAttemptAt().isBefore(staleBefore))) {
             reasons.add(BookingPendingReason.IN_PROGRESS_WITHOUT_RECENT_ATTEMPT);
         }
@@ -54,7 +54,7 @@ public final class BookingRequestPendingReasons {
         if (hasPendingRequiredItem) {
             reasons.add(BookingPendingReason.HAS_PENDING_REQUIRED_ITEM);
         }
-        if (r.status() == BookingRequestStatus.PARTIALLY_CONFIRMED) {
+        if ("PARTIALLY_CONFIRMED".equals(r.status())) {
             reasons.add(BookingPendingReason.PARTIALLY_CONFIRMED);
         }
         if (r.nextActionDate() != null && r.nextActionDate().isBefore(today)) {

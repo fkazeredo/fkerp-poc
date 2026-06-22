@@ -9,13 +9,12 @@ import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
@@ -39,7 +38,7 @@ import org.hibernate.annotations.UpdateTimestamp;
  * Opportunity / Lead references and the commercial responsible, and snapshots <b>what</b> must be reserved
  * (the booking items, classified by booking need) — carrying <b>no monetary data</b>. A Booking Request is
  * NOT an external integration, a Receivable, a Payment, a Commission or Customer Care. It starts
- * {@link BookingRequestStatus#PENDING}; the operational transitions (attempts, confirmation, failure) are
+ * {@code PENDING}; the operational transitions (attempts, confirmation, failure) are
  * later slices.
  */
 @Entity
@@ -81,10 +80,13 @@ public class BookingRequest {
     @Column(name = "booking_operator_id")
     private UUID bookingOperatorId;
 
-    @NotNull
-    @Enumerated(EnumType.STRING)
+    // Denormalized status code (mirrors a 'booking_request' workflow state); the current_state_id FK is kept in
+    // sync from this code by a DB trigger. The request status is state-derived (consolidateStatus), never a
+    // user-chosen target, so the code stays the entity's source value and the FK is derived (data-driven storage).
+    @NotBlank
+    @Size(max = 60)
     @Column(nullable = false)
-    private BookingRequestStatus status;
+    private String status;
 
     @Size(max = 2000)
     private String notes;
@@ -131,7 +133,7 @@ public class BookingRequest {
     /**
      * Creates a Booking Request from a Commercial Order that is PENDING_BOOKING, snapshotting its items
      * (classified by booking need) and preserving the source references and the commercial responsible. The
-     * request starts {@link BookingRequestStatus#PENDING}. Creates no external reservation and no Receivable,
+     * request starts {@code PENDING}. Creates no external reservation and no Receivable,
      * Payment or Commission data.
      *
      * @param order the source Commercial Order; must be {@code PENDING_BOOKING}
@@ -172,7 +174,7 @@ public class BookingRequest {
         request.responsiblePersonId = order.responsiblePersonId();
         request.bookingOperatorId = bookingOperatorId;
         request.notes = notes;
-        request.status = BookingRequestStatus.PENDING;
+        request.status = "PENDING";
         order.items().forEach(item -> request.items.add(BookingItem.snapshotOf(item, required.contains(item.id()))));
         request.createdBy = createdBy;
         request.updatedBy = createdBy;
@@ -182,8 +184,8 @@ public class BookingRequest {
     /**
      * Registers a manual booking attempt (append-only operational history) and refreshes the denormalized
      * latest-attempt instant. When the attempt references a booking item, it must belong to this request.
-     * Registering an attempt moves the request from {@link BookingRequestStatus#PENDING} to
-     * {@link BookingRequestStatus#IN_PROGRESS}; it never changes a booking item's status, never confirms the
+     * Registering an attempt moves the request from {@code PENDING} to
+     * {@code IN_PROGRESS}; it never changes a booking item's status, never confirms the
      * booking, and never creates Financial or Commission data.
      *
      * @param bookingItemId the booking item this attempt concerns, or {@code null} for the whole request
@@ -222,8 +224,8 @@ public class BookingRequest {
      * Manually confirms a Travel Package booking item's external reservation and consolidates the request
      * status. The item must belong to this request and be a Travel Package item that requires booking and is
      * not already resolved (the item enforces that). After confirming, the request status rolls up: when every
-     * item that requires booking is confirmed the request becomes {@link BookingRequestStatus#CONFIRMED},
-     * otherwise (some but not all confirmed) {@link BookingRequestStatus#PARTIALLY_CONFIRMED}. No external call
+     * item that requires booking is confirmed the request becomes {@code CONFIRMED},
+     * otherwise (some but not all confirmed) {@code PARTIALLY_CONFIRMED}. No external call
      * is made and no Financial/Commission/Customer Care data is created.
      *
      * @param itemId the booking item to confirm
@@ -265,9 +267,9 @@ public class BookingRequest {
     /**
      * Manually marks a booking item as failed and consolidates the request status. The item must belong to this
      * request, require booking and not be already resolved (the item enforces that). After failing, the request
-     * status rolls up: when items requiring booking are confirmed it is {@link BookingRequestStatus#CONFIRMED}
-     * (all) or {@link BookingRequestStatus#PARTIALLY_CONFIRMED} (some); when none is confirmed but one failed it
-     * is {@link BookingRequestStatus#FAILED}. The failed item stays visible and may later be retried/confirmed.
+     * status rolls up: when items requiring booking are confirmed it is {@code CONFIRMED}
+     * (all) or {@code PARTIALLY_CONFIRMED} (some); when none is confirmed but one failed it
+     * is {@code FAILED}. The failed item stays visible and may later be retried/confirmed.
      * The Commercial Order is not cancelled and no Financial/Commission/Customer Care data is created.
      *
      * @param itemId the booking item to fail
@@ -294,46 +296,46 @@ public class BookingRequest {
 
     /**
      * Consolidates the request status from the items that require booking and the attempt history (purely
-     * state-derived; an explicitly {@link BookingRequestStatus#CANCELLED} request is never overridden):
+     * state-derived; an explicitly {@code CANCELLED} request is never overridden):
      *
      * <ul>
-     *   <li>every requiring item confirmed → {@link BookingRequestStatus#CONFIRMED};
-     *   <li>at least one (but not all) requiring item confirmed → {@link BookingRequestStatus#PARTIALLY_CONFIRMED};
-     *   <li>none confirmed but at least one requiring item failed → {@link BookingRequestStatus#FAILED} (the
+     *   <li>every requiring item confirmed → {@code CONFIRMED};
+     *   <li>at least one (but not all) requiring item confirmed → {@code PARTIALLY_CONFIRMED};
+     *   <li>none confirmed but at least one requiring item failed → {@code FAILED} (the
      *       operation cannot proceed until the failure is retried);
-     *   <li>nothing confirmed or failed yet but at least one attempt exists → {@link BookingRequestStatus#IN_PROGRESS};
-     *   <li>otherwise (all pending, no attempt) → {@link BookingRequestStatus#PENDING}.
+     *   <li>nothing confirmed or failed yet but at least one attempt exists → {@code IN_PROGRESS};
+     *   <li>otherwise (all pending, no attempt) → {@code PENDING}.
      * </ul>
      *
      * Confirming a previously failed item reconsolidates the request (FAILED → PARTIALLY_CONFIRMED/CONFIRMED).
      */
     private void consolidateStatus() {
-        if (status == BookingRequestStatus.CANCELLED) {
+        if ("CANCELLED".equals(status)) {
             return;
         }
         long requiring = items.stream().filter(BookingItem::requiresBooking).count();
         long confirmed = items.stream()
                 .filter(BookingItem::requiresBooking)
-                .filter(i -> i.status() == BookingItemStatus.CONFIRMED)
+                .filter(i -> "CONFIRMED".equals(i.status()))
                 .count();
         long failed = items.stream()
                 .filter(BookingItem::requiresBooking)
-                .filter(i -> i.status() == BookingItemStatus.FAILED)
+                .filter(i -> "FAILED".equals(i.status()))
                 .count();
         if (requiring > 0 && confirmed == requiring) {
-            status = BookingRequestStatus.CONFIRMED;
+            status = "CONFIRMED";
             // Stamp the first time the request reaches CONFIRMED (feeds the average creation→confirmation metric).
             if (confirmedAt == null) {
                 confirmedAt = Instant.now();
             }
         } else if (confirmed > 0) {
-            status = BookingRequestStatus.PARTIALLY_CONFIRMED;
+            status = "PARTIALLY_CONFIRMED";
         } else if (failed > 0) {
-            status = BookingRequestStatus.FAILED;
+            status = "FAILED";
         } else if (!attempts.isEmpty()) {
-            status = BookingRequestStatus.IN_PROGRESS;
+            status = "IN_PROGRESS";
         } else {
-            status = BookingRequestStatus.PENDING;
+            status = "PENDING";
         }
     }
 }

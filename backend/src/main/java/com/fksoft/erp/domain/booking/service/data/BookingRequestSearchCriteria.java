@@ -1,6 +1,5 @@
 package com.fksoft.erp.domain.booking.service.data;
 
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import java.time.Instant;
 import java.util.Set;
@@ -22,7 +21,7 @@ import java.util.UUID;
  * @param hasFailedItems restrict to requests that contain at least one failed item ({@code null} ⇒ no filter)
  */
 public record BookingRequestSearchCriteria(
-        Set<BookingRequestStatus> statuses,
+        Set<String> statuses,
         UUID bookingOperatorId,
         boolean operatorUnassignedOnly,
         UUID responsiblePersonId,

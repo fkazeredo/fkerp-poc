@@ -13,9 +13,7 @@ import com.fksoft.erp.domain.booking.model.BookingFailureReason;
 import com.fksoft.erp.domain.booking.model.BookingItem;
 import com.fksoft.erp.domain.booking.model.BookingItemConfirmation;
 import com.fksoft.erp.domain.booking.model.BookingItemFailure;
-import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.Proposal;
@@ -65,7 +63,7 @@ class BookingRequestTest {
         BookingRequest request =
                 BookingRequest.createFromOrder(order, OPERATOR, "Reservar com urgência", Set.of(), CREATOR);
 
-        assertThat(request.status()).isEqualTo(BookingRequestStatus.PENDING);
+        assertThat(request.status()).isEqualTo("PENDING");
         assertThat(request.commercialOrderId()).isEqualTo(order.id());
         assertThat(request.proposalId()).isEqualTo(order.proposalId());
         assertThat(request.opportunityId()).isEqualTo(OPP_ID);
@@ -79,12 +77,12 @@ class BookingRequestTest {
         assertThat(request.items()).hasSize(2);
         BookingItem pkg = itemOfType(request, ProposalItemType.TRAVEL_PACKAGE);
         assertThat(pkg.requiresBooking()).isTrue();
-        assertThat(pkg.status()).isEqualTo(BookingItemStatus.PENDING);
+        assertThat(pkg.status()).isEqualTo("PENDING");
         assertThat(pkg.orderItemId()).isEqualTo(orderItemId(order, ProposalItemType.TRAVEL_PACKAGE));
         assertThat(pkg.description()).isEqualTo("linha");
         BookingItem fee = itemOfType(request, ProposalItemType.SERVICE_FEE);
         assertThat(fee.requiresBooking()).isFalse();
-        assertThat(fee.status()).isEqualTo(BookingItemStatus.NOT_REQUIRED);
+        assertThat(fee.status()).isEqualTo("NOT_REQUIRED");
     }
 
     @Test
@@ -96,12 +94,12 @@ class BookingRequestTest {
         BookingRequest unmarked = BookingRequest.createFromOrder(order, null, null, Set.of(), CREATOR);
         assertThat(itemOfType(unmarked, ProposalItemType.OTHER).requiresBooking())
                 .isFalse();
-        assertThat(itemOfType(unmarked, ProposalItemType.OTHER).status()).isEqualTo(BookingItemStatus.NOT_REQUIRED);
+        assertThat(itemOfType(unmarked, ProposalItemType.OTHER).status()).isEqualTo("NOT_REQUIRED");
 
         // Explicitly marked → PENDING; the travel package still requires booking regardless.
         BookingRequest marked = BookingRequest.createFromOrder(order, null, null, Set.of(otherId), CREATOR);
         assertThat(itemOfType(marked, ProposalItemType.OTHER).requiresBooking()).isTrue();
-        assertThat(itemOfType(marked, ProposalItemType.OTHER).status()).isEqualTo(BookingItemStatus.PENDING);
+        assertThat(itemOfType(marked, ProposalItemType.OTHER).status()).isEqualTo("PENDING");
         assertThat(itemOfType(marked, ProposalItemType.TRAVEL_PACKAGE).requiresBooking())
                 .isTrue();
     }
@@ -130,7 +128,7 @@ class BookingRequestTest {
 
         assertThat(request.bookingOperatorId()).isNull();
         assertThat(request.notes()).isNull();
-        assertThat(request.items().get(0).status()).isEqualTo(BookingItemStatus.PENDING);
+        assertThat(request.items().get(0).status()).isEqualTo("PENDING");
     }
 
     @Test
@@ -147,7 +145,7 @@ class BookingRequestTest {
     void aFreshRequestWithNoAttemptStaysPending() {
         BookingRequest request = BookingRequest.createFromOrder(
                 pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
-        assertThat(request.status()).isEqualTo(BookingRequestStatus.PENDING);
+        assertThat(request.status()).isEqualTo("PENDING");
     }
 
     @Test
@@ -164,7 +162,7 @@ class BookingRequestTest {
                 null,
                 CREATOR);
 
-        assertThat(request.status()).isEqualTo(BookingRequestStatus.IN_PROGRESS);
+        assertThat(request.status()).isEqualTo("IN_PROGRESS");
     }
 
     @Test
@@ -175,7 +173,7 @@ class BookingRequestTest {
         request.confirmTravelPackageItem(
                 itemOfType(request, ProposalItemType.TRAVEL_PACKAGE).id(), confirmation(), CREATOR);
 
-        assertThat(request.status()).isEqualTo(BookingRequestStatus.CONFIRMED);
+        assertThat(request.status()).isEqualTo("CONFIRMED");
     }
 
     @Test
@@ -190,7 +188,7 @@ class BookingRequestTest {
         request.confirmTravelPackageItem(
                 itemOfType(request, ProposalItemType.TRAVEL_PACKAGE).id(), confirmation(), CREATOR);
 
-        assertThat(request.status()).isEqualTo(BookingRequestStatus.PARTIALLY_CONFIRMED);
+        assertThat(request.status()).isEqualTo("PARTIALLY_CONFIRMED");
     }
 
     @Test
@@ -201,7 +199,7 @@ class BookingRequestTest {
         request.failBookingItem(
                 itemOfType(request, ProposalItemType.TRAVEL_PACKAGE).id(), failure(), CREATOR);
 
-        assertThat(request.status()).isEqualTo(BookingRequestStatus.FAILED);
+        assertThat(request.status()).isEqualTo("FAILED");
     }
 
     @Test
@@ -210,11 +208,11 @@ class BookingRequestTest {
                 pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
         UUID itemId = itemOfType(request, ProposalItemType.TRAVEL_PACKAGE).id();
         request.failBookingItem(itemId, failure(), CREATOR);
-        assertThat(request.status()).isEqualTo(BookingRequestStatus.FAILED);
+        assertThat(request.status()).isEqualTo("FAILED");
 
         request.confirmTravelPackageItem(itemId, confirmation(), CREATOR);
 
-        assertThat(request.status()).isEqualTo(BookingRequestStatus.CONFIRMED);
+        assertThat(request.status()).isEqualTo("CONFIRMED");
     }
 
     private static BookingItemConfirmation confirmation() {

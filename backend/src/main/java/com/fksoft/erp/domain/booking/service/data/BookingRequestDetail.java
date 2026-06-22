@@ -7,9 +7,7 @@ import com.fksoft.erp.domain.booking.model.BookingFailureReason;
 import com.fksoft.erp.domain.booking.model.BookingItem;
 import com.fksoft.erp.domain.booking.model.BookingItemConfirmation;
 import com.fksoft.erp.domain.booking.model.BookingItemFailure;
-import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
@@ -43,7 +41,7 @@ public record BookingRequestDetail(
         UUID id,
         UUID commercialOrderId,
         long commercialOrderNumber,
-        BookingRequestStatus status,
+        String status,
         UUID bookingOperatorId,
         String bookingOperatorName,
         boolean operatorUnassigned,
@@ -99,12 +97,9 @@ public record BookingRequestDetail(
                         nameOf(names, a.registeredBy())))
                 .toList();
         long requiring = items.stream().filter(Item::requiresBooking).count();
-        long confirmed = items.stream()
-                .filter(i -> i.status() == BookingItemStatus.CONFIRMED)
-                .count();
-        long failed = items.stream()
-                .filter(i -> i.status() == BookingItemStatus.FAILED)
-                .count();
+        long confirmed =
+                items.stream().filter(i -> "CONFIRMED".equals(i.status())).count();
+        long failed = items.stream().filter(i -> "FAILED".equals(i.status())).count();
         return new BookingRequestDetail(
                 r.id(),
                 r.commercialOrderId(),
@@ -159,7 +154,7 @@ public record BookingRequestDetail(
             String description,
             int quantity,
             boolean requiresBooking,
-            BookingItemStatus status,
+            String status,
             Confirmation confirmation,
             Failure failure) {
 

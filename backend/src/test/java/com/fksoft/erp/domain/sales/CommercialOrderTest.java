@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.sales.exception.ProposalNotAcceptedException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
@@ -111,11 +110,11 @@ class CommercialOrderTest {
     void reflectsTheConsolidatedBookingStatusWithoutChangingTheLifecycle() {
         CommercialOrder order = order(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), 1L);
 
-        order.reflectBookingStatus(BookingRequestStatus.CONFIRMED);
+        order.reflectBookingStatus("CONFIRMED");
 
         // Identifiable as ready for Financial Operations, without touching the Order's own lifecycle (Sales-owned,
         // not cancelled — Booking takes no ownership).
-        assertThat(order.bookingStatus()).isEqualTo(BookingRequestStatus.CONFIRMED);
+        assertThat(order.bookingStatus()).isEqualTo("CONFIRMED");
         assertThat(order.status()).isEqualTo("PENDING_BOOKING");
         assertThat(order.isActive()).isTrue();
     }
@@ -124,9 +123,9 @@ class CommercialOrderTest {
     void aFailedBookingReflectionDoesNotCancelTheOrder() {
         CommercialOrder order = order(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), 1L);
 
-        order.reflectBookingStatus(BookingRequestStatus.FAILED);
+        order.reflectBookingStatus("FAILED");
 
-        assertThat(order.bookingStatus()).isEqualTo(BookingRequestStatus.FAILED);
+        assertThat(order.bookingStatus()).isEqualTo("FAILED");
         assertThat(order.status()).isEqualTo("PENDING_BOOKING");
         assertThat(order.status()).isNotEqualTo("CANCELLED");
     }
@@ -135,10 +134,10 @@ class CommercialOrderTest {
     void reflectingANewStatusReplacesThePreviousReflection() {
         CommercialOrder order = order(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), 1L);
 
-        order.reflectBookingStatus(BookingRequestStatus.PENDING);
-        order.reflectBookingStatus(BookingRequestStatus.PARTIALLY_CONFIRMED);
+        order.reflectBookingStatus("PENDING");
+        order.reflectBookingStatus("PARTIALLY_CONFIRMED");
 
-        assertThat(order.bookingStatus()).isEqualTo(BookingRequestStatus.PARTIALLY_CONFIRMED);
+        assertThat(order.bookingStatus()).isEqualTo("PARTIALLY_CONFIRMED");
     }
 
     private Proposal acceptedProposalWith(ProposalItemType... types) {

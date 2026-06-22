@@ -11,7 +11,6 @@ import com.fksoft.erp.domain.booking.model.BookingItemFailure;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestCreated;
 import com.fksoft.erp.domain.booking.model.BookingRequestPendingReasons;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.model.BookingStatusConsolidated;
 import com.fksoft.erp.domain.booking.repository.BookingIndicatorQueries;
 import com.fksoft.erp.domain.booking.repository.BookingItemCountsRow;
@@ -71,7 +70,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class BookingRequestService {
 
     // A Booking Request counts against the "one active request per Order" rule while it is not cancelled.
-    private static final Set<BookingRequestStatus> ACTIVE_STATUSES = BookingRequestStatus.activeStatuses();
+    private static final Set<String> ACTIVE_STATUSES =
+            Set.of("PENDING", "IN_PROGRESS", "PARTIALLY_CONFIRMED", "CONFIRMED", "FAILED");
 
     private final BookingRequestRepository bookingRequests;
     private final BookingIndicatorQueries indicatorQueries;
@@ -265,7 +265,7 @@ public class BookingRequestService {
         Specification<BookingRequest> visible = accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned);
 
         // Volume — over the period.
-        Map<BookingRequestStatus, Long> countByStatus = indicatorQueries.countByStatus(visible, from, to);
+        Map<String, Long> countByStatus = indicatorQueries.countByStatus(visible, from, to);
         long total = countByStatus.values().stream().mapToLong(Long::longValue).sum();
         List<BookingIndicators.StatusCount> byStatus = countByStatus.entrySet().stream()
                 .map(e -> new BookingIndicators.StatusCount(e.getKey(), e.getValue()))
@@ -279,7 +279,7 @@ public class BookingRequestService {
 
         // Operational — current snapshot (no period): how many are ready for Financial Operations now.
         long readyForFinance =
-                indicatorQueries.countByStatus(visible, null, null).getOrDefault(BookingRequestStatus.CONFIRMED, 0L);
+                indicatorQueries.countByStatus(visible, null, null).getOrDefault("CONFIRMED", 0L);
 
         return new BookingIndicators(
                 total, byStatus, itemsByType, failedItems, readyForFinance, avgConfirmationSeconds);

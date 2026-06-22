@@ -1,10 +1,8 @@
 package com.fksoft.erp.domain.booking.service;
 
 import com.fksoft.erp.domain.booking.model.BookingItem;
-import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestPendingReasons;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Join;
@@ -41,19 +39,19 @@ public final class BookingRequestPendingSpecifications {
             Instant staleBefore = now.minus(BookingRequestPendingReasons.STALE_DAYS, ChronoUnit.DAYS);
 
             var unassignedOperator = cb.isNull(root.get("bookingOperatorId"));
-            var pendingWithoutAttempt = cb.equal(status, BookingRequestStatus.PENDING);
+            var pendingWithoutAttempt = cb.equal(status, "PENDING");
             var inProgressStale = cb.and(
-                    cb.equal(status, BookingRequestStatus.IN_PROGRESS),
+                    cb.equal(status, "IN_PROGRESS"),
                     cb.or(
                             cb.isNull(root.get("lastAttemptAt")),
                             cb.lessThan(root.<Instant>get("lastAttemptAt"), staleBefore)));
-            var partiallyConfirmed = cb.equal(status, BookingRequestStatus.PARTIALLY_CONFIRMED);
+            var partiallyConfirmed = cb.equal(status, "PARTIALLY_CONFIRMED");
             var overdueNextAction = cb.and(
                     cb.isNotNull(root.get("nextActionDate")),
                     cb.lessThan(root.<LocalDate>get("nextActionDate"), today));
 
             return cb.and(
-                    cb.not(status.in(BookingRequestStatus.CONFIRMED, BookingRequestStatus.CANCELLED)),
+                    cb.not(status.in("CONFIRMED", "CANCELLED")),
                     cb.or(
                             unassignedOperator,
                             pendingWithoutAttempt,
@@ -71,7 +69,7 @@ public final class BookingRequestPendingSpecifications {
         Subquery<Integer> sub = query.subquery(Integer.class);
         Root<BookingRequest> parent = sub.correlate(root);
         Join<BookingRequest, BookingItem> items = parent.join("items");
-        sub.select(cb.literal(1)).where(cb.equal(items.get("status"), BookingItemStatus.FAILED));
+        sub.select(cb.literal(1)).where(cb.equal(items.get("status"), "FAILED"));
         return cb.exists(sub);
     }
 
@@ -82,9 +80,7 @@ public final class BookingRequestPendingSpecifications {
         Root<BookingRequest> parent = sub.correlate(root);
         Join<BookingRequest, BookingItem> items = parent.join("items");
         sub.select(cb.literal(1))
-                .where(cb.and(
-                        cb.isTrue(items.get("requiresBooking")),
-                        cb.equal(items.get("status"), BookingItemStatus.PENDING)));
+                .where(cb.and(cb.isTrue(items.get("requiresBooking")), cb.equal(items.get("status"), "PENDING")));
         return cb.exists(sub);
     }
 }

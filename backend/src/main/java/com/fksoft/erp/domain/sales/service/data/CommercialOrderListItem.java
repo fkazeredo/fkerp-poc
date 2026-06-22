@@ -1,6 +1,5 @@
 package com.fksoft.erp.domain.sales.service.data;
 
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -30,7 +29,7 @@ public record CommercialOrderListItem(
         boolean unassigned,
         BigDecimal total,
         boolean requiresBooking,
-        BookingRequestStatus bookingStatus,
+        String bookingStatus,
         Instant createdAt) {
 
     /**
