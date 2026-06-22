@@ -3,7 +3,7 @@
 > **Público:** usuários finais do sistema FKERP (equipe comercial / vendas).
 > **Idioma:** Português (pt-BR). Há uma edição em inglês mantida em paralelo
 > (`fkerp-user-manual.en-US.md`).
-> **Escopo:** cobre tudo que foi liberado até a **v0.47.0** — o **Comercial / CRM** (ciclo de vida completo
+> **Escopo:** cobre tudo que foi liberado até a **v0.47.2** — o **Comercial / CRM** (ciclo de vida completo
 > de Leads e de Oportunidades), **Vendas & Propostas** (propostas, itens, valores e descontos, fluxo de
 > aprovação/envio/aceite e os pedidos comerciais) e as **Operações de reserva** (o módulo Reservas: a fila de
 > trabalho, o detalhe, o histórico de tentativas, a confirmação de itens de Pacote e Locação, o registro de
@@ -793,6 +793,12 @@ seguir ao Financeiro**; uma reserva que **Falhou** marca o pedido com um **probl
 reflexo é apenas **leitura**: o Pedido continua **sob a área Comercial**, a sua situação não muda por causa da
 reserva e ele **nunca** é cancelado automaticamente — nem é criado qualquer registro financeiro.
 
+> **Preparando o Financeiro (próximo ciclo).** Uma reserva **Confirmada** deixa o pedido pronto para a futura
+> etapa **Financeira** sem redigitação: a reserva guarda todo o registro operacional — os **localizadores**, o
+> **sistema/fornecedor** e as **datas** de cada confirmação, o histórico de tentativas e as origens
+> (pedido/proposta/oportunidade/lead); o **valor** do negócio continua no **Pedido**. O Financeiro, quando chegar,
+> apenas **lê** essas informações; a reserva permanece **sem qualquer valor financeiro**.
+
 ### 10.8 Reservas pendentes (o que precisa de ação)
 
 Para que nenhuma reserva trave em silêncio, há uma visão de **Reservas pendentes**: a lista das solicitações de
@@ -929,17 +935,22 @@ revisão interna**, **aprovar ou rejeitar**, **marcar uma proposta aprovada como
 **registrar o aceite ou a recusa do cliente**, **criar o pedido comercial** a partir de uma proposta aceita
 (que marca a Oportunidade como **Ganha**) e **consultar a lista de pedidos** (**Comercial → Pedidos**).
 
-A **Sprint 4 — Operações de reserva** está em andamento e já entrega o módulo **Reservas** (seção 10): a **fila
-de trabalho** das solicitações de reserva nascidas dos pedidos fechados, o **detalhe** da reserva com suas
-origens rastreáveis, o **histórico de tentativas**, a **confirmação** de itens de **Pacote de viagem** e de
-**Locação de veículo**, o **registro de falhas com retry**, o **reflexo do status consolidado da reserva no
-Pedido Comercial** (seção 10.7) — deixando o pedido identificável como *pronto para o Financeiro* ou *com
-problema de reserva* —, a visão de **Reservas pendentes** (seção 10.8) e os **Indicadores de reservas** (seção
-10.9), no hub Acompanhamento. As próximas etapas trarão o restante do ciclo de reserva (atribuição de operador e
-cancelamento) e, adiante, o financeiro. Este manual será atualizado a cada lançamento.
+A **Sprint 4 — Operações de reserva** está **concluída**: o módulo **Reservas** (seção 10) entrega a **fila de
+trabalho** das solicitações de reserva nascidas dos pedidos fechados, o **detalhe** da reserva com suas origens
+rastreáveis, o **histórico de tentativas**, a **confirmação** de itens de **Pacote de viagem** e de **Locação de
+veículo**, o **registro de falhas com retry**, o **reflexo do status consolidado da reserva no Pedido Comercial**
+(seção 10.7) — deixando o pedido identificável como *pronto para o Financeiro* ou *com problema de reserva* —, a
+visão de **Reservas pendentes** (seção 10.8) e os **Indicadores de reservas** (seção 10.9), no hub Acompanhamento.
+A entrega foi **validada de ponta a ponta**.
+
+A próxima etapa (**Sprint 5 — Operações Financeiras**) parte dos **pedidos com reserva confirmada**: o Financeiro
+lê o registro já pronto (valor no Pedido; localizadores, datas e fornecedor na reserva) para iniciar o faturamento,
+sem redigitar dados. Reserva e Comercial seguem separados; recebíveis, pagamentos e comissão chegam nesse ciclo.
+Este manual será atualizado a cada lançamento.
 
 ---
 
-*Status do documento: Sprints 1, 2 e 3 concluídas; Sprint 4 (Operações de reserva) em andamento — o módulo
-Reservas com tentativas, confirmação de itens, registro de falhas com retry, o reflexo do status da reserva no
-Pedido, a visão de Reservas pendentes e os Indicadores de reservas. Mantido junto com o produto.*
+*Status do documento: Sprints 1, 2, 3 e 4 concluídas — Sprint 4 (Operações de reserva) encerrada com o módulo
+Reservas (criação, classificação de itens, fila, detalhe, tentativas, confirmação de Pacote e Locação, falhas com
+retry, status consolidado, reflexo no Pedido, pendências e indicadores), validada de ponta a ponta. Próximo ciclo:
+Sprint 5 — Operações Financeiras. Mantido junto com o produto.*
