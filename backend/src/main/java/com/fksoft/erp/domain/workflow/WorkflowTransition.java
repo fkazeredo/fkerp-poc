@@ -32,7 +32,9 @@ import lombok.NoArgsConstructor;
  * the engine catalog. A {@code system} transition was seeded from the original flow and is protected.
  */
 @Entity
-@Table(name = "workflow_transitions", uniqueConstraints = @UniqueConstraint(columnNames = {"definition_id", "code"}))
+@Table(
+        name = "workflow_transitions",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"definition_id", "from_state_id", "code"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class WorkflowTransition {

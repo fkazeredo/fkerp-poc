@@ -34,12 +34,12 @@ public class WorkflowEngine {
      */
     public WorkflowState apply(
             String definitionCode, WorkflowState current, String transitionCode, WorkflowContext ctx) {
-        WorkflowTransition transition = transitions
-                .findByDefinition_CodeAndCode(definitionCode, transitionCode)
-                .orElseThrow(WorkflowTransitionNotAllowedException::new);
-        if (current == null || !transition.fromState().code().equals(current.code())) {
+        if (current == null) {
             throw new WorkflowTransitionNotAllowedException();
         }
+        WorkflowTransition transition = transitions
+                .findByDefinition_CodeAndFromState_CodeAndCode(definitionCode, current.code(), transitionCode)
+                .orElseThrow(WorkflowTransitionNotAllowedException::new);
         ctx.bindTransition(transition);
         for (WorkflowRule rule : transition.rules()) {
             if (rule.kind().isGuard()) {

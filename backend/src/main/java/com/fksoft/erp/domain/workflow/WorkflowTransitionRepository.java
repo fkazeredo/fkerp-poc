@@ -8,7 +8,8 @@ import org.springframework.data.repository.ListCrudRepository;
 /** Repository for {@link WorkflowTransition}s. */
 public interface WorkflowTransitionRepository extends ListCrudRepository<WorkflowTransition, UUID> {
 
-    Optional<WorkflowTransition> findByDefinition_CodeAndCode(String definitionCode, String code);
+    Optional<WorkflowTransition> findByDefinition_CodeAndFromState_CodeAndCode(
+            String definitionCode, String fromStateCode, String code);
 
     List<WorkflowTransition> findByDefinition_CodeOrderBySortOrderAsc(String definitionCode);
 

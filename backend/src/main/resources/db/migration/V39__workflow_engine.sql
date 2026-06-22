@@ -34,7 +34,10 @@ CREATE TABLE workflow_transitions (
     trigger_type  VARCHAR(20)  NOT NULL CHECK (trigger_type IN ('USER', 'SYSTEM')),
     sort_order    INT          NOT NULL DEFAULT 0 CHECK (sort_order >= 0),
     system        BOOLEAN      NOT NULL DEFAULT FALSE,
-    UNIQUE (definition_id, code)
+    -- A transition code is unique per (definition, source state): the same named action (e.g. "qualify",
+    -- "lose") may be available from several source states as distinct rows, so the engine resolves a
+    -- transition by (definition, current state, code).
+    UNIQUE (definition_id, from_state_id, code)
 );
 
 CREATE TABLE workflow_rules (

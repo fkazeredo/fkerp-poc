@@ -52,7 +52,8 @@ class WorkflowEngineTest {
         advance.addRule(WorkflowRule.of(advance, WorkflowRuleKind.POST_FUNCTION, "post.key", null, 2));
         WorkflowGuard guard = mock(WorkflowGuard.class);
         WorkflowPostFunction post = mock(WorkflowPostFunction.class);
-        when(transitions.findByDefinition_CodeAndCode(DEF, "advance")).thenReturn(Optional.of(advance));
+        when(transitions.findByDefinition_CodeAndFromState_CodeAndCode(DEF, "NEW_OPPORTUNITY", "advance"))
+                .thenReturn(Optional.of(advance));
         when(registry.guard("guard.key")).thenReturn(guard);
         when(registry.postFunction("post.key")).thenReturn(post);
 
@@ -65,7 +66,8 @@ class WorkflowEngineTest {
 
     @Test
     void rejectsUnknownTransition() {
-        when(transitions.findByDefinition_CodeAndCode(DEF, "nope")).thenReturn(Optional.empty());
+        when(transitions.findByDefinition_CodeAndFromState_CodeAndCode(DEF, "NEW_OPPORTUNITY", "nope"))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> engine.apply(DEF, newState, "nope", ctx()))
                 .isInstanceOf(WorkflowTransitionNotAllowedException.class);
@@ -73,9 +75,7 @@ class WorkflowEngineTest {
 
     @Test
     void rejectsTransitionFiredFromTheWrongState() {
-        when(transitions.findByDefinition_CodeAndCode(DEF, "advance")).thenReturn(Optional.of(advance));
-
-        // advance.fromState is NEW_OPPORTUNITY, but the record is already in DISCOVERY
+        // advance.fromState is NEW_OPPORTUNITY, so firing it from DISCOVERY resolves no transition
         assertThatThrownBy(() -> engine.apply(DEF, discovery, "advance", ctx()))
                 .isInstanceOf(WorkflowTransitionNotAllowedException.class);
     }
@@ -87,7 +87,8 @@ class WorkflowEngineTest {
         WorkflowGuard guard = mock(WorkflowGuard.class);
         WorkflowPostFunction post = mock(WorkflowPostFunction.class);
         doThrow(new IllegalStateException("blocked")).when(guard).check(any());
-        when(transitions.findByDefinition_CodeAndCode(DEF, "advance")).thenReturn(Optional.of(advance));
+        when(transitions.findByDefinition_CodeAndFromState_CodeAndCode(DEF, "NEW_OPPORTUNITY", "advance"))
+                .thenReturn(Optional.of(advance));
         when(registry.guard("guard.key")).thenReturn(guard);
 
         assertThatThrownBy(() -> engine.apply(DEF, newState, "advance", ctx()))
