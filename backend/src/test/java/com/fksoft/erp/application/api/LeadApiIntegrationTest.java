@@ -72,7 +72,7 @@ class LeadApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void rejectsTokenWithoutLeadCreateScope() throws Exception {
-        String token = tokenWith("crm:reference:manage"); // authenticated, but missing crm:lead:create
+        String token = tokenWith("reference:manage"); // authenticated, but missing crm:lead:create
         postLead(baseLead(), token).andExpect(status().isForbidden());
     }
 

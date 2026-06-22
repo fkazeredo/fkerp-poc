@@ -1,4 +1,4 @@
-package com.fksoft.erp.domain.crm.model;
+package com.fksoft.erp.domain.reference;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Id;
@@ -15,9 +15,11 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 /**
- * Base for CRM reference data (origins, loss reasons, interaction types/results). Each value has a
- * stable {@code code}, a display {@code label}, an {@code active} flag (soft delete) and a sort
- * order. Inactive values cannot be used by new Leads but remain for historical integrity.
+ * Neutral base for reference-data cadastros across every domain (origins, loss reasons, interaction
+ * types/results, sending channels, booking reasons, …). Each value has a stable {@code code}, a display
+ * {@code label}, an {@code active} flag (soft delete) and a sort order. Inactive values cannot be used by
+ * new records but remain for historical integrity. This kernel is context-neutral: concrete cadastros live
+ * in their owning domain (CRM/Sales/Booking) and extend this type.
  */
 @MappedSuperclass
 @Getter

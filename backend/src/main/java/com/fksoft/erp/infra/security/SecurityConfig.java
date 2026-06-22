@@ -167,7 +167,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/crm/**")
                         .authenticated()
                         .requestMatchers("/api/crm/**")
-                        .hasAuthority("SCOPE_crm:reference:manage")
+                        .hasAuthority("SCOPE_reference:manage")
                         .anyRequest()
                         .authenticated())
                 .oauth2ResourceServer(

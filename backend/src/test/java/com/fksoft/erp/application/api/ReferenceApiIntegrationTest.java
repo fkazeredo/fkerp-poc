@@ -19,7 +19,7 @@ import org.springframework.http.MediaType;
 
 /**
  * End-to-end (MockMvc) CRUD of a reference cadastro against real Postgres: read = authenticated,
- * write = {@code crm:reference:manage}; duplicate codes, the soft-delete lifecycle and the DB-backed
+ * write = {@code reference:manage}; duplicate codes, the soft-delete lifecycle and the DB-backed
  * non-negative sort order are all covered.
  */
 class ReferenceApiIntegrationTest extends AbstractIntegrationTest {

@@ -1,18 +1,13 @@
-package com.fksoft.erp.domain.crm.service;
+package com.fksoft.erp.domain.reference;
 
-import com.fksoft.erp.domain.crm.exception.DuplicateReferenceCodeException;
-import com.fksoft.erp.domain.crm.exception.ReferenceNotFoundException;
-import com.fksoft.erp.domain.crm.model.ReferenceData;
-import com.fksoft.erp.domain.crm.repository.ReferenceDataRepository;
-import com.fksoft.erp.domain.crm.service.data.ReferenceCommand;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Shared CRUD logic for the CRM reference-data cadastros (same behavior for every cadastro). Delete
- * is a soft delete (deactivate); inactive values cannot be used by new Leads.
+ * Shared CRUD logic for reference-data cadastros (same behavior for every cadastro, any domain). Delete is a
+ * soft delete (deactivate); inactive values cannot be used by new records.
  *
  * @param <T> the reference-data type
  */

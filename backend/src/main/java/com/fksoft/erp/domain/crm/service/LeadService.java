@@ -17,7 +17,7 @@ import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.LossReason;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.model.PendingLeadReasons;
-import com.fksoft.erp.domain.crm.model.ReferenceData;
+import com.fksoft.erp.domain.reference.ReferenceData;
 import com.fksoft.erp.domain.crm.repository.InteractionResultRepository;
 import com.fksoft.erp.domain.crm.repository.InteractionTypeRepository;
 import com.fksoft.erp.domain.crm.repository.LatestInteractionRow;

@@ -13,7 +13,7 @@ import com.fksoft.erp.domain.booking.exception.BookingRequestAlreadyExistsExcept
 import com.fksoft.erp.domain.booking.exception.BookingRequestNotFoundException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
 import com.fksoft.erp.domain.crm.exception.DuplicateLeadException;
-import com.fksoft.erp.domain.crm.exception.DuplicateReferenceCodeException;
+import com.fksoft.erp.domain.reference.DuplicateReferenceCodeException;
 import com.fksoft.erp.domain.crm.exception.InteractionResultNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.InteractionTypeNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.LeadAccessDeniedException;
@@ -32,7 +32,7 @@ import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedWonException
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.exception.OriginNotAvailableException;
-import com.fksoft.erp.domain.crm.exception.ReferenceNotFoundException;
+import com.fksoft.erp.domain.reference.ReferenceNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.error.DomainException;
 import com.fksoft.erp.domain.identity.InvalidCredentialsException;

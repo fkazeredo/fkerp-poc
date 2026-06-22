@@ -1,4 +1,4 @@
-package com.fksoft.erp.domain.crm.service.data;
+package com.fksoft.erp.domain.reference;
 
 /**
  * Input for creating a reference-data value.

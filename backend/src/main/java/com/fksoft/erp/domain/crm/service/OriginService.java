@@ -2,6 +2,7 @@ package com.fksoft.erp.domain.crm.service;
 
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
+import com.fksoft.erp.domain.reference.AbstractReferenceDataService;
 import org.springframework.stereotype.Service;
 
 /** CRUD service for the {@link Origin} cadastro. */

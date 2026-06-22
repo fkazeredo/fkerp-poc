@@ -1,6 +1,5 @@
-package com.fksoft.erp.domain.crm.repository;
+package com.fksoft.erp.domain.reference;
 
-import com.fksoft.erp.domain.crm.model.ReferenceData;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -8,7 +7,7 @@ import org.springframework.data.repository.ListCrudRepository;
 import org.springframework.data.repository.NoRepositoryBean;
 
 /**
- * Base repository for {@link ReferenceData} cadastros.
+ * Base repository for {@link ReferenceData} cadastros (any domain).
  *
  * @param <T> the reference-data type
  */

@@ -1,4 +1,4 @@
-package com.fksoft.erp.domain.crm.exception;
+package com.fksoft.erp.domain.reference;
 
 import com.fksoft.erp.domain.error.DomainException;
 import java.io.Serial;
