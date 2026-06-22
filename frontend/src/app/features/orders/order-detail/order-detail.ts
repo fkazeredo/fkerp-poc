@@ -12,6 +12,7 @@ import {
   CommercialOrderStatus,
   OrderService,
 } from '../../../core/api/order.service';
+import { BookingRequestStatus } from '../../../core/api/booking.service';
 import { OpportunityStage } from '../../../core/api/opportunity.service';
 import { ProposalItemType, ProposalStatus } from '../../../core/api/proposal.service';
 
@@ -54,6 +55,33 @@ const PROPOSAL_STATUS_LABELS: Record<ProposalStatus, string> = {
   REJECTED: 'Rejeitada',
   EXPIRED: 'Expirada',
   CANCELLED: 'Cancelada',
+};
+
+const BOOKING_STATUS_LABELS: Record<BookingRequestStatus, string> = {
+  PENDING: 'Pendente',
+  IN_PROGRESS: 'Em andamento',
+  PARTIALLY_CONFIRMED: 'Parcialmente confirmada',
+  CONFIRMED: 'Confirmada',
+  FAILED: 'Falhou',
+  CANCELLED: 'Cancelada',
+};
+
+const BOOKING_STATUS_SEVERITY: Record<BookingRequestStatus, TagSeverity> = {
+  PENDING: 'warn',
+  IN_PROGRESS: 'info',
+  PARTIALLY_CONFIRMED: 'info',
+  CONFIRMED: 'success',
+  FAILED: 'danger',
+  CANCELLED: 'secondary',
+};
+
+const BOOKING_STATUS_HINTS: Record<BookingRequestStatus, string> = {
+  PENDING: 'Reserva pendente de início.',
+  IN_PROGRESS: 'Reserva em andamento.',
+  PARTIALLY_CONFIRMED: 'Reserva parcialmente confirmada.',
+  CONFIRMED: 'Reserva confirmada — o pedido pode seguir para o Financeiro.',
+  FAILED: 'Problema na reserva — requer atenção das operações.',
+  CANCELLED: 'Reserva cancelada.',
 };
 
 /**
@@ -101,6 +129,19 @@ export class OrderDetailPage implements OnInit {
 
   protected proposalStatusLabel(status: ProposalStatus): string {
     return PROPOSAL_STATUS_LABELS[status];
+  }
+
+  protected bookingStatusLabel(status: BookingRequestStatus): string {
+    return BOOKING_STATUS_LABELS[status];
+  }
+
+  protected bookingStatusSeverity(status: BookingRequestStatus): TagSeverity {
+    return BOOKING_STATUS_SEVERITY[status];
+  }
+
+  /** A human hint about the booking reflection (CONFIRMED → ready for finance, FAILED → problem, etc.). */
+  protected bookingHint(status: BookingRequestStatus | null): string {
+    return status ? BOOKING_STATUS_HINTS[status] : 'Reserva ainda não iniciada.';
   }
 
   /** The human-friendly order code (PC-000n). */

@@ -93,7 +93,8 @@ class CommercialOrderListingApiIntegrationTest extends AbstractIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         List<Map<String, Object>> content = JsonPath.read(body, "$.content");
-        // The list item contract is exactly these fields — no Booking / Receivable / Payment / Commission.
+        // The list item contract is exactly these fields — the consolidated booking status is reflected (read
+        // only), but never Receivable / Payment / Commission data.
         org.assertj.core.api.Assertions.assertThat(content.get(0).keySet())
                 .containsExactlyInAnyOrder(
                         "id",
@@ -108,6 +109,7 @@ class CommercialOrderListingApiIntegrationTest extends AbstractIntegrationTest {
                         "unassigned",
                         "total",
                         "requiresBooking",
+                        "bookingStatus",
                         "createdAt");
     }
 

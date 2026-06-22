@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.ProposalNotAcceptedException;
@@ -84,6 +85,50 @@ class CommercialOrderTest {
                 .isInstanceOf(ProposalNotAcceptedException.class);
         // Sanity: the accepted one does create an order.
         assertThat(CommercialOrder.createFromProposal(sent, CREATOR, 2L)).isNotNull();
+    }
+
+    @Test
+    void startsWithNoReflectedBookingStatus() {
+        CommercialOrder order =
+                CommercialOrder.createFromProposal(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), CREATOR, 1L);
+        assertThat(order.bookingStatus()).isNull();
+    }
+
+    @Test
+    void reflectsTheConsolidatedBookingStatusWithoutChangingTheLifecycle() {
+        CommercialOrder order =
+                CommercialOrder.createFromProposal(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), CREATOR, 1L);
+
+        order.reflectBookingStatus(BookingRequestStatus.CONFIRMED);
+
+        // Identifiable as ready for Financial Operations, without touching the Order's own lifecycle (Sales-owned,
+        // not cancelled — Booking takes no ownership).
+        assertThat(order.bookingStatus()).isEqualTo(BookingRequestStatus.CONFIRMED);
+        assertThat(order.status()).isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
+        assertThat(order.isActive()).isTrue();
+    }
+
+    @Test
+    void aFailedBookingReflectionDoesNotCancelTheOrder() {
+        CommercialOrder order =
+                CommercialOrder.createFromProposal(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), CREATOR, 1L);
+
+        order.reflectBookingStatus(BookingRequestStatus.FAILED);
+
+        assertThat(order.bookingStatus()).isEqualTo(BookingRequestStatus.FAILED);
+        assertThat(order.status()).isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
+        assertThat(order.status()).isNotEqualTo(CommercialOrderStatus.CANCELLED);
+    }
+
+    @Test
+    void reflectingANewStatusReplacesThePreviousReflection() {
+        CommercialOrder order =
+                CommercialOrder.createFromProposal(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), CREATOR, 1L);
+
+        order.reflectBookingStatus(BookingRequestStatus.PENDING);
+        order.reflectBookingStatus(BookingRequestStatus.PARTIALLY_CONFIRMED);
+
+        assertThat(order.bookingStatus()).isEqualTo(BookingRequestStatus.PARTIALLY_CONFIRMED);
     }
 
     private Proposal acceptedProposalWith(ProposalItemType... types) {

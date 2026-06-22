@@ -133,7 +133,7 @@
     [first]="firstRow"
     [loading]="loading()"
     styleClass="p-datatable-sm"
-    [tableStyle]="{ 'min-width': '64rem' }"
+    [tableStyle]="{ 'min-width': '72rem' }"
   >
     <ng-template pTemplate="header">
       <tr>
@@ -144,6 +144,7 @@
         <th class="num">Total</th>
         <th>Status</th>
         <th>Reserva</th>
+        <th>Status da reserva</th>
         <th>Criado em</th>
       </tr>
     </ng-template>
@@ -174,12 +175,22 @@
             <span class="muted">Não exige</span>
           }
         </td>
+        <td>
+          @if (o.bookingStatus) {
+            <p-tag
+              [value]="bookingStatusLabel(o.bookingStatus)"
+              [severity]="bookingStatusSeverity(o.bookingStatus)"
+            />
+          } @else {
+            <span class="muted">Não iniciada</span>
+          }
+        </td>
         <td>{{ o.createdAt | date: 'short' }}</td>
       </tr>
     </ng-template>
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="8" class="muted empty">Nenhum pedido ainda.</td>
+        <td colspan="9" class="muted empty">Nenhum pedido ainda.</td>
       </tr>
     </ng-template>
   </p-table>

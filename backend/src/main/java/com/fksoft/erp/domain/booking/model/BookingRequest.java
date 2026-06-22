@@ -202,9 +202,7 @@ public class BookingRequest {
         if (lastAttemptAt == null || occurredAt.isAfter(lastAttemptAt)) {
             lastAttemptAt = occurredAt;
         }
-        if (status == BookingRequestStatus.PENDING) {
-            status = BookingRequestStatus.IN_PROGRESS;
-        }
+        consolidateStatus();
         updatedBy = byUser;
     }
 
@@ -227,7 +225,7 @@ public class BookingRequest {
      */
     public void confirmTravelPackageItem(UUID itemId, BookingItemConfirmation confirmation, UUID byUser) {
         item(itemId).confirmTravelPackage(confirmation);
-        rollUpStatus();
+        consolidateStatus();
         updatedBy = byUser;
     }
 
@@ -248,7 +246,7 @@ public class BookingRequest {
      */
     public void confirmCarRentalItem(UUID itemId, BookingItemConfirmation confirmation, UUID byUser) {
         item(itemId).confirmCarRental(confirmation);
-        rollUpStatus();
+        consolidateStatus();
         updatedBy = byUser;
     }
 
@@ -271,7 +269,7 @@ public class BookingRequest {
      */
     public void failBookingItem(UUID itemId, BookingItemFailure failure, UUID byUser) {
         item(itemId).fail(failure);
-        rollUpStatus();
+        consolidateStatus();
         updatedBy = byUser;
     }
 
@@ -282,10 +280,25 @@ public class BookingRequest {
                 .orElseThrow(BookingItemNotFoundException::new);
     }
 
-    // Consolidates the request status from the items that require booking (purely state-derived): all confirmed →
-    // CONFIRMED; at least one (but not all) confirmed → PARTIALLY_CONFIRMED; none confirmed but at least one
-    // failed → FAILED; otherwise left as is. Confirming a previously failed item reconsolidates the request.
-    private void rollUpStatus() {
+    /**
+     * Consolidates the request status from the items that require booking and the attempt history (purely
+     * state-derived; an explicitly {@link BookingRequestStatus#CANCELLED} request is never overridden):
+     *
+     * <ul>
+     *   <li>every requiring item confirmed → {@link BookingRequestStatus#CONFIRMED};
+     *   <li>at least one (but not all) requiring item confirmed → {@link BookingRequestStatus#PARTIALLY_CONFIRMED};
+     *   <li>none confirmed but at least one requiring item failed → {@link BookingRequestStatus#FAILED} (the
+     *       operation cannot proceed until the failure is retried);
+     *   <li>nothing confirmed or failed yet but at least one attempt exists → {@link BookingRequestStatus#IN_PROGRESS};
+     *   <li>otherwise (all pending, no attempt) → {@link BookingRequestStatus#PENDING}.
+     * </ul>
+     *
+     * Confirming a previously failed item reconsolidates the request (FAILED → PARTIALLY_CONFIRMED/CONFIRMED).
+     */
+    private void consolidateStatus() {
+        if (status == BookingRequestStatus.CANCELLED) {
+            return;
+        }
         long requiring = items.stream().filter(BookingItem::requiresBooking).count();
         long confirmed = items.stream()
                 .filter(BookingItem::requiresBooking)
@@ -301,6 +314,10 @@ public class BookingRequest {
             status = BookingRequestStatus.PARTIALLY_CONFIRMED;
         } else if (failed > 0) {
             status = BookingRequestStatus.FAILED;
+        } else if (!attempts.isEmpty()) {
+            status = BookingRequestStatus.IN_PROGRESS;
+        } else {
+            status = BookingRequestStatus.PENDING;
         }
     }
 }

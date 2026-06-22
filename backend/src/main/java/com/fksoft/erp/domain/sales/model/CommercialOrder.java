@@ -1,5 +1,6 @@
 package com.fksoft.erp.domain.sales.model;
 
+import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.sales.exception.ProposalNotAcceptedException;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -73,6 +74,13 @@ public class CommercialOrder {
     @Column(nullable = false)
     private CommercialOrderStatus status;
 
+    // The consolidated booking status, reflected from the Booking Operations context (Sales owns this column; it
+    // is set by a Sales event listener, never by Booking). Null until a Booking Request exists for this Order.
+    // This is a read-only reflection — it never drives the Order's own lifecycle ({@link #status}).
+    @Enumerated(EnumType.STRING)
+    @Column(name = "booking_status")
+    private BookingRequestStatus bookingStatus;
+
     // The order lines — an immutable snapshot of the Proposal's items at creation time.
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "order_id", nullable = false)
@@ -143,6 +151,19 @@ public class CommercialOrder {
      */
     public boolean isActive() {
         return status.isActive();
+    }
+
+    /**
+     * Reflects the consolidated booking status from the Booking Operations context onto this Order. This is a
+     * read-only reflection the Order <b>owns</b> (Booking never writes the Order): it records whether the sale is
+     * still awaiting reservation, partially confirmed, confirmed or has a booking problem, so the Order is
+     * identifiable (e.g. as ready for Financial Operations when {@code CONFIRMED}). It never changes the Order's
+     * own lifecycle {@link #status}, never cancels the Order, and creates no Receivable, Payment or Commission data.
+     *
+     * @param bookingStatus the consolidated Booking Request status to reflect
+     */
+    public void reflectBookingStatus(BookingRequestStatus bookingStatus) {
+        this.bookingStatus = bookingStatus;
     }
 
     // The Order requires booking when at least one of its items is a bookable travel product.

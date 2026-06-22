@@ -31,6 +31,7 @@ describe('OrderList', () => {
     unassigned: true,
     total: 2500,
     requiresBooking: true,
+    bookingStatus: null,
     createdAt: '2026-06-20T10:00:00Z',
   };
   const pageOf = (content: CommercialOrderListItem[]) => ({
@@ -134,6 +135,14 @@ describe('OrderList', () => {
     expect(comp['statusLabel']('BOOKING_NOT_REQUIRED')).toBe('Reserva não necessária');
   });
 
+  it('maps the reflected booking status label and severity to pt-BR', () => {
+    const comp = build();
+    expect(comp['bookingStatusLabel']('CONFIRMED')).toBe('Confirmada');
+    expect(comp['bookingStatusLabel']('FAILED')).toBe('Falhou');
+    expect(comp['bookingStatusSeverity']('CONFIRMED')).toBe('success');
+    expect(comp['bookingStatusSeverity']('FAILED')).toBe('danger');
+  });
+
   it('shows an error message when the load fails', () => {
     orders.list.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
     const comp = build();
@@ -153,6 +162,14 @@ describe('OrderList', () => {
       expect(el.textContent).toContain('Acme Viagens'); // source opportunity name
       expect(el.textContent).toContain('Pendente de reserva'); // status tag
       expect(el.textContent).toContain('Exige reserva'); // booking-need indicator
+      expect(el.textContent).toContain('Status da reserva'); // booking-status column header
+      expect(el.textContent).toContain('Não iniciada'); // no booking request yet (bookingStatus null)
+    });
+
+    it('renders the reflected booking status tag when present', () => {
+      orders.list.mockReturnValue(of(pageOf([{ ...item, bookingStatus: 'CONFIRMED' }])));
+      const el = render();
+      expect(el.textContent).toContain('Confirmada');
     });
 
     it('renders the filter controls (status, booking need, responsible, search)', () => {
