@@ -90,10 +90,11 @@ class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + mgrProposal + "/reject")
                         .header("Authorization", "Bearer " + mgr)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"PRICE_TOO_HIGH\",\"note\":\"Acima do orçamento do cliente\"}"))
+                        .content("{\"reasonId\":\"%s\",\"note\":\"Acima do orçamento do cliente\"}"
+                                .formatted(refId("proposal_rejection_reasons", "PRICE_TOO_HIGH"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("REJECTED"))
-                .andExpect(jsonPath("$.rejectionReason").value("PRICE_TOO_HIGH"))
+                .andExpect(jsonPath("$.rejectionReason").value("Preço muito alto"))
                 .andExpect(jsonPath("$.rejectionNote").value("Acima do orçamento do cliente"))
                 .andExpect(jsonPath("$.statusHistory[0].to").value("REJECTED"))
                 .andExpect(jsonPath("$.statusHistory[0].by").value("comercial"))
@@ -110,7 +111,7 @@ class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"note\":\"sem motivo\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fields[*].field", hasItem("reason")));
+                .andExpect(jsonPath("$.fields[*].field", hasItem("reasonId")));
     }
 
     @Test
@@ -131,7 +132,7 @@ class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + mgrProposal + "/reject")
                         .header("Authorization", "Bearer " + seller)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"OTHER\"}"))
+                        .content("{}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -175,7 +176,7 @@ class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + proposal + "/reject")
                         .header("Authorization", "Bearer " + mgr)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"DUPLICATE\"}"))
+                        .content("{\"reasonId\":\"%s\"}".formatted(refId("proposal_rejection_reasons", "DUPLICATE"))))
                 .andExpect(status().isOk());
 
         // The previous Proposal is terminal, so the Opportunity may originate a new one.
@@ -194,10 +195,10 @@ class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + mgrProposal + "/send")
                         .header("Authorization", "Bearer " + mgr)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"channel\":\"EMAIL\"}"))
+                        .content("{\"channelId\":\"%s\"}".formatted(refId("sending_channels", "EMAIL"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SENT"))
-                .andExpect(jsonPath("$.sendingChannel").value("EMAIL"))
+                .andExpect(jsonPath("$.sendingChannel").value("E-mail"))
                 .andExpect(jsonPath("$.statusHistory[0].from").value("APPROVED"))
                 .andExpect(jsonPath("$.statusHistory[0].to").value("SENT"))
                 .andExpect(jsonPath("$.statusHistory[0].by").value("comercial"))
@@ -231,10 +232,10 @@ class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + proposal + "/send")
                         .header("Authorization", "Bearer " + login("vendedor", "vendedor123"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"channel\":\"WHATSAPP\"}"))
+                        .content("{\"channelId\":\"%s\"}".formatted(refId("sending_channels", "WHATSAPP"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SENT"))
-                .andExpect(jsonPath("$.sendingChannel").value("WHATSAPP"));
+                .andExpect(jsonPath("$.sendingChannel").value("WhatsApp"));
     }
 
     @Test
@@ -243,7 +244,7 @@ class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + mgrProposal + "/send")
                         .header("Authorization", "Bearer " + manager())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"channel\":\"EMAIL\"}"))
+                        .content("{}"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("proposal.not-approved"));
     }
@@ -271,7 +272,7 @@ class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + proposal + "/send")
                         .header("Authorization", "Bearer " + mgr)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"channel\":\"OTHER\"}"))
+                        .content("{}"))
                 .andExpect(status().isOk());
 
         // SENT is non-terminal: the Opportunity still has an open Proposal → it cannot originate a new one.
@@ -290,7 +291,7 @@ class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + mgrProposal + "/send")
                         .header("Authorization", "Bearer " + login("diretor", "diretor123"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"channel\":\"EMAIL\"}"))
+                        .content("{}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -300,7 +301,7 @@ class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + mgrProposal + "/send")
                         .header("Authorization", "Bearer " + login("financeiro", "financeiro123"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"channel\":\"EMAIL\"}"))
+                        .content("{}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -310,6 +311,11 @@ class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    private UUID refId(String table, String code) {
+        return UUID.fromString(
+                jdbc.queryForObject("SELECT id::text FROM " + table + " WHERE code = ?", String.class, code));
     }
 
     /** Brings the Proposal to APPROVED: reviews it then approves it (both as the given approver token). */

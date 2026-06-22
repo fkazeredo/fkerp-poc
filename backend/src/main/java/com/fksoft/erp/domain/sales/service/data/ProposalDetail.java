@@ -2,14 +2,11 @@ package com.fksoft.erp.domain.sales.service.data;
 
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.sales.model.CustomerRejectionReason;
 import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItem;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
-import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
-import com.fksoft.erp.domain.sales.model.SendingChannel;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -63,11 +60,11 @@ public record ProposalDetail(
         SourceOpportunity sourceOpportunity,
         SourceLead sourceLead,
         List<StatusChange> statusHistory,
-        ProposalRejectionReason rejectionReason,
+        String rejectionReason,
         String rejectionNote,
-        SendingChannel sendingChannel,
+        String sendingChannel,
         String acceptanceNote,
-        CustomerRejectionReason customerRejectionReason,
+        String customerRejectionReason,
         String customerRejectionNote,
         UUID commercialOrderId) {
 
@@ -114,11 +111,13 @@ public record ProposalDetail(
                 new SourceOpportunity(opportunity.id(), opportunity.name(), opportunity.stage()),
                 new SourceLead(lead.id(), lead.name(), lead.phone(), lead.whatsapp(), lead.email(), lead.status()),
                 statusHistory,
-                p.rejectionReason(),
+                p.rejectionReason() == null ? null : p.rejectionReason().label(),
                 p.rejectionNote(),
-                p.sendingChannel(),
+                p.sendingChannel() == null ? null : p.sendingChannel().label(),
                 p.acceptanceNote(),
-                p.customerRejectionReason(),
+                p.customerRejectionReason() == null
+                        ? null
+                        : p.customerRejectionReason().label(),
                 p.customerRejectionNote(),
                 commercialOrderId);
     }

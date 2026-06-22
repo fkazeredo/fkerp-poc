@@ -1,19 +1,31 @@
 package com.fksoft.erp.domain.sales.model;
 
+import com.fksoft.erp.domain.reference.ReferenceData;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
 /**
- * Reasons a client can reject a sent Proposal (a fixed commercial set, distinct from the internal-review
- * {@link ProposalRejectionReason}). A Proposal reaches {@code REJECTED} either through the
- * internal review (with a {@code ProposalRejectionReason}) or through the client's decision (with a
- * {@code CustomerRejectionReason}); the two paths are mutually exclusive. The user-facing labels are resolved
- * in the frontend (like the proposal statuses and the pipeline stages).
+ * Reference data: reason a client can reject a sent Proposal (managed cadastro — a commercial set distinct
+ * from the internal-review {@link ProposalRejectionReason}).
  */
-public enum CustomerRejectionReason {
-    PRICE_TOO_HIGH,
-    CHOSE_COMPETITOR,
-    TRAVEL_POSTPONED,
-    TRAVEL_CANCELLED,
-    CHANGED_DESTINATION,
-    NO_RESPONSE,
-    PRODUCT_MISMATCH,
-    OTHER
+@Entity
+@Table(name = "customer_rejection_reasons")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class CustomerRejectionReason extends ReferenceData {
+
+    /**
+     * Creates a new active CustomerRejectionReason.
+     *
+     * @param code stable code
+     * @param label display label
+     * @param sortOrder sort order
+     * @return the new CustomerRejectionReason
+     */
+    public static CustomerRejectionReason create(String code, String label, int sortOrder) {
+        CustomerRejectionReason reason = new CustomerRejectionReason();
+        reason.init(code, label, sortOrder);
+        return reason;
+    }
 }

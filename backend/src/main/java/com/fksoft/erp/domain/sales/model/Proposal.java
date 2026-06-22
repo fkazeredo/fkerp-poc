@@ -141,8 +141,8 @@ public class Proposal {
 
     // Set when the Proposal is rejected at internal review: the structured reason and an optional note (the
     // "why"). The who/when of the rejection lives in the status-change history.
-    @Enumerated(EnumType.STRING)
-    @Column(name = "rejection_reason")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "rejection_reason_id")
     private ProposalRejectionReason rejectionReason;
 
     @Size(max = 2000)
@@ -152,8 +152,8 @@ public class Proposal {
     // Set when the Proposal is marked as sent to the client: the optional descriptive channel (the "how").
     // The who/when of the send lives in the status-change history. Informational only — no real e-mail/
     // WhatsApp/phone integration, and no customer acceptance, Order, Booking, Financial or Commission data.
-    @Enumerated(EnumType.STRING)
-    @Column(name = "sending_channel")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sending_channel_id")
     private SendingChannel sendingChannel;
 
     // Set when the client accepts the Proposal: an optional confirmation note (the who/when lives in the
@@ -164,8 +164,8 @@ public class Proposal {
 
     // Set when the client rejects the Proposal: the structured reason and an optional note (the "why"). The
     // who/when lives in the status-change history. Distinct from the internal-review rejectionReason.
-    @Enumerated(EnumType.STRING)
-    @Column(name = "customer_rejection_reason")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_rejection_reason_id")
     private CustomerRejectionReason customerRejectionReason;
 
     @Size(max = 2000)

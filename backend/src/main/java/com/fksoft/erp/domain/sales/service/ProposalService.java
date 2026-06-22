@@ -11,6 +11,8 @@ import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.OpportunityAccessPolicy;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
+import com.fksoft.erp.domain.reference.ReferenceData;
+import com.fksoft.erp.domain.sales.exception.CustomerRejectionReasonNotAvailableException;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
 import com.fksoft.erp.domain.sales.exception.ProposalAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunityException;
@@ -19,6 +21,8 @@ import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotSentException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
+import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonNotAvailableException;
+import com.fksoft.erp.domain.sales.exception.SendingChannelNotAvailableException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CustomerRejectionReason;
 import com.fksoft.erp.domain.sales.model.Proposal;
@@ -27,8 +31,11 @@ import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import com.fksoft.erp.domain.sales.model.SendingChannel;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
+import com.fksoft.erp.domain.sales.repository.CustomerRejectionReasonRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalIndicatorQueries;
+import com.fksoft.erp.domain.sales.repository.ProposalRejectionReasonRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
+import com.fksoft.erp.domain.sales.repository.SendingChannelRepository;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
 import com.fksoft.erp.domain.sales.service.data.ProposalIndicators;
@@ -86,6 +93,9 @@ public class ProposalService {
     private final ApplicationEventPublisher events;
     private final WorkflowEngine workflow;
     private final WorkflowStateRepository workflowStates;
+    private final ProposalRejectionReasonRepository rejectionReasons;
+    private final CustomerRejectionReasonRepository customerRejectionReasons;
+    private final SendingChannelRepository sendingChannels;
 
     /** The workflow definition code for the Proposal lifecycle. */
     private static final String PROPOSAL_WORKFLOW = "proposal";
@@ -342,13 +352,12 @@ public class ProposalService {
      */
     @Transactional
     public ProposalDetail reject(
-            UUID proposalId,
-            ProposalRejectionReason reason,
-            String note,
-            UUID userId,
-            boolean canSeeAll,
-            boolean canSeeUnassigned) {
+            UUID proposalId, UUID reasonId, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
+        ProposalRejectionReason reason = rejectionReasons
+                .findById(reasonId)
+                .filter(ReferenceData::active)
+                .orElseThrow(ProposalRejectionReasonNotAvailableException::new);
         WorkflowState target;
         try {
             target = workflow.apply(
@@ -379,8 +388,15 @@ public class ProposalService {
      */
     @Transactional
     public ProposalDetail markAsSent(
-            UUID proposalId, SendingChannel channel, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+            UUID proposalId, UUID channelId, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
+        // The sending channel is optional; when given, it must reference an active cadastro value.
+        SendingChannel channel = channelId == null
+                ? null
+                : sendingChannels
+                        .findById(channelId)
+                        .filter(ReferenceData::active)
+                        .orElseThrow(SendingChannelNotAvailableException::new);
         WorkflowState target;
         try {
             target = workflow.apply(
@@ -443,13 +459,12 @@ public class ProposalService {
      */
     @Transactional
     public ProposalDetail declineByCustomer(
-            UUID proposalId,
-            CustomerRejectionReason reason,
-            String note,
-            UUID userId,
-            boolean canSeeAll,
-            boolean canSeeUnassigned) {
+            UUID proposalId, UUID reasonId, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
+        CustomerRejectionReason reason = customerRejectionReasons
+                .findById(reasonId)
+                .filter(ReferenceData::active)
+                .orElseThrow(CustomerRejectionReasonNotAvailableException::new);
         WorkflowState target;
         try {
             target = workflow.apply(

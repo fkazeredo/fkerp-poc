@@ -108,10 +108,11 @@ class ProposalCustomerDecisionApiIntegrationTest extends AbstractIntegrationTest
         mvc.perform(post("/api/proposals/" + mgrProposal + "/decline")
                         .header("Authorization", "Bearer " + mgr)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"CHOSE_COMPETITOR\",\"note\":\"Foi com a concorrência\"}"))
+                        .content("{\"reasonId\":\"%s\",\"note\":\"Foi com a concorrência\"}"
+                                .formatted(refId("customer_rejection_reasons", "CHOSE_COMPETITOR"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("REJECTED"))
-                .andExpect(jsonPath("$.customerRejectionReason").value("CHOSE_COMPETITOR"))
+                .andExpect(jsonPath("$.customerRejectionReason").value("Escolheu concorrente"))
                 .andExpect(jsonPath("$.customerRejectionNote").value("Foi com a concorrência"))
                 .andExpect(jsonPath("$.statusHistory[0].from").value("SENT"))
                 .andExpect(jsonPath("$.statusHistory[0].to").value("REJECTED"))
@@ -128,7 +129,7 @@ class ProposalCustomerDecisionApiIntegrationTest extends AbstractIntegrationTest
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"note\":\"sem motivo\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fields[*].field", hasItem("reason")));
+                .andExpect(jsonPath("$.fields[*].field", hasItem("reasonId")));
     }
 
     @Test
@@ -151,7 +152,7 @@ class ProposalCustomerDecisionApiIntegrationTest extends AbstractIntegrationTest
         mvc.perform(post("/api/proposals/" + mgrProposal + "/decline")
                         .header("Authorization", "Bearer " + manager())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"OTHER\"}"))
+                        .content("{\"reasonId\":\"%s\"}".formatted(refId("customer_rejection_reasons", "OTHER"))))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("proposal.not-sent"));
     }
@@ -187,7 +188,7 @@ class ProposalCustomerDecisionApiIntegrationTest extends AbstractIntegrationTest
         mvc.perform(post("/api/proposals/" + mgrProposal + "/decline")
                         .header("Authorization", "Bearer " + diretor)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"OTHER\"}"))
+                        .content("{}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -242,7 +243,8 @@ class ProposalCustomerDecisionApiIntegrationTest extends AbstractIntegrationTest
         mvc.perform(post("/api/proposals/" + proposal + "/decline")
                         .header("Authorization", "Bearer " + mgr)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"TRAVEL_CANCELLED\"}"))
+                        .content("{\"reasonId\":\"%s\"}"
+                                .formatted(refId("customer_rejection_reasons", "TRAVEL_CANCELLED"))))
                 .andExpect(status().isOk());
 
         // The previous Proposal is terminal, so the Opportunity may originate a new one.
@@ -251,6 +253,11 @@ class ProposalCustomerDecisionApiIntegrationTest extends AbstractIntegrationTest
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"opportunityId\":\"%s\",\"title\":\"Revisada\"}".formatted(opp)))
                 .andExpect(status().isCreated());
+    }
+
+    private UUID refId(String table, String code) {
+        return UUID.fromString(
+                jdbc.queryForObject("SELECT id::text FROM " + table + " WHERE code = ?", String.class, code));
     }
 
     /** Brings the Proposal to SENT: approve it then mark it as sent (both as the given operator token). */

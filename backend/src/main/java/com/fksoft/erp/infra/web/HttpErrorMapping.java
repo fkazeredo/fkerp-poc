@@ -42,6 +42,7 @@ import com.fksoft.erp.domain.reference.ReferenceNotFoundException;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderAlreadyExistsException;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderNotFoundException;
+import com.fksoft.erp.domain.sales.exception.CustomerRejectionReasonNotAvailableException;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
 import com.fksoft.erp.domain.sales.exception.ProposalAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunityException;
@@ -55,10 +56,12 @@ import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotSentException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
+import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonNotAvailableException;
 import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalResponsibleRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalValidityRequiredException;
+import com.fksoft.erp.domain.sales.exception.SendingChannelNotAvailableException;
 import com.fksoft.erp.domain.workflow.WorkflowTransitionNotAllowedException;
 import java.util.Map;
 import java.util.Set;
@@ -113,6 +116,9 @@ public class HttpErrorMapping {
             entry(ProposalResponsibleRequiredException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotUnderReviewException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalRejectionReasonRequiredException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ProposalRejectionReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(CustomerRejectionReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(SendingChannelNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotApprovedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotSentException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotAcceptedException.class, HttpStatus.UNPROCESSABLE_ENTITY),

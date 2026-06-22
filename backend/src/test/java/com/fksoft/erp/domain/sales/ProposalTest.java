@@ -40,6 +40,12 @@ class ProposalTest {
     private static final UUID OPP_ID = UUID.randomUUID();
     private static final UUID LEAD_ID = UUID.randomUUID();
 
+    private final ProposalRejectionReason priceTooHigh =
+            ProposalRejectionReason.create("PRICE_TOO_HIGH", "Preço muito alto", 1);
+    private final CustomerRejectionReason choseCompetitor =
+            CustomerRejectionReason.create("CHOSE_COMPETITOR", "Escolheu concorrente", 1);
+    private final SendingChannel email = SendingChannel.create("EMAIL", "E-mail", 1);
+
     private final WorkflowDefinition wf = WorkflowDefinition.of("proposal", "Proposta");
     private final WorkflowState draft = WorkflowState.of(wf, "DRAFT", "Rascunho", WorkflowStateCategory.INITIAL, 1);
     private final WorkflowState readyForReview =
@@ -137,11 +143,11 @@ class ProposalTest {
         Proposal p = submittedProposal();
         UUID approver = UUID.randomUUID();
 
-        p.applyReject(rejected, approver, ProposalRejectionReason.PRICE_TOO_HIGH, "acima do orçamento");
+        p.applyReject(rejected, approver, priceTooHigh, "acima do orçamento");
 
         assertThat(p.status()).isEqualTo("REJECTED");
         assertThat(p.isOpen()).isFalse(); // terminal — frees the Opportunity for a new Proposal
-        assertThat(p.rejectionReason()).isEqualTo(ProposalRejectionReason.PRICE_TOO_HIGH);
+        assertThat(p.rejectionReason()).isEqualTo(priceTooHigh);
         assertThat(p.rejectionNote()).isEqualTo("acima do orçamento");
         ProposalStatusChange last = p.statusChanges().get(p.statusChanges().size() - 1);
         assertThat(last.toStatus()).isEqualTo("REJECTED");
@@ -160,11 +166,11 @@ class ProposalTest {
         Proposal p = approvedProposal();
         UUID sender = UUID.randomUUID();
 
-        p.applySend(sent, sender, SendingChannel.EMAIL);
+        p.applySend(sent, sender, email);
 
         assertThat(p.status()).isEqualTo("SENT");
         assertThat(p.isOpen()).isTrue(); // stays open for the client's decision
-        assertThat(p.sendingChannel()).isEqualTo(SendingChannel.EMAIL);
+        assertThat(p.sendingChannel()).isEqualTo(email);
         ProposalStatusChange last = p.statusChanges().get(p.statusChanges().size() - 1);
         assertThat(last.fromStatus()).isEqualTo("APPROVED");
         assertThat(last.toStatus()).isEqualTo("SENT");
@@ -214,11 +220,11 @@ class ProposalTest {
         Proposal p = sentProposal();
         UUID register = UUID.randomUUID();
 
-        p.applyDecline(rejected, register, CustomerRejectionReason.CHOSE_COMPETITOR, "foi com a concorrência");
+        p.applyDecline(rejected, register, choseCompetitor, "foi com a concorrência");
 
         assertThat(p.status()).isEqualTo("REJECTED");
         assertThat(p.isOpen()).isFalse(); // terminal — frees the Opportunity for a new Proposal
-        assertThat(p.customerRejectionReason()).isEqualTo(CustomerRejectionReason.CHOSE_COMPETITOR);
+        assertThat(p.customerRejectionReason()).isEqualTo(choseCompetitor);
         assertThat(p.customerRejectionNote()).isEqualTo("foi com a concorrência");
         ProposalStatusChange last = p.statusChanges().get(p.statusChanges().size() - 1);
         assertThat(last.fromStatus()).isEqualTo("SENT");
@@ -235,7 +241,7 @@ class ProposalTest {
 
     private Proposal sentProposal() {
         Proposal p = approvedProposal();
-        p.applySend(sent, UUID.randomUUID(), SendingChannel.EMAIL);
+        p.applySend(sent, UUID.randomUUID(), email);
         return p;
     }
 

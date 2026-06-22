@@ -168,6 +168,13 @@ public class SecurityConfig {
                         .authenticated()
                         .requestMatchers("/api/crm/**")
                         .hasAuthority("SCOPE_reference:manage")
+                        // Sales & Booking cadastros (reference data) — read = authenticated, write = reference:manage.
+                        // These paths (singular) are disjoint from the operational /api/proposals, /api/orders and
+                        // /api/bookings endpoints matched above.
+                        .requestMatchers(HttpMethod.GET, "/api/sales/**", "/api/booking/**")
+                        .authenticated()
+                        .requestMatchers("/api/sales/**", "/api/booking/**")
+                        .hasAuthority("SCOPE_reference:manage")
                         .anyRequest()
                         .authenticated())
                 .oauth2ResourceServer(
