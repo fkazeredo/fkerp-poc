@@ -3,10 +3,11 @@
 > **Audience:** end users of the FKERP system (commercial / sales team).
 > **Language:** English (en-US). A Portuguese edition is maintained alongside
 > (`fkerp-user-manual.pt-BR.md`).
-> **Scope:** covers everything released through **v0.12.0** — the full Commercial / CRM
-> lead lifecycle (intake, list/search/filters, detail, assignment, interactions, the Contacted rule,
-> qualification, the Lost flow, visibility by profile, pending items and indicators) plus lead
-> **deduplication**. It grows as new capabilities ship.
+> **Scope:** covers everything released through **v0.44.0** — the **Commercial / CRM** (the full lead and
+> opportunity lifecycle), **Sales & Proposals** (proposals, items, amounts and discounts, the
+> approval/send/acceptance flow and the commercial orders), and **Booking operations** (the Reservas module:
+> the worklist, the detail, the attempt history, confirming Travel package and Car rental items, and
+> registering failures with retry). It grows as new capabilities ship.
 
 ---
 
@@ -90,7 +91,7 @@ FKERP is designed to be driven **from the keyboard**, so you rarely need the mou
 | Show **all shortcuts** (help) | `?` |
 | New lead | `n` |
 | Go to the **lead list** | `g` then `l` |
-| Go to **Origins** | `g` then `o` |
+| Go to **Opportunities** | `g` then `o` |
 | Go to **Home** | `g` then `i` |
 | Move between fields | `Tab` / `Shift` + `Tab` |
 | Confirm / submit a form | `Enter` |
@@ -124,10 +125,18 @@ palette) to switch between light and dark mode. Your choice is remembered on the
 
 ## 4. Home and module navigation
 
-When you sign in you land on the **system home**, which shows a **card for each module** you can access —
-**Comercial / CRM**, **Vendas** (Sales) and **Cadastros** (Reference data). Clicking a card opens that
-**module's home**, with the shortcuts to its screens (for example, the Comercial / CRM home offers Leads,
-Pending, Indicators, Opportunities and New lead).
+When you sign in you land on the **system home**, which shows a **card for each module** you can access. The
+modules follow the **workflow**:
+
+- **Comercial** (Commercial) — the sales funnel in order: **Leads → Oportunidades → Propostas → Pedidos** (plus
+  the **New lead** action).
+- **Reservas** (Bookings) — the operational worklist of booking requests born from closed orders (section 10).
+- **Acompanhamento** (Monitoring) — the cross-funnel monitoring gathered into two hubs: **Pendências** (what
+  needs action) and **Indicadores** (the funnel's numbers). Each hub is a **tabbed** page by area (Leads,
+  Opportunities, Proposals, Orders) — you see only the tabs your profile may see.
+- **Cadastros** (Reference data) — the support lists that feed the workflows (section 11).
+
+Clicking a card opens that **module's home**, with the shortcuts to its screens.
 
 The **sidebar** mirrors this: each module is a **collapsible section** (accordion). Click the **module title**
 to open its home, or the **chevron** to collapse/expand the section — the app remembers which sections you left
@@ -452,11 +461,11 @@ The same **visibility rules** apply: a representative sees **only their own** nu
 value. This is an operational view, **not** an executive dashboard — no revenue, cash flow, sales
 forecast, commission or ROI, and the "Ready for proposal" indicator does **not** create a proposal.
 
-## 9. Proposals (Sales module)
+## 9. Proposals and orders (Comercial module)
 
-FKERP separates the modules in the menu: besides **Comercial / CRM** (Leads and Opportunities), there is
-now a **Vendas** (Sales) module with the **Propostas** (Proposals) screen. A **commercial proposal** is the
-formalized offer to the client, created from an Opportunity that is **Ready for Proposal**.
+**Proposals** and **Orders** are the final stages of the **Comercial** funnel — after Leads and Opportunities,
+in the same module. A **commercial proposal** is the formalized offer to the client, created from an
+Opportunity that is **Ready for Proposal**.
 
 ### 9.1 Creating a proposal
 On the detail of an Opportunity that is **Ready for Proposal**, click **Criar proposta** (Create proposal).
@@ -474,7 +483,7 @@ Key rules:
 - Creating a proposal does **not** create a sale, order, booking or financial data — that is a future step.
 
 ### 9.2 The list and the detail
-Open **Vendas → Propostas** in the menu for the operational list of the proposals you may see. Each row
+Open **Comercial → Propostas** in the menu for the operational list of the proposals you may see. Each row
 shows the **title**, the **status**, the **responsible**, the **source Opportunity** (by name, with a
 shortcut to the Opportunity), the **total**, the **validity**, the **creation date** and the **last update
 date**.
@@ -610,7 +619,7 @@ Creating the order creates **no** booking, finance, commission or payment — it
 deal. Bookings and finance will come in later releases. Only an *Accepted* proposal can create an order.
 
 ### 9.9 The orders list
-The commercial orders live under **Vendas → Pedidos** (keyboard shortcut **`g d`**). The list shows, for each
+The commercial orders live under **Comercial → Pedidos** (keyboard shortcut **`g d`**). The list shows, for each
 order: the **Identificador** (Identifier — a friendly number such as **PC-0001**, linking to the detail), the
 **Resumo** (Summary — the source proposal's title), the **Oportunidade** (Opportunity), the **Responsável**
 (Responsible), the **Total**, the **Status**, the **Reserva** (Booking) indicator (*Exige reserva* / Requires
@@ -631,13 +640,13 @@ re-typing anything, the detail also gathers the **commercial context from the so
 explicit **booking-need** indicator (*Sim/Não* — Yes/No). The list and the detail show **order data only** —
 never booking, finance, payment or commission.
 
-> The next step of the Sales module (starting the **booking operations** from a pending-booking order) will come
-> in a later release.
+> From a **Pending booking** order, the **booking operations** are already available in the **Reservas** module
+> (section 10).
 
 ### 9.10 Proposal indicators
 
-Open **Indicadores de propostas** (Proposal indicators) in the Sales module's sidebar (or via the command
-palette, `Ctrl K`) for a minimal view of the proposal flow. The screen has **two blocks**:
+Open **Acompanhamento → Indicadores** (Monitoring → Indicators) and pick the **Propostas** tab (or use the
+command palette, `Ctrl K`) for a minimal view of the proposal flow. The screen has **two blocks**:
 
 - **Volume no período** (Volume in period — filtered by creation date; default = current month): the **Total**
   number of proposals, the **Valor proposto** (Proposed amount — the sum of their totals), the **Valor aceito**
@@ -655,8 +664,8 @@ payment or commission.
 
 ### 9.11 Order indicators
 
-Open **Indicadores de pedidos** (Order indicators) in the Sales module's sidebar to follow the closed orders.
-The screen also has **two blocks**:
+Open **Acompanhamento → Indicadores** (Monitoring → Indicators) and pick the **Pedidos** tab to follow the
+closed orders. The screen also has **two blocks**:
 
 - **Volume no período** (Volume in period — by creation date; default = current month): the **Total** number of
   orders and the **Valor total** (Total amount — the sum), plus the **Por responsável** (By responsible)
@@ -668,7 +677,110 @@ The same **visibility rules** apply (a representative sees only their own; manag
 screen shows **order data only** — never booking, finance, payment or commission — and is **not** an executive
 dashboard.
 
-## 10. Managing reference data (*cadastros*)
+## 10. Booking operations (the *Reservas* module)
+
+When a commercial order is closed with items that require a booking (**Travel package** or **Car rental**), a
+**booking request** is created — the operational work of actually reserving, with suppliers and systems, what
+was sold. The **Reservas** (Bookings) module is the back-office area where the operations team tracks and works
+these requests.
+
+> The process is **manual and operational**. The system does **not** integrate automatically with suppliers,
+> does **not** check availability on its own and creates **nothing** financial, payment, commission or customer
+> care. It organizes and records the team's work.
+
+### 10.1 Profiles and access
+
+| Profile | Sees | May operate? |
+|---|---|---|
+| **Operations** (`operacoes`) | all booking requests | yes — register attempts, confirm items, register failures |
+| **Commercial Manager** (`comercial`) | all booking requests | yes (operational oversight) |
+| **Board** (`diretor`) | all booking requests | **no** — read-only |
+| **Sellers, Representatives, Finance / HR / IT** | — | no access to the Reservas module |
+
+As everywhere in the system, the rule is enforced on the server: someone without access does not see the
+**Reservas** menu nor can open a booking by a direct link.
+
+### 10.2 The booking list
+
+Open **Reservas** in the sidebar (or via the command palette, `Ctrl K`, shortcut **`g r`**). The list is the
+operations **worklist**. For each booking it shows: the source **Order** (the friendly identifier, e.g.
+**PC-0001**, which opens the detail), the source **Proposal**, the **Status**, the **Operator** in charge of the
+booking, the commercial **Responsible**, the counts of **Items to book** and of **Confirmed**, the **Last
+attempt**, and the **created** and **updated** dates.
+
+- **Filters:** by **status**, **operator** (including *No operator*), **commercial responsible**, **item type**,
+  **creation period**, and a **Has failures** toggle (shows only bookings that have a failed item). Use **Clear**
+  to reset.
+- **What shows by default:** the **active** bookings. **Confirmed** and **Cancelled** ones are hidden (pick those
+  statuses in the filter to see them); **failed** ones stay visible, since they are problems to resolve.
+- **Visibility by profile:** everyone sees only the bookings they may see; no filter reveals a booking outside
+  your permission.
+
+The list shows **operational booking data only** — never finance, payment or commission.
+
+### 10.3 The booking detail
+
+Click the order to open the **detail**. It gathers:
+
+- **Booking summary:** the order, the status, the operator and commercial responsible, the counts of items
+  **to book / confirmed / failed**, the notes and the audit data (created at / by).
+- **Sources** (always traceable): the **order**, the **proposal**, the **opportunity** and the **lead** that
+  originated the booking, each with a shortcut to its screen.
+- **Booking items:** each item sold, with its **type**, **description**, **quantity**, whether it **requires
+  booking** and its **status** (Pending, In progress, Confirmed, Failed, Not required, Cancelled).
+- The **Booking confirmations**, **Operational problems** and **Attempt history** cards (below).
+
+### 10.4 Registering an attempt
+
+Each step of the work — accessing an external system, calling or emailing the supplier, checking internally,
+verifying availability — can be **registered as an attempt**, building a **history** of what was done.
+
+1. Click **Registrar tentativa** (Register attempt; shortcut **`a`**).
+2. Provide the **type** and the **result** (e.g. *Waiting for supplier*, *Availability found*, *Needs retry*…),
+   the **date**, a **description** and, optionally, which **item** it concerns (or the whole booking) and a
+   **next action**.
+3. Save. The attempt enters the history.
+
+Registering the first attempt may move the booking from **Pending** to **In progress**. An attempt is **history
+only**: it does **not** confirm or fail the booking on its own.
+
+### 10.5 Confirming a booking item
+
+When an item (Travel package or Car rental) is actually reserved with the supplier, you **confirm** that item.
+
+1. In the items table, click **Confirmar** (Confirm) on the item.
+2. Provide the **system or supplier** and the **locator / booking code** (both required) and the **confirmation
+   date**. Depending on the type, record optional data: for the **Package**, the package/destination, travel
+   dates and traveler notes; for the **Car rental**, the rental company, car category, the pickup and dropoff
+   locations and dates. Both have an **operational notes** field.
+3. Save. The item becomes **Confirmed** and the confirmation appears in the **Booking confirmations** card.
+
+As items are confirmed, the **booking status** adjusts itself: **Confirmed** when every item requiring booking is
+confirmed; **Partially confirmed** when only some are. Confirming calls **no** external system and creates **no**
+voucher, finance, payment or commission.
+
+### 10.6 Registering a failure and retrying
+
+When an item's booking **does not work out** — no availability, supplier unavailable, invalid data, price
+changed, etc. — you register the item's **failure**.
+
+1. In the items table, click **Falhar** (Fail).
+2. Choose the **failure reason** (required) among the options — *No availability*, *Supplier unavailable*,
+   *Invalid commercial data*, *Missing traveler data*, *External system unavailable*, *Price changed*, *Manual
+   operation error*, *Out of policy* or *Other* —, the **date** and, optionally, a **note**.
+3. Save. The item becomes **Failed** and appears in the **Operational problems** card, with the reason, the note
+   and who registered it, when.
+
+A failed item **stays visible as an operational problem** to resolve — it does **not** disappear from the
+booking. The booking then becomes **Partially confirmed** (if some other item was already confirmed) or
+**Failed** (if none was).
+
+**Retrying is simple:** a failed item may receive **new attempts** (section 10.4) and may be **confirmed later**
+(section 10.5) — confirming it **reconsolidates** the booking automatically to *Partially confirmed* or
+*Confirmed*. Registering a failure does **not** cancel the commercial order and creates **nothing** financial,
+payment, commission or customer care.
+
+## 11. Managing reference data (*cadastros*)
 
 Reference data are the lists that feed the lead form and future workflows. There are
 four, all managed the same way:
@@ -682,27 +794,27 @@ four, all managed the same way:
 
 Open them from **Cadastros** in the top menu or via the command palette.
 
-### 10.1 The list
+### 11.1 The list
 
 Each row shows the **code**, the **label** (what users see), the **order**, and whether
 it is **Active** or **Inactive**. By default only active records are shown; use
 **Mostrar inativos / Ocultar inativos** (Show / Hide inactive) to toggle.
 
-### 10.2 Creating a record
+### 11.2 Creating a record
 
 1. Click **Novo** (New).
 2. Fill in **Código** (a stable internal code), **Rótulo** (the display label), and
    **Ordem** (sort order, a number ≥ 0).
 3. Click **Salvar** (Save). Codes must be unique — reusing one is rejected.
 
-### 10.3 Editing a record
+### 11.3 Editing a record
 
 1. Click the **pencil** icon on the row.
 2. You can change the **label**, the **order**, and the **Active** switch. The **code**
    cannot be changed (it is the stable identifier).
 3. Click **Salvar**.
 
-### 10.4 Activating / deactivating
+### 11.4 Activating / deactivating
 
 - Click the **ban** icon to **deactivate** a record (soft delete). Inactive values stay
   for historical accuracy but **cannot be used on new leads**.
@@ -710,7 +822,7 @@ it is **Active** or **Inactive**. By default only active records are shown; use
 
 ---
 
-## 11. Messages and validation
+## 12. Messages and validation
 
 FKERP validates your input and shows clear, Portuguese-language messages:
 
@@ -724,31 +836,32 @@ FKERP validates your input and shows clear, Portuguese-language messages:
 
 ---
 
-## 11.1 Keyboard shortcuts
+## 12.1 Keyboard shortcuts
 
-The menu is organized into clear **modules** — **Comercial / CRM**, **Vendas** and **Cadastros** — each a
-collapsible section in the sidebar with its own **home** (see section 4). Everything is also reachable by
-keyboard:
+The menu is organized into clear **modules** — **Comercial**, **Reservas**, **Acompanhamento** and
+**Cadastros** — each a collapsible section in the sidebar with its own **home** (see section 4). Everything is
+also reachable by keyboard:
 
 - **`Ctrl`/`Cmd` + `K`** — the **command palette**: search and jump to any screen or action from anywhere.
 - **`?`** — show the full shortcut help at any time.
 - **Go to (press `g`, then a letter):** `g i` Home · `g l` Leads · `g o` Opportunities · `g p` Proposals ·
-  `g c` Reference data. **`n`** creates a new lead.
+  `g d` Orders · `g r` Bookings · `g c` Reference data. **`n`** creates a new lead.
 - **On a lead:** `i` log interaction · `q` qualify · `o` create opportunity · `p` mark lost · `r` reassign ·
   `Esc` back.
 - **On an opportunity:** `a` log activity · `e` edit details · `s` advance stage · `p` mark lost · `Esc` back.
 - **On a proposal:** `i` add item · `e` edit commercial details · `s` submit for review · `Esc` back.
+- **On a booking:** `a` register attempt · `Esc` back.
 
 ---
 
-## 12. Signing out
+## 13. Signing out
 
 Click **Sair** (Sign out) in the top-right of the menu bar. You are returned to the login
 screen and your session is closed.
 
 ---
 
-## 13. What's next
+## 14. What's next
 
 This edition covers the full **Sprint 1** lead lifecycle (registering and finding leads, the lead
 detail, assignment, interaction history with the **Contacted** rule, **qualification**, the **Lost**
@@ -759,14 +872,19 @@ Product Fit → Ready for Proposal), **registering commercial activities**, **ed
 details** (estimated value and expected closing date), the **Lost** flow with a reason, **Pending
 Opportunities** and **Opportunity indicators** — all with per-profile visibility.
 
-**Sprint 3 — Sales & Proposals** is underway: from a ready Opportunity you can **create a commercial
-proposal** (the **Vendas → Propostas** module), manage its **items, values and discounts**, **submit it for
-internal review**, **approve or reject** it, **mark an approved proposal as sent** to the client, **register
-the client's acceptance or rejection**, **create the commercial order** from an accepted proposal (which
-marks the Opportunity as **won**), and **consult the orders list** (the **Vendas → Pedidos** module). The next
-steps will bring the **booking operations** and, later, finance. This manual will be updated as each ships.
+**Sprint 3 — Sales & Proposals** is complete: from a ready Opportunity you can **create a commercial proposal**
+(**Comercial → Propostas**), manage its **items, values and discounts**, **submit it for internal review**,
+**approve or reject** it, **mark an approved proposal as sent** to the client, **register the client's
+acceptance or rejection**, **create the commercial order** from an accepted proposal (which marks the
+Opportunity as **won**), and **consult the orders list** (**Comercial → Pedidos**).
+
+**Sprint 4 — Booking operations** is underway and already delivers the **Reservas** module (section 10): the
+**worklist** of booking requests born from closed orders, the booking **detail** with its traceable sources, the
+**attempt history**, **confirming** Travel package and Car rental items, and **registering failures with retry**.
+The next steps will bring the rest of the booking cycle (operator assignment, cancellation and reflecting the
+status back on the order) and, later, finance. This manual will be updated as each ships.
 
 ---
 
-*Document status: Sprint 1 and Sprint 2 closed; Sprint 3 (Sales & Proposals) in progress — creating a
-proposal from a ready Opportunity. Maintained alongside the product.*
+*Document status: Sprints 1, 2 and 3 closed; Sprint 4 (Booking operations) in progress — the Reservas module
+with attempts, item confirmation and failure registration with retry. Maintained alongside the product.*

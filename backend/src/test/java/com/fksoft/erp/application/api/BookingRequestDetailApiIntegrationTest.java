@@ -160,7 +160,8 @@ class BookingRequestDetailApiIntegrationTest extends AbstractIntegrationTest {
                         "quantity",
                         "requiresBooking",
                         "status",
-                        "confirmation");
+                        "confirmation",
+                        "failure");
     }
 
     @Test
