@@ -109,6 +109,43 @@ export interface BookingFilters {
   hasFailedItems?: boolean | null;
 }
 
+/** Why a Booking Request appears in the operational pending-items worklist (Booking Operations, Sprint 4). */
+export type BookingPendingReason =
+  | 'UNASSIGNED_OPERATOR'
+  | 'PENDING_WITHOUT_ATTEMPT'
+  | 'IN_PROGRESS_WITHOUT_RECENT_ATTEMPT'
+  | 'HAS_FAILED_ITEM'
+  | 'HAS_PENDING_REQUIRED_ITEM'
+  | 'PARTIALLY_CONFIRMED'
+  | 'OVERDUE_NEXT_ACTION';
+
+/**
+ * A Booking Request that needs action, tagged with the reasons why (so reservations do not stall silently).
+ * Mirrors the list item plus the planned {@code nextActionDate}, the {@code failedItems} count and the
+ * {@code reasons}. Operational reservation data only — never Financial, Payment or Commission data.
+ */
+export interface PendingBookingRequest {
+  id: string;
+  commercialOrderId: string;
+  commercialOrderNumber: number;
+  proposalId: string;
+  proposalTitle: string | null;
+  status: BookingRequestStatus;
+  bookingOperatorId: string | null;
+  bookingOperatorName: string | null;
+  operatorUnassigned: boolean;
+  responsiblePersonId: string | null;
+  responsibleName: string | null;
+  itemsRequiringBooking: number;
+  confirmedItems: number;
+  failedItems: number;
+  lastBookingAttemptAt: string | null;
+  nextActionDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  reasons: BookingPendingReason[];
+}
+
 /** The reason a booking item was manually marked as failed (Booking Operations, Sprint 4). */
 export type BookingFailureReason =
   | 'NO_AVAILABILITY'
@@ -330,5 +367,11 @@ export class BookingService {
       params = params.set('hasFailedItems', true);
     }
     return this.http.get<PageResponse<BookingRequestListItem>>('/api/bookings', { params });
+  }
+
+  /** Operational pending-items worklist: the Booking Requests that need action, each tagged with its reasons. */
+  pending(page = 0, size = 20): Observable<PageResponse<PendingBookingRequest>> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return this.http.get<PageResponse<PendingBookingRequest>>('/api/bookings/pending', { params });
   }
 }
