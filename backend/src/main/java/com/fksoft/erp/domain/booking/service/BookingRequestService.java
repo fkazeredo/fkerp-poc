@@ -15,6 +15,7 @@ import com.fksoft.erp.domain.booking.repository.BookingRequestRepository;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestDetail;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestListItem;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
+import com.fksoft.erp.domain.booking.service.data.ConfirmCarRentalCommand;
 import com.fksoft.erp.domain.booking.service.data.ConfirmTravelPackageCommand;
 import com.fksoft.erp.domain.booking.service.data.RecordBookingAttemptCommand;
 import com.fksoft.erp.domain.crm.exception.LeadNotFoundException;
@@ -274,6 +275,53 @@ public class BookingRequestService {
                 .operationalNotes(command.operationalNotes())
                 .build();
         request.confirmTravelPackageItem(itemId, confirmation, userId);
+        return toDetail(bookingRequests.saveAndFlush(request));
+    }
+
+    /**
+     * Manually confirms a Car Rental booking item of a Booking Request the caller is allowed to see, and returns
+     * the refreshed detail. Records the external reservation result on the item, moves it to CONFIRMED and
+     * consolidates the request status (PARTIALLY_CONFIRMED / CONFIRMED). No external call is made and no
+     * Financial, Payment, Commission or Customer Care data is created.
+     *
+     * @param id the booking request id
+     * @param itemId the booking item to confirm
+     * @param command the confirmation data (external system + locator + date + optional car-rental metadata)
+     * @param userId the acting user (who confirmed)
+     * @param canSeeAll whether the caller may see every request
+     * @param canSeeUnassigned whether the caller may also see the unassigned (no-operator) pool
+     * @return the updated detail read model
+     * @throws BookingRequestNotFoundException if the request does not exist
+     * @throws BookingRequestAccessDeniedException if the caller may not see it
+     * @throws com.fksoft.erp.domain.booking.exception.BookingItemNotFoundException if the item is not in the request
+     * @throws com.fksoft.erp.domain.booking.exception.BookingItemNotConfirmableException if the item is not a
+     *     confirmable Car Rental item
+     * @throws com.fksoft.erp.domain.booking.exception.BookingItemAlreadyResolvedException if the item is already
+     *     confirmed or cancelled
+     */
+    @Transactional
+    public BookingRequestDetail confirmCarRentalItem(
+            UUID id,
+            UUID itemId,
+            ConfirmCarRentalCommand command,
+            UUID userId,
+            boolean canSeeAll,
+            boolean canSeeUnassigned) {
+        BookingRequest request = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
+        BookingItemConfirmation confirmation = BookingItemConfirmation.builder()
+                .externalSystem(command.externalSystem())
+                .externalLocator(command.externalLocator())
+                .confirmedAt(command.confirmedAt())
+                .confirmedBy(userId)
+                .rentalCompany(command.rentalCompany())
+                .pickupLocation(command.pickupLocation())
+                .dropoffLocation(command.dropoffLocation())
+                .pickupAt(command.pickupAt())
+                .dropoffAt(command.dropoffAt())
+                .carCategory(command.carCategory())
+                .operationalNotes(command.operationalNotes())
+                .build();
+        request.confirmCarRentalItem(itemId, confirmation, userId);
         return toDetail(bookingRequests.saveAndFlush(request));
     }
 

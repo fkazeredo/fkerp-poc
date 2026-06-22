@@ -544,9 +544,15 @@ and operational notes (an `@Embeddable` value object on the item; **no monetary 
 otherwise `PARTIALLY_CONFIRMED`). **Only** a `TRAVEL_PACKAGE` item that requires booking and is not already
 resolved can be confirmed (else `booking.item-not-confirmable` **422**); a confirmed/cancelled item rejects a
 re-confirm (`booking.item-already-resolved` **422**). It calls **no** external system and creates **no**
-Financial/Payment/Commission/Customer Care data and **no** voucher. Confirming a `CAR_RENTAL`/`SERVICE_FEE`/
-`OTHER` item, item failure and cancellation remain later slices. A Booking Request **preserves** its source
-`commercialOrderId` (never
+Financial/Payment/Commission/Customer Care data and **no** voucher. **Manually confirming a Car Rental item**
+(`POST /api/bookings/{id}/items/{itemId}/confirm-car-rental`, same scope/visibility/guards/roll-up/422 rules)
+records the **car-specific** metadata instead — rental company, pickup/dropoff location and date-time (the
+pickup/dropoff instants may be in the future), car category — plus the required system/locator/date; only a
+`CAR_RENTAL` item that requires booking and is not resolved can be confirmed through it. Both flows share a
+single `@Embeddable BookingItemConfirmation` (the type-irrelevant fields stay null) and a single `Confirmation`
+read shape. A request with a travel package + a car rental reaches `CONFIRMED` only when **both** are confirmed.
+Confirming a `SERVICE_FEE`/`OTHER` item, item failure and cancellation remain later slices. A Booking Request
+**preserves** its source `commercialOrderId` (never
 modified), the source `proposalId` / `opportunityId` / `leadId` and the commercial `responsiblePersonId`, takes
 an optional `bookingOperatorId` (assignment is a later slice; validated when present, else
 `booking.operator-not-found`, **422**) and optional notes, snapshots the Order's items as **booking items**

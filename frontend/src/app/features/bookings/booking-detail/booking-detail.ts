@@ -182,18 +182,27 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
   protected attemptItemId: string = WHOLE_REQUEST;
   protected attemptNextActionDate: Date | null = null;
 
-  // Confirm-travel-package dialog state.
+  // Confirm dialog state — type-aware (Travel Package or Car Rental).
   protected readonly confirmOpen = signal(false);
   protected confirmItemId = '';
   protected confirmItemLabel = '';
+  protected confirmItemType: ProposalItemType = 'TRAVEL_PACKAGE';
   protected confirmExternalSystem = '';
   protected confirmExternalLocator = '';
   protected confirmDate: Date = new Date();
+  protected confirmOperationalNotes = '';
+  // Travel-package-specific.
   protected confirmPackageDescription = '';
   protected confirmTravelStart: Date | null = null;
   protected confirmTravelEnd: Date | null = null;
   protected confirmTravelerNotes = '';
-  protected confirmOperationalNotes = '';
+  // Car-rental-specific.
+  protected confirmRentalCompany = '';
+  protected confirmPickupLocation = '';
+  protected confirmDropoffLocation = '';
+  protected confirmPickupAt: Date | null = null;
+  protected confirmDropoffAt: Date | null = null;
+  protected confirmCarCategory = '';
 
   /** Upper bound for the date pickers — an attempt/confirmation cannot have happened in the future. */
   protected readonly now = new Date();
@@ -226,6 +235,7 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
       this.attemptOccurredAt,
       this.attemptItemId,
       this.attemptNextActionDate,
+      this.confirmItemType,
       this.confirmExternalSystem,
       this.confirmExternalLocator,
       this.confirmDate,
@@ -233,6 +243,12 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
       this.confirmTravelStart,
       this.confirmTravelEnd,
       this.confirmTravelerNotes,
+      this.confirmRentalCompany,
+      this.confirmPickupLocation,
+      this.confirmDropoffLocation,
+      this.confirmPickupAt,
+      this.confirmDropoffAt,
+      this.confirmCarCategory,
       this.confirmOperationalNotes,
     ]);
   }
@@ -353,11 +369,11 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
     return this.booking()?.items.filter((i) => i.confirmation) ?? [];
   }
 
-  /** Whether this booking item can be confirmed through the Travel Package flow by the current user. */
+  /** Whether this booking item can be confirmed (Travel Package or Car Rental) by the current user. */
   protected canConfirmItem(item: BookingRequestItem): boolean {
     return (
       this.auth.canOperateBookings() &&
-      item.type === 'TRAVEL_PACKAGE' &&
+      (item.type === 'TRAVEL_PACKAGE' || item.type === 'CAR_RENTAL') &&
       item.requiresBooking &&
       item.status !== 'CONFIRMED' &&
       item.status !== 'CANCELLED'
@@ -366,15 +382,22 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
 
   protected openConfirm(item: BookingRequestItem): void {
     this.confirmItemId = item.id;
+    this.confirmItemType = item.type;
     this.confirmItemLabel = `${ITEM_TYPE_LABELS[item.type]} — ${item.description}`;
     this.confirmExternalSystem = '';
     this.confirmExternalLocator = '';
     this.confirmDate = new Date();
+    this.confirmOperationalNotes = '';
     this.confirmPackageDescription = '';
     this.confirmTravelStart = null;
     this.confirmTravelEnd = null;
     this.confirmTravelerNotes = '';
-    this.confirmOperationalNotes = '';
+    this.confirmRentalCompany = '';
+    this.confirmPickupLocation = '';
+    this.confirmDropoffLocation = '';
+    this.confirmPickupAt = null;
+    this.confirmDropoffAt = null;
+    this.confirmCarCategory = '';
     this.confirmOpen.set(true);
     this.editSnapshot = this.liveSnapshot();
   }
@@ -391,20 +414,31 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
     if (!this.canSaveConfirm()) {
       return;
     }
-    this.act(
-      this.bookings.confirmTravelPackage(this.bookingId, this.confirmItemId, {
-        externalSystem: this.confirmExternalSystem.trim(),
-        externalLocator: this.confirmExternalLocator.trim(),
-        confirmedAt: this.confirmDate.toISOString(),
-        packageDescription: this.confirmPackageDescription.trim() || null,
-        travelStartDate: toIsoDate(this.confirmTravelStart),
-        travelEndDate: toIsoDate(this.confirmTravelEnd),
-        travelerNotes: this.confirmTravelerNotes.trim() || null,
-        operationalNotes: this.confirmOperationalNotes.trim() || null,
-      }),
-      'Reserva confirmada',
-      this.confirmOpen,
-    );
+    const common = {
+      externalSystem: this.confirmExternalSystem.trim(),
+      externalLocator: this.confirmExternalLocator.trim(),
+      confirmedAt: this.confirmDate.toISOString(),
+      operationalNotes: this.confirmOperationalNotes.trim() || null,
+    };
+    const action =
+      this.confirmItemType === 'CAR_RENTAL'
+        ? this.bookings.confirmCarRental(this.bookingId, this.confirmItemId, {
+            ...common,
+            rentalCompany: this.confirmRentalCompany.trim() || null,
+            pickupLocation: this.confirmPickupLocation.trim() || null,
+            dropoffLocation: this.confirmDropoffLocation.trim() || null,
+            pickupAt: this.confirmPickupAt ? this.confirmPickupAt.toISOString() : null,
+            dropoffAt: this.confirmDropoffAt ? this.confirmDropoffAt.toISOString() : null,
+            carCategory: this.confirmCarCategory.trim() || null,
+          })
+        : this.bookings.confirmTravelPackage(this.bookingId, this.confirmItemId, {
+            ...common,
+            packageDescription: this.confirmPackageDescription.trim() || null,
+            travelStartDate: toIsoDate(this.confirmTravelStart),
+            travelEndDate: toIsoDate(this.confirmTravelEnd),
+            travelerNotes: this.confirmTravelerNotes.trim() || null,
+          });
+    this.act(action, 'Reserva confirmada', this.confirmOpen);
   }
 
   /** Closes a dialog, confirming first if it has unsaved edits. */
