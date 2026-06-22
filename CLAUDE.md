@@ -634,6 +634,22 @@ Customer Care or external-integration data (integrations do not exist yet) — a
 dashboard. In the frontend they are the **Reservas** tab of the **Acompanhamento → Indicadores** hub (gated by
 `canSeeBookings()`).
 
+**Handoff to Financial Operations (Sprint 5) (normative — Sprint 4 is closed).** A **Commercial Order whose Booking
+Request is `CONFIRMED`** (the Order carries `booking_status = CONFIRMED`, §reflection above) is the trigger that
+**may** originate **Financial Operations in Sprint 5** — but Sprint 4 implements **no** Finance: it creates **no**
+Receivable, Payment, Commission or Customer Care data and calls **no** external integration. The confirmed booking
+**preserves the full handoff record so Sprint 5 starts without recapturing data**, split across the two (separate)
+contexts: the **Booking Request** keeps the source **Order / Proposal / Opportunity / Lead** references, the
+commercial **responsible** and the booking **operator**, the **booking items + types**, and — per confirmed item —
+the **external locator**, the **external system / supplier name** and the **confirmation date**, plus the manual
+**attempt history** and any per-item **failure**, and the **consolidated status**; the **Commercial Order** (owned
+by Sales) keeps `booking_status = CONFIRMED` (the readiness signal), the **commercial total**, the items and the
+customer (Lead). Sprint 5 Finance will **read**: the **Order** for the money + customer (the **total** is read from
+the Order via the Booking Request's preserved `commercialOrderId` — the **Booking Request stays free of any
+monetary data**, so the two contexts **remain separated**), and the **Booking Request** for the reservation
+evidence (locators / systems / dates). No write crosses the boundary in the handoff; Finance only reads, and the
+Order stays owned by Sales.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST
