@@ -1,18 +1,28 @@
 package com.fksoft.erp.domain.booking.service;
 
 import com.fksoft.erp.domain.booking.exception.BookingOperatorNotFoundException;
+import com.fksoft.erp.domain.booking.exception.BookingRequestAccessDeniedException;
 import com.fksoft.erp.domain.booking.exception.BookingRequestAlreadyExistsException;
+import com.fksoft.erp.domain.booking.exception.BookingRequestNotFoundException;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestCreated;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.repository.BookingItemCountsRow;
 import com.fksoft.erp.domain.booking.repository.BookingRequestRepository;
+import com.fksoft.erp.domain.booking.service.data.BookingRequestDetail;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestListItem;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
+import com.fksoft.erp.domain.crm.exception.LeadNotFoundException;
+import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
+import com.fksoft.erp.domain.crm.model.Lead;
+import com.fksoft.erp.domain.crm.model.Opportunity;
+import com.fksoft.erp.domain.crm.repository.LeadRepository;
+import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderNotFoundException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
@@ -50,6 +60,8 @@ public class BookingRequestService {
     private final OrderAccessPolicy orderAccessPolicy;
     private final BookingRequestAccessPolicy accessPolicy;
     private final ProposalRepository proposals;
+    private final OpportunityRepository opportunities;
+    private final LeadRepository leads;
     private final UserRepository users;
     private final ApplicationEventPublisher events;
 
@@ -163,6 +175,45 @@ public class BookingRequestService {
     }
 
     private static final long[] EMPTY_COUNTS = {0L, 0L};
+
+    /**
+     * Full detail of a Booking Request the caller is allowed to see, with the source Commercial Order,
+     * Proposal, Opportunity and Lead kept traceable and each booking item carrying its booking status (the
+     * per-item confirmation/failure signal). Read-only; exposes operational reservation data only — never
+     * Financial, Payment or Commission data.
+     *
+     * @param id the booking request id
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every request
+     * @param canSeeUnassigned whether the caller may also see the unassigned (no-operator) pool
+     * @return the detail read model
+     * @throws BookingRequestNotFoundException if the request does not exist
+     * @throws BookingRequestAccessDeniedException if the caller may not see it
+     */
+    @Transactional(readOnly = true)
+    public BookingRequestDetail detail(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        return toDetail(loadVisible(id, userId, canSeeAll, canSeeUnassigned));
+    }
+
+    private BookingRequest loadVisible(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        BookingRequest request = bookingRequests.findById(id).orElseThrow(BookingRequestNotFoundException::new);
+        if (!accessPolicy.canSee(request, userId, canSeeAll, canSeeUnassigned)) {
+            throw new BookingRequestAccessDeniedException();
+        }
+        return request;
+    }
+
+    private BookingRequestDetail toDetail(BookingRequest request) {
+        CommercialOrder order =
+                orders.findById(request.commercialOrderId()).orElseThrow(CommercialOrderNotFoundException::new);
+        Proposal proposal = proposals.findById(request.proposalId()).orElseThrow(ProposalNotFoundException::new);
+        Opportunity opportunity =
+                opportunities.findById(request.opportunityId()).orElseThrow(OpportunityNotFoundException::new);
+        Lead lead = leads.findById(request.leadId()).orElseThrow(LeadNotFoundException::new);
+        Map<UUID, String> names = resolveNames(
+                Stream.of(request.bookingOperatorId(), request.responsiblePersonId(), request.createdBy()));
+        return BookingRequestDetail.from(request, order, proposal, opportunity, lead, names);
+    }
 
     private Map<UUID, String> resolveNames(Stream<UUID> ids) {
         Set<UUID> set = ids.filter(Objects::nonNull).collect(Collectors.toSet());

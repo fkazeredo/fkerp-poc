@@ -4,7 +4,9 @@ import static java.util.Map.entry;
 
 import com.fksoft.erp.domain.booking.exception.BookingItemNotMarkableException;
 import com.fksoft.erp.domain.booking.exception.BookingOperatorNotFoundException;
+import com.fksoft.erp.domain.booking.exception.BookingRequestAccessDeniedException;
 import com.fksoft.erp.domain.booking.exception.BookingRequestAlreadyExistsException;
+import com.fksoft.erp.domain.booking.exception.BookingRequestNotFoundException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
 import com.fksoft.erp.domain.crm.exception.DuplicateLeadException;
 import com.fksoft.erp.domain.crm.exception.DuplicateReferenceCodeException;
@@ -107,6 +109,8 @@ public class HttpErrorMapping {
             entry(CommercialOrderNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(CommercialOrderAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(BookingRequestAlreadyExistsException.class, HttpStatus.CONFLICT),
+            entry(BookingRequestNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(BookingRequestAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(CommercialOrderNotPendingBookingException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(BookingOperatorNotFoundException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(BookingItemNotMarkableException.class, HttpStatus.UNPROCESSABLE_ENTITY),

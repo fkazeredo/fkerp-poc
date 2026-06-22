@@ -2,7 +2,9 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { PageResponse, Responsible } from './lead.service';
-import { ProposalItemType } from './proposal.service';
+import { OpportunityStage } from './opportunity.service';
+import { CommercialOrderStatus } from './order.service';
+import { ProposalItemType, ProposalStatus } from './proposal.service';
 
 /** The Booking Request lifecycle status (Booking Operations, Sprint 4). */
 export type BookingRequestStatus =
@@ -11,6 +13,15 @@ export type BookingRequestStatus =
   | 'PARTIALLY_CONFIRMED'
   | 'CONFIRMED'
   | 'FAILED'
+  | 'CANCELLED';
+
+/** The status of a single booking item (the per-item confirmation/failure signal). */
+export type BookingItemStatus =
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'CONFIRMED'
+  | 'FAILED'
+  | 'NOT_REQUIRED'
   | 'CANCELLED';
 
 /**
@@ -56,10 +67,83 @@ export interface BookingFilters {
   hasFailedItems?: boolean | null;
 }
 
+/** A single booking line, traceable to its source Commercial Order item, carrying its booking status. */
+export interface BookingRequestItem {
+  id: string;
+  orderItemId: string;
+  type: ProposalItemType;
+  description: string;
+  quantity: number;
+  requiresBooking: boolean;
+  status: BookingItemStatus;
+}
+
+/** The source Commercial Order, kept traceable from the reservation (its number is the human identifier). */
+export interface BookingSourceOrder {
+  id: string;
+  number: number;
+  status: CommercialOrderStatus;
+}
+
+/** The source Proposal (commercial reference), kept traceable from the reservation. */
+export interface BookingSourceProposal {
+  id: string;
+  title: string;
+  status: ProposalStatus;
+}
+
+/** The source Opportunity (commercial reference), kept traceable from the reservation. */
+export interface BookingSourceOpportunity {
+  id: string;
+  name: string;
+  stage: OpportunityStage;
+}
+
+/** The source Lead, kept traceable from the reservation. */
+export interface BookingSourceLead {
+  id: string;
+  name: string;
+}
+
+/**
+ * Full Booking Request detail — the operational reservation record: its summary, the source Commercial Order /
+ * Proposal / Opportunity / Lead (kept traceable) and the booking items with their statuses (the per-item
+ * confirmation/failure signal). Carries operational reservation data only — never Financial, Payment or
+ * Commission data.
+ */
+export interface BookingRequestDetail {
+  id: string;
+  commercialOrderId: string;
+  commercialOrderNumber: number;
+  status: BookingRequestStatus;
+  bookingOperatorId: string | null;
+  bookingOperatorName: string | null;
+  operatorUnassigned: boolean;
+  responsiblePersonId: string | null;
+  responsibleName: string | null;
+  notes: string | null;
+  itemsRequiringBooking: number;
+  itemsConfirmed: number;
+  itemsFailed: number;
+  createdAt: string;
+  updatedAt: string;
+  createdByName: string | null;
+  items: BookingRequestItem[];
+  sourceOrder: BookingSourceOrder;
+  sourceProposal: BookingSourceProposal;
+  sourceOpportunity: BookingSourceOpportunity;
+  sourceLead: BookingSourceLead;
+}
+
 /** API client for the Booking Request endpoints (Booking Operations). */
 @Injectable({ providedIn: 'root' })
 export class BookingService {
   private readonly http = inject(HttpClient);
+
+  /** Full detail of a Booking Request the caller may see. */
+  detail(id: string): Observable<BookingRequestDetail> {
+    return this.http.get<BookingRequestDetail>(`/api/bookings/${id}`);
+  }
 
   /** The selectable responsible people (shared with the CRM module). */
   responsibles(): Observable<Responsible[]> {
