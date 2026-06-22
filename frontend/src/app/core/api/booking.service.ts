@@ -24,6 +24,48 @@ export type BookingItemStatus =
   | 'NOT_REQUIRED'
   | 'CANCELLED';
 
+/** The kind of manual booking attempt (Booking Operations, Sprint 4). */
+export type BookingAttemptType =
+  | 'EXTERNAL_SYSTEM_ACCESS'
+  | 'SUPPLIER_PHONE_CONTACT'
+  | 'SUPPLIER_EMAIL_CONTACT'
+  | 'INTERNAL_VERIFICATION'
+  | 'MANUAL_AVAILABILITY_CHECK'
+  | 'OTHER';
+
+/** The outcome of a manual booking attempt (history only — never confirms/fails the reservation). */
+export type BookingAttemptResult =
+  | 'STARTED'
+  | 'WAITING_FOR_SUPPLIER'
+  | 'WAITING_FOR_INTERNAL_INFO'
+  | 'AVAILABILITY_FOUND'
+  | 'AVAILABILITY_NOT_FOUND'
+  | 'NEEDS_RETRY'
+  | 'FAILED'
+  | 'OTHER';
+
+/** A single manual booking attempt in the operational history. */
+export interface BookingAttempt {
+  id: string;
+  bookingItemId: string | null;
+  type: BookingAttemptType;
+  result: BookingAttemptResult;
+  description: string;
+  occurredAt: string;
+  nextActionDate: string | null;
+  registeredByName: string | null;
+}
+
+/** Payload to register a manual booking attempt. */
+export interface RegisterBookingAttempt {
+  bookingItemId?: string | null;
+  type: BookingAttemptType;
+  result: BookingAttemptResult;
+  description: string;
+  occurredAt: string;
+  nextActionDate?: string | null;
+}
+
 /**
  * Booking Request list item (the operational reservation worklist). Carries operational reservation data
  * only — never Financial, Payment or Commission data. The human identifier is the source Order number
@@ -129,6 +171,7 @@ export interface BookingRequestDetail {
   updatedAt: string;
   createdByName: string | null;
   items: BookingRequestItem[];
+  attempts: BookingAttempt[];
   sourceOrder: BookingSourceOrder;
   sourceProposal: BookingSourceProposal;
   sourceOpportunity: BookingSourceOpportunity;
@@ -143,6 +186,11 @@ export class BookingService {
   /** Full detail of a Booking Request the caller may see. */
   detail(id: string): Observable<BookingRequestDetail> {
     return this.http.get<BookingRequestDetail>(`/api/bookings/${id}`);
+  }
+
+  /** Registers a manual booking attempt; returns the refreshed detail. */
+  registerAttempt(id: string, payload: RegisterBookingAttempt): Observable<BookingRequestDetail> {
+    return this.http.post<BookingRequestDetail>(`/api/bookings/${id}/attempts`, payload);
   }
 
   /** The selectable responsible people (shared with the CRM module). */

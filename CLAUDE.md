@@ -526,9 +526,17 @@ the source **Commercial Order / Proposal / Opportunity / Lead kept traceable**, 
 **booking items with their per-item status** (the available confirmation/failure signal — a `CONFIRMED` item is
 shown confirmed, a `FAILED` item shown failed) plus the requiring/confirmed/failed counts; each item stays
 traceable to its source Order item (`orderItemId`). It carries **operational reservation data only — never
-Financial, Payment or Commission data**. The richer **manual-attempt log / confirmation reference / failure
-reason** are a later slice (the attempt/confirmation work, BOOK4‑005..007); today confirmation/failure are
-surfaced via the item status. A Booking Request **preserves** its source `commercialOrderId` (never
+Financial, Payment or Commission data**. **Manual booking attempts** (`POST /api/bookings/{id}/attempts`, gated
+by the operation scope **`booking:request:update`** — seeded for operações(006) and the Manager(001); the
+Board/Director(004) stays read-only) are an **append-only** operational history mirroring the Opportunity's
+activities: each attempt has an **author, date (`occurredAt`, not future), type, result and description**, may
+link to **one booking item or the whole request** (an item outside the request → `booking.item-not-found`,
+**404**), and may define a **next action date**. Registering an attempt **may move the request `PENDING →
+IN_PROGRESS`** but **never** confirms the booking, **never** changes a booking item's status (even an attempt
+`result` of `FAILED` is history only) and **never** creates Financial/Commission data; the history is never
+deleted. The **list** now exposes the **latest attempt** (`lastBookingAttemptAt`, denormalized). The confirmation
+reference / failure-reason richer model remains a later slice (BOOK4‑006..). A Booking Request **preserves** its
+source `commercialOrderId` (never
 modified), the source `proposalId` / `opportunityId` / `leadId` and the commercial `responsiblePersonId`, takes
 an optional `bookingOperatorId` (assignment is a later slice; validated when present, else
 `booking.operator-not-found`, **422**) and optional notes, snapshots the Order's items as **booking items**
