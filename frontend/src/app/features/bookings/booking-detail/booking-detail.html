@@ -99,6 +99,7 @@
           <th class="num">Qtd.</th>
           <th>Requer reserva</th>
           <th>Status</th>
+          <th>Ação</th>
         </tr>
       </ng-template>
       <ng-template pTemplate="body" let-item>
@@ -113,14 +114,75 @@
               [severity]="itemStatusSeverity(item.status)"
             />
           </td>
+          <td>
+            @if (canConfirmItem(item)) {
+              <p-button
+                label="Confirmar"
+                icon="pi pi-check"
+                size="small"
+                [text]="true"
+                (onClick)="openConfirm(item)"
+              />
+            } @else if (item.confirmation) {
+              <span class="muted">{{ item.confirmation.externalLocator }}</span>
+            } @else {
+              <span class="muted">—</span>
+            }
+          </td>
         </tr>
       </ng-template>
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="5" class="empty">Sem itens.</td>
+          <td colspan="6" class="empty">Sem itens.</td>
         </tr>
       </ng-template>
     </p-table>
+  </p-card>
+
+  <p-card header="Confirmações de reserva" styleClass="section">
+    @if (confirmations().length === 0) {
+      <p class="muted">Nenhuma reserva confirmada ainda.</p>
+    } @else {
+      <ul class="history">
+        @for (item of confirmations(); track item.id) {
+          <li class="confirmation">
+            <span class="what">
+              <strong>{{ itemTypeLabel(item.type) }}</strong>
+              <span class="muted"> · {{ item.description }}</span>
+            </span>
+            <dl class="data">
+              <dt>Sistema / fornecedor</dt>
+              <dd>{{ item.confirmation!.externalSystem }}</dd>
+              <dt>Localizador</dt>
+              <dd>{{ item.confirmation!.externalLocator }}</dd>
+              <dt>Confirmado em</dt>
+              <dd>{{ item.confirmation!.confirmedAt | date: 'short' }}</dd>
+              <dt>Confirmado por</dt>
+              <dd>{{ item.confirmation!.confirmedByName ?? '—' }}</dd>
+              @if (item.confirmation!.packageDescription) {
+                <dt>Pacote / destino</dt>
+                <dd>{{ item.confirmation!.packageDescription }}</dd>
+              }
+              @if (item.confirmation!.travelStartDate || item.confirmation!.travelEndDate) {
+                <dt>Datas de viagem</dt>
+                <dd>
+                  {{ (item.confirmation!.travelStartDate | date: 'shortDate') ?? '—' }} —
+                  {{ (item.confirmation!.travelEndDate | date: 'shortDate') ?? '—' }}
+                </dd>
+              }
+              @if (item.confirmation!.travelerNotes) {
+                <dt>Passageiros</dt>
+                <dd class="notes">{{ item.confirmation!.travelerNotes }}</dd>
+              }
+              @if (item.confirmation!.operationalNotes) {
+                <dt>Notas operacionais</dt>
+                <dd class="notes">{{ item.confirmation!.operationalNotes }}</dd>
+              }
+            </dl>
+          </li>
+        }
+      </ul>
+    }
   </p-card>
 
   <p-card header="Histórico de tentativas" styleClass="section">
@@ -233,7 +295,85 @@
         [loading]="acting()"
         (onClick)="confirmAttempt()"
       />
-      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestClose()" />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestClose(attemptOpen)" />
+    </div>
+  </p-dialog>
+
+  <p-dialog
+    header="Confirmar reserva — Pacote de Viagem"
+    [(visible)]="confirmOpen"
+    [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
+    [style]="{ width: '34rem' }"
+  >
+    <p class="dialog-hint muted">{{ confirmItemLabel }}</p>
+    <div class="field">
+      <label for="csystem">Sistema ou fornecedor <span class="req">*</span></label>
+      <input pInputText id="csystem" [(ngModel)]="confirmExternalSystem" class="w-full" />
+    </div>
+    <div class="field">
+      <label for="clocator">Localizador / código de reserva <span class="req">*</span></label>
+      <input pInputText id="clocator" [(ngModel)]="confirmExternalLocator" class="w-full" />
+    </div>
+    <div class="field">
+      <label for="cwhen">Data da confirmação <span class="req">*</span></label>
+      <p-datepicker
+        inputId="cwhen"
+        [(ngModel)]="confirmDate"
+        [showTime]="true"
+        [maxDate]="now"
+        dateFormat="dd/mm/yy"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+    <div class="field">
+      <label for="cpkg">Pacote / destino (opcional)</label>
+      <input pInputText id="cpkg" [(ngModel)]="confirmPackageDescription" class="w-full" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="cstart">Início da viagem (opcional)</label>
+        <p-datepicker
+          inputId="cstart"
+          [(ngModel)]="confirmTravelStart"
+          dateFormat="dd/mm/yy"
+          [showButtonBar]="true"
+          styleClass="w-full"
+          appendTo="body"
+        />
+      </div>
+      <div class="field">
+        <label for="cend">Fim da viagem (opcional)</label>
+        <p-datepicker
+          inputId="cend"
+          [(ngModel)]="confirmTravelEnd"
+          dateFormat="dd/mm/yy"
+          [showButtonBar]="true"
+          styleClass="w-full"
+          appendTo="body"
+        />
+      </div>
+    </div>
+    <div class="field">
+      <label for="ctravelers">Passageiros / observações (opcional)</label>
+      <textarea pTextarea id="ctravelers" [(ngModel)]="confirmTravelerNotes" rows="2" class="w-full"></textarea>
+    </div>
+    <div class="field">
+      <label for="cnotes">Notas operacionais (opcional)</label>
+      <textarea pTextarea id="cnotes" [(ngModel)]="confirmOperationalNotes" rows="2" class="w-full"></textarea>
+    </div>
+    <div class="dialog-actions">
+      <p-button
+        label="Confirmar reserva"
+        icon="pi pi-check"
+        [disabled]="!canSaveConfirm()"
+        [loading]="acting()"
+        (onClick)="confirmItem()"
+      />
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="requestClose(confirmOpen)" />
     </div>
   </p-dialog>
 }

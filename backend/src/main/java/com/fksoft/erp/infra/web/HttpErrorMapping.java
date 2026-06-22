@@ -2,6 +2,8 @@ package com.fksoft.erp.infra.web;
 
 import static java.util.Map.entry;
 
+import com.fksoft.erp.domain.booking.exception.BookingItemAlreadyResolvedException;
+import com.fksoft.erp.domain.booking.exception.BookingItemNotConfirmableException;
 import com.fksoft.erp.domain.booking.exception.BookingItemNotFoundException;
 import com.fksoft.erp.domain.booking.exception.BookingItemNotMarkableException;
 import com.fksoft.erp.domain.booking.exception.BookingOperatorNotFoundException;
@@ -116,6 +118,8 @@ public class HttpErrorMapping {
             entry(BookingOperatorNotFoundException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(BookingItemNotMarkableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(BookingItemNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(BookingItemNotConfirmableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(BookingItemAlreadyResolvedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {

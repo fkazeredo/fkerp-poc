@@ -15,7 +15,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 };
 
 describe('BookingDetail', () => {
-  const bookings = { detail: vi.fn(), registerAttempt: vi.fn() };
+  const bookings = { detail: vi.fn(), registerAttempt: vi.fn(), confirmTravelPackage: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
   const auth = { canOperateBookings: vi.fn(() => false) };
@@ -46,6 +46,7 @@ describe('BookingDetail', () => {
         quantity: 2,
         requiresBooking: true,
         status: 'PENDING',
+        confirmation: null,
       },
     ],
     attempts: [],
@@ -194,6 +195,103 @@ describe('BookingDetail', () => {
       expect(messages.add).toHaveBeenCalledWith(
         expect.objectContaining({ severity: 'success', summary: 'Tentativa registrada' }),
       );
+    });
+  });
+
+  describe('confirm travel package', () => {
+    const confirmed = () =>
+      sample({
+        status: 'CONFIRMED',
+        itemsConfirmed: 1,
+        items: [
+          {
+            id: 'i1',
+            orderItemId: 'oi1',
+            type: 'TRAVEL_PACKAGE',
+            description: 'Pacote Caribe',
+            quantity: 2,
+            requiresBooking: true,
+            status: 'CONFIRMED',
+            confirmation: {
+              externalSystem: 'Amadeus',
+              externalLocator: 'ABC123',
+              confirmedAt: '2026-06-21T08:00:00Z',
+              confirmedByName: 'operacoes',
+              packageDescription: 'Cancún 7 noites',
+              travelStartDate: '2026-07-01',
+              travelEndDate: '2026-07-08',
+              travelerNotes: '2 adultos',
+              operationalNotes: null,
+            },
+          },
+        ],
+      });
+
+    function pkgItem() {
+      return sample().items[0];
+    }
+
+    it('only offers confirm for a confirmable travel package item with the update scope', () => {
+      const comp = build();
+      comp.ngOnInit();
+      expect(comp['canConfirmItem'](pkgItem())).toBe(false); // no scope
+      auth.canOperateBookings.mockReturnValue(true);
+      expect(comp['canConfirmItem'](pkgItem())).toBe(true);
+      // A car rental item is not confirmable through this flow.
+      expect(
+        comp['canConfirmItem']({ ...pkgItem(), type: 'CAR_RENTAL' }),
+      ).toBe(false);
+      // An already-confirmed item is not confirmable.
+      expect(comp['canConfirmItem']({ ...pkgItem(), status: 'CONFIRMED' })).toBe(false);
+    });
+
+    it('requires system, locator and date before saving', () => {
+      const comp = build();
+      comp.ngOnInit();
+      comp['openConfirm'](pkgItem());
+      expect(comp['canSaveConfirm']()).toBe(false);
+      comp['confirmExternalSystem'] = 'Amadeus';
+      comp['confirmExternalLocator'] = 'ABC123';
+      comp['confirmDate'] = new Date('2026-06-21T08:00:00Z');
+      expect(comp['canSaveConfirm']()).toBe(true);
+    });
+
+    it('confirms the item, refreshes the detail and closes the dialog', () => {
+      bookings.confirmTravelPackage.mockReturnValue(of(confirmed()));
+      const comp = build();
+      comp.ngOnInit();
+      comp['openConfirm'](pkgItem());
+      comp['confirmExternalSystem'] = 'Amadeus';
+      comp['confirmExternalLocator'] = 'ABC123';
+      comp['confirmDate'] = new Date('2026-06-21T08:00:00Z');
+      comp['confirmItem']();
+      expect(bookings.confirmTravelPackage).toHaveBeenCalledWith(
+        'bk1',
+        'i1',
+        expect.objectContaining({ externalSystem: 'Amadeus', externalLocator: 'ABC123' }),
+      );
+      expect(comp['confirmOpen']()).toBe(false);
+      expect(comp['booking']()?.status).toBe('CONFIRMED');
+      expect(comp['confirmations']()).toHaveLength(1);
+      expect(messages.add).toHaveBeenCalledWith(
+        expect.objectContaining({ severity: 'success', summary: 'Reserva confirmada' }),
+      );
+    });
+
+    it('renders the confirmation block for a confirmed item (DOM)', () => {
+      bookings.detail.mockReturnValue(of(confirmed()));
+      const el = render();
+      expect(el.textContent).toContain('Confirmações de reserva');
+      expect(el.textContent).toContain('Amadeus');
+      expect(el.textContent).toContain('ABC123');
+      expect(el.textContent).toContain('Cancún 7 noites');
+    });
+
+    it('shows the Confirmar action for a confirmable item only with the scope (DOM)', () => {
+      auth.canOperateBookings.mockReturnValue(true);
+      bookings.detail.mockReturnValue(of(sample()));
+      const el = render();
+      expect(el.textContent).toContain('Confirmar');
     });
   });
 
