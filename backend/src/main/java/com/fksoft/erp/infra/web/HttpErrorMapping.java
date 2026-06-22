@@ -13,7 +13,6 @@ import com.fksoft.erp.domain.booking.exception.BookingRequestAlreadyExistsExcept
 import com.fksoft.erp.domain.booking.exception.BookingRequestNotFoundException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
 import com.fksoft.erp.domain.crm.exception.DuplicateLeadException;
-import com.fksoft.erp.domain.reference.DuplicateReferenceCodeException;
 import com.fksoft.erp.domain.crm.exception.InteractionResultNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.InteractionTypeNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.LeadAccessDeniedException;
@@ -32,10 +31,11 @@ import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedWonException
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.exception.OriginNotAvailableException;
-import com.fksoft.erp.domain.reference.ReferenceNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.error.DomainException;
 import com.fksoft.erp.domain.identity.InvalidCredentialsException;
+import com.fksoft.erp.domain.reference.DuplicateReferenceCodeException;
+import com.fksoft.erp.domain.reference.ReferenceNotFoundException;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderAlreadyExistsException;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderNotFoundException;
@@ -56,6 +56,7 @@ import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredExce
 import com.fksoft.erp.domain.sales.exception.ProposalResponsibleRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalValidityRequiredException;
+import com.fksoft.erp.domain.workflow.WorkflowTransitionNotAllowedException;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
@@ -122,7 +123,8 @@ public class HttpErrorMapping {
             entry(BookingItemNotConfirmableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(BookingItemAlreadyResolvedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(BookingItemNotFailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
-            entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
+            entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(WorkflowTransitionNotAllowedException.class, HttpStatus.UNPROCESSABLE_ENTITY));
 
     public HttpStatus statusFor(DomainException ex) {
         return mappings.getOrDefault(ex.getClass(), HttpStatus.UNPROCESSABLE_ENTITY);
