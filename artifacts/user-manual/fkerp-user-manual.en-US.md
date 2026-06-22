@@ -3,7 +3,7 @@
 > **Audience:** end users of the FKERP system (commercial / sales team).
 > **Language:** English (en-US). A Portuguese edition is maintained alongside
 > (`fkerp-user-manual.pt-BR.md`).
-> **Scope:** covers everything released through **v0.47.0** — the **Commercial / CRM** (the full lead and
+> **Scope:** covers everything released through **v0.47.2** — the **Commercial / CRM** (the full lead and
 > opportunity lifecycle), **Sales & Proposals** (proposals, items, amounts and discounts, the
 > approval/send/acceptance flow and the commercial orders), and **Booking operations** (the Reservas module:
 > the worklist, the detail, the attempt history, confirming Travel package and Car rental items, registering
@@ -798,6 +798,12 @@ to Finance**; a **Failed** booking marks the order with a **booking problem** to
 **read-only**: the order stays **owned by the Commercial area**, its own situation does not change because of the
 booking, and it is **never** cancelled automatically — nor is any financial record created.
 
+> **Preparing Finance (next cycle).** A **Confirmed** booking makes the order ready for the future **Finance** step
+> with no re-typing: the booking keeps the whole operational record — each confirmation's **locators**,
+> **system/supplier** and **dates**, the attempt history and the sources (order/proposal/opportunity/lead); the
+> deal **amount** stays on the **Order**. When Finance arrives it only **reads** this information; the booking
+> remains **free of any financial value**.
+
 ### 10.8 Pending bookings (what needs action)
 
 So no booking stalls silently, there is a **Pending bookings** view: the list of booking requests that **need
@@ -931,16 +937,21 @@ Opportunities** and **Opportunity indicators** — all with per-profile visibili
 acceptance or rejection**, **create the commercial order** from an accepted proposal (which marks the
 Opportunity as **won**), and **consult the orders list** (**Comercial → Pedidos**).
 
-**Sprint 4 — Booking operations** is underway and already delivers the **Reservas** module (section 10): the
-**worklist** of booking requests born from closed orders, the booking **detail** with its traceable sources, the
-**attempt history**, **confirming** Travel package and Car rental items, **registering failures with retry**, the
+**Sprint 4 — Booking operations** is **complete**: the **Reservas** module (section 10) delivers the **worklist**
+of booking requests born from closed orders, the booking **detail** with its traceable sources, the **attempt
+history**, **confirming** Travel package and Car rental items, **registering failures with retry**, the
 **consolidated booking status reflected onto the Commercial Order** (section 10.7) — making the order identifiable
 as *ready for Finance* or *having a booking problem* —, the **Pending bookings** view (section 10.8) and the
-**Booking indicators** (section 10.9) in the Acompanhamento hub. The next steps will bring the rest of the booking
-cycle (operator assignment and cancellation) and, later, finance. This manual will be updated as each ships.
+**Booking indicators** (section 10.9) in the Acompanhamento hub. The delivery was **validated end to end**.
+
+The next step (**Sprint 5 — Financial Operations**) starts from the **orders with a confirmed booking**: Finance
+reads the record that is already in place (the amount on the Order; the locators, dates and supplier on the
+booking) to begin invoicing, without re-typing data. Booking and Commercial stay separate; receivables, payments
+and commission arrive in that cycle. This manual will be updated as each ships.
 
 ---
 
-*Document status: Sprints 1, 2 and 3 closed; Sprint 4 (Booking operations) in progress — the Reservas module
-with attempts, item confirmation, failure registration with retry, the booking status reflected onto the Order,
-the Pending bookings view and the Booking indicators. Maintained alongside the product.*
+*Document status: Sprints 1, 2, 3 and 4 closed — Sprint 4 (Booking operations) wrapped up with the Reservas
+module (creation, item classification, worklist, detail, attempts, Travel package and Car rental confirmation,
+failures with retry, consolidated status, reflection onto the Order, pending items and indicators), validated end
+to end. Next cycle: Sprint 5 — Financial Operations. Maintained alongside the product.*
