@@ -2,7 +2,6 @@ package com.fksoft.erp.domain.sales.service;
 
 import com.fksoft.erp.domain.sales.model.BookingNeed;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.service.data.CommercialOrderSearchCriteria;
 import jakarta.persistence.criteria.Predicate;
@@ -19,9 +18,8 @@ import org.springframework.data.jpa.domain.Specification;
 /** Dynamic query predicates for the operational Commercial Order list. */
 public final class CommercialOrderSpecifications {
 
-    // The active (non-cancelled) statuses, shown by default.
-    private static final Set<CommercialOrderStatus> ACTIVE_STATUSES =
-            Set.of(CommercialOrderStatus.PENDING_BOOKING, CommercialOrderStatus.BOOKING_NOT_REQUIRED);
+    // The active (non-cancelled) status codes, shown by default.
+    private static final Set<String> ACTIVE_STATUSES = Set.of("PENDING_BOOKING", "BOOKING_NOT_REQUIRED");
 
     private CommercialOrderSpecifications() {}
 
@@ -42,7 +40,7 @@ public final class CommercialOrderSpecifications {
     }
 
     // Cancelled Orders never appear by default; pass CANCELLED in the status filter explicitly to see them.
-    private static Specification<CommercialOrder> statusFilter(Set<CommercialOrderStatus> statuses) {
+    private static Specification<CommercialOrder> statusFilter(Set<String> statuses) {
         return (root, query, cb) -> {
             if (statuses == null || statuses.isEmpty()) {
                 return root.get("status").in(ACTIVE_STATUSES);

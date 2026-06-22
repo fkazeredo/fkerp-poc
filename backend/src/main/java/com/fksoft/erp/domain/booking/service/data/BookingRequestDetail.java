@@ -13,7 +13,6 @@ import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import java.time.Instant;
@@ -136,7 +135,7 @@ public record BookingRequestDetail(
     }
 
     /** The source Commercial Order, kept traceable from the reservation (its number is the human identifier). */
-    public record SourceOrder(UUID id, long number, CommercialOrderStatus status) {}
+    public record SourceOrder(UUID id, long number, String status) {}
 
     /** The source Proposal (commercial reference), kept traceable from the reservation. */
     public record SourceProposal(UUID id, String title, String status) {}

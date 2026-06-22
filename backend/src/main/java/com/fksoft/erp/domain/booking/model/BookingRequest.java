@@ -5,7 +5,6 @@ import com.fksoft.erp.domain.booking.exception.BookingItemNotMarkableException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CommercialOrderItem;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -35,7 +34,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 /**
  * A Booking Request: the operational record that starts the (still manual) reservation process for a
- * Commercial Order that is {@link CommercialOrderStatus#PENDING_BOOKING}. Aggregate root of the Booking
+ * Commercial Order that is {@code PENDING_BOOKING}. Aggregate root of the Booking
  * Operations context ({@code domain.booking}). It preserves the source Commercial Order / Proposal /
  * Opportunity / Lead references and the commercial responsible, and snapshots <b>what</b> must be reserved
  * (the booking items, classified by booking need) — carrying <b>no monetary data</b>. A Booking Request is
@@ -135,7 +134,7 @@ public class BookingRequest {
      * request starts {@link BookingRequestStatus#PENDING}. Creates no external reservation and no Receivable,
      * Payment or Commission data.
      *
-     * @param order the source Commercial Order; must be {@link CommercialOrderStatus#PENDING_BOOKING}
+     * @param order the source Commercial Order; must be {@code PENDING_BOOKING}
      * @param bookingOperatorId the assigned booking operator, or {@code null} (optional initially)
      * @param notes optional booking notes
      * @param bookingRequiredItemIds ids of the Order's OTHER items to mark as requiring booking (each must be
@@ -151,7 +150,7 @@ public class BookingRequest {
             String notes,
             Set<UUID> bookingRequiredItemIds,
             UUID createdBy) {
-        if (order.status() != CommercialOrderStatus.PENDING_BOOKING) {
+        if (!"PENDING_BOOKING".equals(order.status())) {
             throw new CommercialOrderNotPendingBookingException();
         }
         Set<UUID> required = bookingRequiredItemIds == null ? Set.of() : bookingRequiredItemIds;

@@ -5,7 +5,6 @@ import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CommercialOrderItem;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
@@ -42,7 +41,7 @@ public record CommercialOrderDetail(
         UUID proposalId,
         UUID opportunityId,
         UUID leadId,
-        CommercialOrderStatus status,
+        String status,
         boolean requiresBooking,
         BookingRequestStatus bookingStatus,
         UUID responsibleId,
@@ -80,7 +79,7 @@ public record CommercialOrderDetail(
                 o.opportunityId(),
                 o.leadId(),
                 o.status(),
-                o.status() == CommercialOrderStatus.PENDING_BOOKING,
+                "PENDING_BOOKING".equals(o.status()),
                 o.bookingStatus(),
                 o.responsiblePersonId(),
                 nameOf(names, o.responsiblePersonId()),

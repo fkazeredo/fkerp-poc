@@ -9,7 +9,6 @@ import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.sales.exception.ProposalNotAcceptedException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
@@ -40,11 +39,21 @@ class CommercialOrderTest {
     private final WorkflowState accepted =
             WorkflowState.of(wf, "ACCEPTED", "Aceita", WorkflowStateCategory.TERMINAL_POSITIVE, 5);
 
+    private final WorkflowDefinition orderWf = WorkflowDefinition.of("order", "Pedido Comercial");
+    private final WorkflowState pendingBooking =
+            WorkflowState.of(orderWf, "PENDING_BOOKING", "Aguardando reserva", WorkflowStateCategory.INITIAL, 1);
+    private final WorkflowState bookingNotRequired = WorkflowState.of(
+            orderWf, "BOOKING_NOT_REQUIRED", "Sem reserva necessária", WorkflowStateCategory.INITIAL, 2);
+
+    private CommercialOrder order(Proposal proposal, long number) {
+        return CommercialOrder.createFromProposal(proposal, CREATOR, number, pendingBooking, bookingNotRequired);
+    }
+
     @Test
     void createsFromAnAcceptedProposalSnapshottingItemsTotalAndReferences() {
         Proposal proposal = acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE);
 
-        CommercialOrder order = CommercialOrder.createFromProposal(proposal, CREATOR, 7L);
+        CommercialOrder order = order(proposal, 7L);
 
         assertThat(order.number()).isEqualTo(7L);
         assertThat(order.proposalId()).isEqualTo(proposal.id());
@@ -63,28 +72,22 @@ class CommercialOrderTest {
 
     @Test
     void startsPendingBookingWhenItContainsABookableItem() {
-        assertThat(CommercialOrder.createFromProposal(
-                                acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), CREATOR, 1L)
+        assertThat(order(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), 1L)
                         .status())
-                .isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
-        assertThat(CommercialOrder.createFromProposal(acceptedProposalWith(ProposalItemType.CAR_RENTAL), CREATOR, 2L)
-                        .status())
-                .isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
+                .isEqualTo("PENDING_BOOKING");
+        assertThat(order(acceptedProposalWith(ProposalItemType.CAR_RENTAL), 2L).status())
+                .isEqualTo("PENDING_BOOKING");
         // A mix that includes a bookable item still requires booking.
-        assertThat(CommercialOrder.createFromProposal(
-                                acceptedProposalWith(ProposalItemType.SERVICE_FEE, ProposalItemType.CAR_RENTAL),
-                                CREATOR,
-                                3L)
+        assertThat(order(acceptedProposalWith(ProposalItemType.SERVICE_FEE, ProposalItemType.CAR_RENTAL), 3L)
                         .status())
-                .isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
+                .isEqualTo("PENDING_BOOKING");
     }
 
     @Test
     void startsBookingNotRequiredWhenNoItemRequiresBooking() {
-        CommercialOrder order = CommercialOrder.createFromProposal(
-                acceptedProposalWith(ProposalItemType.SERVICE_FEE, ProposalItemType.OTHER), CREATOR, 1L);
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemType.SERVICE_FEE, ProposalItemType.OTHER), 1L);
 
-        assertThat(order.status()).isEqualTo(CommercialOrderStatus.BOOKING_NOT_REQUIRED);
+        assertThat(order.status()).isEqualTo("BOOKING_NOT_REQUIRED");
     }
 
     @Test
@@ -93,49 +96,44 @@ class CommercialOrderTest {
         // Build a Proposal that is only SENT (not accepted).
         Proposal onlySent = sentProposal();
 
-        assertThatThrownBy(() -> CommercialOrder.createFromProposal(onlySent, CREATOR, 1L))
-                .isInstanceOf(ProposalNotAcceptedException.class);
+        assertThatThrownBy(() -> order(onlySent, 1L)).isInstanceOf(ProposalNotAcceptedException.class);
         // Sanity: the accepted one does create an order.
-        assertThat(CommercialOrder.createFromProposal(sent, CREATOR, 2L)).isNotNull();
+        assertThat(order(sent, 2L)).isNotNull();
     }
 
     @Test
     void startsWithNoReflectedBookingStatus() {
-        CommercialOrder order =
-                CommercialOrder.createFromProposal(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), CREATOR, 1L);
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), 1L);
         assertThat(order.bookingStatus()).isNull();
     }
 
     @Test
     void reflectsTheConsolidatedBookingStatusWithoutChangingTheLifecycle() {
-        CommercialOrder order =
-                CommercialOrder.createFromProposal(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), CREATOR, 1L);
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), 1L);
 
         order.reflectBookingStatus(BookingRequestStatus.CONFIRMED);
 
         // Identifiable as ready for Financial Operations, without touching the Order's own lifecycle (Sales-owned,
         // not cancelled — Booking takes no ownership).
         assertThat(order.bookingStatus()).isEqualTo(BookingRequestStatus.CONFIRMED);
-        assertThat(order.status()).isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
+        assertThat(order.status()).isEqualTo("PENDING_BOOKING");
         assertThat(order.isActive()).isTrue();
     }
 
     @Test
     void aFailedBookingReflectionDoesNotCancelTheOrder() {
-        CommercialOrder order =
-                CommercialOrder.createFromProposal(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), CREATOR, 1L);
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), 1L);
 
         order.reflectBookingStatus(BookingRequestStatus.FAILED);
 
         assertThat(order.bookingStatus()).isEqualTo(BookingRequestStatus.FAILED);
-        assertThat(order.status()).isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
-        assertThat(order.status()).isNotEqualTo(CommercialOrderStatus.CANCELLED);
+        assertThat(order.status()).isEqualTo("PENDING_BOOKING");
+        assertThat(order.status()).isNotEqualTo("CANCELLED");
     }
 
     @Test
     void reflectingANewStatusReplacesThePreviousReflection() {
-        CommercialOrder order =
-                CommercialOrder.createFromProposal(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), CREATOR, 1L);
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), 1L);
 
         order.reflectBookingStatus(BookingRequestStatus.PENDING);
         order.reflectBookingStatus(BookingRequestStatus.PARTIALLY_CONFIRMED);

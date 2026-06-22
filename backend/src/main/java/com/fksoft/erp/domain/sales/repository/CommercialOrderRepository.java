@@ -1,7 +1,6 @@
 package com.fksoft.erp.domain.sales.repository;
 
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,8 +20,7 @@ public interface CommercialOrderRepository
      * @param statuses the statuses to match (the active ones, for the uniqueness check)
      * @return an existing matching order, or empty
      */
-    Optional<CommercialOrder> findFirstByProposalIdAndStatusIn(
-            UUID proposalId, Collection<CommercialOrderStatus> statuses);
+    Optional<CommercialOrder> findFirstByProposalIdAndStatusIn(UUID proposalId, Collection<String> statuses);
 
     /**
      * Draws the next human-friendly sequential order number from the order-number sequence.

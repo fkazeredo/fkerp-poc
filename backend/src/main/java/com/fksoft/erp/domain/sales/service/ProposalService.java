@@ -20,7 +20,6 @@ import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotSentException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.CustomerRejectionReason;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalCreated;
@@ -73,9 +72,8 @@ public class ProposalService {
     private static final Set<String> OPEN_STATUSES =
             Set.of("DRAFT", "READY_FOR_REVIEW", "APPROVED", "SENT", "ACCEPTED");
 
-    // Statuses for which a Commercial Order is still active — used to surface the Proposal's active Order.
-    private static final Set<CommercialOrderStatus> ACTIVE_ORDER_STATUSES =
-            Set.of(CommercialOrderStatus.PENDING_BOOKING, CommercialOrderStatus.BOOKING_NOT_REQUIRED);
+    // Status codes for which a Commercial Order is still active — used to surface the Proposal's active Order.
+    private static final Set<String> ACTIVE_ORDER_STATUSES = Set.of("PENDING_BOOKING", "BOOKING_NOT_REQUIRED");
 
     private final ProposalRepository proposals;
     private final ProposalAccessPolicy accessPolicy;

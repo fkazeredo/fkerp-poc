@@ -15,7 +15,6 @@ import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
 import com.fksoft.erp.domain.identity.AuthenticatedUser;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.infra.security.TokenService;
@@ -150,7 +149,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void cannotCreateFromAnOrderThatIsNotPendingBooking() throws Exception {
-        UUID order = order("NoBooking", CommercialOrderStatus.BOOKING_NOT_REQUIRED, "SERVICE_FEE");
+        UUID order = order("NoBooking", "BOOKING_NOT_REQUIRED", "SERVICE_FEE");
         mvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer " + login("operacoes", "operacoes123"))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -216,8 +215,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void marksAnOtherItemAsRequiringBookingAtCreationLeavingTheRestUnchanged() throws Exception {
-        UUID order =
-                order("OtherMark", CommercialOrderStatus.PENDING_BOOKING, "TRAVEL_PACKAGE", "OTHER", "SERVICE_FEE");
+        UUID order = order("OtherMark", "PENDING_BOOKING", "TRAVEL_PACKAGE", "OTHER", "SERVICE_FEE");
         UUID otherItem = orderItemId(order, "OTHER");
 
         String created = mvc.perform(post("/api/bookings")
@@ -258,7 +256,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void anUnmarkedOtherItemStaysNotRequired() throws Exception {
-        UUID order = order("OtherDefault", CommercialOrderStatus.PENDING_BOOKING, "TRAVEL_PACKAGE", "OTHER");
+        UUID order = order("OtherDefault", "PENDING_BOOKING", "TRAVEL_PACKAGE", "OTHER");
 
         String created = mvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer " + login("operacoes", "operacoes123"))
@@ -280,7 +278,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void cannotMarkAServiceFeeItem() throws Exception {
-        UUID order = order("BadMark", CommercialOrderStatus.PENDING_BOOKING, "TRAVEL_PACKAGE", "SERVICE_FEE");
+        UUID order = order("BadMark", "PENDING_BOOKING", "TRAVEL_PACKAGE", "SERVICE_FEE");
         UUID feeItem = orderItemId(order, "SERVICE_FEE");
         mvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer " + login("operacoes", "operacoes123"))
@@ -322,10 +320,10 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
 
     /** Seeds a PENDING_BOOKING Order (a travel package + a service fee), responsible = the manager. */
     private UUID pendingBookingOrder(String name) {
-        return order(name, CommercialOrderStatus.PENDING_BOOKING, "TRAVEL_PACKAGE", "SERVICE_FEE");
+        return order(name, "PENDING_BOOKING", "TRAVEL_PACKAGE", "SERVICE_FEE");
     }
 
-    private UUID order(String name, CommercialOrderStatus status, String... itemTypes) {
+    private UUID order(String name, String status, String... itemTypes) {
         UUID lead = insertLead(name);
         UUID opportunity = insertOpportunity(name, lead);
         UUID proposal = insertProposal(name, opportunity, lead);
@@ -344,7 +342,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
                 opportunity.toString(),
                 lead.toString(),
                 MANAGER.toString(),
-                status.name(),
+                status,
                 MANAGER.toString(),
                 MANAGER.toString());
         for (String type : itemTypes) {

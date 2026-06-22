@@ -18,7 +18,6 @@ import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
@@ -52,6 +51,12 @@ class BookingRequestTest {
     private final WorkflowState sent = WorkflowState.of(wf, "SENT", "Enviada", WorkflowStateCategory.ACTIVE, 4);
     private final WorkflowState accepted =
             WorkflowState.of(wf, "ACCEPTED", "Aceita", WorkflowStateCategory.TERMINAL_POSITIVE, 5);
+
+    private final WorkflowDefinition orderWf = WorkflowDefinition.of("order", "Pedido Comercial");
+    private final WorkflowState pendingBooking =
+            WorkflowState.of(orderWf, "PENDING_BOOKING", "Aguardando reserva", WorkflowStateCategory.INITIAL, 1);
+    private final WorkflowState bookingNotRequired = WorkflowState.of(
+            orderWf, "BOOKING_NOT_REQUIRED", "Sem reserva necessária", WorkflowStateCategory.INITIAL, 2);
 
     @Test
     void createsFromPendingBookingOrderPreservingRefsAndClassifyingItems() {
@@ -132,7 +137,7 @@ class BookingRequestTest {
     void rejectsCreatingFromAnOrderThatIsNotPendingBooking() {
         CommercialOrder notRequired =
                 pendingBookingOrderRaw(ProposalItemType.SERVICE_FEE, ProposalItemType.OTHER); // BOOKING_NOT_REQUIRED
-        assertThat(notRequired.status()).isEqualTo(CommercialOrderStatus.BOOKING_NOT_REQUIRED);
+        assertThat(notRequired.status()).isEqualTo("BOOKING_NOT_REQUIRED");
 
         assertThatThrownBy(() -> BookingRequest.createFromOrder(notRequired, null, null, Set.of(), CREATOR))
                 .isInstanceOf(CommercialOrderNotPendingBookingException.class);
@@ -264,7 +269,8 @@ class BookingRequestTest {
     }
 
     private CommercialOrder pendingBookingOrderRaw(ProposalItemType... types) {
-        return CommercialOrder.createFromProposal(acceptedProposalWith(types), CREATOR, 1L);
+        return CommercialOrder.createFromProposal(
+                acceptedProposalWith(types), CREATOR, 1L, pendingBooking, bookingNotRequired);
     }
 
     private Proposal acceptedProposalWith(ProposalItemType... types) {

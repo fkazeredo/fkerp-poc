@@ -13,7 +13,6 @@ import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.OrderIndicatorQueries;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
@@ -23,7 +22,6 @@ import com.fksoft.erp.domain.sales.service.ProposalAccessPolicy;
 import com.fksoft.erp.domain.sales.service.data.OrderIndicators;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,9 +83,9 @@ class OrderIndicatorsAssemblyTest {
         when(accessPolicy.visibleTo(any(), anyBoolean(), anyBoolean())).thenReturn(visible);
 
         // Volume — the period queries.
-        Map<CommercialOrderStatus, Long> periodCounts = new EnumMap<>(CommercialOrderStatus.class);
-        periodCounts.put(CommercialOrderStatus.PENDING_BOOKING, 3L);
-        periodCounts.put(CommercialOrderStatus.BOOKING_NOT_REQUIRED, 2L);
+        Map<String, Long> periodCounts = new LinkedHashMap<>();
+        periodCounts.put("PENDING_BOOKING", 3L);
+        periodCounts.put("BOOKING_NOT_REQUIRED", 2L);
         when(indicatorQueries.countByStatus(any(), eq(FROM), eq(TO))).thenReturn(periodCounts);
 
         when(indicatorQueries.sumTotal(any(), eq(FROM), eq(TO))).thenReturn(new BigDecimal("12000.00"));
@@ -98,9 +96,9 @@ class OrderIndicatorsAssemblyTest {
         when(indicatorQueries.countByResponsible(any(), eq(FROM), eq(TO))).thenReturn(byResponsible);
 
         // Operational — the snapshot query (no period).
-        Map<CommercialOrderStatus, Long> snapshot = new EnumMap<>(CommercialOrderStatus.class);
-        snapshot.put(CommercialOrderStatus.PENDING_BOOKING, 7L);
-        snapshot.put(CommercialOrderStatus.BOOKING_NOT_REQUIRED, 3L);
+        Map<String, Long> snapshot = new LinkedHashMap<>();
+        snapshot.put("PENDING_BOOKING", 7L);
+        snapshot.put("BOOKING_NOT_REQUIRED", 3L);
         when(indicatorQueries.countByStatus(any(), isNull(), isNull())).thenReturn(snapshot);
 
         User alice = mock(User.class);

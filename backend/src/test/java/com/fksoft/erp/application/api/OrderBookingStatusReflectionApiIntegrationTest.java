@@ -10,7 +10,6 @@ import com.fksoft.erp.AbstractIntegrationTest;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.jayway.jsonpath.JsonPath;
@@ -162,7 +161,7 @@ class OrderBookingStatusReflectionApiIntegrationTest extends AbstractIntegration
         // The Order is identifiable as having a booking problem, but is NOT cancelled (Booking takes no ownership).
         assertThat(bookingStatusOf(order, token)).isEqualTo("FAILED");
         assertThat(lifecycleStatusOf(order, token)).isEqualTo("PENDING_BOOKING");
-        assertThat(lifecycleStatusOf(order, token)).isNotEqualTo(CommercialOrderStatus.CANCELLED.name());
+        assertThat(lifecycleStatusOf(order, token)).isNotEqualTo("CANCELLED");
     }
 
     @Test
