@@ -7,19 +7,18 @@ import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
-import com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException;
-import com.fksoft.erp.domain.sales.exception.ProposalNotSentException;
-import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
 import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException;
 import com.fksoft.erp.domain.sales.model.CustomerRejectionReason;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import com.fksoft.erp.domain.sales.model.SendingChannel;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
+import com.fksoft.erp.domain.workflow.WorkflowDefinition;
+import com.fksoft.erp.domain.workflow.WorkflowState;
+import com.fksoft.erp.domain.workflow.WorkflowStateCategory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -27,13 +26,31 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/** Domain invariants of the Proposal aggregate factory (created from a READY_FOR_PROPOSAL Opportunity). */
+/**
+ * Domain invariants of the Proposal aggregate. Since the workflow reform, the lifecycle transitions are
+ * validated by the workflow engine in the application service; the entity exposes {@code apply*} methods that
+ * move it to a (pre-validated) target state, keep the input-validators (submit needs items/total/validity/
+ * responsible, a rejection needs a reason) and record the status history. The transition guards (which states
+ * a move is legal from) are covered end-to-end by the API integration tests.
+ */
 class ProposalTest {
 
     private static final UUID CREATOR = UUID.randomUUID();
     private static final UUID RESPONSIBLE = UUID.randomUUID();
     private static final UUID OPP_ID = UUID.randomUUID();
     private static final UUID LEAD_ID = UUID.randomUUID();
+
+    private final WorkflowDefinition wf = WorkflowDefinition.of("proposal", "Proposta");
+    private final WorkflowState draft = WorkflowState.of(wf, "DRAFT", "Rascunho", WorkflowStateCategory.INITIAL, 1);
+    private final WorkflowState readyForReview =
+            WorkflowState.of(wf, "READY_FOR_REVIEW", "Em revisão", WorkflowStateCategory.ACTIVE, 2);
+    private final WorkflowState approved =
+            WorkflowState.of(wf, "APPROVED", "Aprovada", WorkflowStateCategory.ACTIVE, 3);
+    private final WorkflowState sent = WorkflowState.of(wf, "SENT", "Enviada", WorkflowStateCategory.ACTIVE, 4);
+    private final WorkflowState accepted =
+            WorkflowState.of(wf, "ACCEPTED", "Aceita", WorkflowStateCategory.TERMINAL_POSITIVE, 5);
+    private final WorkflowState rejected =
+            WorkflowState.of(wf, "REJECTED", "Rejeitada", WorkflowStateCategory.TERMINAL_NEGATIVE, 6);
 
     private Opportunity opportunity(String stage) {
         Opportunity o = mock(Opportunity.class);
@@ -52,9 +69,10 @@ class ProposalTest {
         when(o.id()).thenReturn(OPP_ID);
         when(o.leadId()).thenReturn(LEAD_ID);
 
-        Proposal proposal = Proposal.createFromOpportunity(o, RESPONSIBLE, command(), CREATOR);
+        Proposal proposal = Proposal.createFromOpportunity(o, RESPONSIBLE, command(), draft, CREATOR);
 
-        assertThat(proposal.status()).isEqualTo(ProposalStatus.DRAFT);
+        assertThat(proposal.status()).isEqualTo("DRAFT");
+        assertThat(proposal.currentState()).isSameAs(draft);
         assertThat(proposal.isOpen()).isTrue();
         assertThat(proposal.opportunityId()).isEqualTo(OPP_ID);
         assertThat(proposal.leadId()).isEqualTo(LEAD_ID); // source Lead reference preserved
@@ -70,7 +88,7 @@ class ProposalTest {
     void rejectsCreatingFromANonReadyOpportunity(String stage) {
         Opportunity o = opportunity(stage);
 
-        assertThatThrownBy(() -> Proposal.createFromOpportunity(o, RESPONSIBLE, command(), CREATOR))
+        assertThatThrownBy(() -> Proposal.createFromOpportunity(o, RESPONSIBLE, command(), draft, CREATOR))
                 .isInstanceOf(OpportunityNotReadyForProposalException.class);
     }
 
@@ -80,20 +98,21 @@ class ProposalTest {
     }
 
     @Test
-    void submitForReviewRecordsTheStatusChangeWithTheActor() {
+    void submitRecordsTheStatusChangeWithTheActor() {
         Proposal proposal = readyDraft();
         proposal.addItem(
                 new ProposalItemCommand(ProposalItemType.OTHER, "linha", 1, new BigDecimal("10.00"), null, null),
                 CREATOR);
         UUID submitter = UUID.randomUUID();
 
-        proposal.submitForReview(submitter);
+        proposal.applySubmit(readyForReview, submitter);
 
-        assertThat(proposal.status()).isEqualTo(ProposalStatus.READY_FOR_REVIEW);
+        assertThat(proposal.status()).isEqualTo("READY_FOR_REVIEW");
+        assertThat(proposal.currentState()).isSameAs(readyForReview);
         assertThat(proposal.statusChanges()).hasSize(1);
         ProposalStatusChange change = proposal.statusChanges().get(0);
-        assertThat(change.fromStatus()).isEqualTo(ProposalStatus.DRAFT);
-        assertThat(change.toStatus()).isEqualTo(ProposalStatus.READY_FOR_REVIEW);
+        assertThat(change.fromStatus()).isEqualTo("DRAFT");
+        assertThat(change.toStatus()).isEqualTo("READY_FOR_REVIEW");
         assertThat(change.changedBy()).isEqualTo(submitter);
         assertThat(change.changedAt()).isNotNull();
     }
@@ -103,12 +122,13 @@ class ProposalTest {
         Proposal p = submittedProposal();
         UUID approver = UUID.randomUUID();
 
-        p.approve(approver);
+        p.applyApprove(approved, approver);
 
-        assertThat(p.status()).isEqualTo(ProposalStatus.APPROVED);
+        assertThat(p.status()).isEqualTo("APPROVED");
+        assertThat(p.currentState()).isSameAs(approved);
         ProposalStatusChange last = p.statusChanges().get(p.statusChanges().size() - 1);
-        assertThat(last.fromStatus()).isEqualTo(ProposalStatus.READY_FOR_REVIEW);
-        assertThat(last.toStatus()).isEqualTo(ProposalStatus.APPROVED);
+        assertThat(last.fromStatus()).isEqualTo("READY_FOR_REVIEW");
+        assertThat(last.toStatus()).isEqualTo("APPROVED");
         assertThat(last.changedBy()).isEqualTo(approver);
     }
 
@@ -117,30 +137,22 @@ class ProposalTest {
         Proposal p = submittedProposal();
         UUID approver = UUID.randomUUID();
 
-        p.reject(approver, ProposalRejectionReason.PRICE_TOO_HIGH, "acima do orçamento");
+        p.applyReject(rejected, approver, ProposalRejectionReason.PRICE_TOO_HIGH, "acima do orçamento");
 
-        assertThat(p.status()).isEqualTo(ProposalStatus.REJECTED);
+        assertThat(p.status()).isEqualTo("REJECTED");
         assertThat(p.isOpen()).isFalse(); // terminal — frees the Opportunity for a new Proposal
         assertThat(p.rejectionReason()).isEqualTo(ProposalRejectionReason.PRICE_TOO_HIGH);
         assertThat(p.rejectionNote()).isEqualTo("acima do orçamento");
         ProposalStatusChange last = p.statusChanges().get(p.statusChanges().size() - 1);
-        assertThat(last.toStatus()).isEqualTo(ProposalStatus.REJECTED);
+        assertThat(last.toStatus()).isEqualTo("REJECTED");
         assertThat(last.changedBy()).isEqualTo(approver);
     }
 
     @Test
     void rejectRequiresAReason() {
         Proposal p = submittedProposal();
-        assertThatThrownBy(() -> p.reject(CREATOR, null, "sem motivo"))
+        assertThatThrownBy(() -> p.applyReject(rejected, CREATOR, null, "sem motivo"))
                 .isInstanceOf(ProposalRejectionReasonRequiredException.class);
-    }
-
-    @Test
-    void approveAndRejectRequireReadyForReview() {
-        Proposal draft = readyDraft(); // still a DRAFT (not submitted)
-        assertThatThrownBy(() -> draft.approve(CREATOR)).isInstanceOf(ProposalNotUnderReviewException.class);
-        assertThatThrownBy(() -> draft.reject(CREATOR, ProposalRejectionReason.OTHER, null))
-                .isInstanceOf(ProposalNotUnderReviewException.class);
     }
 
     @Test
@@ -148,14 +160,14 @@ class ProposalTest {
         Proposal p = approvedProposal();
         UUID sender = UUID.randomUUID();
 
-        p.markAsSent(sender, SendingChannel.EMAIL);
+        p.applySend(sent, sender, SendingChannel.EMAIL);
 
-        assertThat(p.status()).isEqualTo(ProposalStatus.SENT);
+        assertThat(p.status()).isEqualTo("SENT");
         assertThat(p.isOpen()).isTrue(); // stays open for the client's decision
         assertThat(p.sendingChannel()).isEqualTo(SendingChannel.EMAIL);
         ProposalStatusChange last = p.statusChanges().get(p.statusChanges().size() - 1);
-        assertThat(last.fromStatus()).isEqualTo(ProposalStatus.APPROVED);
-        assertThat(last.toStatus()).isEqualTo(ProposalStatus.SENT);
+        assertThat(last.fromStatus()).isEqualTo("APPROVED");
+        assertThat(last.toStatus()).isEqualTo("SENT");
         assertThat(last.changedBy()).isEqualTo(sender);
         assertThat(last.changedAt()).isNotNull();
     }
@@ -164,20 +176,10 @@ class ProposalTest {
     void markAsSentAcceptsANullChannel() {
         Proposal p = approvedProposal();
 
-        p.markAsSent(CREATOR, null); // the channel is optional
+        p.applySend(sent, CREATOR, null); // the channel is optional
 
-        assertThat(p.status()).isEqualTo(ProposalStatus.SENT);
+        assertThat(p.status()).isEqualTo("SENT");
         assertThat(p.sendingChannel()).isNull();
-    }
-
-    @Test
-    void markAsSentRequiresApproved() {
-        Proposal draft = readyDraft(); // a DRAFT
-        assertThatThrownBy(() -> draft.markAsSent(CREATOR, SendingChannel.EMAIL))
-                .isInstanceOf(ProposalNotApprovedException.class);
-        Proposal underReview = submittedProposal(); // READY_FOR_REVIEW, not yet approved
-        assertThatThrownBy(() -> underReview.markAsSent(CREATOR, SendingChannel.WHATSAPP))
-                .isInstanceOf(ProposalNotApprovedException.class);
     }
 
     @Test
@@ -185,14 +187,14 @@ class ProposalTest {
         Proposal p = sentProposal();
         UUID register = UUID.randomUUID();
 
-        p.acceptByCustomer(register, "Cliente confirmou por e-mail");
+        p.applyAccept(accepted, register, "Cliente confirmou por e-mail");
 
-        assertThat(p.status()).isEqualTo(ProposalStatus.ACCEPTED);
+        assertThat(p.status()).isEqualTo("ACCEPTED");
         assertThat(p.isOpen()).isTrue(); // the winning offer keeps the Opportunity; prepares the Order
         assertThat(p.acceptanceNote()).isEqualTo("Cliente confirmou por e-mail");
         ProposalStatusChange last = p.statusChanges().get(p.statusChanges().size() - 1);
-        assertThat(last.fromStatus()).isEqualTo(ProposalStatus.SENT);
-        assertThat(last.toStatus()).isEqualTo(ProposalStatus.ACCEPTED);
+        assertThat(last.fromStatus()).isEqualTo("SENT");
+        assertThat(last.toStatus()).isEqualTo("ACCEPTED");
         assertThat(last.changedBy()).isEqualTo(register);
         assertThat(last.changedAt()).isNotNull();
     }
@@ -201,9 +203,9 @@ class ProposalTest {
     void acceptByCustomerAcceptsANullNote() {
         Proposal p = sentProposal();
 
-        p.acceptByCustomer(CREATOR, null); // the confirmation note is optional
+        p.applyAccept(accepted, CREATOR, null); // the confirmation note is optional
 
-        assertThat(p.status()).isEqualTo(ProposalStatus.ACCEPTED);
+        assertThat(p.status()).isEqualTo("ACCEPTED");
         assertThat(p.acceptanceNote()).isNull();
     }
 
@@ -212,46 +214,34 @@ class ProposalTest {
         Proposal p = sentProposal();
         UUID register = UUID.randomUUID();
 
-        p.declineByCustomer(register, CustomerRejectionReason.CHOSE_COMPETITOR, "foi com a concorrência");
+        p.applyDecline(rejected, register, CustomerRejectionReason.CHOSE_COMPETITOR, "foi com a concorrência");
 
-        assertThat(p.status()).isEqualTo(ProposalStatus.REJECTED);
+        assertThat(p.status()).isEqualTo("REJECTED");
         assertThat(p.isOpen()).isFalse(); // terminal — frees the Opportunity for a new Proposal
         assertThat(p.customerRejectionReason()).isEqualTo(CustomerRejectionReason.CHOSE_COMPETITOR);
         assertThat(p.customerRejectionNote()).isEqualTo("foi com a concorrência");
         ProposalStatusChange last = p.statusChanges().get(p.statusChanges().size() - 1);
-        assertThat(last.fromStatus()).isEqualTo(ProposalStatus.SENT);
-        assertThat(last.toStatus()).isEqualTo(ProposalStatus.REJECTED);
+        assertThat(last.fromStatus()).isEqualTo("SENT");
+        assertThat(last.toStatus()).isEqualTo("REJECTED");
         assertThat(last.changedBy()).isEqualTo(register);
     }
 
     @Test
     void declineByCustomerRequiresAReason() {
         Proposal p = sentProposal();
-        assertThatThrownBy(() -> p.declineByCustomer(CREATOR, null, "sem motivo"))
+        assertThatThrownBy(() -> p.applyDecline(rejected, CREATOR, null, "sem motivo"))
                 .isInstanceOf(ProposalRejectionReasonRequiredException.class);
-    }
-
-    @Test
-    void acceptAndDeclineByCustomerRequireSent() {
-        Proposal draft = readyDraft(); // a DRAFT
-        assertThatThrownBy(() -> draft.acceptByCustomer(CREATOR, null)).isInstanceOf(ProposalNotSentException.class);
-        assertThatThrownBy(() -> draft.declineByCustomer(CREATOR, CustomerRejectionReason.OTHER, null))
-                .isInstanceOf(ProposalNotSentException.class);
-        Proposal approved = approvedProposal(); // APPROVED, not yet sent
-        assertThatThrownBy(() -> approved.acceptByCustomer(CREATOR, null)).isInstanceOf(ProposalNotSentException.class);
-        assertThatThrownBy(() -> approved.declineByCustomer(CREATOR, CustomerRejectionReason.PRICE_TOO_HIGH, null))
-                .isInstanceOf(ProposalNotSentException.class);
     }
 
     private Proposal sentProposal() {
         Proposal p = approvedProposal();
-        p.markAsSent(UUID.randomUUID(), SendingChannel.EMAIL);
+        p.applySend(sent, UUID.randomUUID(), SendingChannel.EMAIL);
         return p;
     }
 
     private Proposal approvedProposal() {
         Proposal p = submittedProposal();
-        p.approve(UUID.randomUUID());
+        p.applyApprove(approved, UUID.randomUUID());
         return p;
     }
 
@@ -260,7 +250,7 @@ class ProposalTest {
         p.addItem(
                 new ProposalItemCommand(ProposalItemType.OTHER, "linha", 1, new BigDecimal("10.00"), null, null),
                 CREATOR);
-        p.submitForReview(CREATOR);
+        p.applySubmit(readyForReview, CREATOR);
         return p;
     }
 
@@ -268,6 +258,6 @@ class ProposalTest {
         Opportunity o = opportunity("READY_FOR_PROPOSAL");
         when(o.id()).thenReturn(OPP_ID);
         when(o.leadId()).thenReturn(LEAD_ID);
-        return Proposal.createFromOpportunity(o, RESPONSIBLE, command(), CREATOR);
+        return Proposal.createFromOpportunity(o, RESPONSIBLE, command(), draft, CREATOR);
     }
 }

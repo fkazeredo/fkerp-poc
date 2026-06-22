@@ -16,7 +16,6 @@ import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -140,7 +139,7 @@ public record BookingRequestDetail(
     public record SourceOrder(UUID id, long number, CommercialOrderStatus status) {}
 
     /** The source Proposal (commercial reference), kept traceable from the reservation. */
-    public record SourceProposal(UUID id, String title, ProposalStatus status) {}
+    public record SourceProposal(UUID id, String title, String status) {}
 
     /** The source Opportunity (commercial reference), kept traceable from the reservation. */
     public record SourceOpportunity(UUID id, String name, String stage) {}

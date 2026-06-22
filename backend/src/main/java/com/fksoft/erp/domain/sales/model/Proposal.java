@@ -5,10 +5,7 @@ import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalExcep
 import com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
-import com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
-import com.fksoft.erp.domain.sales.exception.ProposalNotSentException;
-import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
 import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalResponsibleRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException;
@@ -16,13 +13,16 @@ import com.fksoft.erp.domain.sales.exception.ProposalValidityRequiredException;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.sales.service.data.UpdateProposalCommand;
+import com.fksoft.erp.domain.workflow.WorkflowState;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -48,7 +48,7 @@ import org.hibernate.annotations.UpdateTimestamp;
  * bounded context ({@code domain.sales}). It is NOT a Sale, Sales Order, Booking, Customer, Financial,
  * Payment or Commission record. The source Opportunity (and through it, the Lead) remains the system of
  * record for the negotiation; the Proposal references it by {@link #opportunityId} (never modified) and
- * keeps the source {@link #leadId} for traceability. A new Proposal starts at {@link ProposalStatus#DRAFT}.
+ * keeps the source {@link #leadId} for traceability. A new Proposal starts at {@code DRAFT}.
  */
 @Entity
 @Table(name = "proposals")
@@ -98,10 +98,17 @@ public class Proposal {
     @Column(name = "payment_notes")
     private String paymentNotes;
 
-    @NotNull
-    @Enumerated(EnumType.STRING)
+    // Denormalized status code (== currentState.code()), kept for cheap filtering/grouping and the read
+    // contract; the data-driven source of truth is the workflow state, kept in sync on every transition.
+    @NotBlank
+    @Size(max = 60)
     @Column(nullable = false)
-    private ProposalStatus status;
+    private String status;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "current_state_id", nullable = false)
+    private WorkflowState currentState;
 
     // The commercial offer's lines (part of the aggregate). Editable only while the Proposal is a Draft.
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
@@ -180,7 +187,7 @@ public class Proposal {
     private UUID updatedBy;
 
     /**
-     * Creates a new Proposal (status {@link ProposalStatus#DRAFT}) from a READY_FOR_PROPOSAL Opportunity,
+     * Creates a new Proposal (status {@code DRAFT}) from a READY_FOR_PROPOSAL Opportunity,
      * seeding the source Opportunity and Lead references from it and copying the client-facing data. The
      * Opportunity itself is not changed, and no Sale, Sales Order, Booking, Financial or Commission data
      * is created.
@@ -193,7 +200,11 @@ public class Proposal {
      * @throws OpportunityNotReadyForProposalException if the Opportunity is not READY_FOR_PROPOSAL
      */
     public static Proposal createFromOpportunity(
-            Opportunity opportunity, UUID responsiblePersonId, CreateProposalCommand command, UUID createdBy) {
+            Opportunity opportunity,
+            UUID responsiblePersonId,
+            CreateProposalCommand command,
+            WorkflowState initialState,
+            UUID createdBy) {
         if (!"READY_FOR_PROPOSAL".equals(opportunity.stage())) {
             throw new OpportunityNotReadyForProposalException();
         }
@@ -206,19 +217,20 @@ public class Proposal {
         proposal.notes = emptyToNull(command.notes());
         proposal.validUntil = command.validUntil();
         proposal.commercialTerms = emptyToNull(command.commercialTerms());
-        proposal.status = ProposalStatus.DRAFT;
+        proposal.currentState = initialState;
+        proposal.status = initialState.code();
         proposal.createdBy = createdBy;
         proposal.updatedBy = createdBy;
         return proposal;
     }
 
     /**
-     * Whether the Proposal is still open (not a terminal-negative outcome). See {@link ProposalStatus#isOpen()}.
+     * Whether the Proposal is still open (not a terminal-negative outcome: REJECTED/EXPIRED/CANCELLED).
      *
      * @return {@code true} unless the Proposal is rejected, expired or cancelled
      */
     public boolean isOpen() {
-        return status.isOpen();
+        return !"REJECTED".equals(status) && !"EXPIRED".equals(status) && !"CANCELLED".equals(status);
     }
 
     /**
@@ -331,7 +343,7 @@ public class Proposal {
     }
 
     /**
-     * Submits the Proposal for review (Draft → {@link ProposalStatus#READY_FOR_REVIEW}). The offer must have
+     * Submits the Proposal for review (Draft → {@code READY_FOR_REVIEW}). The offer must have
      * at least one item, a positive total, a validity date and a responsible person. This action does not
      * send the Proposal to the client, and creates no Sale, Order, Booking, Financial or Commission data.
      *
@@ -342,8 +354,7 @@ public class Proposal {
      * @throws ProposalValidityRequiredException if the Proposal has no validity date
      * @throws ProposalResponsibleRequiredException if the Proposal has no responsible person
      */
-    public void submitForReview(UUID byUser) {
-        requireDraft();
+    public void applySubmit(WorkflowState target, UUID byUser) {
         if (items.isEmpty()) {
             throw new ProposalHasNoItemsException();
         }
@@ -356,28 +367,29 @@ public class Proposal {
         if (responsiblePersonId == null) {
             throw new ProposalResponsibleRequiredException();
         }
-        recordStatusChange(status, ProposalStatus.READY_FOR_REVIEW, byUser);
-        status = ProposalStatus.READY_FOR_REVIEW;
+        recordStatusChange(status, target.code(), byUser);
+        status = target.code();
+        currentState = target;
         updatedBy = byUser;
     }
 
     /**
-     * Approves a Proposal under review (Ready for Review → {@link ProposalStatus#APPROVED}), recording who and
+     * Approves a Proposal under review (Ready for Review → {@code APPROVED}), recording who and
      * when in the status history. This does not send the Proposal to the client, and creates no Sale, Order,
      * Booking, Financial or Commission data.
      *
      * @param byUser id of the approver
      * @throws ProposalNotUnderReviewException if the Proposal is not Ready for Review
      */
-    public void approve(UUID byUser) {
-        requireUnderReview();
-        recordStatusChange(status, ProposalStatus.APPROVED, byUser);
-        status = ProposalStatus.APPROVED;
+    public void applyApprove(WorkflowState target, UUID byUser) {
+        recordStatusChange(status, target.code(), byUser);
+        status = target.code();
+        currentState = target;
         updatedBy = byUser;
     }
 
     /**
-     * Rejects a Proposal under review (Ready for Review → {@link ProposalStatus#REJECTED}) with a reason,
+     * Rejects a Proposal under review (Ready for Review → {@code REJECTED}) with a reason,
      * recording who and when in the status history and keeping the structured reason and optional note. The
      * rejected Proposal is terminal (it frees the Opportunity for a new Proposal); it is not sent to the
      * client and creates no Sale, Order, Booking, Financial or Commission data.
@@ -388,20 +400,20 @@ public class Proposal {
      * @throws ProposalNotUnderReviewException if the Proposal is not Ready for Review
      * @throws ProposalRejectionReasonRequiredException if no reason is given
      */
-    public void reject(UUID byUser, ProposalRejectionReason reason, String note) {
-        requireUnderReview();
+    public void applyReject(WorkflowState target, UUID byUser, ProposalRejectionReason reason, String note) {
         if (reason == null) {
             throw new ProposalRejectionReasonRequiredException();
         }
         rejectionReason = reason;
         rejectionNote = emptyToNull(note);
-        recordStatusChange(status, ProposalStatus.REJECTED, byUser);
-        status = ProposalStatus.REJECTED;
+        recordStatusChange(status, target.code(), byUser);
+        status = target.code();
+        currentState = target;
         updatedBy = byUser;
     }
 
     /**
-     * Marks an approved Proposal as sent to the client (Approved → {@link ProposalStatus#SENT}), recording who
+     * Marks an approved Proposal as sent to the client (Approved → {@code SENT}), recording who
      * and when in the status history and keeping the optional descriptive sending channel. The Proposal stays
      * open for the client's decision. This does NOT trigger any real e-mail/WhatsApp/phone integration, and
      * creates no customer acceptance, Commercial Order, Booking, Financial or Commission data.
@@ -410,16 +422,16 @@ public class Proposal {
      * @param channel the descriptive sending channel, or {@code null} (the channel is optional)
      * @throws ProposalNotApprovedException if the Proposal is not Approved
      */
-    public void markAsSent(UUID byUser, SendingChannel channel) {
-        requireApproved();
+    public void applySend(WorkflowState target, UUID byUser, SendingChannel channel) {
         sendingChannel = channel;
-        recordStatusChange(status, ProposalStatus.SENT, byUser);
-        status = ProposalStatus.SENT;
+        recordStatusChange(status, target.code(), byUser);
+        status = target.code();
+        currentState = target;
         updatedBy = byUser;
     }
 
     /**
-     * Registers that the client accepted a sent Proposal (Sent → {@link ProposalStatus#ACCEPTED}), recording
+     * Registers that the client accepted a sent Proposal (Sent → {@code ACCEPTED}), recording
      * who and when in the status history and keeping an optional confirmation note. The accepted Proposal
      * stays open (it is the winning offer and prepares the future Commercial Order). This does NOT create any
      * Booking, Financial, Commission or Commercial Order data.
@@ -428,16 +440,16 @@ public class Proposal {
      * @param note an optional client confirmation note
      * @throws ProposalNotSentException if the Proposal is not Sent
      */
-    public void acceptByCustomer(UUID byUser, String note) {
-        requireSent();
+    public void applyAccept(WorkflowState target, UUID byUser, String note) {
         acceptanceNote = emptyToNull(note);
-        recordStatusChange(status, ProposalStatus.ACCEPTED, byUser);
-        status = ProposalStatus.ACCEPTED;
+        recordStatusChange(status, target.code(), byUser);
+        status = target.code();
+        currentState = target;
         updatedBy = byUser;
     }
 
     /**
-     * Registers that the client rejected a sent Proposal (Sent → {@link ProposalStatus#REJECTED}) with a
+     * Registers that the client rejected a sent Proposal (Sent → {@code REJECTED}) with a
      * reason, recording who and when in the status history and keeping the structured reason and optional
      * note. The rejected Proposal is terminal (it frees the Opportunity for a new Proposal); it creates no
      * Booking, Financial, Commission or Commercial Order data.
@@ -448,44 +460,26 @@ public class Proposal {
      * @throws ProposalNotSentException if the Proposal is not Sent
      * @throws ProposalRejectionReasonRequiredException if no reason is given
      */
-    public void declineByCustomer(UUID byUser, CustomerRejectionReason reason, String note) {
-        requireSent();
+    public void applyDecline(WorkflowState target, UUID byUser, CustomerRejectionReason reason, String note) {
         if (reason == null) {
             throw new ProposalRejectionReasonRequiredException();
         }
         customerRejectionReason = reason;
         customerRejectionNote = emptyToNull(note);
-        recordStatusChange(status, ProposalStatus.REJECTED, byUser);
-        status = ProposalStatus.REJECTED;
+        recordStatusChange(status, target.code(), byUser);
+        status = target.code();
+        currentState = target;
         updatedBy = byUser;
     }
 
     // Appends a lifecycle transition to the status history (the initial DRAFT is not recorded — the history
     // stays empty until the first transition). Future transitions (approve/send/accept/reject) reuse this.
-    private void recordStatusChange(ProposalStatus from, ProposalStatus to, UUID byUser) {
+    private void recordStatusChange(String from, String to, UUID byUser) {
         statusChanges.add(ProposalStatusChange.of(from, to, byUser));
     }
 
-    private void requireUnderReview() {
-        if (status != ProposalStatus.READY_FOR_REVIEW) {
-            throw new ProposalNotUnderReviewException();
-        }
-    }
-
-    private void requireApproved() {
-        if (status != ProposalStatus.APPROVED) {
-            throw new ProposalNotApprovedException();
-        }
-    }
-
-    private void requireSent() {
-        if (status != ProposalStatus.SENT) {
-            throw new ProposalNotSentException();
-        }
-    }
-
     private void requireDraft() {
-        if (status != ProposalStatus.DRAFT) {
+        if (!"DRAFT".equals(status)) {
             throw new ProposalNotEditableException();
         }
     }

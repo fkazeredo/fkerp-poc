@@ -1,7 +1,6 @@
 package com.fksoft.erp.domain.sales.repository;
 
 import com.fksoft.erp.domain.sales.model.Proposal;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,5 +18,5 @@ public interface ProposalRepository extends JpaRepository<Proposal, UUID>, JpaSp
      * @param statuses the statuses to match (the open ones, for the uniqueness check)
      * @return an existing matching proposal, or empty
      */
-    Optional<Proposal> findFirstByOpportunityIdAndStatusIn(UUID opportunityId, Collection<ProposalStatus> statuses);
+    Optional<Proposal> findFirstByOpportunityIdAndStatusIn(UUID opportunityId, Collection<String> statuses);
 }

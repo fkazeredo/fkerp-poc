@@ -12,9 +12,11 @@ import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
 import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
+import com.fksoft.erp.domain.workflow.WorkflowDefinition;
+import com.fksoft.erp.domain.workflow.WorkflowState;
+import com.fksoft.erp.domain.workflow.WorkflowStateCategory;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -25,13 +27,16 @@ class ProposalItemsTest {
 
     private static final UUID ACTOR = UUID.randomUUID();
 
+    private final WorkflowState draft = WorkflowState.of(
+            WorkflowDefinition.of("proposal", "Proposta"), "DRAFT", "Rascunho", WorkflowStateCategory.INITIAL, 1);
+
     private Proposal draftProposal() {
         Opportunity opportunity = mock(Opportunity.class);
         when(opportunity.stage()).thenReturn("READY_FOR_PROPOSAL");
         when(opportunity.id()).thenReturn(UUID.randomUUID());
         when(opportunity.leadId()).thenReturn(UUID.randomUUID());
         CreateProposalCommand command = new CreateProposalCommand(null, ACTOR, "Proposta", null, null, null);
-        return Proposal.createFromOpportunity(opportunity, ACTOR, command, ACTOR);
+        return Proposal.createFromOpportunity(opportunity, ACTOR, command, draft, ACTOR);
     }
 
     private ProposalItemCommand item(
@@ -133,7 +138,7 @@ class ProposalItemsTest {
     @Test
     void rejectsEditingItemsWhenTheProposalIsNotADraft() {
         Proposal p = draftProposal();
-        ReflectionTestUtils.setField(p, "status", ProposalStatus.SENT);
+        ReflectionTestUtils.setField(p, "status", "SENT");
         assertThatThrownBy(() -> p.addItem(item(ProposalItemType.OTHER, 1, "10.00", null, null), ACTOR))
                 .isInstanceOf(ProposalNotEditableException.class);
     }

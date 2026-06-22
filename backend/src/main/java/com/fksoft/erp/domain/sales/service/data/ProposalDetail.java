@@ -8,7 +8,6 @@ import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItem;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import com.fksoft.erp.domain.sales.model.SendingChannel;
 import java.math.BigDecimal;
@@ -45,7 +44,7 @@ public record ProposalDetail(
         UUID id,
         UUID opportunityId,
         UUID leadId,
-        ProposalStatus status,
+        String status,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,
@@ -135,7 +134,7 @@ public record ProposalDetail(
     public record SourceLead(UUID id, String name, String phone, String whatsapp, String email, String status) {}
 
     /** A single Proposal status-change entry (from → to, when, by whom). */
-    public record StatusChange(ProposalStatus from, ProposalStatus to, Instant at, String by) {}
+    public record StatusChange(String from, String to, Instant at, String by) {}
 
     /** A single commercial-offer line, with its computed line total. */
     public record Item(

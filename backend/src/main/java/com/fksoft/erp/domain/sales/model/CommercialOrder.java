@@ -26,7 +26,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 /**
  * A Commercial Order: the formal internal record of a closed commercial deal, created from an
- * {@link ProposalStatus#ACCEPTED} Proposal. It is the aggregate root of its own slice in the Sales &amp;
+ * {@code ACCEPTED} Proposal. It is the aggregate root of its own slice in the Sales &amp;
  * Proposals context ({@code domain.sales}). It is a faithful <b>snapshot</b> of the source Proposal at
  * acceptance time — the items, the subtotal/total, and the source Proposal / Opportunity / Lead references
  * and the responsible person are preserved and never recomputed. Creating the Order does NOT create any
@@ -116,14 +116,14 @@ public class CommercialOrder {
      * {@link CommercialOrderStatus#BOOKING_NOT_REQUIRED} otherwise. No Booking, Receivable, Payment or
      * Commission data is created.
      *
-     * @param proposal the source Proposal; must be {@link ProposalStatus#ACCEPTED}
+     * @param proposal the source Proposal; must be {@code ACCEPTED}
      * @param createdBy id of the user creating the Order
      * @param number the sequential order number (assigned from the order-number sequence)
      * @return a new, unsaved Commercial Order
      * @throws ProposalNotAcceptedException if the Proposal is not Accepted
      */
     public static CommercialOrder createFromProposal(Proposal proposal, UUID createdBy, long number) {
-        if (proposal.status() != ProposalStatus.ACCEPTED) {
+        if (!"ACCEPTED".equals(proposal.status())) {
             throw new ProposalNotAcceptedException();
         }
         CommercialOrder order = new CommercialOrder();

@@ -9,7 +9,6 @@ import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -115,7 +114,7 @@ public record CommercialOrderDetail(
     public record SourceProposal(
             UUID id,
             String title,
-            ProposalStatus status,
+            String status,
             LocalDate validUntil,
             String commercialTerms,
             String notes,

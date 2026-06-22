@@ -1,6 +1,5 @@
 package com.fksoft.erp.domain.sales.service.data;
 
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -25,7 +24,7 @@ import java.util.UUID;
  * @param query free-text search over the Proposal title and the source Opportunity name
  */
 public record ProposalSearchCriteria(
-        Set<ProposalStatus> statuses,
+        Set<String> statuses,
         UUID responsibleId,
         boolean unassignedOnly,
         UUID opportunityId,

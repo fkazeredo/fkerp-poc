@@ -14,6 +14,9 @@ import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
+import com.fksoft.erp.domain.workflow.WorkflowDefinition;
+import com.fksoft.erp.domain.workflow.WorkflowState;
+import com.fksoft.erp.domain.workflow.WorkflowStateCategory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -26,6 +29,16 @@ class CommercialOrderTest {
     private static final UUID RESPONSIBLE = UUID.randomUUID();
     private static final UUID OPP_ID = UUID.randomUUID();
     private static final UUID LEAD_ID = UUID.randomUUID();
+
+    private final WorkflowDefinition wf = WorkflowDefinition.of("proposal", "Proposta");
+    private final WorkflowState draft = WorkflowState.of(wf, "DRAFT", "Rascunho", WorkflowStateCategory.INITIAL, 1);
+    private final WorkflowState readyForReview =
+            WorkflowState.of(wf, "READY_FOR_REVIEW", "Em revisão", WorkflowStateCategory.ACTIVE, 2);
+    private final WorkflowState approved =
+            WorkflowState.of(wf, "APPROVED", "Aprovada", WorkflowStateCategory.ACTIVE, 3);
+    private final WorkflowState sent = WorkflowState.of(wf, "SENT", "Enviada", WorkflowStateCategory.ACTIVE, 4);
+    private final WorkflowState accepted =
+            WorkflowState.of(wf, "ACCEPTED", "Aceita", WorkflowStateCategory.TERMINAL_POSITIVE, 5);
 
     @Test
     void createsFromAnAcceptedProposalSnapshottingItemsTotalAndReferences() {
@@ -132,7 +145,7 @@ class CommercialOrderTest {
 
     private Proposal acceptedProposalWith(ProposalItemType... types) {
         Proposal p = sentProposalWith(types);
-        p.acceptByCustomer(UUID.randomUUID(), "ok");
+        p.applyAccept(accepted, UUID.randomUUID(), "ok");
         return p;
     }
 
@@ -145,9 +158,9 @@ class CommercialOrderTest {
         for (ProposalItemType type : types) {
             p.addItem(new ProposalItemCommand(type, "linha", 1, new BigDecimal("100.00"), null, null), CREATOR);
         }
-        p.submitForReview(CREATOR);
-        p.approve(UUID.randomUUID());
-        p.markAsSent(UUID.randomUUID(), null);
+        p.applySubmit(readyForReview, CREATOR);
+        p.applyApprove(approved, UUID.randomUUID());
+        p.applySend(sent, UUID.randomUUID(), null);
         return p;
     }
 
@@ -158,6 +171,6 @@ class CommercialOrderTest {
         when(o.leadId()).thenReturn(LEAD_ID);
         CreateProposalCommand command = new CreateProposalCommand(
                 OPP_ID, RESPONSIBLE, "Proposta corporativa", null, LocalDate.parse("2026-12-31"), "termos");
-        return Proposal.createFromOpportunity(o, RESPONSIBLE, command, CREATOR);
+        return Proposal.createFromOpportunity(o, RESPONSIBLE, command, draft, CREATOR);
     }
 }

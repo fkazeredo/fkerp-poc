@@ -14,14 +14,17 @@ import com.fksoft.erp.domain.identity.UserRepository;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
 import com.fksoft.erp.domain.sales.exception.ProposalAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunityException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotSentException;
+import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.CustomerRejectionReason;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalCreated;
 import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import com.fksoft.erp.domain.sales.model.SendingChannel;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
@@ -34,6 +37,11 @@ import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalListItem;
 import com.fksoft.erp.domain.sales.service.data.ProposalSearchCriteria;
 import com.fksoft.erp.domain.sales.service.data.UpdateProposalCommand;
+import com.fksoft.erp.domain.workflow.WorkflowContext;
+import com.fksoft.erp.domain.workflow.WorkflowEngine;
+import com.fksoft.erp.domain.workflow.WorkflowState;
+import com.fksoft.erp.domain.workflow.WorkflowStateRepository;
+import com.fksoft.erp.domain.workflow.WorkflowTransitionNotAllowedException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -62,7 +70,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProposalService {
 
     // Statuses for which a Proposal is still "open" — at most one open Proposal per Opportunity.
-    private static final Set<ProposalStatus> OPEN_STATUSES = ProposalStatus.openStatuses();
+    private static final Set<String> OPEN_STATUSES =
+            Set.of("DRAFT", "READY_FOR_REVIEW", "APPROVED", "SENT", "ACCEPTED");
 
     // Statuses for which a Commercial Order is still active — used to surface the Proposal's active Order.
     private static final Set<CommercialOrderStatus> ACTIVE_ORDER_STATUSES =
@@ -77,6 +86,11 @@ public class ProposalService {
     private final UserRepository users;
     private final CommercialOrderRepository orders;
     private final ApplicationEventPublisher events;
+    private final WorkflowEngine workflow;
+    private final WorkflowStateRepository workflowStates;
+
+    /** The workflow definition code for the Proposal lifecycle. */
+    private static final String PROPOSAL_WORKFLOW = "proposal";
 
     /**
      * Creates a Proposal from a READY_FOR_PROPOSAL Opportunity the caller is allowed to see. An
@@ -127,7 +141,11 @@ public class ProposalService {
             // The opportunity's responsible is preserved by default.
             responsibleId = opportunity.responsiblePersonId();
         }
-        Proposal proposal = Proposal.createFromOpportunity(opportunity, responsibleId, command, createdBy);
+        WorkflowState initialState = workflowStates
+                .findByDefinition_CodeAndCode(PROPOSAL_WORKFLOW, "DRAFT")
+                .orElseThrow(() -> new IllegalStateException("Missing Proposal workflow initial state"));
+        Proposal proposal =
+                Proposal.createFromOpportunity(opportunity, responsibleId, command, initialState, createdBy);
         proposals.save(proposal);
         events.publishEvent(
                 new ProposalCreated(proposal.id(), opportunity.id(), opportunity.leadId(), createdBy, responsibleId));
@@ -267,7 +285,14 @@ public class ProposalService {
     @Transactional
     public ProposalDetail submitForReview(UUID proposalId, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
-        proposal.submitForReview(userId);
+        WorkflowState target;
+        try {
+            target = workflow.apply(
+                    PROPOSAL_WORKFLOW, proposal.currentState(), "submit", WorkflowContext.of(proposal, userId));
+        } catch (WorkflowTransitionNotAllowedException e) {
+            throw new ProposalNotEditableException();
+        }
+        proposal.applySubmit(target, userId);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 
@@ -288,7 +313,14 @@ public class ProposalService {
     @Transactional
     public ProposalDetail approve(UUID proposalId, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
-        proposal.approve(userId);
+        WorkflowState target;
+        try {
+            target = workflow.apply(
+                    PROPOSAL_WORKFLOW, proposal.currentState(), "approve", WorkflowContext.of(proposal, userId));
+        } catch (WorkflowTransitionNotAllowedException e) {
+            throw new ProposalNotUnderReviewException();
+        }
+        proposal.applyApprove(target, userId);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 
@@ -319,7 +351,14 @@ public class ProposalService {
             boolean canSeeAll,
             boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
-        proposal.reject(userId, reason, note);
+        WorkflowState target;
+        try {
+            target = workflow.apply(
+                    PROPOSAL_WORKFLOW, proposal.currentState(), "reject", WorkflowContext.of(proposal, userId));
+        } catch (WorkflowTransitionNotAllowedException e) {
+            throw new ProposalNotUnderReviewException();
+        }
+        proposal.applyReject(target, userId, reason, note);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 
@@ -344,7 +383,14 @@ public class ProposalService {
     public ProposalDetail markAsSent(
             UUID proposalId, SendingChannel channel, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
-        proposal.markAsSent(userId, channel);
+        WorkflowState target;
+        try {
+            target = workflow.apply(
+                    PROPOSAL_WORKFLOW, proposal.currentState(), "send", WorkflowContext.of(proposal, userId));
+        } catch (WorkflowTransitionNotAllowedException e) {
+            throw new ProposalNotApprovedException();
+        }
+        proposal.applySend(target, userId, channel);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 
@@ -368,7 +414,14 @@ public class ProposalService {
     public ProposalDetail acceptByCustomer(
             UUID proposalId, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
-        proposal.acceptByCustomer(userId, note);
+        WorkflowState target;
+        try {
+            target = workflow.apply(
+                    PROPOSAL_WORKFLOW, proposal.currentState(), "accept", WorkflowContext.of(proposal, userId));
+        } catch (WorkflowTransitionNotAllowedException e) {
+            throw new ProposalNotSentException();
+        }
+        proposal.applyAccept(target, userId, note);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 
@@ -399,7 +452,14 @@ public class ProposalService {
             boolean canSeeAll,
             boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
-        proposal.declineByCustomer(userId, reason, note);
+        WorkflowState target;
+        try {
+            target = workflow.apply(
+                    PROPOSAL_WORKFLOW, proposal.currentState(), "decline", WorkflowContext.of(proposal, userId));
+        } catch (WorkflowTransitionNotAllowedException e) {
+            throw new ProposalNotSentException();
+        }
+        proposal.applyDecline(target, userId, reason, note);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 
@@ -453,18 +513,18 @@ public class ProposalService {
         Specification<Proposal> visible = accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned);
 
         // Volume — over the period.
-        Map<ProposalStatus, Long> countByStatus = indicatorQueries.countByStatus(visible, from, to);
+        Map<String, Long> countByStatus = indicatorQueries.countByStatus(visible, from, to);
         long total = countByStatus.values().stream().mapToLong(Long::longValue).sum();
-        long rejectedCount = countByStatus.getOrDefault(ProposalStatus.REJECTED, 0L);
-        Map<ProposalStatus, BigDecimal> sumByStatus = indicatorQueries.sumTotalByStatus(visible, from, to);
+        long rejectedCount = countByStatus.getOrDefault("REJECTED", 0L);
+        Map<String, BigDecimal> sumByStatus = indicatorQueries.sumTotalByStatus(visible, from, to);
         BigDecimal proposedAmount = sumByStatus.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal acceptedAmount = sumByStatus.getOrDefault(ProposalStatus.ACCEPTED, BigDecimal.ZERO);
+        BigDecimal acceptedAmount = sumByStatus.getOrDefault("ACCEPTED", BigDecimal.ZERO);
         Map<UUID, Long> byResponsibleId = indicatorQueries.countByResponsible(visible, from, to);
 
         // Operational — current snapshot (no period).
-        Map<ProposalStatus, Long> countByStatusNow = indicatorQueries.countByStatus(visible, null, null);
-        long waitingForReview = countByStatusNow.getOrDefault(ProposalStatus.READY_FOR_REVIEW, 0L);
-        long waitingForCustomerDecision = countByStatusNow.getOrDefault(ProposalStatus.SENT, 0L);
+        Map<String, Long> countByStatusNow = indicatorQueries.countByStatus(visible, null, null);
+        long waitingForReview = countByStatusNow.getOrDefault("READY_FOR_REVIEW", 0L);
+        long waitingForCustomerDecision = countByStatusNow.getOrDefault("SENT", 0L);
 
         Map<UUID, String> names = resolveNames(byResponsibleId.keySet().stream());
         List<ProposalIndicators.StatusCount> statusCounts = countByStatus.entrySet().stream()

@@ -9,7 +9,6 @@ import com.fksoft.erp.application.api.dto.ProposalListParams;
 import com.fksoft.erp.application.api.dto.ProposalResponse;
 import com.fksoft.erp.application.api.dto.ProposalUpdateRequest;
 import com.fksoft.erp.application.api.dto.RejectProposalRequest;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.service.ProposalService;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
@@ -77,8 +76,7 @@ public class ProposalController {
                 request.commercialTerms());
         UUID id = proposalService.create(
                 command, userContext.currentUserId(), canSeeAllOpportunities(), canSeeUnassignedOpportunities());
-        return ResponseEntity.created(URI.create("/api/proposals/" + id))
-                .body(new ProposalResponse(id, ProposalStatus.DRAFT));
+        return ResponseEntity.created(URI.create("/api/proposals/" + id)).body(new ProposalResponse(id, "DRAFT"));
     }
 
     /**
