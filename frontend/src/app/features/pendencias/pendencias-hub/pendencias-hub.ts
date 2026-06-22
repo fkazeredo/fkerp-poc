@@ -2,8 +2,9 @@ import { Component, computed, signal, inject } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { LeadPending } from '../../leads/lead-pending/lead-pending';
 import { OpportunityPending } from '../../opportunities/opportunity-pending/opportunity-pending';
+import { BookingPending } from '../../bookings/booking-pending/booking-pending';
 
-type PendenciasTab = 'leads' | 'oportunidades';
+type PendenciasTab = 'leads' | 'oportunidades' | 'reservas';
 
 interface TabDef {
   key: PendenciasTab;
@@ -12,13 +13,13 @@ interface TabDef {
 
 /**
  * Pending-items hub — "one place" for every funnel worklist. Renders the existing pending screens (Leads /
- * Oportunidades) under a single tab bar, showing only the tabs the profile may see. The area components are
- * reused verbatim (each keeps its own header and data loading); the hub only picks which one is shown.
- * Reservation pending-items arrive in a later slice.
+ * Oportunidades / Reservas) under a single tab bar, showing only the tabs the profile may see. The area
+ * components are reused verbatim (each keeps its own header and data loading); the hub only picks which one is
+ * shown.
  */
 @Component({
   selector: 'app-pendencias-hub',
-  imports: [LeadPending, OpportunityPending],
+  imports: [LeadPending, OpportunityPending, BookingPending],
   templateUrl: './pendencias-hub.html',
   styleUrl: './pendencias-hub.css',
 })
@@ -30,6 +31,7 @@ export class PendenciasHub {
     const tabs: TabDef[] = [];
     if (this.auth.canSeeLeads()) tabs.push({ key: 'leads', label: 'Leads' });
     if (this.auth.canSeeOpportunities()) tabs.push({ key: 'oportunidades', label: 'Oportunidades' });
+    if (this.auth.canSeeBookings()) tabs.push({ key: 'reservas', label: 'Reservas' });
     return tabs;
   });
 

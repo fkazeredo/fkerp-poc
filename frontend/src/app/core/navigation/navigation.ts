@@ -94,7 +94,7 @@ export class NavigationService {
     // Acompanhamento: the cross-funnel monitoring hubs — one place for all the pending-items lists and one for
     // all the indicators (each is a tabbed hub gated per profile).
     const acompanhamento: NavLink[] = [];
-    if (this.auth.canSeeLeads() || this.auth.canSeeOpportunities()) {
+    if (this.auth.canSeeLeads() || this.auth.canSeeOpportunities() || this.auth.canSeeBookings()) {
       acompanhamento.push(
         link('Pendências', 'pi pi-flag', '/pendencias', false, 'O que precisa de ação para não perder negócios.', 'pending'),
       );

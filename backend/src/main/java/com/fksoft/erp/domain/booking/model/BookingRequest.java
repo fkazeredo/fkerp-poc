@@ -105,6 +105,11 @@ public class BookingRequest {
     @Column(name = "last_attempt_at")
     private Instant lastAttemptAt;
 
+    // The latest manual attempt's planned next-action date, denormalized (mirrors lastAttemptAt) so the pending
+    // worklist can flag an overdue next action without an N+1 / subquery. Null when none is planned.
+    @Column(name = "next_action_date")
+    private LocalDate nextActionDate;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -199,8 +204,11 @@ public class BookingRequest {
             throw new BookingItemNotFoundException();
         }
         attempts.add(BookingAttempt.of(bookingItemId, type, result, description, occurredAt, nextActionDate, byUser));
+        // Track the latest attempt's instant and its planned next action (the most recent attempt wins, so an
+        // older attempt registered later does not override the current next action).
         if (lastAttemptAt == null || occurredAt.isAfter(lastAttemptAt)) {
             lastAttemptAt = occurredAt;
+            this.nextActionDate = nextActionDate;
         }
         consolidateStatus();
         updatedBy = byUser;

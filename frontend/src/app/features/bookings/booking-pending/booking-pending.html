@@ -1,0 +1,73 @@
+<header class="page-head">
+  <div>
+    <h1>Reservas pendentes</h1>
+    <p class="sub muted">
+      Solicitações de reserva que precisam de ação — para as reservas não travarem silenciosamente.
+    </p>
+  </div>
+</header>
+
+@if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+}
+
+<div class="surface table-wrap">
+  <p-table
+    [value]="items()"
+    [lazy]="true"
+    (onLazyLoad)="onLazyLoad($event)"
+    [paginator]="true"
+    [rows]="rows"
+    [totalRecords]="total()"
+    [first]="firstRow"
+    [loading]="loading()"
+    styleClass="p-datatable-sm"
+    [tableStyle]="{ 'min-width': '72rem' }"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Pedido</th>
+        <th>Proposta</th>
+        <th>Status</th>
+        <th>Operador</th>
+        <th>Responsável</th>
+        <th class="num">Itens p/ reservar</th>
+        <th>Próxima ação</th>
+        <th>Última tentativa</th>
+        <th>Pendências</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-b>
+      <tr>
+        <td>
+          <a [routerLink]="['/reservas', b.id]" class="order-link">{{ orderCode(b.commercialOrderNumber) }}</a>
+        </td>
+        <td>{{ b.proposalTitle ?? '—' }}</td>
+        <td><p-tag [value]="statusLabel(b.status)" [severity]="statusSeverity(b.status)" /></td>
+        <td>
+          @if (b.operatorUnassigned) {
+            <span class="unassigned">Sem operador</span>
+          } @else {
+            {{ b.bookingOperatorName ?? '—' }}
+          }
+        </td>
+        <td>{{ b.responsibleName ?? '—' }}</td>
+        <td class="num">{{ b.itemsRequiringBooking }}</td>
+        <td>{{ b.nextActionDate ? (b.nextActionDate | date: 'shortDate') : '—' }}</td>
+        <td>{{ b.lastBookingAttemptAt ? (b.lastBookingAttemptAt | date: 'short') : '—' }}</td>
+        <td>
+          <div class="reasons">
+            @for (reason of b.reasons; track reason) {
+              <p-tag [value]="reasonLabel(reason)" [severity]="reasonSeverity(reason)" />
+            }
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="9" class="muted empty">Nenhuma reserva pendente. Tudo em dia! 🎉</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

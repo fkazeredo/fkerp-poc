@@ -606,6 +606,20 @@ booking problem**. A confirmed booking **must not** create a Receivable, Payment
 booking **must not** cancel the Order automatically; Finance is not implemented now. The lifecycle transitions
 beyond the consolidated status, the explicit **cancellation** flow, and Financial Operations remain later slices.
 
+**Booking pending-items worklist (normative).** The operational worklist (`GET /api/bookings/pending`) is a read
+view gated by the same Booking read tiers (any tier passes; `BookingRequestAccessPolicy` narrows visibility at the
+query level, like the list — so it never exposes a request the caller may not see; Sellers/Representatives and
+Finance/HR/IT have **no** booking read tier → 403). It surfaces the visible Booking Requests that **need action**,
+each tagged with its **reasons** (`BookingPendingReason`): unassigned operator, `PENDING` without an attempt, `IN
+PROGRESS` without a recent attempt (a fixed **7-day** staleness window), a failed item, a requiring-booking item
+still pending, `PARTIALLY_CONFIRMED`, or an overdue next action. The reason computation
+(`BookingRequestPendingReasons`) and the query (`BookingRequestPendingSpecifications`) mirror each other; the
+terminal `CONFIRMED`/`CANCELLED` requests are excluded. "Overdue next action" reads a **denormalized
+`next_action_date`** on the request (mirrors `last_attempt_at`: maintained from the latest attempt). It is
+**operational, not** an executive dashboard, has **no** notification/SLA engine and **no** automatic external
+retry, and creates no Financial/Payment/Commission/Customer Care data. In the frontend it is the **Reservas** tab
+of the **Acompanhamento → Pendências** hub (gated by `canSeeBookings()`).
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

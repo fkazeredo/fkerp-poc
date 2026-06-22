@@ -10,9 +10,11 @@ import com.fksoft.erp.domain.booking.model.BookingItemConfirmation;
 import com.fksoft.erp.domain.booking.model.BookingItemFailure;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestCreated;
+import com.fksoft.erp.domain.booking.model.BookingRequestPendingReasons;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.model.BookingStatusConsolidated;
 import com.fksoft.erp.domain.booking.repository.BookingItemCountsRow;
+import com.fksoft.erp.domain.booking.repository.BookingPendingItemCountsRow;
 import com.fksoft.erp.domain.booking.repository.BookingRequestRepository;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestDetail;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestListItem;
@@ -20,6 +22,7 @@ import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
 import com.fksoft.erp.domain.booking.service.data.ConfirmCarRentalCommand;
 import com.fksoft.erp.domain.booking.service.data.ConfirmTravelPackageCommand;
 import com.fksoft.erp.domain.booking.service.data.FailBookingItemCommand;
+import com.fksoft.erp.domain.booking.service.data.PendingBookingRequest;
 import com.fksoft.erp.domain.booking.service.data.RecordBookingAttemptCommand;
 import com.fksoft.erp.domain.crm.exception.LeadNotFoundException;
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
@@ -37,7 +40,11 @@ import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -186,6 +193,54 @@ public class BookingRequestService {
     }
 
     private static final long[] EMPTY_COUNTS = {0L, 0L};
+
+    /**
+     * Operational pending-items worklist of the Booking Requests visible to the caller that need action (no
+     * booking operator, still pending, in progress with no recent attempt, a failed item, a requiring-booking
+     * item still pending, partially confirmed, or an overdue next action), each tagged with its reasons. Read
+     * only; creates no Financial, Payment, Commission or Customer Care data and never modifies a request. Terminal
+     * CONFIRMED / CANCELLED requests are excluded.
+     *
+     * @param pageable page, size and sort
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every request
+     * @param canSeeUnassigned whether the caller may also see the unassigned (no-operator) pool
+     * @return a page of pending Booking Request items
+     */
+    @Transactional(readOnly = true)
+    public Page<PendingBookingRequest> pending(
+            Pageable pageable, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+        Instant now = Instant.now();
+        LocalDate today = LocalDate.ofInstant(now, ZoneOffset.UTC);
+        Specification<BookingRequest> spec = BookingRequestPendingSpecifications.pending(now, today)
+                .and(accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned));
+        Page<BookingRequest> page = bookingRequests.findAll(spec, pageable);
+
+        Map<UUID, String> names = resolveNames(
+                page.getContent().stream().flatMap(r -> Stream.of(r.bookingOperatorId(), r.responsiblePersonId())));
+        Map<UUID, Long> orderNumbers =
+                resolveOrderNumbers(page.getContent().stream().map(BookingRequest::commercialOrderId));
+        Map<UUID, String> proposalTitles =
+                resolveProposalTitles(page.getContent().stream().map(BookingRequest::proposalId));
+        Map<UUID, long[]> counts = resolvePendingItemCounts(
+                page.getContent().stream().map(BookingRequest::id).toList());
+
+        return page.map(r -> {
+            long[] c = counts.getOrDefault(r.id(), EMPTY_PENDING_COUNTS);
+            boolean hasFailed = c[2] > 0;
+            boolean hasPendingRequired = c[3] > 0;
+            return PendingBookingRequest.from(
+                    r,
+                    orderNumbers.getOrDefault(r.commercialOrderId(), 0L),
+                    proposalTitles.get(r.proposalId()),
+                    nameOf(names, r.bookingOperatorId()),
+                    nameOf(names, r.responsiblePersonId()),
+                    c,
+                    BookingRequestPendingReasons.of(r, now, today, hasFailed, hasPendingRequired));
+        });
+    }
+
+    private static final long[] EMPTY_PENDING_COUNTS = {0L, 0L, 0L, 0L};
 
     /**
      * Full detail of a Booking Request the caller is allowed to see, with the source Commercial Order,
@@ -443,6 +498,17 @@ public class BookingRequestService {
         return bookingRequests.findItemCounts(ids).stream()
                 .collect(Collectors.toMap(BookingItemCountsRow::getBookingRequestId, row ->
                         new long[] {row.getRequiring(), row.getConfirmed()}));
+    }
+
+    private Map<UUID, long[]> resolvePendingItemCounts(List<UUID> ids) {
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return bookingRequests.findPendingItemCounts(ids).stream()
+                .collect(
+                        Collectors.toMap(BookingPendingItemCountsRow::getBookingRequestId, row -> new long[] {
+                            row.getRequiring(), row.getConfirmed(), row.getFailed(), row.getPendingRequired()
+                        }));
     }
 
     private static String nameOf(Map<UUID, String> names, UUID id) {

@@ -3,12 +3,12 @@
 > **Audience:** end users of the FKERP system (commercial / sales team).
 > **Language:** English (en-US). A Portuguese edition is maintained alongside
 > (`fkerp-user-manual.pt-BR.md`).
-> **Scope:** covers everything released through **v0.45.0** — the **Commercial / CRM** (the full lead and
+> **Scope:** covers everything released through **v0.46.0** — the **Commercial / CRM** (the full lead and
 > opportunity lifecycle), **Sales & Proposals** (proposals, items, amounts and discounts, the
 > approval/send/acceptance flow and the commercial orders), and **Booking operations** (the Reservas module:
 > the worklist, the detail, the attempt history, confirming Travel package and Car rental items, registering
-> failures with retry, and the **consolidated booking status reflected onto the Order**). It grows as new
-> capabilities ship.
+> failures with retry, the **consolidated booking status reflected onto the Order**, and the **Pending bookings**
+> view). It grows as new capabilities ship.
 
 ---
 
@@ -133,8 +133,9 @@ modules follow the **workflow**:
   the **New lead** action).
 - **Reservas** (Bookings) — the operational worklist of booking requests born from closed orders (section 10).
 - **Acompanhamento** (Monitoring) — the cross-funnel monitoring gathered into two hubs: **Pendências** (what
-  needs action) and **Indicadores** (the funnel's numbers). Each hub is a **tabbed** page by area (Leads,
-  Opportunities, Proposals, Orders) — you see only the tabs your profile may see.
+  needs action — Leads, Opportunities and **Bookings**) and **Indicadores** (the funnel's numbers — Leads,
+  Opportunities, Proposals, Orders). Each hub is a **tabbed** page by area — you see only the tabs your profile
+  may see.
 - **Cadastros** (Reference data) — the support lists that feed the workflows (section 11).
 
 Clicking a card opens that **module's home**, with the shortcuts to its screens.
@@ -797,6 +798,23 @@ to Finance**; a **Failed** booking marks the order with a **booking problem** to
 **read-only**: the order stays **owned by the Commercial area**, its own situation does not change because of the
 booking, and it is **never** cancelled automatically — nor is any financial record created.
 
+### 10.8 Pending bookings (what needs action)
+
+So no booking stalls silently, there is a **Pending bookings** view: the list of booking requests that **need
+action**, each tagged with the **reasons** why. It lives as the **Reservas** (Bookings) tab of the
+**Acompanhamento → Pendências** hub (`Ctrl K`), alongside Leads and Opportunities.
+
+A booking appears as pending when it: has **no operator** assigned; is **Pending with no attempt** yet; is **In
+progress with no recent attempt** (no activity for more than **7 days**); has a **failed item**; has a
+**requiring-booking item still pending**; is **Partially confirmed**; or has an **overdue next action**. Already
+**Confirmed** or **Cancelled** bookings do not appear (they need no action).
+
+Each row shows the order (PC-000n, linking to the booking detail), the proposal, the status, the operator, the
+responsible, the items to book, the next action and the last attempt, plus the **reason tags**. It is an
+**operational** view (not an executive dashboard): **read-only**, with no email alerts, no notification/SLA engine
+and no automatic retries. The same **visibility rules** as the bookings apply — anyone without booking access
+(sellers, representatives, finance) does not see this list.
+
 ## 11. Managing reference data (*cadastros*)
 
 Reference data are the lists that feed the lead form and future workflows. There are
@@ -897,14 +915,14 @@ Opportunity as **won**), and **consult the orders list** (**Comercial → Pedido
 
 **Sprint 4 — Booking operations** is underway and already delivers the **Reservas** module (section 10): the
 **worklist** of booking requests born from closed orders, the booking **detail** with its traceable sources, the
-**attempt history**, **confirming** Travel package and Car rental items, **registering failures with retry**, and
-the **consolidated booking status reflected onto the Commercial Order** (section 10.7) — making the order
-identifiable as *ready for Finance* or *having a booking problem*. The next steps will bring the rest of the
-booking cycle (operator assignment and cancellation) and, later, finance. This manual will be updated as each
-ships.
+**attempt history**, **confirming** Travel package and Car rental items, **registering failures with retry**, the
+**consolidated booking status reflected onto the Commercial Order** (section 10.7) — making the order identifiable
+as *ready for Finance* or *having a booking problem* — and the **Pending bookings** view (section 10.8) in the
+Acompanhamento → Pendências hub. The next steps will bring the rest of the booking cycle (operator assignment and
+cancellation) and, later, finance. This manual will be updated as each ships.
 
 ---
 
 *Document status: Sprints 1, 2 and 3 closed; Sprint 4 (Booking operations) in progress — the Reservas module
-with attempts, item confirmation, failure registration with retry, and the booking status reflected onto the
-Order. Maintained alongside the product.*
+with attempts, item confirmation, failure registration with retry, the booking status reflected onto the Order,
+and the Pending bookings view. Maintained alongside the product.*

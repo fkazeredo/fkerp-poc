@@ -15,6 +15,7 @@ import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
 import com.fksoft.erp.domain.booking.service.data.ConfirmCarRentalCommand;
 import com.fksoft.erp.domain.booking.service.data.ConfirmTravelPackageCommand;
 import com.fksoft.erp.domain.booking.service.data.FailBookingItemCommand;
+import com.fksoft.erp.domain.booking.service.data.PendingBookingRequest;
 import com.fksoft.erp.domain.booking.service.data.RecordBookingAttemptCommand;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
@@ -107,6 +108,26 @@ public class BookingRequestController {
                         userContext.currentUserId(),
                         canSeeAllBookings(),
                         canSeeUnassignedBookings()),
+                item -> item);
+    }
+
+    /**
+     * Operational pending-items worklist: the Booking Requests visible to the caller that need action, each
+     * tagged with its reasons (unassigned operator, pending without attempt, in progress without a recent
+     * attempt, a failed item, a requiring-booking item still pending, partially confirmed, or an overdue next
+     * action). Gated by the Booking read tiers (the policy narrows visibility at the query level, like the list).
+     * It is operational, not an executive dashboard: read-only, with no notification/SLA engine and no external
+     * retry; the contract carries operational reservation data only — never Financial, Payment or Commission data.
+     *
+     * @param pageable page, size and sort (default: updatedAt desc, size 20)
+     * @return a page of pending Booking Request items
+     */
+    @GetMapping("/pending")
+    public PageResponse<PendingBookingRequest> pending(
+            @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return PageResponse.from(
+                bookingService.pending(
+                        pageable, userContext.currentUserId(), canSeeAllBookings(), canSeeUnassignedBookings()),
                 item -> item);
     }
 
