@@ -145,6 +145,7 @@ class BookingRequestDetailApiIntegrationTest extends AbstractIntegrationTest {
                         "updatedAt",
                         "createdByName",
                         "items",
+                        "attempts",
                         "sourceOrder",
                         "sourceProposal",
                         "sourceOpportunity",

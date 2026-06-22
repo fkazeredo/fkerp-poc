@@ -1,5 +1,6 @@
 package com.fksoft.erp.domain.booking.model;
 
+import com.fksoft.erp.domain.booking.exception.BookingItemNotFoundException;
 import com.fksoft.erp.domain.booking.exception.BookingItemNotMarkableException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
@@ -19,6 +20,7 @@ import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -93,6 +95,16 @@ public class BookingRequest {
     @JoinColumn(name = "booking_request_id", nullable = false)
     private List<BookingItem> items = new ArrayList<>();
 
+    // The manual booking-attempt history (part of the aggregate): append-only operational log.
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "booking_request_id", nullable = false)
+    private List<BookingAttempt> attempts = new ArrayList<>();
+
+    // The most recent attempt instant, denormalized from the attempt history so the list shows the latest
+    // attempt without an N+1 query (null until the first attempt is registered).
+    @Column(name = "last_attempt_at")
+    private Instant lastAttemptAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -156,5 +168,43 @@ public class BookingRequest {
         request.createdBy = createdBy;
         request.updatedBy = createdBy;
         return request;
+    }
+
+    /**
+     * Registers a manual booking attempt (append-only operational history) and refreshes the denormalized
+     * latest-attempt instant. When the attempt references a booking item, it must belong to this request.
+     * Registering an attempt moves the request from {@link BookingRequestStatus#PENDING} to
+     * {@link BookingRequestStatus#IN_PROGRESS}; it never changes a booking item's status, never confirms the
+     * booking, and never creates Financial or Commission data.
+     *
+     * @param bookingItemId the booking item this attempt concerns, or {@code null} for the whole request
+     * @param type the attempt type
+     * @param result the attempt outcome (recorded for history only — even {@code FAILED} does not fail the
+     *     reservation)
+     * @param description what was done
+     * @param occurredAt when the attempt happened
+     * @param nextActionDate optional planned next action date
+     * @param byUser id of the user registering the attempt (its author)
+     * @throws BookingItemNotFoundException if {@code bookingItemId} is given but is not an item of this request
+     */
+    public void recordAttempt(
+            UUID bookingItemId,
+            BookingAttemptType type,
+            BookingAttemptResult result,
+            String description,
+            Instant occurredAt,
+            LocalDate nextActionDate,
+            UUID byUser) {
+        if (bookingItemId != null && items.stream().noneMatch(item -> item.id().equals(bookingItemId))) {
+            throw new BookingItemNotFoundException();
+        }
+        attempts.add(BookingAttempt.of(bookingItemId, type, result, description, occurredAt, nextActionDate, byUser));
+        if (lastAttemptAt == null || occurredAt.isAfter(lastAttemptAt)) {
+            lastAttemptAt = occurredAt;
+        }
+        if (status == BookingRequestStatus.PENDING) {
+            status = BookingRequestStatus.IN_PROGRESS;
+        }
+        updatedBy = byUser;
     }
 }

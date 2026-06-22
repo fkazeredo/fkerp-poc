@@ -11,11 +11,11 @@ import java.util.UUID;
  * <p>The reservation has no human number of its own (Rule Zero): the source Commercial Order's sequential
  * number ({@code commercialOrderNumber}, rendered PC-000n in the UI) is the human-friendly identifier, 1:1
  * with the active Order. {@code proposalTitle} is the commercial reference (the source Proposal headline).
- * {@code itemsRequiringBooking} / {@code confirmedItems} are the line counts. {@code lastBookingAttemptAt}
- * stays {@code null} until the attempt slice ships (the field is here so the screen is ready). Carries
- * operational reservation data only — <b>never</b> Financial, Payment or Commission data.
+ * {@code itemsRequiringBooking} / {@code confirmedItems} are the line counts. {@code lastBookingAttemptAt} is
+ * the most recent manual attempt's instant (denormalized; {@code null} until the first attempt is registered).
+ * Carries operational reservation data only — <b>never</b> Financial, Payment or Commission data.
  *
- * @param lastBookingAttemptAt the latest reservation attempt instant, or {@code null} (not tracked yet)
+ * @param lastBookingAttemptAt the latest manual booking attempt instant, or {@code null} when there is none
  */
 public record BookingRequestListItem(
         UUID id,
@@ -72,6 +72,6 @@ public record BookingRequestListItem(
                 confirmedCount,
                 r.createdAt(),
                 r.updatedAt(),
-                null);
+                r.lastAttemptAt());
     }
 }

@@ -140,6 +140,11 @@ export class AuthService {
       this.hasScope('booking:request:read:all')
     );
   }
+
+  /** Operate = register manual booking attempts (and future operate actions). Consultation users lack it. */
+  canOperateBookings(): boolean {
+    return this.hasScope('booking:request:update');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

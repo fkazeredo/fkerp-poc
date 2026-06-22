@@ -1,5 +1,8 @@
 package com.fksoft.erp.domain.booking.service.data;
 
+import com.fksoft.erp.domain.booking.model.BookingAttempt;
+import com.fksoft.erp.domain.booking.model.BookingAttemptResult;
+import com.fksoft.erp.domain.booking.model.BookingAttemptType;
 import com.fksoft.erp.domain.booking.model.BookingItem;
 import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
@@ -13,6 +16,7 @@ import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +57,7 @@ public record BookingRequestDetail(
         Instant updatedAt,
         String createdByName,
         List<Item> items,
+        List<AttemptItem> attempts,
         SourceOrder sourceOrder,
         SourceProposal sourceProposal,
         SourceOpportunity sourceOpportunity,
@@ -81,6 +86,18 @@ public record BookingRequestDetail(
                 .sorted(Comparator.comparing(BookingItem::createdAt))
                 .map(Item::from)
                 .toList();
+        List<AttemptItem> attempts = r.attempts().stream()
+                .sorted(Comparator.comparing(BookingAttempt::occurredAt).reversed())
+                .map(a -> new AttemptItem(
+                        a.id(),
+                        a.bookingItemId(),
+                        a.type(),
+                        a.result(),
+                        a.description(),
+                        a.occurredAt(),
+                        a.nextActionDate(),
+                        nameOf(names, a.registeredBy())))
+                .toList();
         long requiring = items.stream().filter(Item::requiresBooking).count();
         long confirmed = items.stream()
                 .filter(i -> i.status() == BookingItemStatus.CONFIRMED)
@@ -106,6 +123,7 @@ public record BookingRequestDetail(
                 r.updatedAt(),
                 nameOf(names, r.createdBy()),
                 items,
+                attempts,
                 new SourceOrder(order.id(), order.number(), order.status()),
                 new SourceProposal(proposal.id(), proposal.title(), proposal.status()),
                 new SourceOpportunity(opportunity.id(), opportunity.name(), opportunity.stage()),
@@ -147,4 +165,18 @@ public record BookingRequestDetail(
                     i.id(), i.orderItemId(), i.type(), i.description(), i.quantity(), i.requiresBooking(), i.status());
         }
     }
+
+    /**
+     * A single manual booking attempt in the operational history (append-only). {@code bookingItemId} is the
+     * booking item the attempt concerned, or {@code null} when it concerned the whole request.
+     */
+    public record AttemptItem(
+            UUID id,
+            UUID bookingItemId,
+            BookingAttemptType type,
+            BookingAttemptResult result,
+            String description,
+            Instant occurredAt,
+            LocalDate nextActionDate,
+            String registeredByName) {}
 }

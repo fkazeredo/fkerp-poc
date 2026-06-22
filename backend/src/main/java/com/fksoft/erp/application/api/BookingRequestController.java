@@ -3,11 +3,13 @@ package com.fksoft.erp.application.api;
 import com.fksoft.erp.application.api.dto.BookingRequestListParams;
 import com.fksoft.erp.application.api.dto.BookingRequestResponse;
 import com.fksoft.erp.application.api.dto.CreateBookingRequestRequest;
+import com.fksoft.erp.application.api.dto.RegisterBookingAttemptRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.service.BookingRequestService;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestDetail;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestListItem;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
+import com.fksoft.erp.domain.booking.service.data.RecordBookingAttemptCommand;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
@@ -114,6 +116,30 @@ public class BookingRequestController {
     @GetMapping("/{id}")
     public BookingRequestDetail detail(@PathVariable UUID id) {
         return bookingService.detail(id, userContext.currentUserId(), canSeeAllBookings(), canSeeUnassignedBookings());
+    }
+
+    /**
+     * Registers a manual booking attempt on a Booking Request (append-only operational history) and returns the
+     * refreshed detail. Requires {@code booking:request:update} and that the caller may see the request.
+     * Registering an attempt may move the request from PENDING to IN_PROGRESS; it never confirms the booking,
+     * never changes a booking item's status, and never creates Financial or Commission data.
+     *
+     * @param id the booking request id
+     * @param request the attempt data (optional item link, type, result, description, date, optional next action)
+     * @return the updated Booking Request detail
+     */
+    @PostMapping("/{id}/attempts")
+    public BookingRequestDetail registerAttempt(
+            @PathVariable UUID id, @Valid @RequestBody RegisterBookingAttemptRequest request) {
+        RecordBookingAttemptCommand command = new RecordBookingAttemptCommand(
+                request.bookingItemId(),
+                request.type(),
+                request.result(),
+                request.description(),
+                request.occurredAt(),
+                request.nextActionDate());
+        return bookingService.recordAttempt(
+                id, command, userContext.currentUserId(), canSeeAllBookings(), canSeeUnassignedBookings());
     }
 
     // Source-order visibility for creation reuses the Order read tiers.

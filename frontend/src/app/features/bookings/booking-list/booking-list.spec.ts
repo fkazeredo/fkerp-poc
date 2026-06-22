@@ -34,7 +34,7 @@ describe('BookingList', () => {
     confirmedItems: 1,
     createdAt: '2026-06-20T10:00:00Z',
     updatedAt: '2026-06-21T09:00:00Z',
-    lastBookingAttemptAt: null,
+    lastBookingAttemptAt: '2026-06-21T08:00:00Z',
   };
   const pageOf = (content: BookingRequestListItem[]) => ({
     content,
@@ -154,6 +154,7 @@ describe('BookingList', () => {
       expect(el.textContent).toContain('Proposta');
       expect(el.textContent).toContain('Itens p/ reservar');
       expect(el.textContent).toContain('Confirmados');
+      expect(el.textContent).toContain('Última tentativa');
       expect(el.textContent).toContain('PC-0007'); // the reservation id (source order code)
       expect(el.textContent).toContain('Contrato Acme'); // the commercial reference (proposal title)
       expect(el.textContent).toContain('Pendente'); // status tag
