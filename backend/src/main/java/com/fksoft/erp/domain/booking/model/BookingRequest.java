@@ -252,6 +252,29 @@ public class BookingRequest {
         updatedBy = byUser;
     }
 
+    /**
+     * Manually marks a booking item as failed and consolidates the request status. The item must belong to this
+     * request, require booking and not be already resolved (the item enforces that). After failing, the request
+     * status rolls up: when items requiring booking are confirmed it is {@link BookingRequestStatus#CONFIRMED}
+     * (all) or {@link BookingRequestStatus#PARTIALLY_CONFIRMED} (some); when none is confirmed but one failed it
+     * is {@link BookingRequestStatus#FAILED}. The failed item stays visible and may later be retried/confirmed.
+     * The Commercial Order is not cancelled and no Financial/Commission/Customer Care data is created.
+     *
+     * @param itemId the booking item to fail
+     * @param failure the failure record (reason, optional note, author, date)
+     * @param byUser the user marking the failure (the request's updater)
+     * @throws BookingItemNotFoundException if the item is not part of this request
+     * @throws com.fksoft.erp.domain.booking.exception.BookingItemNotFailableException if the item does not require
+     *     booking
+     * @throws com.fksoft.erp.domain.booking.exception.BookingItemAlreadyResolvedException if the item is already
+     *     confirmed or cancelled
+     */
+    public void failBookingItem(UUID itemId, BookingItemFailure failure, UUID byUser) {
+        item(itemId).fail(failure);
+        rollUpStatus();
+        updatedBy = byUser;
+    }
+
     private BookingItem item(UUID itemId) {
         return items.stream()
                 .filter(i -> i.id().equals(itemId))
@@ -259,18 +282,25 @@ public class BookingRequest {
                 .orElseThrow(BookingItemNotFoundException::new);
     }
 
-    // Consolidates the request status from the items that require booking: all confirmed → CONFIRMED; at least
-    // one (but not all) confirmed → PARTIALLY_CONFIRMED. Never downgrades an already CONFIRMED request.
+    // Consolidates the request status from the items that require booking (purely state-derived): all confirmed →
+    // CONFIRMED; at least one (but not all) confirmed → PARTIALLY_CONFIRMED; none confirmed but at least one
+    // failed → FAILED; otherwise left as is. Confirming a previously failed item reconsolidates the request.
     private void rollUpStatus() {
         long requiring = items.stream().filter(BookingItem::requiresBooking).count();
         long confirmed = items.stream()
                 .filter(BookingItem::requiresBooking)
                 .filter(i -> i.status() == BookingItemStatus.CONFIRMED)
                 .count();
+        long failed = items.stream()
+                .filter(BookingItem::requiresBooking)
+                .filter(i -> i.status() == BookingItemStatus.FAILED)
+                .count();
         if (requiring > 0 && confirmed == requiring) {
             status = BookingRequestStatus.CONFIRMED;
         } else if (confirmed > 0) {
             status = BookingRequestStatus.PARTIALLY_CONFIRMED;
+        } else if (failed > 0) {
+            status = BookingRequestStatus.FAILED;
         }
     }
 }

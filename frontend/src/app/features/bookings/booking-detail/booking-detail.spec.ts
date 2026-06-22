@@ -24,6 +24,7 @@ describe('BookingDetail', () => {
     registerAttempt: vi.fn(),
     confirmTravelPackage: vi.fn(),
     confirmCarRental: vi.fn(),
+    failBookingItem: vi.fn(),
   };
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
@@ -56,6 +57,7 @@ describe('BookingDetail', () => {
         requiresBooking: true,
         status: 'PENDING',
         confirmation: null,
+        failure: null,
       },
     ],
     attempts: [],
@@ -117,6 +119,7 @@ describe('BookingDetail', () => {
     bookings.registerAttempt.mockReset();
     bookings.confirmTravelPackage.mockReset();
     bookings.confirmCarRental.mockReset();
+    bookings.failBookingItem.mockReset();
     router.navigateByUrl.mockReset();
     messages.add.mockReset();
     auth.canOperateBookings.mockReset().mockReturnValue(false);
@@ -240,6 +243,7 @@ describe('BookingDetail', () => {
               carCategory: null,
               operationalNotes: null,
             },
+            failure: null,
           },
         ],
       });
@@ -258,6 +262,7 @@ describe('BookingDetail', () => {
         requiresBooking: true,
         status: 'PENDING',
         confirmation: null,
+        failure: null,
       };
     }
 
@@ -356,6 +361,7 @@ describe('BookingDetail', () => {
               carCategory: 'SUV',
               operationalNotes: null,
             },
+            failure: null,
           },
         ],
       });
@@ -370,6 +376,7 @@ describe('BookingDetail', () => {
         requiresBooking: true,
         status: 'PENDING',
         confirmation: null,
+        failure: null,
       };
     }
 
@@ -408,6 +415,138 @@ describe('BookingDetail', () => {
       expect(el.textContent).toContain('Localiza'); // rental company
       expect(el.textContent).toContain('SUV'); // car category
       expect(el.textContent).toContain('GRU Aeroporto'); // pickup location
+    });
+  });
+
+  describe('fail item', () => {
+    const failed = () =>
+      sample({
+        status: 'FAILED',
+        itemsFailed: 1,
+        items: [
+          {
+            id: 'i1',
+            orderItemId: 'oi1',
+            type: 'TRAVEL_PACKAGE',
+            description: 'Pacote Caribe',
+            quantity: 2,
+            requiresBooking: true,
+            status: 'FAILED',
+            confirmation: null,
+            failure: {
+              failureReason: 'NO_AVAILABILITY',
+              failureNote: 'Sem vagas para a data',
+              failedByName: 'operacoes',
+              failedAt: '2026-06-21T08:00:00Z',
+            },
+          },
+        ],
+      });
+
+    function pkgItem() {
+      return sample().items[0];
+    }
+
+    it('maps the failure reasons to pt-BR', () => {
+      const comp = build();
+      expect(comp['failureReasonLabel']('NO_AVAILABILITY')).toBe('Sem disponibilidade');
+      expect(comp['failureReasonLabel']('SUPPLIER_UNAVAILABLE')).toBe('Fornecedor indisponível');
+      expect(comp['failureReasonLabel']('OTHER')).toBe('Outro');
+    });
+
+    it('offers fail only for a requiring, not-resolved item with the update scope', () => {
+      const comp = build();
+      comp.ngOnInit();
+      expect(comp['canFailItem'](pkgItem())).toBe(false); // no scope
+      auth.canOperateBookings.mockReturnValue(true);
+      expect(comp['canFailItem'](pkgItem())).toBe(true);
+      // A failed item may still be failed again (update the reason).
+      expect(comp['canFailItem']({ ...pkgItem(), status: 'FAILED' })).toBe(true);
+      // An item that does not require booking is not failable.
+      expect(comp['canFailItem']({ ...pkgItem(), requiresBooking: false })).toBe(false);
+      // An already-resolved item is not failable.
+      expect(comp['canFailItem']({ ...pkgItem(), status: 'CONFIRMED' })).toBe(false);
+      expect(comp['canFailItem']({ ...pkgItem(), status: 'CANCELLED' })).toBe(false);
+    });
+
+    it('requires a reason and a date before saving', () => {
+      const comp = build();
+      comp.ngOnInit();
+      comp['openFail'](pkgItem());
+      expect(comp['canSaveFail']()).toBe(false);
+      comp['failReason'] = 'NO_AVAILABILITY';
+      comp['failDate'] = new Date('2026-06-21T08:00:00Z');
+      expect(comp['canSaveFail']()).toBe(true);
+    });
+
+    it('marks the item as failed, refreshes the detail and closes the dialog', () => {
+      bookings.failBookingItem.mockReturnValue(of(failed()));
+      const comp = build();
+      comp.ngOnInit();
+      comp['openFail'](pkgItem());
+      comp['failReason'] = 'NO_AVAILABILITY';
+      comp['failNote'] = 'Sem vagas para a data';
+      comp['failDate'] = new Date('2026-06-21T08:00:00Z');
+      comp['failItem']();
+      expect(bookings.failBookingItem).toHaveBeenCalledWith(
+        'bk1',
+        'i1',
+        expect.objectContaining({
+          failureReason: 'NO_AVAILABILITY',
+          failureNote: 'Sem vagas para a data',
+        }),
+      );
+      expect(comp['failOpen']()).toBe(false);
+      expect(comp['booking']()?.status).toBe('FAILED');
+      expect(comp['failedItems']()).toHaveLength(1);
+      expect(messages.add).toHaveBeenCalledWith(
+        expect.objectContaining({ severity: 'success', summary: 'Falha registrada' }),
+      );
+    });
+
+    it('sends a null note when left blank', () => {
+      bookings.failBookingItem.mockReturnValue(of(failed()));
+      const comp = build();
+      comp.ngOnInit();
+      comp['openFail'](pkgItem());
+      comp['failReason'] = 'OTHER';
+      comp['failDate'] = new Date('2026-06-21T08:00:00Z');
+      comp['failItem']();
+      expect(bookings.failBookingItem).toHaveBeenCalledWith(
+        'bk1',
+        'i1',
+        expect.objectContaining({ failureReason: 'OTHER', failureNote: null }),
+      );
+    });
+
+    it('still offers Confirmar for a failed item (retry)', () => {
+      auth.canOperateBookings.mockReturnValue(true);
+      const comp = build();
+      comp.ngOnInit();
+      const failedItem = failed().items[0];
+      expect(comp['canConfirmItem'](failedItem)).toBe(true);
+      expect(comp['canFailItem'](failedItem)).toBe(true);
+    });
+
+    it('renders the operational-problems card for a failed item (DOM)', () => {
+      bookings.detail.mockReturnValue(of(failed()));
+      const el = render();
+      expect(el.textContent).toContain('Problemas operacionais');
+      expect(el.textContent).toContain('Sem disponibilidade');
+      expect(el.textContent).toContain('Sem vagas para a data');
+    });
+
+    it('shows the empty operational-problems message when no item failed (DOM)', () => {
+      bookings.detail.mockReturnValue(of(sample()));
+      const el = render();
+      expect(el.textContent).toContain('Nenhum item com falha.');
+    });
+
+    it('shows the Falhar action for a requiring item only with the scope (DOM)', () => {
+      auth.canOperateBookings.mockReturnValue(true);
+      bookings.detail.mockReturnValue(of(sample()));
+      const el = render();
+      expect(el.textContent).toContain('Falhar');
     });
   });
 

@@ -97,9 +97,17 @@
   flex: 1;
 }
 
-.history li.confirmation {
+.history li.confirmation,
+.history li.failure {
   flex-direction: column;
   gap: 0.4rem;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .head-main h1 {

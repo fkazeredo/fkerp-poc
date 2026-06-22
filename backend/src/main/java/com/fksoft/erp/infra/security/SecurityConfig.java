@@ -157,7 +157,8 @@ public class SecurityConfig {
                                 HttpMethod.POST,
                                 "/api/bookings/*/attempts",
                                 "/api/bookings/*/items/*/confirm",
-                                "/api/bookings/*/items/*/confirm-car-rental")
+                                "/api/bookings/*/items/*/confirm-car-rental",
+                                "/api/bookings/*/items/*/fail")
                         .hasAuthority("SCOPE_booking:request:update")
                         .requestMatchers(HttpMethod.GET, "/api/bookings", "/api/bookings/**")
                         .hasAnyAuthority(BOOKING_READ_SCOPES)
