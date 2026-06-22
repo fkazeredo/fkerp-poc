@@ -5,6 +5,8 @@ import com.fksoft.erp.domain.booking.exception.BookingRequestAccessDeniedExcepti
 import com.fksoft.erp.domain.booking.exception.BookingRequestAlreadyExistsException;
 import com.fksoft.erp.domain.booking.exception.BookingRequestNotFoundException;
 import com.fksoft.erp.domain.booking.model.BookingAttempt;
+import com.fksoft.erp.domain.booking.model.BookingItem;
+import com.fksoft.erp.domain.booking.model.BookingItemConfirmation;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestCreated;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
@@ -13,6 +15,7 @@ import com.fksoft.erp.domain.booking.repository.BookingRequestRepository;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestDetail;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestListItem;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
+import com.fksoft.erp.domain.booking.service.data.ConfirmTravelPackageCommand;
 import com.fksoft.erp.domain.booking.service.data.RecordBookingAttemptCommand;
 import com.fksoft.erp.domain.crm.exception.LeadNotFoundException;
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
@@ -229,6 +232,51 @@ public class BookingRequestService {
         return toDetail(bookingRequests.saveAndFlush(request));
     }
 
+    /**
+     * Manually confirms a Travel Package booking item of a Booking Request the caller is allowed to see, and
+     * returns the refreshed detail. Records the external reservation result on the item, moves it to CONFIRMED
+     * and consolidates the request status (PARTIALLY_CONFIRMED / CONFIRMED). No external call is made and no
+     * Financial, Payment, Commission or Customer Care data is created.
+     *
+     * @param id the booking request id
+     * @param itemId the booking item to confirm
+     * @param command the confirmation data (external system + locator + date + optional travel metadata)
+     * @param userId the acting user (who confirmed)
+     * @param canSeeAll whether the caller may see every request
+     * @param canSeeUnassigned whether the caller may also see the unassigned (no-operator) pool
+     * @return the updated detail read model
+     * @throws BookingRequestNotFoundException if the request does not exist
+     * @throws BookingRequestAccessDeniedException if the caller may not see it
+     * @throws com.fksoft.erp.domain.booking.exception.BookingItemNotFoundException if the item is not in the request
+     * @throws com.fksoft.erp.domain.booking.exception.BookingItemNotConfirmableException if the item is not a
+     *     confirmable Travel Package item
+     * @throws com.fksoft.erp.domain.booking.exception.BookingItemAlreadyResolvedException if the item is already
+     *     confirmed or cancelled
+     */
+    @Transactional
+    public BookingRequestDetail confirmTravelPackageItem(
+            UUID id,
+            UUID itemId,
+            ConfirmTravelPackageCommand command,
+            UUID userId,
+            boolean canSeeAll,
+            boolean canSeeUnassigned) {
+        BookingRequest request = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
+        BookingItemConfirmation confirmation = BookingItemConfirmation.builder()
+                .externalSystem(command.externalSystem())
+                .externalLocator(command.externalLocator())
+                .confirmedAt(command.confirmedAt())
+                .confirmedBy(userId)
+                .packageDescription(command.packageDescription())
+                .travelStartDate(command.travelStartDate())
+                .travelEndDate(command.travelEndDate())
+                .travelerNotes(command.travelerNotes())
+                .operationalNotes(command.operationalNotes())
+                .build();
+        request.confirmTravelPackageItem(itemId, confirmation, userId);
+        return toDetail(bookingRequests.saveAndFlush(request));
+    }
+
     private BookingRequest loadVisible(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         BookingRequest request = bookingRequests.findById(id).orElseThrow(BookingRequestNotFoundException::new);
         if (!accessPolicy.canSee(request, userId, canSeeAll, canSeeUnassigned)) {
@@ -245,8 +293,13 @@ public class BookingRequestService {
                 opportunities.findById(request.opportunityId()).orElseThrow(OpportunityNotFoundException::new);
         Lead lead = leads.findById(request.leadId()).orElseThrow(LeadNotFoundException::new);
         Map<UUID, String> names = resolveNames(Stream.concat(
-                Stream.of(request.bookingOperatorId(), request.responsiblePersonId(), request.createdBy()),
-                request.attempts().stream().map(BookingAttempt::registeredBy)));
+                Stream.concat(
+                        Stream.of(request.bookingOperatorId(), request.responsiblePersonId(), request.createdBy()),
+                        request.attempts().stream().map(BookingAttempt::registeredBy)),
+                request.items().stream()
+                        .map(BookingItem::confirmation)
+                        .filter(Objects::nonNull)
+                        .map(BookingItemConfirmation::confirmedBy)));
         return BookingRequestDetail.from(request, order, proposal, opportunity, lead, names);
     }
 

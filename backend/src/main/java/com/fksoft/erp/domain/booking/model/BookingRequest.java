@@ -207,4 +207,46 @@ public class BookingRequest {
         }
         updatedBy = byUser;
     }
+
+    /**
+     * Manually confirms a Travel Package booking item's external reservation and consolidates the request
+     * status. The item must belong to this request and be a Travel Package item that requires booking and is
+     * not already resolved (the item enforces that). After confirming, the request status rolls up: when every
+     * item that requires booking is confirmed the request becomes {@link BookingRequestStatus#CONFIRMED},
+     * otherwise (some but not all confirmed) {@link BookingRequestStatus#PARTIALLY_CONFIRMED}. No external call
+     * is made and no Financial/Commission/Customer Care data is created.
+     *
+     * @param itemId the booking item to confirm
+     * @param confirmation the external reservation result
+     * @param byUser the user confirming (the request's updater)
+     * @throws BookingItemNotFoundException if the item is not part of this request
+     * @throws com.fksoft.erp.domain.booking.exception.BookingItemNotConfirmableException if the item is not a
+     *     Travel Package item that requires booking
+     * @throws com.fksoft.erp.domain.booking.exception.BookingItemAlreadyResolvedException if the item is already
+     *     confirmed or cancelled
+     */
+    public void confirmTravelPackageItem(UUID itemId, BookingItemConfirmation confirmation, UUID byUser) {
+        BookingItem item = items.stream()
+                .filter(i -> i.id().equals(itemId))
+                .findFirst()
+                .orElseThrow(BookingItemNotFoundException::new);
+        item.confirmTravelPackage(confirmation);
+        rollUpStatus();
+        updatedBy = byUser;
+    }
+
+    // Consolidates the request status from the items that require booking: all confirmed → CONFIRMED; at least
+    // one (but not all) confirmed → PARTIALLY_CONFIRMED. Never downgrades an already CONFIRMED request.
+    private void rollUpStatus() {
+        long requiring = items.stream().filter(BookingItem::requiresBooking).count();
+        long confirmed = items.stream()
+                .filter(BookingItem::requiresBooking)
+                .filter(i -> i.status() == BookingItemStatus.CONFIRMED)
+                .count();
+        if (requiring > 0 && confirmed == requiring) {
+            status = BookingRequestStatus.CONFIRMED;
+        } else if (confirmed > 0) {
+            status = BookingRequestStatus.PARTIALLY_CONFIRMED;
+        }
+    }
 }

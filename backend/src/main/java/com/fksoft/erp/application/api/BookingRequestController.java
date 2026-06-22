@@ -2,6 +2,7 @@ package com.fksoft.erp.application.api;
 
 import com.fksoft.erp.application.api.dto.BookingRequestListParams;
 import com.fksoft.erp.application.api.dto.BookingRequestResponse;
+import com.fksoft.erp.application.api.dto.ConfirmTravelPackageRequest;
 import com.fksoft.erp.application.api.dto.CreateBookingRequestRequest;
 import com.fksoft.erp.application.api.dto.RegisterBookingAttemptRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
@@ -9,6 +10,7 @@ import com.fksoft.erp.domain.booking.service.BookingRequestService;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestDetail;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestListItem;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
+import com.fksoft.erp.domain.booking.service.data.ConfirmTravelPackageCommand;
 import com.fksoft.erp.domain.booking.service.data.RecordBookingAttemptCommand;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
@@ -140,6 +142,33 @@ public class BookingRequestController {
                 request.nextActionDate());
         return bookingService.recordAttempt(
                 id, command, userContext.currentUserId(), canSeeAllBookings(), canSeeUnassignedBookings());
+    }
+
+    /**
+     * Manually confirms a Travel Package booking item's external reservation and returns the refreshed detail.
+     * Requires {@code booking:request:update} and that the caller may see the request. Records the external
+     * reservation result on the item, moves it to CONFIRMED and consolidates the request status; it calls no
+     * external system and creates no Financial, Payment, Commission or Customer Care data.
+     *
+     * @param id the booking request id
+     * @param itemId the booking item to confirm
+     * @param request the confirmation data (external system + locator + date + optional travel metadata)
+     * @return the updated Booking Request detail
+     */
+    @PostMapping("/{id}/items/{itemId}/confirm")
+    public BookingRequestDetail confirmTravelPackageItem(
+            @PathVariable UUID id, @PathVariable UUID itemId, @Valid @RequestBody ConfirmTravelPackageRequest request) {
+        ConfirmTravelPackageCommand command = new ConfirmTravelPackageCommand(
+                request.externalSystem(),
+                request.externalLocator(),
+                request.confirmedAt(),
+                request.packageDescription(),
+                request.travelStartDate(),
+                request.travelEndDate(),
+                request.travelerNotes(),
+                request.operationalNotes());
+        return bookingService.confirmTravelPackageItem(
+                id, itemId, command, userContext.currentUserId(), canSeeAllBookings(), canSeeUnassignedBookings());
     }
 
     // Source-order visibility for creation reuses the Order read tiers.

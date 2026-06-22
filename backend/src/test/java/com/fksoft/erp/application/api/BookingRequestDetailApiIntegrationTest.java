@@ -153,7 +153,14 @@ class BookingRequestDetailApiIntegrationTest extends AbstractIntegrationTest {
         List<Map<String, Object>> items = JsonPath.read(body, "$.items");
         Assertions.assertThat(items.get(0).keySet())
                 .containsExactlyInAnyOrder(
-                        "id", "orderItemId", "type", "description", "quantity", "requiresBooking", "status");
+                        "id",
+                        "orderItemId",
+                        "type",
+                        "description",
+                        "quantity",
+                        "requiresBooking",
+                        "status",
+                        "confirmation");
     }
 
     @Test

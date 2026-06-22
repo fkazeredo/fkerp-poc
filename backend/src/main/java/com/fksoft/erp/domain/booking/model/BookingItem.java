@@ -1,8 +1,11 @@
 package com.fksoft.erp.domain.booking.model;
 
+import com.fksoft.erp.domain.booking.exception.BookingItemAlreadyResolvedException;
+import com.fksoft.erp.domain.booking.exception.BookingItemNotConfirmableException;
 import com.fksoft.erp.domain.sales.model.CommercialOrderItem;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -64,6 +67,11 @@ public class BookingItem {
     @Column(nullable = false)
     private BookingItemStatus status;
 
+    // The manual confirmation of the external reservation — populated only when the item is confirmed (null
+    // otherwise). Carries no monetary data.
+    @Embedded
+    private BookingItemConfirmation confirmation;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -105,5 +113,26 @@ public class BookingItem {
             case SERVICE_FEE -> false;
             case OTHER -> explicitlyRequired;
         };
+    }
+
+    /**
+     * Manually confirms this item's external reservation through the Travel Package flow: records the
+     * confirmation and moves the item to {@link BookingItemStatus#CONFIRMED}. Only a Travel Package item that
+     * requires booking and is not already confirmed/cancelled can be confirmed; the item protects its own
+     * invariant. No monetary/Financial/Commission/Customer Care data is created and no external call is made.
+     *
+     * @param confirmation the external reservation result (system, locator, date, author + optional metadata)
+     * @throws BookingItemNotConfirmableException if this is not a Travel Package item that requires booking
+     * @throws BookingItemAlreadyResolvedException if this item is already confirmed or cancelled
+     */
+    void confirmTravelPackage(BookingItemConfirmation confirmation) {
+        if (type != ProposalItemType.TRAVEL_PACKAGE || !requiresBooking) {
+            throw new BookingItemNotConfirmableException();
+        }
+        if (status == BookingItemStatus.CONFIRMED || status == BookingItemStatus.CANCELLED) {
+            throw new BookingItemAlreadyResolvedException();
+        }
+        this.confirmation = confirmation;
+        this.status = BookingItemStatus.CONFIRMED;
     }
 }

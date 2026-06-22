@@ -109,6 +109,19 @@ export interface BookingFilters {
   hasFailedItems?: boolean | null;
 }
 
+/** The external reservation result recorded when a Travel Package item is manually confirmed. No monetary data. */
+export interface BookingItemConfirmation {
+  externalSystem: string;
+  externalLocator: string;
+  confirmedAt: string;
+  confirmedByName: string | null;
+  packageDescription: string | null;
+  travelStartDate: string | null;
+  travelEndDate: string | null;
+  travelerNotes: string | null;
+  operationalNotes: string | null;
+}
+
 /** A single booking line, traceable to its source Commercial Order item, carrying its booking status. */
 export interface BookingRequestItem {
   id: string;
@@ -118,6 +131,19 @@ export interface BookingRequestItem {
   quantity: number;
   requiresBooking: boolean;
   status: BookingItemStatus;
+  confirmation: BookingItemConfirmation | null;
+}
+
+/** Payload to manually confirm a Travel Package booking item. */
+export interface ConfirmTravelPackage {
+  externalSystem: string;
+  externalLocator: string;
+  confirmedAt: string;
+  packageDescription?: string | null;
+  travelStartDate?: string | null;
+  travelEndDate?: string | null;
+  travelerNotes?: string | null;
+  operationalNotes?: string | null;
 }
 
 /** The source Commercial Order, kept traceable from the reservation (its number is the human identifier). */
@@ -191,6 +217,15 @@ export class BookingService {
   /** Registers a manual booking attempt; returns the refreshed detail. */
   registerAttempt(id: string, payload: RegisterBookingAttempt): Observable<BookingRequestDetail> {
     return this.http.post<BookingRequestDetail>(`/api/bookings/${id}/attempts`, payload);
+  }
+
+  /** Manually confirms a Travel Package booking item; returns the refreshed detail. */
+  confirmTravelPackage(
+    id: string,
+    itemId: string,
+    payload: ConfirmTravelPackage,
+  ): Observable<BookingRequestDetail> {
+    return this.http.post<BookingRequestDetail>(`/api/bookings/${id}/items/${itemId}/confirm`, payload);
   }
 
   /** The selectable responsible people (shared with the CRM module). */
