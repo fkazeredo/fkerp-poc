@@ -138,10 +138,10 @@ describe('OpportunityService', () => {
   });
 
   it('posts lose, change-stage, activity and puts the commercial details on the right endpoints', () => {
-    service.lose('o1', 'NO_RESPONSE', 'sumiu').subscribe();
+    service.lose('o1', 'loss-reason-id-1', 'sumiu').subscribe();
     const lose = http.expectOne('/api/opportunities/o1/lose');
     expect(lose.request.method).toBe('POST');
-    expect(lose.request.body).toEqual({ reason: 'NO_RESPONSE', note: 'sumiu' });
+    expect(lose.request.body).toEqual({ lossReasonId: 'loss-reason-id-1', note: 'sumiu' });
     lose.flush({});
 
     service.changeStage('o1', 'DISCOVERY').subscribe();
@@ -151,8 +151,8 @@ describe('OpportunityService', () => {
     stage.flush({});
 
     const activity = {
-      type: 'PHONE_CALL' as const,
-      result: 'CLIENT_ENGAGED' as const,
+      typeId: 'type-id-1',
+      resultId: 'result-id-1',
       description: 'ligou',
       occurredAt: '2026-06-15T13:00:00.000Z',
       nextActionDate: null,

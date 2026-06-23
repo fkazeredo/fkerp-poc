@@ -16,14 +16,12 @@ import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { Observable } from 'rxjs';
 import {
-  OpportunityActivityResult,
-  OpportunityActivityType,
   OpportunityDetail,
-  OpportunityLossReason,
   OpportunityService,
   OpportunityStage,
 } from '../../../core/api/opportunity.service';
 import { Responsible } from '../../../core/api/lead.service';
+import { ReferenceItem, ReferenceService } from '../../../core/api/reference.service';
 import { ProposalService } from '../../../core/api/proposal.service';
 import { HasUnsavedChanges, UnsavedChangesService } from '../../../core/forms/unsaved-changes.service';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -44,54 +42,6 @@ const NEXT_STAGE: Partial<Record<OpportunityStage, OpportunityStage>> = {
   DISCOVERY: 'PRODUCT_FIT',
   PRODUCT_FIT: 'READY_FOR_PROPOSAL',
 };
-
-const ACTIVITY_TYPE_LABELS: Record<OpportunityActivityType, string> = {
-  PHONE_CALL: 'Ligação',
-  WHATSAPP: 'WhatsApp',
-  EMAIL: 'E-mail',
-  MEETING: 'Reunião',
-  INTERNAL_NOTE: 'Nota interna',
-  DOCUMENT_REQUEST: 'Solicitação de documento',
-  PRICE_DISCUSSION: 'Discussão de preço',
-  TRAVEL_REQUIREMENT_CLARIFICATION: 'Esclarecimento de requisito de viagem',
-  OTHER: 'Outro',
-};
-
-const ACTIVITY_RESULT_LABELS: Record<OpportunityActivityResult, string> = {
-  CLIENT_ENGAGED: 'Cliente engajado',
-  NEEDS_FOLLOW_UP: 'Precisa follow-up',
-  WAITING_FOR_CLIENT: 'Aguardando cliente',
-  WAITING_FOR_INTERNAL_INFO: 'Aguardando informação interna',
-  PRODUCT_FIT_IDENTIFIED: 'Aderência identificada',
-  READY_FOR_PROPOSAL: 'Pronta para proposta',
-  NOT_INTERESTED: 'Sem interesse',
-  OTHER: 'Outro',
-};
-
-const ACTIVITY_TYPE_OPTIONS = (Object.keys(ACTIVITY_TYPE_LABELS) as OpportunityActivityType[]).map(
-  (value) => ({ value, label: ACTIVITY_TYPE_LABELS[value] }),
-);
-const ACTIVITY_RESULT_OPTIONS = (Object.keys(ACTIVITY_RESULT_LABELS) as OpportunityActivityResult[]).map(
-  (value) => ({ value, label: ACTIVITY_RESULT_LABELS[value] }),
-);
-
-const LOSS_REASON_LABELS: Record<OpportunityLossReason, string> = {
-  NO_BUDGET: 'Sem orçamento',
-  NO_DECISION: 'Sem decisão',
-  NO_RESPONSE: 'Sem resposta',
-  COMPETITOR_CHOSEN: 'Concorrente escolhido',
-  PRODUCT_MISMATCH: 'Incompatibilidade de produto',
-  PRICE_TOO_HIGH: 'Preço muito alto',
-  TRAVEL_CANCELLED: 'Viagem cancelada',
-  DUPLICATED_OPPORTUNITY: 'Oportunidade duplicada',
-  OUT_OF_PROFILE: 'Fora do perfil',
-  OTHER: 'Outro',
-};
-
-const LOSS_REASON_OPTIONS = (Object.keys(LOSS_REASON_LABELS) as OpportunityLossReason[]).map((value) => ({
-  value,
-  label: LOSS_REASON_LABELS[value],
-}));
 
 type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'danger';
 
@@ -129,6 +79,7 @@ export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChang
   private readonly messages = inject(MessageService);
   private readonly auth = inject(AuthService);
   private readonly proposals = inject(ProposalService);
+  private readonly references = inject(ReferenceService);
   private readonly unsaved = inject(UnsavedChangesService);
 
   constructor() {
@@ -206,18 +157,18 @@ export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChang
 
   protected readonly loseOpen = signal(false);
   protected readonly acting = signal(false);
-  protected readonly lossReasonOptions = LOSS_REASON_OPTIONS;
-  protected lossReason: OpportunityLossReason | null = null;
+  protected readonly lossReasonOptions = signal<ReferenceItem[]>([]);
+  protected lossReason: string | null = null;
   protected lossNote = '';
 
   protected readonly stageOpen = signal(false);
   protected targetStage: OpportunityStage | null = null;
 
   protected readonly activityOpen = signal(false);
-  protected readonly activityTypeOptions = ACTIVITY_TYPE_OPTIONS;
-  protected readonly activityResultOptions = ACTIVITY_RESULT_OPTIONS;
-  protected activityType: OpportunityActivityType | null = null;
-  protected activityResult: OpportunityActivityResult | null = null;
+  protected readonly activityTypeOptions = signal<ReferenceItem[]>([]);
+  protected readonly activityResultOptions = signal<ReferenceItem[]>([]);
+  protected activityType: string | null = null;
+  protected activityResult: string | null = null;
   protected activityDescription = '';
   protected activityOccurredAt: Date = new Date();
   protected activityNextActionDate: Date | null = null;
@@ -244,6 +195,13 @@ export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChang
   ngOnInit(): void {
     this.opportunityId = this.route.snapshot.paramMap.get('id') ?? '';
     this.load();
+    this.references
+      .list('opportunity-activity-types')
+      .subscribe((items) => this.activityTypeOptions.set(items));
+    this.references
+      .list('opportunity-activity-results')
+      .subscribe((items) => this.activityResultOptions.set(items));
+    this.references.list('opportunity-loss-reasons').subscribe((items) => this.lossReasonOptions.set(items));
   }
 
   protected stageLabel(stage: OpportunityStage): string {
@@ -309,20 +267,8 @@ export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChang
     return this.proposalTitle.trim().length > 0;
   }
 
-  protected activityTypeLabel(type: OpportunityActivityType): string {
-    return ACTIVITY_TYPE_LABELS[type];
-  }
-
-  protected activityResultLabel(result: OpportunityActivityResult): string {
-    return ACTIVITY_RESULT_LABELS[result];
-  }
-
   protected back(): void {
     this.router.navigateByUrl('/oportunidades');
-  }
-
-  protected lossReasonLabel(reason: OpportunityLossReason): string {
-    return LOSS_REASON_LABELS[reason];
   }
 
   protected openLose(): void {
@@ -385,8 +331,8 @@ export class OpportunityDetailPage implements OnInit, OnDestroy, HasUnsavedChang
     }
     this.act(
       this.opportunities.registerActivity(this.opportunityId, {
-        type: this.activityType!,
-        result: this.activityResult!,
+        typeId: this.activityType!,
+        resultId: this.activityResult!,
         description: this.activityDescription.trim(),
         occurredAt: this.activityOccurredAt.toISOString(),
         nextActionDate: toIsoDate(this.activityNextActionDate),

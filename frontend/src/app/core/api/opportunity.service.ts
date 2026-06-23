@@ -68,9 +68,9 @@ export type OpportunityLossReason =
   | 'OUT_OF_PROFILE'
   | 'OTHER';
 
-/** Loss outcome, present only when the Opportunity is LOST. */
+/** Loss outcome, present only when the Opportunity is LOST. {@code reason} is the resolved cadastro label. */
 export interface OpportunityLoss {
-  reason: OpportunityLossReason | null;
+  reason: string | null;
   lostAt: string;
   lostBy: string | null;
   note: string | null;
@@ -105,21 +105,24 @@ export type OpportunityActivityResult =
   | 'NOT_INTERESTED'
   | 'OTHER';
 
-/** A single commercial activity in the negotiation history (newest first in the detail). */
+/**
+ * A single commercial activity in the negotiation history (newest first in the detail). {@code type} and
+ * {@code result} are the resolved cadastro labels.
+ */
 export interface OpportunityActivity {
   id: string;
-  type: OpportunityActivityType;
-  result: OpportunityActivityResult;
+  type: string;
+  result: string;
   description: string;
   occurredAt: string;
   nextActionDate: string | null;
   registeredBy: string | null;
 }
 
-/** Payload to register a commercial activity on an Opportunity. */
+/** Payload to register a commercial activity on an Opportunity (the activity-type / result cadastro ids). */
 export interface RegisterActivity {
-  type: OpportunityActivityType;
-  result: OpportunityActivityResult;
+  typeId: string;
+  resultId: string;
   description: string;
   occurredAt: string;
   nextActionDate: string | null;
@@ -292,8 +295,8 @@ export class OpportunityService {
     return this.http.get<OpportunityIndicators>('/api/opportunities/indicators', { params });
   }
 
-  lose(id: string, reason: OpportunityLossReason, note: string | null): Observable<OpportunityDetail> {
-    return this.http.post<OpportunityDetail>(`/api/opportunities/${id}/lose`, { reason, note });
+  lose(id: string, lossReasonId: string, note: string | null): Observable<OpportunityDetail> {
+    return this.http.post<OpportunityDetail>(`/api/opportunities/${id}/lose`, { lossReasonId, note });
   }
 
   changeStage(id: string, stage: OpportunityStage): Observable<OpportunityDetail> {
