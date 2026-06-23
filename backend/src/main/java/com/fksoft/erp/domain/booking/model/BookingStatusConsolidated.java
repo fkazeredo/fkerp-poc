@@ -10,6 +10,6 @@ import java.util.UUID;
  *
  * @param bookingRequestId the Booking Request whose status was consolidated
  * @param commercialOrderId the source Commercial Order the status is reflected onto
- * @param status the consolidated Booking Request status
+ * @param status the consolidated Booking Request status code
  */
-public record BookingStatusConsolidated(UUID bookingRequestId, UUID commercialOrderId, BookingRequestStatus status) {}
+public record BookingStatusConsolidated(UUID bookingRequestId, UUID commercialOrderId, String status) {}

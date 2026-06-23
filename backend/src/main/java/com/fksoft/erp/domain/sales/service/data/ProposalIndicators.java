@@ -1,6 +1,5 @@
 package com.fksoft.erp.domain.sales.service.data;
 
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -31,7 +30,7 @@ public record ProposalIndicators(
         long waitingForCustomerDecision) {
 
     /** Proposal count for a lifecycle status. */
-    public record StatusCount(ProposalStatus status, long count) {}
+    public record StatusCount(String status, long count) {}
 
     /** Proposal count for a responsible person ({@code responsibleName == null} means unassigned). */
     public record ResponsibleCount(String responsibleName, long count) {}

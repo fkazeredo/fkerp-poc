@@ -136,13 +136,12 @@
         @if (p.status === 'REJECTED' && p.rejectionReason) {
           <dt>Motivo da rejeição</dt>
           <dd class="rejection">
-            {{ rejectionReasonLabel(p.rejectionReason)
-            }}{{ p.rejectionNote ? ' — ' + p.rejectionNote : '' }}
+            {{ p.rejectionReason }}{{ p.rejectionNote ? ' — ' + p.rejectionNote : '' }}
           </dd>
         }
         @if (p.sendingChannel) {
           <dt>Canal de envio</dt>
-          <dd class="sending-channel">{{ sendingChannelLabel(p.sendingChannel) }}</dd>
+          <dd class="sending-channel">{{ p.sendingChannel }}</dd>
         }
         @if (p.status === 'ACCEPTED' && p.acceptanceNote) {
           <dt>Nota do aceite</dt>
@@ -151,8 +150,7 @@
         @if (p.status === 'REJECTED' && p.customerRejectionReason) {
           <dt>Motivo da recusa do cliente</dt>
           <dd class="rejection">
-            {{ customerRejectionReasonLabel(p.customerRejectionReason)
-            }}{{ p.customerRejectionNote ? ' — ' + p.customerRejectionNote : '' }}
+            {{ p.customerRejectionReason }}{{ p.customerRejectionNote ? ' — ' + p.customerRejectionNote : '' }}
           </dd>
         }
         <dt>Criada em</dt>
@@ -215,7 +213,7 @@
       </ng-template>
       <ng-template pTemplate="body" let-item>
         <tr>
-          <td>{{ itemTypeLabel(item.type) }}</td>
+          <td>{{ item.typeLabel }}</td>
           <td>{{ item.description }}</td>
           <td class="num">{{ item.quantity }}</td>
           <td class="num">{{ item.unitValue | currency: 'BRL' }}</td>
@@ -305,10 +303,11 @@
       <label for="itype">Tipo <span class="req">*</span></label>
       <p-select
         inputId="itype"
-        [options]="itemTypeOptions"
+        [options]="itemTypeOptions()"
         optionLabel="label"
-        optionValue="value"
+        optionValue="id"
         [(ngModel)]="itemType"
+        placeholder="Selecione o tipo"
         styleClass="w-full"
         appendTo="body"
       />
@@ -488,9 +487,9 @@
       <label for="rreason">Motivo <span class="req">*</span></label>
       <p-select
         inputId="rreason"
-        [options]="rejectReasonOptions"
+        [options]="rejectReasonOptions()"
         optionLabel="label"
-        optionValue="value"
+        optionValue="id"
         [(ngModel)]="rejectReason"
         placeholder="Selecione"
         styleClass="w-full"
@@ -531,9 +530,9 @@
       <label for="schannel">Canal de envio (opcional)</label>
       <p-select
         inputId="schannel"
-        [options]="sendChannelOptions"
+        [options]="sendChannelOptions()"
         optionLabel="label"
-        optionValue="value"
+        optionValue="id"
         [(ngModel)]="sendChannel"
         placeholder="Selecione"
         [showClear]="true"
@@ -595,9 +594,9 @@
       <label for="dreason">Motivo <span class="req">*</span></label>
       <p-select
         inputId="dreason"
-        [options]="declineReasonOptions"
+        [options]="declineReasonOptions()"
         optionLabel="label"
-        optionValue="value"
+        optionValue="id"
         [(ngModel)]="declineReason"
         placeholder="Selecione"
         styleClass="w-full"

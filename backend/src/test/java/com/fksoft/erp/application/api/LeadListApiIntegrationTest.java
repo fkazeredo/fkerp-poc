@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.LossReasonRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -61,10 +60,10 @@ class LeadListApiIntegrationTest extends AbstractIntegrationTest {
         leads.deleteAll();
         websiteOriginId = origins.findByActiveTrueOrderBySortOrderAsc().get(0).id();
         Instant now = Instant.now();
-        insertLead("Alpha", LeadStatus.NEW, USER_A, "11999990001", null, now);
-        insertLead("Bravo", LeadStatus.CONTACTED, USER_B, "11999990002", null, now);
-        insertLead("Charlie", LeadStatus.LOST, USER_A, "11999990003", null, now);
-        insertLead("Delta", LeadStatus.NEW, null, null, "delta@example.com", now);
+        insertLead("Alpha", "NEW", USER_A, "11999990001", null, now);
+        insertLead("Bravo", "CONTACTED", USER_B, "11999990002", null, now);
+        insertLead("Charlie", "LOST", USER_A, "11999990003", null, now);
+        insertLead("Delta", "NEW", null, null, "delta@example.com", now);
     }
 
     @Test
@@ -217,10 +216,9 @@ class LeadListApiIntegrationTest extends AbstractIntegrationTest {
         return JsonPath.read(body, "$.accessToken");
     }
 
-    private void insertLead(
-            String name, LeadStatus status, UUID responsibleId, String phone, String email, Instant at) {
+    private void insertLead(String name, String status, UUID responsibleId, String phone, String email, Instant at) {
         // A lost lead must carry a loss reason (DB CHECK chk_leads_lost_has_reason).
-        String lossReasonId = status == LeadStatus.LOST
+        String lossReasonId = "LOST".equals(status)
                 ? lossReasons.findByActiveTrueOrderBySortOrderAsc().get(0).id().toString()
                 : null;
         jdbc.update(
@@ -236,7 +234,7 @@ class LeadListApiIntegrationTest extends AbstractIntegrationTest {
                 phone,
                 email,
                 websiteOriginId.toString(),
-                status.name(),
+                status,
                 responsibleId == null ? null : responsibleId.toString(),
                 lossReasonId,
                 Timestamp.from(at),

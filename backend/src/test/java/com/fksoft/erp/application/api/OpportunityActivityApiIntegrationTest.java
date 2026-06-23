@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -22,10 +21,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * End-to-end (MockMvc, real Postgres) of commercial activities on an Opportunity: registering an
- * activity (with all required fields), it appearing in the detail and surfacing on the operational list
- * (last activity + next action), append-only history, validation (required fields / future date /
- * unknown enum), and the {@code crm:opportunity:update} scope + visibility checks. Activities never move
- * the stage and never create Proposal/Sale/Booking/Financial data.
+ * activity (with all required fields, referencing the activity-type/result cadastros by id), it appearing
+ * in the detail (showing the cadastro label) and surfacing on the operational list (last activity + next
+ * action), append-only history, validation (required fields / future date / unknown cadastro id), and the
+ * {@code crm:opportunity:update} scope + visibility checks. Activities never move the stage and never create
+ * Proposal/Sale/Booking/Financial data.
  */
 class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
 
@@ -56,23 +56,20 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
         leads.deleteAll();
         originId = origins.findByActiveTrueOrderBySortOrderAsc().get(0).id();
         phoneSeq = 0;
-        managerOpp = insertOpportunity("Aurora", OpportunityStage.NEW_OPPORTUNITY, MANAGER);
-        insertOpportunity("Beta", OpportunityStage.NEW_OPPORTUNITY, REPRESENTANTE);
-        lostOpp = insertOpportunity("Gamma", OpportunityStage.LOST, MANAGER);
+        managerOpp = insertOpportunity("Aurora", "NEW_OPPORTUNITY", MANAGER);
+        insertOpportunity("Beta", "NEW_OPPORTUNITY", REPRESENTANTE);
+        lostOpp = insertOpportunity("Gamma", "LOST", MANAGER);
     }
 
     @Test
     void registersAnActivityAndShowsItInDetail() throws Exception {
         register(
                         managerOpp,
-                        """
-                        {"type":"PHONE_CALL","result":"CLIENT_ENGAGED","description":"Ligação inicial",
-                         "occurredAt":"2026-06-10T13:00:00Z","nextActionDate":"2026-06-20"}
-                        """,
+                        body("PHONE_CALL", "CLIENT_ENGAGED", "Ligação inicial", "2026-06-10T13:00:00Z", "2026-06-20"),
                         manager())
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.activities[0].type").value("PHONE_CALL"))
-                .andExpect(jsonPath("$.activities[0].result").value("CLIENT_ENGAGED"))
+                .andExpect(jsonPath("$.activities[0].type").value("Ligação"))
+                .andExpect(jsonPath("$.activities[0].result").value("Cliente engajado"))
                 .andExpect(jsonPath("$.activities[0].description").value("Ligação inicial"))
                 .andExpect(jsonPath("$.activities[0].registeredBy").value("comercial"))
                 .andExpect(jsonPath("$.activities[0].nextActionDate").value("2026-06-20"))
@@ -86,10 +83,7 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
         String token = manager();
         register(
                         managerOpp,
-                        """
-                        {"type":"MEETING","result":"PRODUCT_FIT_IDENTIFIED","description":"Reunião",
-                         "occurredAt":"2026-06-11T09:00:00Z","nextActionDate":"2026-06-25"}
-                        """,
+                        body("MEETING", "PRODUCT_FIT_IDENTIFIED", "Reunião", "2026-06-11T09:00:00Z", "2026-06-25"),
                         token)
                 .andExpect(status().isOk());
         mvc.perform(get("/api/opportunities").header("Authorization", "Bearer " + token))
@@ -103,21 +97,9 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void preservesHistoryNewestFirst() throws Exception {
         String token = manager();
-        register(
-                        managerOpp,
-                        """
-                        {"type":"EMAIL","result":"WAITING_FOR_CLIENT","description":"primeiro",
-                         "occurredAt":"2026-06-10T10:00:00Z"}
-                        """,
-                        token)
+        register(managerOpp, body("EMAIL", "WAITING_FOR_CLIENT", "primeiro", "2026-06-10T10:00:00Z", null), token)
                 .andExpect(status().isOk());
-        register(
-                        managerOpp,
-                        """
-                        {"type":"WHATSAPP","result":"NEEDS_FOLLOW_UP","description":"segundo",
-                         "occurredAt":"2026-06-14T10:00:00Z"}
-                        """,
-                        token)
+        register(managerOpp, body("WHATSAPP", "NEEDS_FOLLOW_UP", "segundo", "2026-06-14T10:00:00Z", null), token)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.activities.length()").value(2))
                 .andExpect(jsonPath("$.activities[0].description").value("segundo"))
@@ -127,13 +109,7 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void allowsRegisteringOnALostOpportunity() throws Exception {
         // Mirrors the Lead: an activity (e.g. a final note) may be recorded in any stage, including LOST.
-        register(
-                        lostOpp,
-                        """
-                        {"type":"INTERNAL_NOTE","result":"NOT_INTERESTED","description":"encerrado",
-                         "occurredAt":"2026-06-12T10:00:00Z"}
-                        """,
-                        manager())
+        register(lostOpp, body("INTERNAL_NOTE", "NOT_INTERESTED", "encerrado", "2026-06-12T10:00:00Z", null), manager())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.activities[0].description").value("encerrado"));
     }
@@ -141,53 +117,54 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void rejectsMissingRequiredFields() throws Exception {
         String token = manager();
+        UUID type = typeId("OTHER");
+        UUID result = resultId("OTHER");
         register(
                         managerOpp,
-                        "{\"result\":\"OTHER\",\"description\":\"x\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}",
+                        "{\"resultId\":\"%s\",\"description\":\"x\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"
+                                .formatted(result),
                         token)
-                .andExpect(status().isBadRequest()); // missing type
+                .andExpect(status().isBadRequest()); // missing typeId
         register(
                         managerOpp,
-                        "{\"type\":\"OTHER\",\"description\":\"x\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}",
+                        "{\"typeId\":\"%s\",\"description\":\"x\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"
+                                .formatted(type),
                         token)
-                .andExpect(status().isBadRequest()); // missing result
-        register(managerOpp, "{\"type\":\"OTHER\",\"result\":\"OTHER\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}", token)
+                .andExpect(status().isBadRequest()); // missing resultId
+        register(
+                        managerOpp,
+                        "{\"typeId\":\"%s\",\"resultId\":\"%s\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"
+                                .formatted(type, result),
+                        token)
                 .andExpect(status().isBadRequest()); // missing description
-        register(managerOpp, "{\"type\":\"OTHER\",\"result\":\"OTHER\",\"description\":\"x\"}", token)
+        register(
+                        managerOpp,
+                        "{\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"x\"}".formatted(type, result),
+                        token)
                 .andExpect(status().isBadRequest()); // missing occurredAt
     }
 
     @Test
     void rejectsAFutureDate() throws Exception {
-        register(
-                        managerOpp,
-                        """
-                        {"type":"OTHER","result":"OTHER","description":"x","occurredAt":"2999-01-01T10:00:00Z"}
-                        """,
-                        manager())
+        register(managerOpp, body("OTHER", "OTHER", "x", "2999-01-01T10:00:00Z", null), manager())
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void rejectsAnUnknownEnumValue() throws Exception {
-        register(
-                        managerOpp,
-                        """
-                        {"type":"BOGUS","result":"OTHER","description":"x","occurredAt":"2026-06-10T10:00:00Z"}
-                        """,
-                        manager())
-                .andExpect(status().isBadRequest());
+    void rejectsAnUnknownCadastroId() throws Exception {
+        // A well-formed but unknown activity-type id is rejected at the service (422), not as malformed input.
+        String body =
+                "{\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"x\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"
+                        .formatted(UUID.randomUUID(), resultId("OTHER"));
+        register(managerOpp, body, manager())
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("opportunity.activity-type-not-available"));
     }
 
     @Test
     void rejectsRegisteringWithoutTheUpdateScope() throws Exception {
         // diretor (board) consults every Opportunity but holds no operation scope → 403 at the gate.
-        register(
-                        managerOpp,
-                        """
-                        {"type":"OTHER","result":"OTHER","description":"x","occurredAt":"2026-06-10T10:00:00Z"}
-                        """,
-                        login("diretor", "diretor123"))
+        register(managerOpp, body("OTHER", "OTHER", "x", "2026-06-10T10:00:00Z", null), login("diretor", "diretor123"))
                 .andExpect(status().isForbidden());
     }
 
@@ -195,9 +172,7 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
     void representativeCannotRegisterOnAnotherUsersOpportunity() throws Exception {
         register(
                         managerOpp,
-                        """
-                        {"type":"OTHER","result":"OTHER","description":"x","occurredAt":"2026-06-10T10:00:00Z"}
-                        """,
+                        body("OTHER", "OTHER", "x", "2026-06-10T10:00:00Z", null),
                         login("representante", "representante123"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("opportunity.access-denied"));
@@ -205,14 +180,29 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void returnsNotFoundForUnknownOpportunity() throws Exception {
-        register(
-                        UUID.randomUUID(),
-                        """
-                        {"type":"OTHER","result":"OTHER","description":"x","occurredAt":"2026-06-10T10:00:00Z"}
-                        """,
-                        manager())
+        register(UUID.randomUUID(), body("OTHER", "OTHER", "x", "2026-06-10T10:00:00Z", null), manager())
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("opportunity.not-found"));
+    }
+
+    private String body(
+            String typeCode, String resultCode, String description, String occurredAt, String nextActionDate) {
+        String next = nextActionDate == null ? "" : ",\"nextActionDate\":\"%s\"".formatted(nextActionDate);
+        return "{\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"%s\",\"occurredAt\":\"%s\"%s}"
+                .formatted(typeId(typeCode), resultId(resultCode), description, occurredAt, next);
+    }
+
+    private UUID typeId(String code) {
+        return cadastroId("opportunity_activity_types", code);
+    }
+
+    private UUID resultId(String code) {
+        return cadastroId("opportunity_activity_results", code);
+    }
+
+    private UUID cadastroId(String table, String code) {
+        return UUID.fromString(
+                jdbc.queryForObject("SELECT id::text FROM " + table + " WHERE code = ?", String.class, code));
     }
 
     private org.springframework.test.web.servlet.ResultActions register(UUID id, String body, String token)
@@ -223,7 +213,7 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
                 .header("Authorization", "Bearer " + token));
     }
 
-    private UUID insertOpportunity(String name, OpportunityStage stage, UUID responsibleId) {
+    private UUID insertOpportunity(String name, String stage, UUID responsibleId) {
         UUID leadId = insertLead(name, responsibleId);
         UUID id = UUID.randomUUID();
         jdbc.update(
@@ -239,8 +229,8 @@ class OpportunityActivityApiIntegrationTest extends AbstractIntegrationTest {
                 originId.toString(),
                 responsibleId == null ? null : responsibleId.toString(),
                 "Interesse " + name,
-                stage.name(),
-                stage == OpportunityStage.LOST ? "OTHER" : null,
+                stage,
+                "LOST".equals(stage) ? "OTHER" : null,
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

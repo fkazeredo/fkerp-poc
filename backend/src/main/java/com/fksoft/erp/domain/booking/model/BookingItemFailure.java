@@ -2,8 +2,9 @@ package com.fksoft.erp.domain.booking.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -27,8 +28,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class BookingItemFailure {
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "failure_reason")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "failure_reason_id")
     private BookingFailureReason failureReason;
 
     @Column(name = "failure_note")

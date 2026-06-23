@@ -1,7 +1,6 @@
 package com.fksoft.erp.domain.booking.repository;
 
 import com.fksoft.erp.domain.booking.model.BookingRequest;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -24,7 +23,7 @@ public interface BookingRequestRepository
      * @return the matching request, if any
      */
     Optional<BookingRequest> findFirstByCommercialOrderIdAndStatusIn(
-            UUID commercialOrderId, Collection<BookingRequestStatus> statuses);
+            UUID commercialOrderId, Collection<String> statuses);
 
     /**
      * Item counts (how many require booking, how many are confirmed) per Booking Request, for the operational

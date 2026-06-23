@@ -2,6 +2,9 @@ package com.fksoft.erp.infra.web;
 
 import static java.util.Map.entry;
 
+import com.fksoft.erp.domain.booking.exception.BookingAttemptResultNotAvailableException;
+import com.fksoft.erp.domain.booking.exception.BookingAttemptTypeNotAvailableException;
+import com.fksoft.erp.domain.booking.exception.BookingFailureReasonNotAvailableException;
 import com.fksoft.erp.domain.booking.exception.BookingItemAlreadyResolvedException;
 import com.fksoft.erp.domain.booking.exception.BookingItemNotConfirmableException;
 import com.fksoft.erp.domain.booking.exception.BookingItemNotFailableException;
@@ -13,7 +16,6 @@ import com.fksoft.erp.domain.booking.exception.BookingRequestAlreadyExistsExcept
 import com.fksoft.erp.domain.booking.exception.BookingRequestNotFoundException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
 import com.fksoft.erp.domain.crm.exception.DuplicateLeadException;
-import com.fksoft.erp.domain.crm.exception.DuplicateReferenceCodeException;
 import com.fksoft.erp.domain.crm.exception.InteractionResultNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.InteractionTypeNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.LeadAccessDeniedException;
@@ -26,19 +28,24 @@ import com.fksoft.erp.domain.crm.exception.LeadNotQualifiedForOpportunityExcepti
 import com.fksoft.erp.domain.crm.exception.LeadQualificationRequiresResponsibleException;
 import com.fksoft.erp.domain.crm.exception.LossReasonNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAccessDeniedException;
+import com.fksoft.erp.domain.crm.exception.OpportunityActivityResultNotAvailableException;
+import com.fksoft.erp.domain.crm.exception.OpportunityActivityTypeNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAlreadyExistsForLeadException;
 import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException;
 import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedWonException;
+import com.fksoft.erp.domain.crm.exception.OpportunityLossReasonNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.exception.OriginNotAvailableException;
-import com.fksoft.erp.domain.crm.exception.ReferenceNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.error.DomainException;
 import com.fksoft.erp.domain.identity.InvalidCredentialsException;
+import com.fksoft.erp.domain.reference.DuplicateReferenceCodeException;
+import com.fksoft.erp.domain.reference.ReferenceNotFoundException;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderAlreadyExistsException;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderNotFoundException;
+import com.fksoft.erp.domain.sales.exception.CustomerRejectionReasonNotAvailableException;
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
 import com.fksoft.erp.domain.sales.exception.ProposalAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunityException;
@@ -46,16 +53,23 @@ import com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
+import com.fksoft.erp.domain.sales.exception.ProposalItemTypeNotAvailableException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotAcceptedException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotSentException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
+import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonNotAvailableException;
 import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalResponsibleRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalValidityRequiredException;
+import com.fksoft.erp.domain.sales.exception.SendingChannelNotAvailableException;
+import com.fksoft.erp.domain.workflow.WorkflowConditionUnknownException;
+import com.fksoft.erp.domain.workflow.WorkflowNotFoundException;
+import com.fksoft.erp.domain.workflow.WorkflowSystemRuleProtectedException;
+import com.fksoft.erp.domain.workflow.WorkflowTransitionNotAllowedException;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
@@ -91,6 +105,9 @@ public class HttpErrorMapping {
             entry(OpportunityAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(OpportunityCannotBeMarkedLostException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(OpportunityCannotBeMarkedWonException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(OpportunityLossReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(OpportunityActivityTypeNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(OpportunityActivityResultNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(OpportunityStageTransitionException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(OpportunityNotReadyForProposalException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalAlreadyExistsForOpportunityException.class, HttpStatus.CONFLICT),
@@ -106,6 +123,10 @@ public class HttpErrorMapping {
             entry(ProposalResponsibleRequiredException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotUnderReviewException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalRejectionReasonRequiredException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ProposalRejectionReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(CustomerRejectionReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(SendingChannelNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ProposalItemTypeNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotApprovedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotSentException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotAcceptedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
@@ -122,7 +143,14 @@ public class HttpErrorMapping {
             entry(BookingItemNotConfirmableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(BookingItemAlreadyResolvedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(BookingItemNotFailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
-            entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
+            entry(BookingAttemptTypeNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(BookingAttemptResultNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(BookingFailureReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(WorkflowTransitionNotAllowedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(WorkflowNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(WorkflowConditionUnknownException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(WorkflowSystemRuleProtectedException.class, HttpStatus.UNPROCESSABLE_ENTITY));
 
     public HttpStatus statusFor(DomainException ex) {
         return mappings.getOrDefault(ex.getClass(), HttpStatus.UNPROCESSABLE_ENTITY);

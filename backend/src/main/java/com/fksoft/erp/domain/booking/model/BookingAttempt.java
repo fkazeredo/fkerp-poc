@@ -2,9 +2,10 @@ package com.fksoft.erp.domain.booking.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -22,8 +23,8 @@ import lombok.NoArgsConstructor;
  * booking item (or the whole request when {@code null}) and an optional next action date. It preserves the
  * operational history (append-only) before confirmation or failure. It carries <b>no monetary data</b>, never
  * confirms a booking, never creates Financial or Commission data, and never changes a booking item's status —
- * registering it only ever moves the request from {@link BookingRequestStatus#PENDING} to
- * {@link BookingRequestStatus#IN_PROGRESS}.
+ * registering it only ever moves the request from {@code PENDING} to
+ * {@code IN_PROGRESS}.
  */
 @Entity
 @Table(name = "booking_attempts")
@@ -43,13 +44,13 @@ public class BookingAttempt {
     private UUID bookingItemId;
 
     @NotNull
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "type_id", nullable = false)
     private BookingAttemptType type;
 
     @NotNull
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "result_id", nullable = false)
     private BookingAttemptResult result;
 
     @NotBlank

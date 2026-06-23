@@ -1,7 +1,6 @@
 package com.fksoft.erp.domain.sales.service.data;
 
 import com.fksoft.erp.domain.sales.model.BookingNeed;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Set;
@@ -23,7 +22,7 @@ import java.util.UUID;
  * @param query free-text search over the source Proposal title
  */
 public record CommercialOrderSearchCriteria(
-        Set<CommercialOrderStatus> statuses,
+        Set<String> statuses,
         UUID responsibleId,
         boolean unassignedOnly,
         Instant createdFrom,

@@ -1,17 +1,11 @@
 package com.fksoft.erp.domain.sales.service.data;
 
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Lead;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CommercialOrderItem;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
-import com.fksoft.erp.domain.sales.model.ProposalItemType;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -45,9 +39,9 @@ public record CommercialOrderDetail(
         UUID proposalId,
         UUID opportunityId,
         UUID leadId,
-        CommercialOrderStatus status,
+        String status,
         boolean requiresBooking,
-        BookingRequestStatus bookingStatus,
+        String bookingStatus,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,
@@ -83,7 +77,7 @@ public record CommercialOrderDetail(
                 o.opportunityId(),
                 o.leadId(),
                 o.status(),
-                o.status() == CommercialOrderStatus.PENDING_BOOKING,
+                "PENDING_BOOKING".equals(o.status()),
                 o.bookingStatus(),
                 o.responsiblePersonId(),
                 nameOf(names, o.responsiblePersonId()),
@@ -117,22 +111,23 @@ public record CommercialOrderDetail(
     public record SourceProposal(
             UUID id,
             String title,
-            ProposalStatus status,
+            String status,
             LocalDate validUntil,
             String commercialTerms,
             String notes,
             String paymentNotes) {}
 
     /** The source Opportunity, kept traceable from the Order. */
-    public record SourceOpportunity(UUID id, String name, OpportunityStage stage) {}
+    public record SourceOpportunity(UUID id, String name, String stage) {}
 
     /** The source Lead, kept traceable from the Order (the contact's system of record). */
-    public record SourceLead(UUID id, String name, String phone, String whatsapp, String email, LeadStatus status) {}
+    public record SourceLead(UUID id, String name, String phone, String whatsapp, String email, String status) {}
 
     /** A single order line (snapshot of a Proposal item), with its computed line total. */
     public record Item(
             UUID id,
-            ProposalItemType type,
+            String type,
+            String typeLabel,
             String description,
             int quantity,
             BigDecimal unitValue,
@@ -143,7 +138,8 @@ public record CommercialOrderDetail(
         static Item from(CommercialOrderItem i) {
             return new Item(
                     i.id(),
-                    i.type(),
+                    i.type().code(),
+                    i.type().label(),
                     i.description(),
                     i.quantity(),
                     i.unitValue(),

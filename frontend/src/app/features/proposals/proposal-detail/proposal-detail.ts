@@ -17,19 +17,16 @@ import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { Observable } from 'rxjs';
 import {
-  CustomerRejectionReason,
   DiscountType,
   ProposalDetail,
   ProposalItem,
-  ProposalItemType,
-  ProposalRejectionReason,
   ProposalService,
   ProposalStatus,
-  SendingChannel,
   UpdateProposal,
 } from '../../../core/api/proposal.service';
 import { OpportunityStage } from '../../../core/api/opportunity.service';
 import { OrderService } from '../../../core/api/order.service';
+import { ReferenceItem, ReferenceService } from '../../../core/api/reference.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HasUnsavedChanges, UnsavedChangesService } from '../../../core/forms/unsaved-changes.service';
 
@@ -51,42 +48,6 @@ const STAGE_LABELS: Record<OpportunityStage, string> = {
   READY_FOR_PROPOSAL: 'Pronta p/ proposta',
   WON: 'Ganha',
   LOST: 'Perdida',
-};
-
-const ITEM_TYPE_LABELS: Record<ProposalItemType, string> = {
-  TRAVEL_PACKAGE: 'Pacote de viagem',
-  CAR_RENTAL: 'Locação de veículo',
-  SERVICE_FEE: 'Taxa de serviço',
-  OTHER: 'Outro',
-};
-
-const REJECTION_REASON_LABELS: Record<ProposalRejectionReason, string> = {
-  PRICE_TOO_HIGH: 'Preço muito alto',
-  DISCOUNT_OUT_OF_POLICY: 'Desconto fora da política',
-  INCOMPLETE_INFORMATION: 'Informações incompletas',
-  TERMS_NOT_ACCEPTABLE: 'Termos comerciais inadequados',
-  VALIDITY_TOO_SHORT: 'Validade muito curta',
-  DUPLICATE: 'Proposta duplicada',
-  OTHER: 'Outro',
-};
-
-const SENDING_CHANNEL_LABELS: Record<SendingChannel, string> = {
-  EMAIL: 'E-mail',
-  WHATSAPP: 'WhatsApp',
-  PHONE_PRESENTATION: 'Apresentação por telefone',
-  IN_PERSON_PRESENTATION: 'Apresentação presencial',
-  OTHER: 'Outro',
-};
-
-const CUSTOMER_REJECTION_REASON_LABELS: Record<CustomerRejectionReason, string> = {
-  PRICE_TOO_HIGH: 'Preço muito alto',
-  CHOSE_COMPETITOR: 'Escolheu concorrente',
-  TRAVEL_POSTPONED: 'Viagem adiada',
-  TRAVEL_CANCELLED: 'Viagem cancelada',
-  CHANGED_DESTINATION: 'Mudou de destino',
-  NO_RESPONSE: 'Sem resposta após a proposta',
-  PRODUCT_MISMATCH: 'Produto não atende',
-  OTHER: 'Outro',
 };
 
 type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'danger';
@@ -139,6 +100,7 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
   private readonly orders = inject(OrderService);
   private readonly messages = inject(MessageService);
   private readonly auth = inject(AuthService);
+  private readonly references = inject(ReferenceService);
   private readonly unsaved = inject(UnsavedChangesService);
 
   constructor() {
@@ -153,9 +115,7 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
   protected readonly itemOpen = signal(false);
   protected readonly detailsOpen = signal(false);
   protected readonly acting = signal(false);
-  protected readonly itemTypeOptions = (Object.keys(ITEM_TYPE_LABELS) as ProposalItemType[]).map(
-    (value) => ({ value, label: ITEM_TYPE_LABELS[value] }),
-  );
+  protected readonly itemTypeOptions = signal<ReferenceItem[]>([]);
   protected readonly discountModeOptions: { value: DiscountMode; label: string }[] = [
     { value: 'NONE', label: 'Sem desconto' },
     { value: 'AMOUNT', label: 'Valor (R$)' },
@@ -163,7 +123,7 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
   ];
 
   protected editingItemId: string | null = null;
-  protected itemType: ProposalItemType = 'TRAVEL_PACKAGE';
+  protected itemType: string | null = null;
   protected itemDescription = '';
   protected itemQuantity = 1;
   protected itemUnitValue: number | null = null;
@@ -179,18 +139,14 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
 
   // Reject dialog (internal review): a required reason + an optional note.
   protected readonly rejectOpen = signal(false);
-  protected rejectReason: ProposalRejectionReason | null = null;
+  protected rejectReason: string | null = null;
   protected rejectNote = '';
-  protected readonly rejectReasonOptions = (Object.keys(REJECTION_REASON_LABELS) as ProposalRejectionReason[]).map(
-    (value) => ({ value, label: REJECTION_REASON_LABELS[value] }),
-  );
+  protected readonly rejectReasonOptions = signal<ReferenceItem[]>([]);
 
   // Mark-as-sent dialog: an optional descriptive sending channel.
   protected readonly sendOpen = signal(false);
-  protected sendChannel: SendingChannel | null = null;
-  protected readonly sendChannelOptions = (Object.keys(SENDING_CHANNEL_LABELS) as SendingChannel[]).map(
-    (value) => ({ value, label: SENDING_CHANNEL_LABELS[value] }),
-  );
+  protected sendChannel: string | null = null;
+  protected readonly sendChannelOptions = signal<ReferenceItem[]>([]);
 
   // Customer-acceptance dialog: an optional confirmation note.
   protected readonly acceptOpen = signal(false);
@@ -198,17 +154,23 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
 
   // Customer-rejection dialog: a required reason + an optional note.
   protected readonly declineOpen = signal(false);
-  protected declineReason: CustomerRejectionReason | null = null;
+  protected declineReason: string | null = null;
   protected declineNote = '';
-  protected readonly declineReasonOptions = (
-    Object.keys(CUSTOMER_REJECTION_REASON_LABELS) as CustomerRejectionReason[]
-  ).map((value) => ({ value, label: CUSTOMER_REJECTION_REASON_LABELS[value] }));
+  protected readonly declineReasonOptions = signal<ReferenceItem[]>([]);
 
   private proposalId = '';
 
   ngOnInit(): void {
     this.proposalId = this.route.snapshot.paramMap.get('id') ?? '';
     this.load();
+    this.references.list('proposal-item-types', false, 'sales').subscribe((i) => this.itemTypeOptions.set(i));
+    this.references
+      .list('proposal-rejection-reasons', false, 'sales')
+      .subscribe((i) => this.rejectReasonOptions.set(i));
+    this.references.list('sending-channels', false, 'sales').subscribe((i) => this.sendChannelOptions.set(i));
+    this.references
+      .list('customer-rejection-reasons', false, 'sales')
+      .subscribe((i) => this.declineReasonOptions.set(i));
   }
 
   ngOnDestroy(): void {
@@ -319,17 +281,6 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     this.declineOpen.set(false);
   }
 
-  protected rejectionReasonLabel(reason: ProposalRejectionReason): string {
-    return REJECTION_REASON_LABELS[reason];
-  }
-
-  protected sendingChannelLabel(channel: SendingChannel): string {
-    return SENDING_CHANNEL_LABELS[channel];
-  }
-
-  protected customerRejectionReasonLabel(reason: CustomerRejectionReason): string {
-    return CUSTOMER_REJECTION_REASON_LABELS[reason];
-  }
 
   protected statusLabel(status: ProposalStatus): string {
     return STATUS_LABELS[status];
@@ -343,10 +294,6 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
     return STAGE_LABELS[stage];
   }
 
-  protected itemTypeLabel(type: ProposalItemType): string {
-    return ITEM_TYPE_LABELS[type];
-  }
-
   /** Whether the user may add/edit/remove items (has the operate scope and the Proposal is a Draft). */
   protected canManageItems(): boolean {
     return this.auth.canOperateProposal() && this.proposal()?.status === 'DRAFT';
@@ -358,7 +305,9 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
 
   protected openAddItem(): void {
     this.editingItemId = null;
-    this.itemType = 'TRAVEL_PACKAGE';
+    // The type is an explicit choice (like every other cadastro-backed select in the app), so the user
+    // consciously picks it — there is no silent default to a reserved code such as TRAVEL_PACKAGE.
+    this.itemType = null;
     this.itemDescription = '';
     this.itemQuantity = 1;
     this.itemUnitValue = null;
@@ -370,7 +319,8 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
 
   protected openEditItem(item: ProposalItem): void {
     this.editingItemId = item.id;
-    this.itemType = item.type;
+    // The item read model carries the type code; resolve it to the cadastro id for the dropdown.
+    this.itemType = this.itemTypeOptions().find((o) => o.code === item.type)?.id ?? null;
     this.itemDescription = item.description;
     this.itemQuantity = item.quantity;
     this.itemUnitValue = item.unitValue;
@@ -382,6 +332,7 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
 
   protected canSaveItem(): boolean {
     return (
+      this.itemType != null &&
       this.itemDescription.trim().length > 0 &&
       this.itemQuantity >= 1 &&
       this.itemUnitValue != null &&
@@ -394,7 +345,7 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
       return;
     }
     const payload = {
-      type: this.itemType,
+      typeId: this.itemType!,
       description: this.itemDescription.trim(),
       quantity: this.itemQuantity,
       unitValue: this.itemUnitValue!,

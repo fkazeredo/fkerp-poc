@@ -1,11 +1,8 @@
 package com.fksoft.erp.domain.booking.service;
 
 import com.fksoft.erp.domain.booking.model.BookingItem;
-import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
-import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -21,11 +18,8 @@ public final class BookingRequestSpecifications {
 
     // The default operational statuses: everything that still needs attention. The terminal CONFIRMED and
     // CANCELLED requests are hidden by default; FAILED stays visible (it needs an operational decision).
-    private static final Set<BookingRequestStatus> DEFAULT_STATUSES = Set.of(
-            BookingRequestStatus.PENDING,
-            BookingRequestStatus.IN_PROGRESS,
-            BookingRequestStatus.PARTIALLY_CONFIRMED,
-            BookingRequestStatus.FAILED);
+    private static final Set<String> DEFAULT_STATUSES =
+            Set.of("PENDING", "IN_PROGRESS", "PARTIALLY_CONFIRMED", "FAILED");
 
     private BookingRequestSpecifications() {}
 
@@ -47,7 +41,7 @@ public final class BookingRequestSpecifications {
     }
 
     // Terminal CONFIRMED/CANCELLED requests never appear by default; pass them in the status filter to see them.
-    private static Specification<BookingRequest> statusFilter(Set<BookingRequestStatus> statuses) {
+    private static Specification<BookingRequest> statusFilter(Set<String> statuses) {
         return (root, query, cb) -> {
             if (statuses == null || statuses.isEmpty()) {
                 return root.get("status").in(DEFAULT_STATUSES);
@@ -90,16 +84,17 @@ public final class BookingRequestSpecifications {
     }
 
     // "Contains an item of this type": an EXISTS over the request's items, correlated to the parent so we never
-    // need a back-reference field on BookingItem nor a join that would duplicate rows under pagination.
-    private static Specification<BookingRequest> itemTypeFilter(ProposalItemType type) {
+    // need a back-reference field on BookingItem nor a join that would duplicate rows under pagination. Matched by
+    // the item-type cadastro code (stable identifier).
+    private static Specification<BookingRequest> itemTypeFilter(String typeCode) {
         return (root, query, cb) -> {
-            if (type == null) {
+            if (typeCode == null) {
                 return cb.conjunction();
             }
             Subquery<Integer> sub = query.subquery(Integer.class);
             Root<BookingRequest> parent = sub.correlate(root);
             Join<BookingRequest, BookingItem> items = parent.join("items");
-            sub.select(cb.literal(1)).where(cb.equal(items.get("type"), type));
+            sub.select(cb.literal(1)).where(cb.equal(items.join("type").get("code"), typeCode));
             return cb.exists(sub);
         };
     }
@@ -113,7 +108,7 @@ public final class BookingRequestSpecifications {
             Subquery<Integer> sub = query.subquery(Integer.class);
             Root<BookingRequest> parent = sub.correlate(root);
             Join<BookingRequest, BookingItem> items = parent.join("items");
-            sub.select(cb.literal(1)).where(cb.equal(items.get("status"), BookingItemStatus.FAILED));
+            sub.select(cb.literal(1)).where(cb.equal(items.get("status"), "FAILED"));
             return cb.exists(sub);
         };
     }

@@ -6,6 +6,9 @@ import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.service.LeadAccessPolicy;
 import com.fksoft.erp.domain.crm.service.data.RegisterLeadCommand;
+import com.fksoft.erp.domain.workflow.WorkflowDefinition;
+import com.fksoft.erp.domain.workflow.WorkflowState;
+import com.fksoft.erp.domain.workflow.WorkflowStateCategory;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -16,11 +19,14 @@ class LeadAccessPolicyTest {
     private final Origin origin = Origin.create("WEBSITE", "Website", 1);
     private final UUID me = UUID.randomUUID();
     private final UUID other = UUID.randomUUID();
+    private final WorkflowState newState =
+            WorkflowState.of(WorkflowDefinition.of("lead", "Lead"), "NEW", "Novo", WorkflowStateCategory.INITIAL, 1);
 
     private Lead leadOwnedBy(UUID responsible) {
         return Lead.register(
                 new RegisterLeadCommand("X", "11999999999", null, null, UUID.randomUUID(), responsible, null),
                 origin,
+                newState,
                 UUID.randomUUID());
     }
 

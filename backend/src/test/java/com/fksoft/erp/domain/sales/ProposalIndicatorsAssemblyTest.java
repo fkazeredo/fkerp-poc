@@ -14,7 +14,6 @@ import com.fksoft.erp.domain.crm.service.OpportunityAccessPolicy;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
 import com.fksoft.erp.domain.sales.model.Proposal;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalIndicatorQueries;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
@@ -23,7 +22,6 @@ import com.fksoft.erp.domain.sales.service.ProposalService;
 import com.fksoft.erp.domain.sales.service.data.ProposalIndicators;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,16 +84,16 @@ class ProposalIndicatorsAssemblyTest {
         when(accessPolicy.visibleTo(any(), anyBoolean(), anyBoolean())).thenReturn(visible);
 
         // Volume — the period queries.
-        Map<ProposalStatus, Long> periodCounts = new EnumMap<>(ProposalStatus.class);
-        periodCounts.put(ProposalStatus.DRAFT, 3L);
-        periodCounts.put(ProposalStatus.ACCEPTED, 2L);
-        periodCounts.put(ProposalStatus.REJECTED, 1L);
+        Map<String, Long> periodCounts = new LinkedHashMap<>();
+        periodCounts.put("DRAFT", 3L);
+        periodCounts.put("ACCEPTED", 2L);
+        periodCounts.put("REJECTED", 1L);
         when(indicatorQueries.countByStatus(any(), eq(FROM), eq(TO))).thenReturn(periodCounts);
 
-        Map<ProposalStatus, BigDecimal> periodSums = new EnumMap<>(ProposalStatus.class);
-        periodSums.put(ProposalStatus.DRAFT, new BigDecimal("1000.00"));
-        periodSums.put(ProposalStatus.ACCEPTED, new BigDecimal("5000.00"));
-        periodSums.put(ProposalStatus.REJECTED, new BigDecimal("800.00"));
+        Map<String, BigDecimal> periodSums = new LinkedHashMap<>();
+        periodSums.put("DRAFT", new BigDecimal("1000.00"));
+        periodSums.put("ACCEPTED", new BigDecimal("5000.00"));
+        periodSums.put("REJECTED", new BigDecimal("800.00"));
         when(indicatorQueries.sumTotalByStatus(any(), eq(FROM), eq(TO))).thenReturn(periodSums);
 
         Map<UUID, Long> byResponsible = new LinkedHashMap<>();
@@ -104,10 +102,10 @@ class ProposalIndicatorsAssemblyTest {
         when(indicatorQueries.countByResponsible(any(), eq(FROM), eq(TO))).thenReturn(byResponsible);
 
         // Operational — the snapshot query (no period).
-        Map<ProposalStatus, Long> snapshot = new EnumMap<>(ProposalStatus.class);
-        snapshot.put(ProposalStatus.READY_FOR_REVIEW, 2L);
-        snapshot.put(ProposalStatus.SENT, 5L);
-        snapshot.put(ProposalStatus.DRAFT, 9L);
+        Map<String, Long> snapshot = new LinkedHashMap<>();
+        snapshot.put("READY_FOR_REVIEW", 2L);
+        snapshot.put("SENT", 5L);
+        snapshot.put("DRAFT", 9L);
         when(indicatorQueries.countByStatus(any(), isNull(), isNull())).thenReturn(snapshot);
 
         User alice = mock(User.class);
@@ -124,9 +122,9 @@ class ProposalIndicatorsAssemblyTest {
         assertThat(result.acceptedAmount()).isEqualByComparingTo("5000.00");
         assertThat(result.byStatus())
                 .containsExactlyInAnyOrder(
-                        new ProposalIndicators.StatusCount(ProposalStatus.DRAFT, 3),
-                        new ProposalIndicators.StatusCount(ProposalStatus.ACCEPTED, 2),
-                        new ProposalIndicators.StatusCount(ProposalStatus.REJECTED, 1));
+                        new ProposalIndicators.StatusCount("DRAFT", 3),
+                        new ProposalIndicators.StatusCount("ACCEPTED", 2),
+                        new ProposalIndicators.StatusCount("REJECTED", 1));
         assertThat(result.byResponsible())
                 .containsExactly(
                         new ProposalIndicators.ResponsibleCount("Alice", 4),

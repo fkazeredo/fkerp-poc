@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -155,13 +154,14 @@ class BookingOperationsEndToEndIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post(url(request, "items/" + car + "/fail"))
                         .header("Authorization", "Bearer " + op)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"failureReason\":\"NO_AVAILABILITY\",\"failedAt\":\"2026-06-10T10:00:00Z\"}"))
+                        .content("{\"failureReasonId\":\"%s\",\"failedAt\":\"2026-06-10T10:00:00Z\"}"
+                                .formatted(refId("booking_failure_reasons", "NO_AVAILABILITY"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FAILED"));
         String afterFail = bookingDetail(request, op);
         assertThat(itemStatus(afterFail, "CAR_RENTAL")).isEqualTo("FAILED");
         assertThat(JsonPath.<List<String>>read(afterFail, "$.items[?(@.type=='CAR_RENTAL')].failure.failureReason"))
-                .containsExactly("NO_AVAILABILITY");
+                .containsExactly("Sem disponibilidade");
         assertThat(orderField(order, "$.bookingStatus")).isEqualTo("FAILED");
 
         // A new manual attempt on the failed item is history only — the request stays Failed.
@@ -169,8 +169,11 @@ class BookingOperationsEndToEndIntegrationTest extends AbstractIntegrationTest {
                         .header("Authorization", "Bearer " + op)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(
-                                "{\"bookingItemId\":\"%s\",\"type\":\"SUPPLIER_PHONE_CONTACT\",\"result\":\"NEEDS_RETRY\",\"description\":\"Outro fornecedor\",\"occurredAt\":\"2026-06-10T11:00:00Z\"}"
-                                        .formatted(car)))
+                                "{\"bookingItemId\":\"%s\",\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"Outro fornecedor\",\"occurredAt\":\"2026-06-10T11:00:00Z\"}"
+                                        .formatted(
+                                                car,
+                                                refId("booking_attempt_types", "SUPPLIER_PHONE_CONTACT"),
+                                                refId("booking_attempt_results", "NEEDS_RETRY"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FAILED"));
 
@@ -237,14 +240,21 @@ class BookingOperationsEndToEndIntegrationTest extends AbstractIntegrationTest {
     }
 
     private void attempt(UUID request, String token) throws Exception {
-        mvc.perform(
-                        post(url(request, "attempts"))
-                                .header("Authorization", "Bearer " + token)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        "{\"type\":\"INTERNAL_VERIFICATION\",\"result\":\"STARTED\",\"description\":\"Checando\",\"occurredAt\":\"2026-06-10T09:00:00Z\"}"))
+        mvc.perform(post(url(request, "attempts"))
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"Checando\",\"occurredAt\":\"2026-06-10T09:00:00Z\"}"
+                                        .formatted(
+                                                refId("booking_attempt_types", "INTERNAL_VERIFICATION"),
+                                                refId("booking_attempt_results", "STARTED"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+    }
+
+    private UUID refId(String table, String code) {
+        return UUID.fromString(
+                jdbc.queryForObject("SELECT id::text FROM " + table + " WHERE code = ?", String.class, code));
     }
 
     private ResultActions confirmTravelPackage(UUID request, UUID item, String token) throws Exception {
@@ -314,8 +324,8 @@ class BookingOperationsEndToEndIntegrationTest extends AbstractIntegrationTest {
             mvc.perform(post("/api/proposals/" + proposal + "/items")
                             .header("Authorization", "Bearer " + mgr)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"type\":\"%s\",\"description\":\"x\",\"quantity\":1,\"unitValue\":500.00}"
-                                    .formatted(type)))
+                            .content("{\"typeId\":\"%s\",\"description\":\"x\",\"quantity\":1,\"unitValue\":500.00}"
+                                    .formatted(proposalItemTypeId(type))))
                     .andExpect(status().isOk());
         }
         mvc.perform(put("/api/proposals/" + proposal)
@@ -379,7 +389,7 @@ class BookingOperationsEndToEndIntegrationTest extends AbstractIntegrationTest {
                 leadId.toString(),
                 originId.toString(),
                 MANAGER.toString(),
-                OpportunityStage.READY_FOR_PROPOSAL.name(),
+                "READY_FOR_PROPOSAL",
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

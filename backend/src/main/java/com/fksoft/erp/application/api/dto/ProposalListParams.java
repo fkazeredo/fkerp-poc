@@ -1,6 +1,5 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Set;
@@ -26,7 +25,7 @@ import org.springframework.format.annotation.DateTimeFormat;
  * @param q free-text search over the Proposal title and the source Opportunity name
  */
 public record ProposalListParams(
-        Set<ProposalStatus> status,
+        Set<String> status,
         String responsible,
         UUID opportunityId,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,

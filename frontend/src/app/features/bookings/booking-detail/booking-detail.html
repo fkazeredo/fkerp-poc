@@ -104,7 +104,7 @@
       </ng-template>
       <ng-template pTemplate="body" let-item>
         <tr>
-          <td>{{ itemTypeLabel(item.type) }}</td>
+          <td>{{ item.typeLabel }}</td>
           <td>{{ item.description }}</td>
           <td class="num">{{ item.quantity }}</td>
           <td>{{ item.requiresBooking ? 'Sim' : 'Não' }}</td>
@@ -162,7 +162,7 @@
         @for (item of confirmations(); track item.id) {
           <li class="confirmation">
             <span class="what">
-              <strong>{{ itemTypeLabel(item.type) }}</strong>
+              <strong>{{ item.typeLabel }}</strong>
               <span class="muted"> · {{ item.description }}</span>
             </span>
             <dl class="data">
@@ -234,12 +234,12 @@
         @for (item of failedItems(); track item.id) {
           <li class="failure">
             <span class="what">
-              <strong>{{ itemTypeLabel(item.type) }}</strong>
+              <strong>{{ item.typeLabel }}</strong>
               <span class="muted"> · {{ item.description }}</span>
             </span>
             <dl class="data">
               <dt>Motivo</dt>
-              <dd>{{ failureReasonLabel(item.failure!.failureReason) }}</dd>
+              <dd>{{ item.failure!.failureReason }}</dd>
               @if (item.failure!.failureNote) {
                 <dt>Nota</dt>
                 <dd class="notes">{{ item.failure!.failureNote }}</dd>
@@ -264,8 +264,8 @@
           <li>
             <span class="when">{{ a.occurredAt | date: 'short' }}</span>
             <span class="what">
-              <strong>{{ attemptTypeLabel(a.type) }}</strong>
-              <span class="muted"> · {{ attemptResultLabel(a.result) }}</span>
+              <strong>{{ a.type }}</strong>
+              <span class="muted"> · {{ a.result }}</span>
             </span>
             <span class="note">{{ a.description }}</span>
             <span class="muted scope">{{ attemptItemLabel(a.bookingItemId) }}</span>
@@ -296,9 +296,9 @@
       <label for="atype">Tipo <span class="req">*</span></label>
       <p-select
         inputId="atype"
-        [options]="attemptTypeOptions"
+        [options]="attemptTypeOptions()"
         optionLabel="label"
-        optionValue="value"
+        optionValue="id"
         [(ngModel)]="attemptType"
         placeholder="Selecione o tipo"
         styleClass="w-full"
@@ -309,9 +309,9 @@
       <label for="aresult">Resultado <span class="req">*</span></label>
       <p-select
         inputId="aresult"
-        [options]="attemptResultOptions"
+        [options]="attemptResultOptions()"
         optionLabel="label"
-        optionValue="value"
+        optionValue="id"
         [(ngModel)]="attemptResult"
         placeholder="Selecione o resultado"
         styleClass="w-full"
@@ -370,7 +370,7 @@
   </p-dialog>
 
   <p-dialog
-    [header]="'Confirmar reserva — ' + itemTypeLabel(confirmItemType)"
+    [header]="'Confirmar reserva — ' + confirmItemTypeLabel"
     [(visible)]="confirmOpen"
     [modal]="true"
     [closable]="false"
@@ -510,9 +510,9 @@
       <label for="freason">Motivo da falha <span class="req">*</span></label>
       <p-select
         inputId="freason"
-        [options]="failReasonOptions"
+        [options]="failReasonOptions()"
         optionLabel="label"
-        optionValue="value"
+        optionValue="id"
         [(ngModel)]="failReason"
         placeholder="Selecione o motivo"
         styleClass="w-full"

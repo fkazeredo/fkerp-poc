@@ -7,16 +7,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.repository.BookingRequestRepository;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
 import com.fksoft.erp.domain.identity.AuthenticatedUser;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.infra.security.TokenService;
@@ -112,7 +108,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
 
         // The saved aggregate preserves the source references and the commercial responsible, and starts PENDING.
         BookingRequest request = bookingRequests.findById(requestId).orElseThrow();
-        assertThat(request.status()).isEqualTo(BookingRequestStatus.PENDING);
+        assertThat(request.status()).isEqualTo("PENDING");
         assertThat(request.commercialOrderId()).isEqualTo(order);
         assertThat(request.proposalId()).isNotNull();
         assertThat(request.opportunityId()).isNotNull();
@@ -122,7 +118,8 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
 
         // The booking items snapshot the Order items, classified by booking need (no monetary columns exist).
         List<Map<String, Object>> items = jdbc.queryForList(
-                "SELECT type, requires_booking, status FROM booking_items WHERE booking_request_id = ?::uuid",
+                "SELECT t.code AS type, bi.requires_booking, bi.status FROM booking_items bi "
+                        + "JOIN proposal_item_types t ON t.id = bi.type_id WHERE bi.booking_request_id = ?::uuid",
                 requestId.toString());
         assertThat(items).hasSize(2);
         Map<String, Object> pkg = items.stream()
@@ -130,13 +127,13 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(pkg.get("requires_booking")).isEqualTo(true);
-        assertThat(pkg.get("status")).isEqualTo(BookingItemStatus.PENDING.name());
+        assertThat(pkg.get("status")).isEqualTo("PENDING");
         Map<String, Object> fee = items.stream()
                 .filter(i -> "SERVICE_FEE".equals(i.get("type")))
                 .findFirst()
                 .orElseThrow();
         assertThat(fee.get("requires_booking")).isEqualTo(false);
-        assertThat(fee.get("status")).isEqualTo(BookingItemStatus.NOT_REQUIRED.name());
+        assertThat(fee.get("status")).isEqualTo("NOT_REQUIRED");
     }
 
     @Test
@@ -151,7 +148,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void cannotCreateFromAnOrderThatIsNotPendingBooking() throws Exception {
-        UUID order = order("NoBooking", CommercialOrderStatus.BOOKING_NOT_REQUIRED, "SERVICE_FEE");
+        UUID order = order("NoBooking", "BOOKING_NOT_REQUIRED", "SERVICE_FEE");
         mvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer " + login("operacoes", "operacoes123"))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -217,8 +214,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void marksAnOtherItemAsRequiringBookingAtCreationLeavingTheRestUnchanged() throws Exception {
-        UUID order =
-                order("OtherMark", CommercialOrderStatus.PENDING_BOOKING, "TRAVEL_PACKAGE", "OTHER", "SERVICE_FEE");
+        UUID order = order("OtherMark", "PENDING_BOOKING", "TRAVEL_PACKAGE", "OTHER", "SERVICE_FEE");
         UUID otherItem = orderItemId(order, "OTHER");
 
         String created = mvc.perform(post("/api/bookings")
@@ -233,7 +229,8 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
         UUID requestId = UUID.fromString(JsonPath.read(created, "$.id"));
 
         List<Map<String, Object>> items = jdbc.queryForList(
-                "SELECT type, requires_booking, status FROM booking_items WHERE booking_request_id = ?::uuid",
+                "SELECT t.code AS type, bi.requires_booking, bi.status FROM booking_items bi "
+                        + "JOIN proposal_item_types t ON t.id = bi.type_id WHERE bi.booking_request_id = ?::uuid",
                 requestId.toString());
         assertThat(items).hasSize(3);
         // The explicitly-marked OTHER item now requires booking and is PENDING.
@@ -242,7 +239,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(other.get("requires_booking")).isEqualTo(true);
-        assertThat(other.get("status")).isEqualTo(BookingItemStatus.PENDING.name());
+        assertThat(other.get("status")).isEqualTo("PENDING");
         // The travel package still requires booking; the service fee is still NOT_REQUIRED (rules are fixed).
         Map<String, Object> pkg = items.stream()
                 .filter(i -> "TRAVEL_PACKAGE".equals(i.get("type")))
@@ -254,12 +251,12 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(fee.get("requires_booking")).isEqualTo(false);
-        assertThat(fee.get("status")).isEqualTo(BookingItemStatus.NOT_REQUIRED.name());
+        assertThat(fee.get("status")).isEqualTo("NOT_REQUIRED");
     }
 
     @Test
     void anUnmarkedOtherItemStaysNotRequired() throws Exception {
-        UUID order = order("OtherDefault", CommercialOrderStatus.PENDING_BOOKING, "TRAVEL_PACKAGE", "OTHER");
+        UUID order = order("OtherDefault", "PENDING_BOOKING", "TRAVEL_PACKAGE", "OTHER");
 
         String created = mvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer " + login("operacoes", "operacoes123"))
@@ -272,16 +269,18 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
         UUID requestId = UUID.fromString(JsonPath.read(created, "$.id"));
 
         Map<String, Object> other = jdbc.queryForList(
-                        "SELECT requires_booking, status FROM booking_items WHERE booking_request_id = ?::uuid AND type = 'OTHER'",
+                        "SELECT bi.requires_booking, bi.status FROM booking_items bi "
+                                + "JOIN proposal_item_types t ON t.id = bi.type_id "
+                                + "WHERE bi.booking_request_id = ?::uuid AND t.code = 'OTHER'",
                         requestId.toString())
                 .get(0);
         assertThat(other.get("requires_booking")).isEqualTo(false);
-        assertThat(other.get("status")).isEqualTo(BookingItemStatus.NOT_REQUIRED.name());
+        assertThat(other.get("status")).isEqualTo("NOT_REQUIRED");
     }
 
     @Test
     void cannotMarkAServiceFeeItem() throws Exception {
-        UUID order = order("BadMark", CommercialOrderStatus.PENDING_BOOKING, "TRAVEL_PACKAGE", "SERVICE_FEE");
+        UUID order = order("BadMark", "PENDING_BOOKING", "TRAVEL_PACKAGE", "SERVICE_FEE");
         UUID feeItem = orderItemId(order, "SERVICE_FEE");
         mvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer " + login("operacoes", "operacoes123"))
@@ -323,10 +322,10 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
 
     /** Seeds a PENDING_BOOKING Order (a travel package + a service fee), responsible = the manager. */
     private UUID pendingBookingOrder(String name) {
-        return order(name, CommercialOrderStatus.PENDING_BOOKING, "TRAVEL_PACKAGE", "SERVICE_FEE");
+        return order(name, "PENDING_BOOKING", "TRAVEL_PACKAGE", "SERVICE_FEE");
     }
 
-    private UUID order(String name, CommercialOrderStatus status, String... itemTypes) {
+    private UUID order(String name, String status, String... itemTypes) {
         UUID lead = insertLead(name);
         UUID opportunity = insertOpportunity(name, lead);
         UUID proposal = insertProposal(name, opportunity, lead);
@@ -345,7 +344,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
                 opportunity.toString(),
                 lead.toString(),
                 MANAGER.toString(),
-                status.name(),
+                status,
                 MANAGER.toString(),
                 MANAGER.toString());
         for (String type : itemTypes) {
@@ -396,7 +395,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
                 originId.toString(),
                 MANAGER.toString(),
                 "Pacote " + name,
-                OpportunityStage.WON.name(),
+                "WON",
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

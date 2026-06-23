@@ -1,7 +1,6 @@
 package com.fksoft.erp.domain.crm.service;
 
 import com.fksoft.erp.domain.crm.model.Lead;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.service.data.LeadSearchCriteria;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -44,10 +43,10 @@ public final class LeadSpecifications {
         };
     }
 
-    private static Specification<Lead> statusFilter(Set<LeadStatus> statuses) {
+    private static Specification<Lead> statusFilter(Set<String> statuses) {
         return (root, query, cb) -> {
             if (statuses == null || statuses.isEmpty()) {
-                return cb.notEqual(root.get("status"), LeadStatus.LOST);
+                return cb.notEqual(root.get("status"), "LOST");
             }
             return root.get("status").in(statuses);
         };

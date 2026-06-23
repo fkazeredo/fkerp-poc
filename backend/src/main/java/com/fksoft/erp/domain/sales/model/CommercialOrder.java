@@ -1,18 +1,20 @@
 package com.fksoft.erp.domain.sales.model;
 
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.sales.exception.ProposalNotAcceptedException;
+import com.fksoft.erp.domain.workflow.WorkflowState;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -26,12 +28,12 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 /**
  * A Commercial Order: the formal internal record of a closed commercial deal, created from an
- * {@link ProposalStatus#ACCEPTED} Proposal. It is the aggregate root of its own slice in the Sales &amp;
+ * {@code ACCEPTED} Proposal. It is the aggregate root of its own slice in the Sales &amp;
  * Proposals context ({@code domain.sales}). It is a faithful <b>snapshot</b> of the source Proposal at
  * acceptance time — the items, the subtotal/total, and the source Proposal / Opportunity / Lead references
  * and the responsible person are preserved and never recomputed. Creating the Order does NOT create any
  * Booking, Receivable, Payment, Commission or Customer Care data; the booking is only flagged as pending
- * (see {@link CommercialOrderStatus}).
+ * (the {@code PENDING_BOOKING} / {@code BOOKING_NOT_REQUIRED} states).
  */
 @Entity
 @Table(name = "commercial_orders")
@@ -69,17 +71,24 @@ public class CommercialOrder {
     @Column(name = "responsible_person_id")
     private UUID responsiblePersonId;
 
-    @NotNull
-    @Enumerated(EnumType.STRING)
+    // Denormalized status code (== currentState.code()), kept for cheap filtering/grouping and the read
+    // contract; the data-driven source of truth is the workflow state, kept in sync on every change.
+    @NotBlank
+    @Size(max = 60)
     @Column(nullable = false)
-    private CommercialOrderStatus status;
+    private String status;
 
-    // The consolidated booking status, reflected from the Booking Operations context (Sales owns this column; it
-    // is set by a Sales event listener, never by Booking). Null until a Booking Request exists for this Order.
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "current_state_id", nullable = false)
+    private WorkflowState currentState;
+
+    // The consolidated booking status code, reflected from the Booking Operations context (Sales owns this column;
+    // it is set by a Sales event listener, never by Booking). Null until a Booking Request exists for this Order.
     // This is a read-only reflection — it never drives the Order's own lifecycle ({@link #status}).
-    @Enumerated(EnumType.STRING)
+    @Size(max = 60)
     @Column(name = "booking_status")
-    private BookingRequestStatus bookingStatus;
+    private String bookingStatus;
 
     // The order lines — an immutable snapshot of the Proposal's items at creation time.
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
@@ -111,19 +120,25 @@ public class CommercialOrder {
 
     /**
      * Creates a Commercial Order from an Accepted Proposal, snapshotting its items, totals and source
-     * references. The Order starts {@link CommercialOrderStatus#PENDING_BOOKING} when it contains at least one
-     * item that requires booking (a travel package or a car rental), or
-     * {@link CommercialOrderStatus#BOOKING_NOT_REQUIRED} otherwise. No Booking, Receivable, Payment or
-     * Commission data is created.
+     * references. The Order starts at {@code PENDING_BOOKING} when it contains at least one item that requires
+     * booking (a travel package or a car rental), or {@code BOOKING_NOT_REQUIRED} otherwise. No Booking,
+     * Receivable, Payment or Commission data is created.
      *
-     * @param proposal the source Proposal; must be {@link ProposalStatus#ACCEPTED}
+     * @param proposal the source Proposal; must be {@code ACCEPTED}
      * @param createdBy id of the user creating the Order
      * @param number the sequential order number (assigned from the order-number sequence)
+     * @param pendingBookingState the workflow state to start in when the Order requires booking
+     * @param bookingNotRequiredState the workflow state to start in when no item requires booking
      * @return a new, unsaved Commercial Order
      * @throws ProposalNotAcceptedException if the Proposal is not Accepted
      */
-    public static CommercialOrder createFromProposal(Proposal proposal, UUID createdBy, long number) {
-        if (proposal.status() != ProposalStatus.ACCEPTED) {
+    public static CommercialOrder createFromProposal(
+            Proposal proposal,
+            UUID createdBy,
+            long number,
+            WorkflowState pendingBookingState,
+            WorkflowState bookingNotRequiredState) {
+        if (!"ACCEPTED".equals(proposal.status())) {
             throw new ProposalNotAcceptedException();
         }
         CommercialOrder order = new CommercialOrder();
@@ -136,21 +151,21 @@ public class CommercialOrder {
         proposal.items().forEach(item -> order.items.add(CommercialOrderItem.snapshotOf(item)));
         order.subtotal = proposal.subtotal();
         order.total = proposal.total();
-        order.status = order.requiresBooking()
-                ? CommercialOrderStatus.PENDING_BOOKING
-                : CommercialOrderStatus.BOOKING_NOT_REQUIRED;
+        WorkflowState initialState = order.requiresBooking() ? pendingBookingState : bookingNotRequiredState;
+        order.currentState = initialState;
+        order.status = initialState.code();
         order.createdBy = createdBy;
         order.updatedBy = createdBy;
         return order;
     }
 
     /**
-     * Whether the Order is still active (not cancelled). See {@link CommercialOrderStatus#isActive()}.
+     * Whether the Order is still active (not cancelled).
      *
      * @return {@code true} unless the Order is cancelled
      */
     public boolean isActive() {
-        return status.isActive();
+        return !"CANCELLED".equals(status);
     }
 
     /**
@@ -160,9 +175,9 @@ public class CommercialOrder {
      * identifiable (e.g. as ready for Financial Operations when {@code CONFIRMED}). It never changes the Order's
      * own lifecycle {@link #status}, never cancels the Order, and creates no Receivable, Payment or Commission data.
      *
-     * @param bookingStatus the consolidated Booking Request status to reflect
+     * @param bookingStatus the consolidated Booking Request status code to reflect
      */
-    public void reflectBookingStatus(BookingRequestStatus bookingStatus) {
+    public void reflectBookingStatus(String bookingStatus) {
         this.bookingStatus = bookingStatus;
     }
 

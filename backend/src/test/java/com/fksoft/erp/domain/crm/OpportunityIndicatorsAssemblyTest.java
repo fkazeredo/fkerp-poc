@@ -9,7 +9,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityIndicatorQueries;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
@@ -76,17 +75,17 @@ class OpportunityIndicatorsAssemblyTest {
         when(accessPolicy.visibleTo(any(), anyBoolean(), anyBoolean())).thenReturn(visible);
 
         // Volume — the period query.
-        Map<OpportunityStage, Long> period = new LinkedHashMap<>();
-        period.put(OpportunityStage.NEW_OPPORTUNITY, 3L);
-        period.put(OpportunityStage.DISCOVERY, 2L);
-        period.put(OpportunityStage.LOST, 1L);
+        Map<String, Long> period = new LinkedHashMap<>();
+        period.put("NEW_OPPORTUNITY", 3L);
+        period.put("DISCOVERY", 2L);
+        period.put("LOST", 1L);
         when(indicatorQueries.countByStage(any(), eq(FROM), eq(TO))).thenReturn(period);
 
         // Pipeline — the snapshot query (no period).
-        Map<OpportunityStage, Long> snapshot = new LinkedHashMap<>();
-        snapshot.put(OpportunityStage.NEW_OPPORTUNITY, 4L);
-        snapshot.put(OpportunityStage.READY_FOR_PROPOSAL, 2L);
-        snapshot.put(OpportunityStage.LOST, 3L);
+        Map<String, Long> snapshot = new LinkedHashMap<>();
+        snapshot.put("NEW_OPPORTUNITY", 4L);
+        snapshot.put("READY_FOR_PROPOSAL", 2L);
+        snapshot.put("LOST", 3L);
         when(indicatorQueries.countByStage(any(), isNull(), isNull())).thenReturn(snapshot);
 
         Map<String, Long> byOrigin = new LinkedHashMap<>();
@@ -120,9 +119,9 @@ class OpportunityIndicatorsAssemblyTest {
         assertThat(result.lost()).isEqualTo(1);
         assertThat(result.byStage())
                 .containsExactly(
-                        new OpportunityIndicators.StageCount(OpportunityStage.NEW_OPPORTUNITY, 3),
-                        new OpportunityIndicators.StageCount(OpportunityStage.DISCOVERY, 2),
-                        new OpportunityIndicators.StageCount(OpportunityStage.LOST, 1));
+                        new OpportunityIndicators.StageCount("NEW_OPPORTUNITY", 3),
+                        new OpportunityIndicators.StageCount("DISCOVERY", 2),
+                        new OpportunityIndicators.StageCount("LOST", 1));
         assertThat(result.byOrigin())
                 .containsExactly(
                         new OpportunityIndicators.OriginCount("Website", 4),

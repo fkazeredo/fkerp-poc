@@ -5,6 +5,8 @@ import com.fksoft.erp.domain.crm.exception.InteractionResultNotAvailableExceptio
 import com.fksoft.erp.domain.crm.exception.InteractionTypeNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.LeadAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.LeadAssignmentNotAllowedException;
+import com.fksoft.erp.domain.crm.exception.LeadCannotBeMarkedLostException;
+import com.fksoft.erp.domain.crm.exception.LeadCannotBeQualifiedException;
 import com.fksoft.erp.domain.crm.exception.LeadNotFoundException;
 import com.fksoft.erp.domain.crm.exception.LossReasonNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.OriginNotAvailableException;
@@ -13,11 +15,9 @@ import com.fksoft.erp.domain.crm.model.InteractionResult;
 import com.fksoft.erp.domain.crm.model.InteractionType;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadRegistered;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.LossReason;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.model.PendingLeadReasons;
-import com.fksoft.erp.domain.crm.model.ReferenceData;
 import com.fksoft.erp.domain.crm.repository.InteractionResultRepository;
 import com.fksoft.erp.domain.crm.repository.InteractionTypeRepository;
 import com.fksoft.erp.domain.crm.repository.LatestInteractionRow;
@@ -35,6 +35,14 @@ import com.fksoft.erp.domain.crm.service.data.RegisterLeadCommand;
 import com.fksoft.erp.domain.crm.service.data.Responsible;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
+import com.fksoft.erp.domain.reference.ReferenceData;
+import com.fksoft.erp.domain.workflow.WorkflowAttentionRule;
+import com.fksoft.erp.domain.workflow.WorkflowAttentionRuleRepository;
+import com.fksoft.erp.domain.workflow.WorkflowContext;
+import com.fksoft.erp.domain.workflow.WorkflowEngine;
+import com.fksoft.erp.domain.workflow.WorkflowState;
+import com.fksoft.erp.domain.workflow.WorkflowStateRepository;
+import com.fksoft.erp.domain.workflow.WorkflowTransitionNotAllowedException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -73,6 +81,12 @@ public class LeadService {
     private final LeadAssignmentPolicy assignmentPolicy;
     private final LeadIndicatorQueries indicatorQueries;
     private final ApplicationEventPublisher events;
+    private final WorkflowEngine workflow;
+    private final WorkflowStateRepository workflowStates;
+    private final WorkflowAttentionRuleRepository attentionRules;
+
+    /** The workflow definition code for the Lead lifecycle. */
+    private static final String LEAD_WORKFLOW = "lead";
 
     /**
      * Registers a new Lead (status NEW), optionally recording an initial note as the first
@@ -96,7 +110,10 @@ public class LeadService {
             throw new ResponsiblePersonNotFoundException();
         }
         rejectDuplicate(command);
-        Lead lead = Lead.register(command, origin, createdBy);
+        WorkflowState initialState = workflowStates
+                .findByDefinition_CodeAndCode(LEAD_WORKFLOW, "NEW")
+                .orElseThrow(() -> new IllegalStateException("Missing Lead workflow initial state NEW"));
+        Lead lead = Lead.register(command, origin, initialState, createdBy);
         if (command.initialNote() != null && !command.initialNote().isBlank()) {
             InteractionType noteType = interactionTypes
                     .findByCode(InteractionType.INTERNAL_NOTE_CODE)
@@ -177,7 +194,9 @@ public class LeadService {
     public Page<PendingLead> pending(
             Pageable pageable, UUID currentUserId, boolean canSeeAll, boolean canSeeUnassigned) {
         Instant now = Instant.now();
-        Specification<Lead> spec = LeadPendingSpecifications.pending(now)
+        List<WorkflowAttentionRule> rules =
+                attentionRules.findByDefinition_CodeAndActiveTrueOrderBySortOrderAsc("lead");
+        Specification<Lead> spec = LeadPendingSpecifications.pending(now, rules)
                 .and(accessPolicy.visibleTo(currentUserId, canSeeAll, canSeeUnassigned));
         Page<Lead> page = leads.findAll(spec, pageable);
 
@@ -192,7 +211,7 @@ public class LeadService {
         return page.map(lead -> PendingLead.from(
                 lead,
                 nameOf(names, lead.responsiblePersonId()),
-                PendingLeadReasons.of(lead, now, withInteractions.contains(lead.id()))));
+                PendingLeadReasons.of(lead, now, withInteractions.contains(lead.id()), rules)));
     }
 
     /**
@@ -210,7 +229,7 @@ public class LeadService {
             UUID userId, boolean canSeeAll, boolean canSeeUnassigned, Instant from, Instant to) {
         Specification<Lead> visible = accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned);
 
-        Map<LeadStatus, Long> byStatus = indicatorQueries.countByStatus(visible, from, to);
+        Map<String, Long> byStatus = indicatorQueries.countByStatus(visible, from, to);
         long total = byStatus.values().stream().mapToLong(Long::longValue).sum();
         Map<String, Long> byOrigin = indicatorQueries.countByOrigin(visible, from, to);
         Map<UUID, Long> byResponsibleId = indicatorQueries.countByResponsible(visible, from, to);
@@ -225,10 +244,10 @@ public class LeadService {
 
         return new LeadIndicators(
                 total,
-                byStatus.getOrDefault(LeadStatus.NEW, 0L),
-                byStatus.getOrDefault(LeadStatus.CONTACTED, 0L),
-                byStatus.getOrDefault(LeadStatus.QUALIFIED, 0L),
-                byStatus.getOrDefault(LeadStatus.LOST, 0L),
+                byStatus.getOrDefault("NEW", 0L),
+                byStatus.getOrDefault("CONTACTED", 0L),
+                byStatus.getOrDefault("QUALIFIED", 0L),
+                byStatus.getOrDefault("LOST", 0L),
                 indicatorQueries.countWaitingFirstContact(visible, from, to),
                 originCounts,
                 responsibleCounts);
@@ -280,7 +299,13 @@ public class LeadService {
     public LeadDetail qualify(
             UUID id, String mainInterest, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Lead lead = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
-        lead.qualify(userId, mainInterest, note);
+        WorkflowState target;
+        try {
+            target = workflow.apply(LEAD_WORKFLOW, lead.currentState(), "qualify", WorkflowContext.of(lead, userId));
+        } catch (WorkflowTransitionNotAllowedException e) {
+            throw new LeadCannotBeQualifiedException();
+        }
+        lead.applyQualification(target, mainInterest, note, userId);
         return toDetail(leads.saveAndFlush(lead));
     }
 
@@ -305,7 +330,13 @@ public class LeadService {
                 .findById(lossReasonId)
                 .filter(ReferenceData::active)
                 .orElseThrow(LossReasonNotAvailableException::new);
-        lead.markLost(reason, userId, note);
+        WorkflowState target;
+        try {
+            target = workflow.apply(LEAD_WORKFLOW, lead.currentState(), "lose", WorkflowContext.of(lead, userId));
+        } catch (WorkflowTransitionNotAllowedException e) {
+            throw new LeadCannotBeMarkedLostException();
+        }
+        lead.applyLoss(target, reason, userId, note);
         return toDetail(leads.saveAndFlush(lead));
     }
 
@@ -371,6 +402,12 @@ public class LeadService {
                 .filter(ReferenceData::active)
                 .orElseThrow(InteractionResultNotAvailableException::new);
         lead.recordInteraction(type, result, cmd.description(), cmd.occurredAt(), cmd.nextContactAt(), userId);
+        // An effective contact moves a NEW lead to CONTACTED via the workflow's system "contact" transition.
+        if ("NEW".equals(lead.status()) && result.isEffectiveContact()) {
+            WorkflowState target =
+                    workflow.apply(LEAD_WORKFLOW, lead.currentState(), "contact", WorkflowContext.of(lead, userId));
+            lead.markContacted(target, userId);
+        }
         return toDetail(leads.saveAndFlush(lead));
     }
 

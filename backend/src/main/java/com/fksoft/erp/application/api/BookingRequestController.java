@@ -7,7 +7,6 @@ import com.fksoft.erp.application.api.dto.ConfirmTravelPackageRequest;
 import com.fksoft.erp.application.api.dto.CreateBookingRequestRequest;
 import com.fksoft.erp.application.api.dto.FailBookingItemRequest;
 import com.fksoft.erp.application.api.dto.RegisterBookingAttemptRequest;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.service.BookingRequestService;
 import com.fksoft.erp.domain.booking.service.data.BookingIndicators;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestDetail;
@@ -71,7 +70,7 @@ public class BookingRequestController {
                 canSeeAllOrders(),
                 canSeeUnassignedOrders());
         return ResponseEntity.created(URI.create("/api/bookings/" + id))
-                .body(new BookingRequestResponse(id, BookingRequestStatus.PENDING));
+                .body(new BookingRequestResponse(id, "PENDING"));
     }
 
     /**
@@ -186,8 +185,8 @@ public class BookingRequestController {
             @PathVariable UUID id, @Valid @RequestBody RegisterBookingAttemptRequest request) {
         RecordBookingAttemptCommand command = new RecordBookingAttemptCommand(
                 request.bookingItemId(),
-                request.type(),
-                request.result(),
+                request.typeId(),
+                request.resultId(),
                 request.description(),
                 request.occurredAt(),
                 request.nextActionDate());
@@ -266,7 +265,7 @@ public class BookingRequestController {
     public BookingRequestDetail failBookingItem(
             @PathVariable UUID id, @PathVariable UUID itemId, @Valid @RequestBody FailBookingItemRequest request) {
         FailBookingItemCommand command =
-                new FailBookingItemCommand(request.failureReason(), request.failureNote(), request.failedAt());
+                new FailBookingItemCommand(request.failureReasonId(), request.failureNote(), request.failedAt());
         return bookingService.failBookingItem(
                 id, itemId, command, userContext.currentUserId(), canSeeAllBookings(), canSeeUnassignedBookings());
     }

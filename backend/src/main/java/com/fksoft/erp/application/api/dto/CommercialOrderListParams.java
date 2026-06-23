@@ -1,7 +1,6 @@
 package com.fksoft.erp.application.api.dto;
 
 import com.fksoft.erp.domain.sales.model.BookingNeed;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Set;
@@ -22,7 +21,7 @@ import org.springframework.format.annotation.DateTimeFormat;
  * @param q free-text search over the source Proposal title
  */
 public record CommercialOrderListParams(
-        Set<CommercialOrderStatus> status,
+        Set<String> status,
         String responsible,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdTo,

@@ -7,7 +7,6 @@ import com.fksoft.erp.application.api.dto.OpportunityResponse;
 import com.fksoft.erp.application.api.dto.OpportunityStageChangeRequest;
 import com.fksoft.erp.application.api.dto.RegisterOpportunityActivityRequest;
 import com.fksoft.erp.application.api.dto.UpdateOpportunityDetailsRequest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.service.OpportunityService;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
@@ -77,7 +76,7 @@ public class OpportunityController {
         UUID id = opportunityService.create(
                 command, userContext.currentUserId(), canSeeAllLeads(), canSeeUnassignedLeads());
         return ResponseEntity.created(URI.create("/api/opportunities/" + id))
-                .body(new OpportunityResponse(id, OpportunityStage.NEW_OPPORTUNITY));
+                .body(new OpportunityResponse(id, "NEW_OPPORTUNITY"));
     }
 
     /**
@@ -186,7 +185,7 @@ public class OpportunityController {
     public OpportunityDetail lose(@PathVariable UUID id, @Valid @RequestBody LoseOpportunityRequest request) {
         return opportunityService.markLost(
                 id,
-                request.reason(),
+                request.lossReasonId(),
                 request.note(),
                 userContext.currentUserId(),
                 canSeeAllOpportunities(),
@@ -224,8 +223,8 @@ public class OpportunityController {
     public OpportunityDetail registerActivity(
             @PathVariable UUID id, @Valid @RequestBody RegisterOpportunityActivityRequest request) {
         RecordActivityCommand command = new RecordActivityCommand(
-                request.type(),
-                request.result(),
+                request.typeId(),
+                request.resultId(),
                 request.description(),
                 request.occurredAt(),
                 request.nextActionDate());

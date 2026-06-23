@@ -1,7 +1,6 @@
 package com.fksoft.erp.domain.crm.service.data;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -21,7 +20,7 @@ public record OpportunityListItem(
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,
-        OpportunityStage stage,
+        String stage,
         BigDecimal estimatedValue,
         LocalDate expectedCloseDate,
         Instant createdAt,

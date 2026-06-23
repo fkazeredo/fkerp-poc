@@ -1,7 +1,6 @@
 package com.fksoft.erp.domain.sales.repository;
 
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -10,7 +9,6 @@ import jakarta.persistence.criteria.Root;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,17 +39,16 @@ public class OrderIndicatorQueries {
      * @param to exclusive upper bound on creation (or {@code null})
      * @return counts keyed by status
      */
-    public Map<CommercialOrderStatus, Long> countByStatus(
-            Specification<CommercialOrder> visible, Instant from, Instant to) {
+    public Map<String, Long> countByStatus(Specification<CommercialOrder> visible, Instant from, Instant to) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<Object[]> q = cb.createQuery(Object[].class);
         Root<CommercialOrder> root = q.from(CommercialOrder.class);
         q.multiselect(root.get("status"), cb.count(root));
         q.where(where(cb, root, q, visible, from, to));
         q.groupBy(root.get("status"));
-        Map<CommercialOrderStatus, Long> result = new EnumMap<>(CommercialOrderStatus.class);
+        Map<String, Long> result = new LinkedHashMap<>();
         for (Object[] row : em.createQuery(q).getResultList()) {
-            result.put((CommercialOrderStatus) row[0], (Long) row[1]);
+            result.put((String) row[0], (Long) row[1]);
         }
         return result;
     }

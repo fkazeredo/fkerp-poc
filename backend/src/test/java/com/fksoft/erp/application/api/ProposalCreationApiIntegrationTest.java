@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -67,10 +66,10 @@ class ProposalCreationApiIntegrationTest extends AbstractIntegrationTest {
         leads.deleteAll();
         originId = origins.findByActiveTrueOrderBySortOrderAsc().get(0).id();
         phoneSeq = 0;
-        readyMgr = insertOpportunity("ReadyMgr", OpportunityStage.READY_FOR_PROPOSAL, MANAGER);
-        discoveryMgr = insertOpportunity("DiscoveryMgr", OpportunityStage.DISCOVERY, MANAGER);
-        lostMgr = insertOpportunity("LostMgr", OpportunityStage.LOST, MANAGER);
-        readyRep = insertOpportunity("ReadyRep", OpportunityStage.READY_FOR_PROPOSAL, REPRESENTANTE);
+        readyMgr = insertOpportunity("ReadyMgr", "READY_FOR_PROPOSAL", MANAGER);
+        discoveryMgr = insertOpportunity("DiscoveryMgr", "DISCOVERY", MANAGER);
+        lostMgr = insertOpportunity("LostMgr", "LOST", MANAGER);
+        readyRep = insertOpportunity("ReadyRep", "READY_FOR_PROPOSAL", REPRESENTANTE);
     }
 
     @Test
@@ -262,7 +261,7 @@ class ProposalCreationApiIntegrationTest extends AbstractIntegrationTest {
                 .content("{\"opportunityId\":\"%s\",\"title\":\"%s\"}".formatted(opportunityId, title)));
     }
 
-    private UUID insertOpportunity(String name, OpportunityStage stage, UUID responsibleId) {
+    private UUID insertOpportunity(String name, String stage, UUID responsibleId) {
         UUID leadId = insertLead(name, responsibleId);
         UUID id = UUID.randomUUID();
         jdbc.update(
@@ -278,8 +277,8 @@ class ProposalCreationApiIntegrationTest extends AbstractIntegrationTest {
                 originId.toString(),
                 responsibleId == null ? null : responsibleId.toString(),
                 "Pacote " + name,
-                stage.name(),
-                stage == OpportunityStage.LOST ? "OTHER" : null,
+                stage,
+                "LOST".equals(stage) ? "OTHER" : null,
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -156,6 +155,7 @@ class BookingRequestDetailApiIntegrationTest extends AbstractIntegrationTest {
                         "id",
                         "orderItemId",
                         "type",
+                        "typeLabel",
                         "description",
                         "quantity",
                         "requiresBooking",
@@ -311,7 +311,7 @@ class BookingRequestDetailApiIntegrationTest extends AbstractIntegrationTest {
                 originId.toString(),
                 responsibleId == null ? null : responsibleId.toString(),
                 "Pacote " + name,
-                OpportunityStage.WON.name(),
+                "WON",
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

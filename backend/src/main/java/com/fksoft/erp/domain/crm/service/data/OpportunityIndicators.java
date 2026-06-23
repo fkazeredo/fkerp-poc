@@ -1,6 +1,5 @@
 package com.fksoft.erp.domain.crm.service.data;
 
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -33,7 +32,7 @@ public record OpportunityIndicators(
         List<ResponsibleValue> valueByResponsible) {
 
     /** Opportunity count for a pipeline stage. */
-    public record StageCount(OpportunityStage stage, long count) {}
+    public record StageCount(String stage, long count) {}
 
     /** Opportunity count for a Lead origin. */
     public record OriginCount(String origin, long count) {}

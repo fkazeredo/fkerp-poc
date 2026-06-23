@@ -1,8 +1,6 @@
 package com.fksoft.erp.domain.crm.service.data;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityPendingReason;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -20,7 +18,7 @@ public record PendingOpportunity(
         UUID id,
         UUID leadId,
         String name,
-        OpportunityStage stage,
+        String stage,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,
@@ -29,7 +27,7 @@ public record PendingOpportunity(
         LocalDate nextActionDate,
         Instant createdAt,
         Instant lastActivityAt,
-        List<OpportunityPendingReason> reasons) {
+        List<String> reasons) {
 
     /**
      * Maps an Opportunity entity (plus enrichment) to the pending item.
@@ -41,7 +39,7 @@ public record PendingOpportunity(
      * @return the pending item
      */
     public static PendingOpportunity from(
-            Opportunity o, String responsibleName, Instant lastActivityAt, List<OpportunityPendingReason> reasons) {
+            Opportunity o, String responsibleName, Instant lastActivityAt, List<String> reasons) {
         return new PendingOpportunity(
                 o.id(),
                 o.leadId(),

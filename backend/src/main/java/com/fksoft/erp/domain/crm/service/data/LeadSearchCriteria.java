@@ -1,6 +1,5 @@
 package com.fksoft.erp.domain.crm.service.data;
 
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
@@ -18,7 +17,7 @@ import java.util.UUID;
  * @param query free-text search over name and contacts
  */
 public record LeadSearchCriteria(
-        Set<LeadStatus> statuses,
+        Set<String> statuses,
         UUID originId,
         UUID responsibleId,
         boolean unassignedOnly,

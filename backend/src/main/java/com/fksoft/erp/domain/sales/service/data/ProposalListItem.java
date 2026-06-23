@@ -1,7 +1,6 @@
 package com.fksoft.erp.domain.sales.service.data;
 
 import com.fksoft.erp.domain.sales.model.Proposal;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -18,7 +17,7 @@ public record ProposalListItem(
         UUID opportunityId,
         String opportunityName,
         String title,
-        ProposalStatus status,
+        String status,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,

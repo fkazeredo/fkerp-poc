@@ -2,6 +2,7 @@ package com.fksoft.erp.domain.crm.service;
 
 import com.fksoft.erp.domain.crm.model.LossReason;
 import com.fksoft.erp.domain.crm.repository.LossReasonRepository;
+import com.fksoft.erp.domain.reference.AbstractReferenceDataService;
 import org.springframework.stereotype.Service;
 
 /** CRUD service for the {@link LossReason} cadastro. */

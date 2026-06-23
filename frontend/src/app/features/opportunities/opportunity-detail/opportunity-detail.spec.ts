@@ -7,6 +7,7 @@ import { NEVER, of, throwError } from 'rxjs';
 import { OpportunityDetailPage } from './opportunity-detail';
 import { OpportunityDetail, OpportunityService } from '../../../core/api/opportunity.service';
 import { ProposalService } from '../../../core/api/proposal.service';
+import { ReferenceService } from '../../../core/api/reference.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
@@ -28,6 +29,12 @@ describe('OpportunityDetailPage', () => {
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
   const auth = { canOperateOpportunity: vi.fn(), canCreateProposal: vi.fn() };
+  const references = { list: vi.fn() };
+  const refItems = [
+    { id: 'r1', code: 'NO_BUDGET', label: 'Sem orçamento', active: true, sortOrder: 1 },
+    { id: 'r2', code: 'PHONE_CALL', label: 'Ligação', active: true, sortOrder: 2 },
+    { id: 'r3', code: 'CLIENT_ENGAGED', label: 'Cliente engajado', active: true, sortOrder: 3 },
+  ];
 
   const sample = (over: Partial<OpportunityDetail> = {}): OpportunityDetail => ({
     id: 'o1',
@@ -74,6 +81,7 @@ describe('OpportunityDetailPage', () => {
         providePrimeNG(),
         ConfirmationService,
         { provide: OpportunityService, useValue: opportunities },
+        { provide: ReferenceService, useValue: references },
         { provide: ProposalService, useValue: proposalService },
         { provide: Router, useValue: router },
         { provide: MessageService, useValue: messages },
@@ -110,9 +118,11 @@ describe('OpportunityDetailPage', () => {
       messages.add,
       auth.canOperateOpportunity,
       auth.canCreateProposal,
+      references.list,
     ].forEach((fn) => fn.mockReset());
     opportunities.detail.mockReturnValue(of(sample()));
     opportunities.responsibles.mockReturnValue(of([]));
+    references.list.mockReturnValue(of(refItems));
     auth.canOperateOpportunity.mockReturnValue(true);
     auth.canCreateProposal.mockReturnValue(true);
   });
@@ -162,7 +172,7 @@ describe('OpportunityDetailPage', () => {
     comp['openLose']();
     expect(comp['loseOpen']()).toBe(true);
     expect(comp['lossReason']).toBeNull();
-    expect(comp['lossReasonOptions'].map((o) => o.value)).toContain('NO_BUDGET');
+    expect(comp['lossReasonOptions']().map((o) => o.code)).toContain('NO_BUDGET');
   });
 
   it('confirmLose marks as lost, refreshes the detail and closes the dialog', () => {
@@ -188,10 +198,11 @@ describe('OpportunityDetailPage', () => {
     expect(opportunities.lose).not.toHaveBeenCalled();
   });
 
-  it('maps loss reasons to pt-BR labels', () => {
+  it('loads the loss-reason options from the cadastro on init', () => {
     const comp = build();
-    expect(comp['lossReasonLabel']('NO_BUDGET')).toBe('Sem orçamento');
-    expect(comp['lossReasonLabel']('TRAVEL_CANCELLED')).toBe('Viagem cancelada');
+    comp.ngOnInit();
+    expect(references.list).toHaveBeenCalledWith('opportunity-loss-reasons');
+    expect(comp['lossReasonOptions']().length).toBeGreaterThan(0);
   });
 
   it('stageOptions offers only the next stage in the funnel', () => {
@@ -329,7 +340,7 @@ describe('OpportunityDetailPage', () => {
 
     expect(opportunities.registerActivity).toHaveBeenCalledWith(
       'o1',
-      expect.objectContaining({ type: 'PHONE_CALL', result: 'CLIENT_ENGAGED', description: 'ligação' }),
+      expect.objectContaining({ typeId: 'PHONE_CALL', resultId: 'CLIENT_ENGAGED', description: 'ligação' }),
     );
     expect(comp['opportunity']()?.activities.length).toBe(1);
     expect(comp['activityOpen']()).toBe(false);
@@ -344,10 +355,12 @@ describe('OpportunityDetailPage', () => {
     expect(opportunities.registerActivity).not.toHaveBeenCalled();
   });
 
-  it('maps activity type and result to pt-BR labels', () => {
+  it('registers the activity with the selected type/result cadastro ids', () => {
     const comp = build();
-    expect(comp['activityTypeLabel']('MEETING')).toBe('Reunião');
-    expect(comp['activityResultLabel']('READY_FOR_PROPOSAL')).toBe('Pronta para proposta');
+    comp.ngOnInit();
+    expect(references.list).toHaveBeenCalledWith('opportunity-activity-types');
+    expect(references.list).toHaveBeenCalledWith('opportunity-activity-results');
+    expect(comp['activityTypeOptions']().length).toBeGreaterThan(0);
   });
 
   it('allows editing commercial details only when operable', () => {

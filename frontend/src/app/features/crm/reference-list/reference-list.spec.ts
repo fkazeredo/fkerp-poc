@@ -63,7 +63,7 @@ describe('ReferenceList', () => {
   it('reads the route data and lists the cadastro', () => {
     const comp = build();
     expect(comp['title']()).toBe('Origens');
-    expect(api.list).toHaveBeenCalledWith('origins', false);
+    expect(api.list).toHaveBeenCalledWith('origins', false, 'crm');
     expect(comp['items']()).toHaveLength(1);
   });
 
@@ -74,11 +74,15 @@ describe('ReferenceList', () => {
 
     comp['save']();
 
-    expect(api.create).toHaveBeenCalledWith('origins', {
-      code: 'TIKTOK',
-      label: 'TikTok',
-      sortOrder: 5,
-    });
+    expect(api.create).toHaveBeenCalledWith(
+      'origins',
+      {
+        code: 'TIKTOK',
+        label: 'TikTok',
+        sortOrder: 5,
+      },
+      'crm',
+    );
     expect(api.list).toHaveBeenCalledTimes(2); // initial + reload
     expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
   });
@@ -86,7 +90,7 @@ describe('ReferenceList', () => {
   it('deactivates a record and reloads', () => {
     const comp = build();
     comp['deactivate'](item());
-    expect(api.deactivate).toHaveBeenCalledWith('origins', 'i1');
+    expect(api.deactivate).toHaveBeenCalledWith('origins', 'i1', 'crm');
     expect(api.list).toHaveBeenCalledTimes(2);
   });
 
@@ -94,7 +98,7 @@ describe('ReferenceList', () => {
     const comp = build();
     comp['toggleInactive']();
     expect(comp['includeInactive']()).toBe(true);
-    expect(api.list).toHaveBeenLastCalledWith('origins', true);
+    expect(api.list).toHaveBeenLastCalledWith('origins', true, 'crm');
   });
 
   // Regression: the dialog "Cancelar" must close the dialog without saving.

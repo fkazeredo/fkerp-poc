@@ -34,7 +34,9 @@ const STATUS_LABELS: Record<BookingRequestStatus, string> = {
   CANCELLED: 'Cancelada',
 };
 
-const ITEM_TYPE_LABELS: Record<ProposalItemType, string> = {
+// Friendly labels for the reserved item-type codes the indicators return (keyed by code; a custom item
+// type falls back to its own code).
+const ITEM_TYPE_LABELS: Record<string, string> = {
   TRAVEL_PACKAGE: 'Pacote de viagem',
   CAR_RENTAL: 'Locação de veículo',
   SERVICE_FEE: 'Taxa de serviço',
@@ -97,7 +99,9 @@ export class BookingIndicatorsPage implements OnInit {
   );
 
   protected readonly byItemType = computed<Bar[]>(() =>
-    toBars((this.data()?.itemsByType ?? []).map((t) => ({ label: ITEM_TYPE_LABELS[t.type], count: t.count }))),
+    toBars(
+      (this.data()?.itemsByType ?? []).map((t) => ({ label: ITEM_TYPE_LABELS[t.type] ?? t.type, count: t.count })),
+    ),
   );
 
   ngOnInit(): void {
