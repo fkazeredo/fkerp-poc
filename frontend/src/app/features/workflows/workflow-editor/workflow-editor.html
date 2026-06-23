@@ -36,23 +36,10 @@
             role="img"
             aria-label="Diagrama do fluxo de trabalho"
           >
-            <defs>
-              <marker
-                id="wf-arrow"
-                viewBox="0 0 10 10"
-                refX="9"
-                refY="5"
-                markerWidth="7"
-                markerHeight="7"
-                orient="auto-start-reverse"
-              >
-                <path d="M0,0 L10,5 L0,10 z" class="wf-arrow-head" />
-              </marker>
-            </defs>
-
             @for (e of dg.edges; track e.id) {
               <g class="wf-edge" (click)="onEdgeClick(e.transition)">
-                <path class="wf-edge-line" [attr.d]="e.d" marker-end="url(#wf-arrow)" />
+                <path class="wf-edge-line" [attr.d]="e.d" />
+                <path class="wf-arrow-head" [attr.d]="e.arrow" />
                 <g class="wf-edge-label">
                   <rect
                     [attr.x]="e.labelX - e.pillW / 2"
