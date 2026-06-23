@@ -912,19 +912,21 @@ It is an **administrators-only** module: open it from the **Fluxos de trabalho**
 
 ### 12.1 The workflow list
 
-The module's home shows **one card per workflow** (Lead, Opportunity, Booking, and others). Click a card to
-open that workflow's **editor**.
+In the **sidebar**, the **Fluxos de trabalho** module opens as an accordion with **one item per workflow** (Lead,
+Opportunity, Proposal, Commercial Order, Booking, Booking item) — clicking an item opens that workflow's **editor**
+directly. The **module home** also shows **one card per workflow**, with the same destination.
 
 ### 12.2 The diagram
 
-The workflow is drawn as a **diagram**: each **state** (situation) is a **box** and each **transition** (allowed
-step between situations) is an **arrow**. At the top, **counts** summarise the flow (how many states,
-transitions and attention rules). A **legend** explains the box colours:
+The workflow is drawn as a **diagram** (a left-to-right flowchart): each **state** (situation) is a **box** and
+each **transition** (allowed step between situations) is a labelled **arrow**. The main path is on the top row and
+the **closing states** on a row below. At the top, **counts** summarise the flow (how many states, transitions and
+attention rules). A **legend** explains the box colours:
 
 - **Initial** (blue) — where the record starts.
-- **Intermediate** (grey) — situations along the way.
-- **Success** (green) — a positive conclusion.
-- **Terminal** (red) — a closing state (for example lost/cancelled).
+- **In progress** (indigo) — situations along the way.
+- **Success** (green) — a positive closing state (e.g. won/accepted).
+- **Closed** (red) — a negative closing state (e.g. lost/cancelled).
 - **Dashed** — an **inactive** state.
 
 Items marked **"sistema"** (system) ship with the product: they can be **renamed** and **activated/deactivated**

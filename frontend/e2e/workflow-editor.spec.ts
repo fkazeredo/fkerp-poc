@@ -21,15 +21,15 @@ test('the admin edits a workflow state and manages an attention rule through the
 }) => {
   await login(page);
 
-  // Reach the editor from the standalone "Fluxos de trabalho" module.
+  // Reach the editor from the standalone "Fluxos de trabalho" module (open the Oportunidade workflow tile;
+  // scope to the home tile, since the sidebar also lists "Oportunidade" as a workflow sub-item).
   await page.goto('/fluxos');
   await expect(page.getByRole('heading', { name: 'Fluxos de trabalho' })).toBeVisible();
-  await page.getByText('Oportunidade', { exact: true }).click();
+  await page.locator('.tile').filter({ hasText: 'Oportunidade' }).click();
   await expect(page).toHaveURL(/\/fluxos\/opportunity$/);
 
-  // The graph renders the states as nodes (proves ngx-graph draws the dagre layout in the browser), with the
-  // orientation aids (counts + the category legend).
-  await expect(page.locator('ngx-graph')).toBeVisible();
+  // The hand-rolled SVG diagram renders the states as nodes, with the orientation aids (counts + legend).
+  await expect(page.locator('svg.wf-diagram')).toBeVisible();
   await expect(page.locator('.counts')).toContainText('estados');
   await expect(page.locator('.legend')).toContainText('Inicial');
   await expect(page.locator('g.wf-node').filter({ hasText: 'Nova' })).toBeVisible();

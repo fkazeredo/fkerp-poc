@@ -76,17 +76,23 @@ describe('NavigationService', () => {
     expect(build().module('comercial')!.actions).toHaveLength(0);
   });
 
-  it('exposes a standalone "Fluxos de trabalho" module only with the workflow:manage scope', () => {
+  it('exposes a standalone "Fluxos de trabalho" module that expands into the 6 workflows, only with the scope', () => {
     // Without the scope the module is absent (and never lived under Cadastros).
     expect(build().module('workflows')).toBeUndefined();
-    expect(build().module('cadastros')!.items.map((i) => i.link)).not.toContain('/fluxos');
 
     auth.canManageWorkflows.mockReturnValue(true);
     const wf = build().module('workflows');
     expect(wf?.title).toBe('Fluxos de trabalho');
     expect(wf?.home).toBe('/fluxos');
-    expect(wf?.items.map((i) => i.link)).toEqual(['/fluxos']);
-    // Still not under Cadastros.
+    expect(wf?.items.map((i) => i.link)).toEqual([
+      '/fluxos/lead',
+      '/fluxos/opportunity',
+      '/fluxos/proposal',
+      '/fluxos/order',
+      '/fluxos/booking_request',
+      '/fluxos/booking_item',
+    ]);
+    // Not under Cadastros.
     expect(build().module('cadastros')!.items.map((i) => i.link)).not.toContain('/fluxos');
   });
 

@@ -1,30 +1,18 @@
-import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
-import { GraphComponent } from '@swimlane/ngx-graph';
 import { of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { WorkflowEditor } from './workflow-editor';
-import { WorkflowDetail, WorkflowService } from '../../../core/api/workflow.service';
+import { WorkflowDetail, WorkflowService, WorkflowStateView } from '../../../core/api/workflow.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
-// jsdom has no SVG layout; stub what ngx-graph measures so it can render without throwing.
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
   observe() {}
   unobserve() {}
   disconnect() {}
 };
-const svgProto =
-  typeof SVGElement !== 'undefined'
-    ? (SVGElement.prototype as unknown as Record<string, unknown>)
-    : null;
-if (svgProto) {
-  svgProto['getBBox'] ??= () => ({ x: 0, y: 0, width: 100, height: 50 });
-  svgProto['getScreenCTM'] ??= () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0, inverse: () => ({}) });
-  svgProto['getComputedTextLength'] ??= () => 80;
-}
 
 describe('WorkflowEditor', () => {
   const workflows = {
@@ -39,16 +27,47 @@ describe('WorkflowEditor', () => {
   const router = { navigateByUrl: vi.fn() };
   const auth = { canManageWorkflows: vi.fn().mockReturnValue(true) };
 
+  const state = (over: Partial<WorkflowStateView>): WorkflowStateView => ({
+    id: 'st',
+    code: 'X',
+    label: 'X',
+    category: 'ACTIVE',
+    sortOrder: 1,
+    active: true,
+    system: true,
+    ...over,
+  });
+
   const detail = (): WorkflowDetail => ({
     code: 'opportunity',
     label: 'Oportunidade',
     states: [
-      { id: 'st-new', code: 'NEW_OPPORTUNITY', label: 'Nova', category: 'INITIAL', sortOrder: 1, active: true, system: true },
-      { id: 'st-disc', code: 'DISCOVERY', label: 'Descoberta', category: 'INTERMEDIATE', sortOrder: 2, active: true, system: true },
-      { id: 'st-lost', code: 'LOST', label: 'Perdida', category: 'TERMINAL', sortOrder: 9, active: true, system: true },
+      state({ id: 'st-new', code: 'NEW_OPPORTUNITY', label: 'Nova', category: 'INITIAL', sortOrder: 1 }),
+      state({ id: 'st-disc', code: 'DISCOVERY', label: 'Descoberta', category: 'ACTIVE', sortOrder: 2 }),
+      state({ id: 'st-won', code: 'WON', label: 'Ganha', category: 'TERMINAL_POSITIVE', sortOrder: 8 }),
+      state({ id: 'st-lost', code: 'LOST', label: 'Perdida', category: 'TERMINAL_NEGATIVE', sortOrder: 9 }),
     ],
     transitions: [
-      { id: 'tr-1', code: 'ADVANCE', label: 'Avançar', fromState: 'NEW_OPPORTUNITY', toState: 'DISCOVERY', trigger: 'USER', system: true, rules: [{ id: 'ru-1', kind: 'GUARD', ruleKey: 'strictFunnel', params: null, sortOrder: 1, system: true }] },
+      {
+        id: 'tr-1',
+        code: 'ADVANCE',
+        label: 'Avançar',
+        fromState: 'NEW_OPPORTUNITY',
+        toState: 'DISCOVERY',
+        trigger: 'USER',
+        system: true,
+        rules: [{ id: 'ru-1', kind: 'GUARD', ruleKey: 'strictFunnel', params: null, sortOrder: 1, system: true }],
+      },
+      {
+        id: 'tr-2',
+        code: 'LOSE',
+        label: 'Perder',
+        fromState: 'DISCOVERY',
+        toState: 'LOST',
+        trigger: 'USER',
+        system: true,
+        rules: [],
+      },
     ],
     attentionRules: [
       { id: 'ar-sys', conditionKey: 'NO_RECENT_ACTIVITY', thresholdDays: 14, stateValue: null, code: 'WITHOUT_RECENT_ACTIVITY', label: 'Sem atividade recente', sortOrder: 1, active: true, system: true },
@@ -103,13 +122,19 @@ describe('WorkflowEditor', () => {
     workflows.deleteAttentionRule.mockReturnValue(of(undefined));
   });
 
-  it('loads the workflow and maps states→nodes and transitions→edges', () => {
+  it('loads the workflow and lays out the diagram (non-terminals on the main row, terminals below)', () => {
     const comp = build();
     expect(comp['workflow']()?.code).toBe('opportunity');
-    expect(comp['nodes']()).toHaveLength(3);
-    expect(comp['nodes']()[0]).toMatchObject({ id: 's_NEW_OPPORTUNITY', label: 'Nova' });
-    expect(comp['links']()).toHaveLength(1);
-    expect(comp['links']()[0]).toMatchObject({ source: 's_NEW_OPPORTUNITY', target: 's_DISCOVERY', label: 'Avançar' });
+    const dg = comp['diagram']();
+    expect(dg.nodes).toHaveLength(4);
+    expect(dg.edges).toHaveLength(2);
+    const find = (code: string) => dg.nodes.find((n) => n.state.code === code)!;
+    // Terminals sit on a lower row than the main path.
+    expect(find('LOST').y).toBeGreaterThan(find('NEW_OPPORTUNITY').y);
+    expect(find('WON').y).toBe(find('LOST').y);
+    // The main path flows left to right.
+    expect(find('DISCOVERY').x).toBeGreaterThan(find('NEW_OPPORTUNITY').x);
+    expect(dg.edges[0].label).toBe('Avançar');
   });
 
   it('shows a permission message on 403', () => {
@@ -120,7 +145,7 @@ describe('WorkflowEditor', () => {
 
   it('opens the state panel on a node click and saves the edited label', () => {
     const comp = build();
-    comp['onNodeClick']({ id: 's_DISCOVERY', label: 'Descoberta', data: { state: detail().states[1] } });
+    comp['onNodeClick'](detail().states[1]); // Descoberta
     expect(comp['selectedState']()?.code).toBe('DISCOVERY');
 
     comp['stateLabel'] = 'Descoberta (editada)';
@@ -138,9 +163,15 @@ describe('WorkflowEditor', () => {
 
   it('requires a non-empty state label', () => {
     const comp = build();
-    comp['onNodeClick']({ id: 's_DISCOVERY', label: 'Descoberta', data: { state: detail().states[1] } });
+    comp['onNodeClick'](detail().states[1]);
     comp['stateLabel'] = '   ';
     expect(comp['canSaveState']()).toBe(false);
+  });
+
+  it('opens the read-only transition panel on an edge click', () => {
+    const comp = build();
+    comp['onEdgeClick'](detail().transitions[0]);
+    expect(comp['selectedTransition']()?.code).toBe('ADVANCE');
   });
 
   it('creates a custom attention rule with the chosen condition parameters', () => {
@@ -210,7 +241,7 @@ describe('WorkflowEditor', () => {
   it('flags unsaved changes only after the open panel is edited', () => {
     const comp = build();
     expect(comp.hasUnsavedChanges()).toBe(false);
-    comp['onNodeClick']({ id: 's_DISCOVERY', label: 'Descoberta', data: { state: detail().states[1] } });
+    comp['onNodeClick'](detail().states[1]);
     expect(comp.hasUnsavedChanges()).toBe(false); // just opened, untouched
     comp['stateLabel'] = 'changed';
     expect(comp.hasUnsavedChanges()).toBe(true);
@@ -219,7 +250,7 @@ describe('WorkflowEditor', () => {
   it('gives the edit panel a contextual title for what is selected', () => {
     const comp = build();
     expect(comp['panelTitle']()).toBe('Edição');
-    comp['onNodeClick']({ id: 's_DISCOVERY', label: 'Descoberta', data: { state: detail().states[1] } });
+    comp['onNodeClick'](detail().states[1]);
     expect(comp['panelTitle']()).toBe('Editar estado · Descoberta');
     comp['openNewRule']();
     expect(comp['panelTitle']()).toBe('Nova regra de atenção');
@@ -230,22 +261,22 @@ describe('WorkflowEditor', () => {
   describe('DOM', () => {
     function render() {
       configure();
-      // The d3/dagre graph needs a real browser layout engine (verified by E2E). For the jsdom DOM tests,
-      // stub <ngx-graph> out so the panels, attention-rule list and system-lock can be asserted.
-      TestBed.overrideComponent(WorkflowEditor, {
-        remove: { imports: [GraphComponent] },
-        add: { schemas: [NO_ERRORS_SCHEMA] },
-      });
       const fixture = TestBed.createComponent(WorkflowEditor);
       fixture.componentInstance.ngOnInit();
       fixture.detectChanges();
       return fixture.nativeElement as HTMLElement;
     }
 
-    it('renders the workflow label, the graph element and the attention rules', () => {
+    it('renders the SVG diagram with a node per state and the attention rules', () => {
       const el = render();
       expect(el.querySelector('h1')?.textContent).toContain('Oportunidade');
-      expect(el.querySelector('ngx-graph')).not.toBeNull();
+      expect(el.querySelector('svg.wf-diagram')).not.toBeNull();
+      const nodes = el.querySelectorAll('.wf-node');
+      expect(nodes).toHaveLength(4);
+      expect(el.querySelector('svg.wf-diagram')?.textContent).toContain('Nova');
+      expect(el.querySelector('svg.wf-diagram')?.textContent).toContain('Perdida');
+      // One edge path per transition.
+      expect(el.querySelectorAll('.wf-edge-line')).toHaveLength(2);
       expect(el.textContent).toContain('Sem atividade recente');
       expect(el.textContent).toContain('Regra custom');
     });
@@ -253,13 +284,13 @@ describe('WorkflowEditor', () => {
     it('shows the counts and the category legend for orientation', () => {
       const el = render();
       const counts = el.querySelector('.counts')?.textContent ?? '';
-      expect(counts).toContain('3 estados');
-      expect(counts).toContain('1 transições');
+      expect(counts).toContain('4 estados');
+      expect(counts).toContain('2 transições');
       expect(counts).toContain('2 regras de atenção');
       const legend = el.querySelector('.legend');
-      expect(legend).not.toBeNull();
       expect(legend?.textContent).toContain('Inicial');
-      expect(legend?.textContent).toContain('Terminal');
+      expect(legend?.textContent).toContain('Em andamento');
+      expect(legend?.textContent).toContain('Sucesso');
       expect(legend?.querySelectorAll('.sw').length).toBeGreaterThanOrEqual(5);
     });
 
@@ -267,8 +298,7 @@ describe('WorkflowEditor', () => {
       const el = render();
       const items = el.querySelectorAll('.rule-list li');
       expect(items).toHaveLength(2);
-      // system rule (first) has no delete button; custom rule (second) does.
-      expect(items[0].querySelector('button.p-button-danger, .pi-trash')).toBeNull();
+      expect(items[0].querySelector('.pi-trash')).toBeNull();
       expect(items[1].querySelector('.pi-trash')).not.toBeNull();
     });
   });
