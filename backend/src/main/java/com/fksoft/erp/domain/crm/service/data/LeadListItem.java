@@ -38,7 +38,7 @@ public record LeadListItem(
                 lead.name(),
                 mainContact(lead),
                 lead.origin().label(),
-                lead.status(),
+                lead.status().name(),
                 lead.responsiblePersonId(),
                 responsibleName,
                 lead.responsiblePersonId() == null,

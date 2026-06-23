@@ -1,6 +1,7 @@
 package com.fksoft.erp.domain.sales.repository;
 
 import com.fksoft.erp.domain.sales.model.Proposal;
+import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -47,7 +48,7 @@ public class ProposalIndicatorQueries {
         q.groupBy(root.get("status"));
         Map<String, Long> result = new LinkedHashMap<>();
         for (Object[] row : em.createQuery(q).getResultList()) {
-            result.put((String) row[0], (Long) row[1]);
+            result.put(((ProposalStatus) row[0]).name(), (Long) row[1]);
         }
         return result;
     }
@@ -69,7 +70,7 @@ public class ProposalIndicatorQueries {
         q.groupBy(root.get("status"));
         Map<String, BigDecimal> result = new LinkedHashMap<>();
         for (Object[] row : em.createQuery(q).getResultList()) {
-            result.put((String) row[0], (BigDecimal) row[1]);
+            result.put(((ProposalStatus) row[0]).name(), (BigDecimal) row[1]);
         }
         return result;
     }

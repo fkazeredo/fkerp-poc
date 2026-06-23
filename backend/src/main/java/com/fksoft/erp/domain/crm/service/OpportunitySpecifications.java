@@ -2,6 +2,7 @@ package com.fksoft.erp.domain.crm.service;
 
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
+import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -11,8 +12,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 
 /** Dynamic query predicates for the operational Opportunity list. */
@@ -42,10 +45,22 @@ public final class OpportunitySpecifications {
     private static Specification<Opportunity> stageFilter(Set<String> stages) {
         return (root, query, cb) -> {
             if (stages == null || stages.isEmpty()) {
-                return cb.not(root.get("stage").in(List.of("WON", "LOST")));
+                return cb.not(root.get("stage").in(List.of(OpportunityStage.WON, OpportunityStage.LOST)));
             }
-            return root.get("stage").in(stages);
+            Set<OpportunityStage> parsed = stages.stream()
+                    .map(OpportunitySpecifications::toStage)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            return parsed.isEmpty() ? cb.disjunction() : root.get("stage").in(parsed);
         };
+    }
+
+    private static OpportunityStage toStage(String value) {
+        try {
+            return OpportunityStage.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private static Specification<Opportunity> responsibleFilter(UUID responsibleId, boolean unassignedOnly) {

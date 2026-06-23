@@ -5,16 +5,18 @@ import com.fksoft.erp.domain.booking.exception.BookingItemNotMarkableException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CommercialOrderItem;
+import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
@@ -80,13 +82,11 @@ public class BookingRequest {
     @Column(name = "booking_operator_id")
     private UUID bookingOperatorId;
 
-    // Denormalized status code (mirrors a 'booking_request' workflow state); the current_state_id FK is kept in
-    // sync from this code by a DB trigger. The request status is state-derived (consolidateStatus), never a
-    // user-chosen target, so the code stays the entity's source value and the FK is derived (data-driven storage).
-    @NotBlank
-    @Size(max = 60)
-    @Column(nullable = false)
-    private String status;
+    // The request status is state-derived (consolidateStatus), never a user-chosen target.
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 60)
+    private BookingRequestStatus status;
 
     @Size(max = 2000)
     private String notes;
@@ -152,7 +152,7 @@ public class BookingRequest {
             String notes,
             Set<UUID> bookingRequiredItemIds,
             UUID createdBy) {
-        if (!"PENDING_BOOKING".equals(order.status())) {
+        if (order.status() != CommercialOrderStatus.PENDING_BOOKING) {
             throw new CommercialOrderNotPendingBookingException();
         }
         Set<UUID> required = bookingRequiredItemIds == null ? Set.of() : bookingRequiredItemIds;
@@ -175,7 +175,7 @@ public class BookingRequest {
         request.responsiblePersonId = order.responsiblePersonId();
         request.bookingOperatorId = bookingOperatorId;
         request.notes = notes;
-        request.status = "PENDING";
+        request.status = BookingRequestStatus.PENDING;
         order.items().forEach(item -> request.items.add(BookingItem.snapshotOf(item, required.contains(item.id()))));
         request.createdBy = createdBy;
         request.updatedBy = createdBy;
@@ -311,32 +311,32 @@ public class BookingRequest {
      * Confirming a previously failed item reconsolidates the request (FAILED → PARTIALLY_CONFIRMED/CONFIRMED).
      */
     private void consolidateStatus() {
-        if ("CANCELLED".equals(status)) {
+        if (status == BookingRequestStatus.CANCELLED) {
             return;
         }
         long requiring = items.stream().filter(BookingItem::requiresBooking).count();
         long confirmed = items.stream()
                 .filter(BookingItem::requiresBooking)
-                .filter(i -> "CONFIRMED".equals(i.status()))
+                .filter(i -> i.status() == BookingItemStatus.CONFIRMED)
                 .count();
         long failed = items.stream()
                 .filter(BookingItem::requiresBooking)
-                .filter(i -> "FAILED".equals(i.status()))
+                .filter(i -> i.status() == BookingItemStatus.FAILED)
                 .count();
         if (requiring > 0 && confirmed == requiring) {
-            status = "CONFIRMED";
+            status = BookingRequestStatus.CONFIRMED;
             // Stamp the first time the request reaches CONFIRMED (feeds the average creation→confirmation metric).
             if (confirmedAt == null) {
                 confirmedAt = Instant.now();
             }
         } else if (confirmed > 0) {
-            status = "PARTIALLY_CONFIRMED";
+            status = BookingRequestStatus.PARTIALLY_CONFIRMED;
         } else if (failed > 0) {
-            status = "FAILED";
+            status = BookingRequestStatus.FAILED;
         } else if (!attempts.isEmpty()) {
-            status = "IN_PROGRESS";
+            status = BookingRequestStatus.IN_PROGRESS;
         } else {
-            status = "PENDING";
+            status = BookingRequestStatus.PENDING;
         }
     }
 }

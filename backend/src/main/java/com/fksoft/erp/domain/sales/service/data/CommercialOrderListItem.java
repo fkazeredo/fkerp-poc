@@ -51,12 +51,12 @@ public record CommercialOrderListItem(
                 proposalTitle,
                 o.opportunityId(),
                 opportunityName,
-                o.status(),
+                o.status().name(),
                 o.responsiblePersonId(),
                 responsibleName,
                 o.responsiblePersonId() == null,
                 o.total(),
-                "PENDING_BOOKING".equals(o.status()),
+                "PENDING_BOOKING".equals(o.status().name()),
                 o.bookingStatus(),
                 o.createdAt());
     }

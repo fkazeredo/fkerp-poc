@@ -10,7 +10,6 @@ describe('NavigationService', () => {
     canSeeProposals: vi.fn(),
     canSeeOrders: vi.fn(),
     canSeeBookings: vi.fn(),
-    canManageWorkflows: vi.fn(() => false),
   };
 
   function build(): NavigationService {
@@ -30,7 +29,6 @@ describe('NavigationService', () => {
     auth.canSeeProposals.mockReset().mockReturnValue(false);
     auth.canSeeOrders.mockReset().mockReturnValue(false);
     auth.canSeeBookings.mockReset().mockReturnValue(false);
-    auth.canManageWorkflows.mockReset().mockReturnValue(false);
   });
 
   it('shows only the modules the user can access', () => {
@@ -74,26 +72,6 @@ describe('NavigationService', () => {
 
     auth.canCreateLead.mockReturnValue(false);
     expect(build().module('comercial')!.actions).toHaveLength(0);
-  });
-
-  it('exposes a standalone "Fluxos de trabalho" module that expands into the 6 workflows, only with the scope', () => {
-    // Without the scope the module is absent (and never lived under Cadastros).
-    expect(build().module('workflows')).toBeUndefined();
-
-    auth.canManageWorkflows.mockReturnValue(true);
-    const wf = build().module('workflows');
-    expect(wf?.title).toBe('Fluxos de trabalho');
-    expect(wf?.home).toBe('/fluxos');
-    expect(wf?.items.map((i) => i.link)).toEqual([
-      '/fluxos/lead',
-      '/fluxos/opportunity',
-      '/fluxos/proposal',
-      '/fluxos/order',
-      '/fluxos/booking_request',
-      '/fluxos/booking_item',
-    ]);
-    // Not under Cadastros.
-    expect(build().module('cadastros')!.items.map((i) => i.link)).not.toContain('/fluxos');
   });
 
   it('shows the Reservas module only when the user can see bookings', () => {

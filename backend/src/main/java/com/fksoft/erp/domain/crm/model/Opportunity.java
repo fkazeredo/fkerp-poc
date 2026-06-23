@@ -1,11 +1,15 @@
 package com.fksoft.erp.domain.crm.model;
 
 import com.fksoft.erp.domain.crm.exception.LeadNotQualifiedForOpportunityException;
+import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException;
+import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedWonException;
+import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
-import com.fksoft.erp.domain.workflow.WorkflowState;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -84,17 +88,10 @@ public class Opportunity {
     @Column(name = "expected_close_date")
     private LocalDate expectedCloseDate;
 
-    // Denormalized stage code (== currentState.code()), kept for cheap filtering/grouping and the read
-    // contract; the data-driven source of truth is the workflow state, kept in sync on every transition.
-    @NotBlank
-    @Size(max = 60)
-    @Column(nullable = false)
-    private String stage;
-
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "current_state_id", nullable = false)
-    private WorkflowState currentState;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 60)
+    private OpportunityStage stage;
 
     @Size(max = 2000)
     private String notes;
@@ -151,18 +148,13 @@ public class Opportunity {
      * @param lead the source Lead; must be QUALIFIED
      * @param responsiblePersonId the responsible (the command's value, or the Lead's by default)
      * @param command the optional commercial data (product type, estimated value, expected close, note)
-     * @param initialState the Opportunity workflow's initial state ({@code NEW_OPPORTUNITY})
      * @param createdBy id of the user creating the Opportunity
      * @return a new, unsaved Opportunity
      * @throws LeadNotQualifiedForOpportunityException if the Lead is not QUALIFIED
      */
     public static Opportunity createFromLead(
-            Lead lead,
-            UUID responsiblePersonId,
-            CreateOpportunityCommand command,
-            WorkflowState initialState,
-            UUID createdBy) {
-        if (!"QUALIFIED".equals(lead.status())) {
+            Lead lead, UUID responsiblePersonId, CreateOpportunityCommand command, UUID createdBy) {
+        if (lead.status() != LeadStatus.QUALIFIED) {
             throw new LeadNotQualifiedForOpportunityException();
         }
         Opportunity opportunity = new Opportunity();
@@ -175,8 +167,7 @@ public class Opportunity {
         opportunity.productType = emptyToNull(command.productType());
         opportunity.estimatedValue = command.estimatedValue();
         opportunity.expectedCloseDate = command.expectedCloseDate();
-        opportunity.currentState = initialState;
-        opportunity.stage = initialState.code();
+        opportunity.stage = OpportunityStage.NEW_OPPORTUNITY;
         opportunity.notes = emptyToNull(command.initialNote());
         opportunity.createdBy = createdBy;
         opportunity.updatedBy = createdBy;
@@ -184,19 +175,20 @@ public class Opportunity {
     }
 
     /**
-     * Applies the loss outcome and moves the Opportunity to the given workflow state (the {@code lose}
-     * transition), after the engine has validated it. The loss (reason/who/when/note) is kept for history;
-     * the source Lead is not affected.
+     * Applies the loss outcome and moves the Opportunity to {@code LOST}. Legal from any non-terminal stage.
+     * The loss (reason/who/when/note) is kept for history; the source Lead is not affected.
      *
-     * @param target the destination workflow state ({@code LOST})
      * @param reason the loss reason
      * @param byUser id of the user marking the Opportunity lost
      * @param note optional loss note
+     * @throws OpportunityCannotBeMarkedLostException if the Opportunity is already terminal (won or lost)
      */
-    public void applyLoss(WorkflowState target, OpportunityLossReason reason, UUID byUser, String note) {
-        recordStageChange(stage, target.code(), byUser);
-        stage = target.code();
-        currentState = target;
+    public void applyLoss(OpportunityLossReason reason, UUID byUser, String note) {
+        if (stage.isTerminal()) {
+            throw new OpportunityCannotBeMarkedLostException();
+        }
+        recordStageChange(stage, OpportunityStage.LOST, byUser);
+        stage = OpportunityStage.LOST;
         lossReason = reason;
         lostAt = Instant.now();
         lostBy = byUser;
@@ -205,36 +197,38 @@ public class Opportunity {
     }
 
     /**
-     * Applies the won outcome and moves the Opportunity to the given workflow state (the {@code win}
-     * transition), after the engine has validated it; invoked when a Commercial Order is created from an
-     * Accepted Proposal. Creates no Financial, Booking or Commission data and never modifies the source Lead.
+     * Applies the won outcome and moves the Opportunity to {@code WON}; invoked when a Commercial Order is
+     * created from an Accepted Proposal. Creates no Financial, Booking or Commission data and never modifies
+     * the source Lead.
      *
-     * @param target the destination workflow state ({@code WON})
      * @param byUser id of the user closing the Opportunity as won (the Commercial Order creator)
+     * @throws OpportunityCannotBeMarkedWonException if the Opportunity is already terminal (won or lost)
      */
-    public void applyWin(WorkflowState target, UUID byUser) {
-        recordStageChange(stage, target.code(), byUser);
-        stage = target.code();
-        currentState = target;
+    public void applyWin(UUID byUser) {
+        if (stage.isTerminal()) {
+            throw new OpportunityCannotBeMarkedWonException();
+        }
+        recordStageChange(stage, OpportunityStage.WON, byUser);
+        stage = OpportunityStage.WON;
         updatedBy = byUser;
     }
 
     /**
-     * Advances the Opportunity to the given workflow state (the {@code advance} transition) and records the
-     * movement, after the engine has validated the single forward step.
+     * Advances the Opportunity one step along the strict forward funnel and records the movement. Skipping a
+     * stage or going back is impossible; a terminal or last-active stage cannot be advanced.
      *
-     * @param target the destination workflow state (the funnel's immediate next stage)
      * @param byUser id of the user moving the Opportunity
+     * @throws OpportunityStageTransitionException if the current stage has no next stage
      */
-    public void applyStageAdvance(WorkflowState target, UUID byUser) {
-        recordStageChange(stage, target.code(), byUser);
-        stage = target.code();
-        currentState = target;
+    public void applyStageAdvance(UUID byUser) {
+        OpportunityStage target = stage.next().orElseThrow(OpportunityStageTransitionException::new);
+        recordStageChange(stage, target, byUser);
+        stage = target;
         updatedBy = byUser;
     }
 
-    private void recordStageChange(String from, String to, UUID byUser) {
-        stageChanges.add(OpportunityStageChange.of(from, to, byUser));
+    private void recordStageChange(OpportunityStage from, OpportunityStage to, UUID byUser) {
+        stageChanges.add(OpportunityStageChange.of(from.name(), to.name(), byUser));
     }
 
     /**

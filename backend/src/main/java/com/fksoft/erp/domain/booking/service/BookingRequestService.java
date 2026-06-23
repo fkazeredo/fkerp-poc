@@ -17,6 +17,7 @@ import com.fksoft.erp.domain.booking.model.BookingItemFailure;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestCreated;
 import com.fksoft.erp.domain.booking.model.BookingRequestPendingReasons;
+import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.model.BookingStatusConsolidated;
 import com.fksoft.erp.domain.booking.repository.BookingAttemptResultRepository;
 import com.fksoft.erp.domain.booking.repository.BookingAttemptTypeRepository;
@@ -51,8 +52,6 @@ import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
-import com.fksoft.erp.domain.workflow.WorkflowAttentionRule;
-import com.fksoft.erp.domain.workflow.WorkflowAttentionRuleRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -82,8 +81,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class BookingRequestService {
 
     // A Booking Request counts against the "one active request per Order" rule while it is not cancelled.
-    private static final Set<String> ACTIVE_STATUSES =
-            Set.of("PENDING", "IN_PROGRESS", "PARTIALLY_CONFIRMED", "CONFIRMED", "FAILED");
+    private static final Set<BookingRequestStatus> ACTIVE_STATUSES = BookingRequestStatus.active();
 
     private final BookingRequestRepository bookingRequests;
     private final BookingIndicatorQueries indicatorQueries;
@@ -98,7 +96,6 @@ public class BookingRequestService {
     private final BookingAttemptTypeRepository attemptTypes;
     private final BookingAttemptResultRepository attemptResults;
     private final BookingFailureReasonRepository failureReasons;
-    private final WorkflowAttentionRuleRepository attentionRules;
 
     /**
      * Creates a Booking Request from a Commercial Order the caller is allowed to see and that is
@@ -231,9 +228,7 @@ public class BookingRequestService {
             Pageable pageable, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Instant now = Instant.now();
         LocalDate today = LocalDate.ofInstant(now, ZoneOffset.UTC);
-        List<WorkflowAttentionRule> rules =
-                attentionRules.findByDefinition_CodeAndActiveTrueOrderBySortOrderAsc("booking_request");
-        Specification<BookingRequest> spec = BookingRequestPendingSpecifications.pending(now, today, rules)
+        Specification<BookingRequest> spec = BookingRequestPendingSpecifications.pending(now, today)
                 .and(accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned));
         Page<BookingRequest> page = bookingRequests.findAll(spec, pageable);
 
@@ -257,7 +252,7 @@ public class BookingRequestService {
                     nameOf(names, r.bookingOperatorId()),
                     nameOf(names, r.responsiblePersonId()),
                     c,
-                    BookingRequestPendingReasons.of(r, now, today, hasFailed, hasPendingRequired, rules));
+                    BookingRequestPendingReasons.of(r, now, today, hasFailed, hasPendingRequired));
         });
     }
 
@@ -507,7 +502,8 @@ public class BookingRequestService {
     }
 
     private void publishConsolidated(BookingRequest request) {
-        events.publishEvent(new BookingStatusConsolidated(request.id(), request.commercialOrderId(), request.status()));
+        events.publishEvent(new BookingStatusConsolidated(
+                request.id(), request.commercialOrderId(), request.status().name()));
     }
 
     private BookingRequest loadVisible(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {

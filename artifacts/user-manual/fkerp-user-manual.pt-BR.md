@@ -16,7 +16,7 @@
 
 O FKERP é o ERP da empresa, organizado em **módulos** que seguem o fluxo de trabalho comercial e operacional.
 O sistema cobre o **funil comercial de ponta a ponta** e a **operação de reservas**, com **monitoramento**,
-**listas de apoio editáveis** e **fluxos configuráveis**. Cada usuário vê apenas os módulos e as ações do seu
+**listas de apoio editáveis**. Cada usuário vê apenas os módulos e as ações do seu
 perfil.
 
 O que o sistema oferece hoje, por módulo:
@@ -33,8 +33,6 @@ O que o sistema oferece hoje, por módulo:
 - **Cadastros** — as **listas de apoio editáveis** que alimentam os formulários (origens, motivos, tipos,
   resultados, canais, tipos de item…), gerenciadas pela administração sem precisar de uma nova versão. (Seção
   11.)
-- **Fluxos de trabalho** — o editor (administração) dos **fluxos configuráveis** do sistema: estados,
-  transições e as **regras de atenção** que definem as pendências. (Seção 12.)
 
 Tudo com **entrada segura**, **navegação por teclado** e **validação clara** das informações.
 
@@ -89,8 +87,8 @@ valem sempre, mesmo fora da tela:
   mostra um aviso curto de "sem acesso".
 - A mesma lógica de perfis vale para os demais módulos (Oportunidades, Propostas, Pedidos, Reservas): você só
   vê e opera o que o seu perfil permite (detalhado nas respectivas seções).
-- A **administração** (perfil de cadastros) gerencia os **Cadastros** (seção 11) e os **Fluxos de trabalho**
-  (seção 12); esses dois módulos só aparecem no menu para quem tem esse perfil.
+- A **administração** (perfil de cadastros) gerencia os **Cadastros** (seção 11); esse módulo só aparece no
+  menu para quem tem esse perfil.
 
 ---
 
@@ -149,8 +147,6 @@ acesso. Os módulos seguem o **fluxo de trabalho**:
   Propostas, Pedidos e **Reservas**). Cada hub é uma página com **abas** por área — você vê apenas as abas que o
   seu perfil pode ver.
 - **Cadastros** — as listas de apoio que alimentam os fluxos (seção 11).
-- **Fluxos de trabalho** — o editor dos fluxos configuráveis do sistema (seção 12). É um módulo **só para
-  administradores**: quem não tem o perfil de administração não vê este módulo.
 
 Clicar em um card abre a **home daquele módulo**, com os atalhos para suas telas.
 
@@ -901,68 +897,7 @@ alternar.
 
 ---
 
-## 12. Fluxos de trabalho
-
-Os **fluxos de trabalho** são os caminhos que um registro percorre no sistema — por exemplo, um **Lead**
-(Novo → Contatado → Qualificado / Perdido), uma **Oportunidade** ou uma **Reserva**. Esta seção descreve o
-**módulo Fluxos de trabalho**, onde a administração **visualiza** esses fluxos e ajusta o que é seguro mudar.
-É um módulo **só para administradores**: abra-o pelo menu lateral **Fluxos de trabalho** (atalho `g` depois
-`w`, ou pela paleta de comandos `Ctrl K`). Quem não tem o perfil de administração não vê este módulo.
-
-### 12.1 A lista de fluxos
-
-No **menu lateral**, o módulo **Fluxos de trabalho** abre como um acordeão com **um item por fluxo** (Lead,
-Oportunidade, Proposta, Pedido Comercial, Reserva, Item de reserva) — clicar num item abre direto o **editor**
-daquele fluxo. A **tela inicial do módulo** também mostra um **cartão por fluxo**, com o mesmo destino.
-
-### 12.2 O diagrama
-
-O fluxo é desenhado como um **diagrama** (um fluxograma da esquerda para a direita): cada **estado** (situação) é
-uma **caixa** e cada **transição** (passo permitido entre situações) é uma **seta** com o seu rótulo. O caminho
-principal fica na linha de cima e os **estados de encerramento** numa linha abaixo. No topo, os **contadores**
-resumem o fluxo (quantos estados, transições e regras de atenção). Uma **legenda** explica as cores das caixas:
-
-- **Inicial** (azul) — onde o registro começa.
-- **Em andamento** (índigo) — situações no meio do caminho.
-- **Sucesso** (verde) — encerramento positivo (por exemplo, ganho/aceito).
-- **Encerrado** (vermelho) — encerramento negativo (por exemplo, perdido/cancelado).
-- **Tracejado** — estado **inativo**.
-
-Itens marcados como **"sistema"** acompanham o produto: podem ser **renomeados** e **ativados/desativados**,
-mas **não podem ser excluídos**.
-
-### 12.3 Editar um estado
-
-**Clique numa caixa** do diagrama para abrir o painel **Edição** (o título do painel mostra qual estado você
-está editando). Você pode alterar o **rótulo** (o nome exibido), a **ordem** e se o estado está **ativo**. O
-**código interno** e o **tipo** (categoria) são fixos. Clique em **Salvar estado**. Mudar o rótulo aqui não
-altera as telas operacionais que já exibem aquela situação — o editor cuida apenas da apresentação do fluxo.
-
-### 12.4 Consultar uma transição
-
-As **setas** mostram os passos permitidos e as **regras do fluxo**, em **somente leitura**. A **estrutura** do
-processo (quais passos existem) é definida pelo sistema e não é alterada por aqui — isso protege a integridade
-da operação.
-
-### 12.5 Regras de atenção
-
-Cada fluxo tem **regras de atenção**: os **motivos que fazem um registro aparecer na lista de Pendências**
-daquela área (por exemplo, "sem atividade recente", "próxima ação vencida", "parado há muito tempo numa
-etapa"). No painel ao lado do diagrama você pode:
-
-- **Criar** uma regra — clique em **Nova regra de atenção**, escolha a **condição**, informe um **código** e
-  uma **descrição** e, quando a condição pedir, uma **janela em dias** ou um **estado de referência**.
-- **Editar** uma regra — clique nela para alterar a descrição, a janela, a ordem e se está **ativa**.
-- **Excluir** uma regra que você criou (as do **sistema** não podem ser excluídas, apenas
-  renomeadas/desativadas).
-
-Assim, **o que conta como "pendência"** em cada área deixa de ser fixo no programa e passa a ser configurável
-pela administração — inclusive os prazos (dias) — sem trocar de versão. As listas em **Acompanhamento →
-Pendências** passam a refletir essas regras.
-
----
-
-## 13. Mensagens e validação
+## 12. Mensagens e validação
 
 O FKERP valida o que você digita e mostra mensagens claras, em português:
 
@@ -977,7 +912,7 @@ O FKERP valida o que você digita e mostra mensagens claras, em português:
 
 ---
 
-## 13.1 Atalhos de teclado
+## 12.1 Atalhos de teclado
 
 O menu é organizado em **módulos** claros — **Comercial**, **Reservas**, **Acompanhamento** e **Cadastros** —
 cada um uma seção recolhível na barra lateral, com uma **home própria** (veja a seção 4). Tudo também é
@@ -986,7 +921,7 @@ acessível pelo teclado:
 - **`Ctrl`/`Cmd` + `K`** — a **paleta de comandos**: busque e vá para qualquer tela ou ação de qualquer lugar.
 - **`?`** — mostra a ajuda completa de atalhos a qualquer momento.
 - **Ir para (tecle `g`, depois uma letra):** `g i` Início · `g l` Leads · `g o` Oportunidades · `g p`
-  Propostas · `g d` Pedidos · `g r` Reservas · `g c` Cadastros · `g w` Fluxos de trabalho (administração).
+  Propostas · `g d` Pedidos · `g r` Reservas · `g c` Cadastros.
   **`n`** cria um novo lead.
 - **Em um lead:** `i` registrar interação · `q` qualificar · `o` criar oportunidade · `p` marcar perdido ·
   `r` reatribuir · `Esc` voltar.
@@ -998,14 +933,14 @@ acessível pelo teclado:
 
 ---
 
-## 14. Saindo
+## 13. Saindo
 
 Clique em **Sair** no canto superior direito da barra de menu. Você volta para a tela de login e sua
 sessão é encerrada.
 
 ---
 
-## 15. O que vem a seguir
+## 14. O que vem a seguir
 
 Esta edição cobre todo o ciclo de vida de Leads da **Sprint 1** (cadastrar e encontrar Leads, o
 detalhe, atribuição, histórico de interações com a regra de **Em contato**, **qualificação**, fluxo de

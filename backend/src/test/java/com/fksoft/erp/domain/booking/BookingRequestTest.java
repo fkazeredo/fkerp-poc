@@ -13,17 +13,18 @@ import com.fksoft.erp.domain.booking.model.BookingFailureReason;
 import com.fksoft.erp.domain.booking.model.BookingItem;
 import com.fksoft.erp.domain.booking.model.BookingItemConfirmation;
 import com.fksoft.erp.domain.booking.model.BookingItemFailure;
+import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
+import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
+import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.ProposalItemTypeFixtures;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
+import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
-import com.fksoft.erp.domain.workflow.WorkflowDefinition;
-import com.fksoft.erp.domain.workflow.WorkflowState;
-import com.fksoft.erp.domain.workflow.WorkflowStateCategory;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -41,22 +42,6 @@ class BookingRequestTest {
     private static final UUID OPP_ID = UUID.randomUUID();
     private static final UUID LEAD_ID = UUID.randomUUID();
 
-    private final WorkflowDefinition wf = WorkflowDefinition.of("proposal", "Proposta");
-    private final WorkflowState draft = WorkflowState.of(wf, "DRAFT", "Rascunho", WorkflowStateCategory.INITIAL, 1);
-    private final WorkflowState readyForReview =
-            WorkflowState.of(wf, "READY_FOR_REVIEW", "Em revisão", WorkflowStateCategory.ACTIVE, 2);
-    private final WorkflowState approved =
-            WorkflowState.of(wf, "APPROVED", "Aprovada", WorkflowStateCategory.ACTIVE, 3);
-    private final WorkflowState sent = WorkflowState.of(wf, "SENT", "Enviada", WorkflowStateCategory.ACTIVE, 4);
-    private final WorkflowState accepted =
-            WorkflowState.of(wf, "ACCEPTED", "Aceita", WorkflowStateCategory.TERMINAL_POSITIVE, 5);
-
-    private final WorkflowDefinition orderWf = WorkflowDefinition.of("order", "Pedido Comercial");
-    private final WorkflowState pendingBooking =
-            WorkflowState.of(orderWf, "PENDING_BOOKING", "Aguardando reserva", WorkflowStateCategory.INITIAL, 1);
-    private final WorkflowState bookingNotRequired = WorkflowState.of(
-            orderWf, "BOOKING_NOT_REQUIRED", "Sem reserva necessária", WorkflowStateCategory.INITIAL, 2);
-
     private final BookingAttemptType internalVerification =
             BookingAttemptType.create("INTERNAL_VERIFICATION", "Verificação interna", 4);
     private final BookingAttemptResult started = BookingAttemptResult.create("STARTED", "Iniciado", 1);
@@ -71,7 +56,7 @@ class BookingRequestTest {
         BookingRequest request =
                 BookingRequest.createFromOrder(order, OPERATOR, "Reservar com urgência", Set.of(), CREATOR);
 
-        assertThat(request.status()).isEqualTo("PENDING");
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.PENDING);
         assertThat(request.commercialOrderId()).isEqualTo(order.id());
         assertThat(request.proposalId()).isEqualTo(order.proposalId());
         assertThat(request.opportunityId()).isEqualTo(OPP_ID);
@@ -85,12 +70,12 @@ class BookingRequestTest {
         assertThat(request.items()).hasSize(2);
         BookingItem pkg = itemOfType(request, ProposalItemTypeFixtures.TRAVEL_PACKAGE);
         assertThat(pkg.requiresBooking()).isTrue();
-        assertThat(pkg.status()).isEqualTo("PENDING");
+        assertThat(pkg.status()).isEqualTo(BookingItemStatus.PENDING);
         assertThat(pkg.orderItemId()).isEqualTo(orderItemId(order, ProposalItemTypeFixtures.TRAVEL_PACKAGE));
         assertThat(pkg.description()).isEqualTo("linha");
         BookingItem fee = itemOfType(request, ProposalItemTypeFixtures.SERVICE_FEE);
         assertThat(fee.requiresBooking()).isFalse();
-        assertThat(fee.status()).isEqualTo("NOT_REQUIRED");
+        assertThat(fee.status()).isEqualTo(BookingItemStatus.NOT_REQUIRED);
     }
 
     @Test
@@ -104,13 +89,13 @@ class BookingRequestTest {
         assertThat(itemOfType(unmarked, ProposalItemTypeFixtures.OTHER).requiresBooking())
                 .isFalse();
         assertThat(itemOfType(unmarked, ProposalItemTypeFixtures.OTHER).status())
-                .isEqualTo("NOT_REQUIRED");
+                .isEqualTo(BookingItemStatus.NOT_REQUIRED);
 
         // Explicitly marked → PENDING; the travel package still requires booking regardless.
         BookingRequest marked = BookingRequest.createFromOrder(order, null, null, Set.of(otherId), CREATOR);
         assertThat(itemOfType(marked, ProposalItemTypeFixtures.OTHER).requiresBooking())
                 .isTrue();
-        assertThat(itemOfType(marked, ProposalItemTypeFixtures.OTHER).status()).isEqualTo("PENDING");
+        assertThat(itemOfType(marked, ProposalItemTypeFixtures.OTHER).status()).isEqualTo(BookingItemStatus.PENDING);
         assertThat(itemOfType(marked, ProposalItemTypeFixtures.TRAVEL_PACKAGE).requiresBooking())
                 .isTrue();
     }
@@ -140,14 +125,14 @@ class BookingRequestTest {
 
         assertThat(request.bookingOperatorId()).isNull();
         assertThat(request.notes()).isNull();
-        assertThat(request.items().get(0).status()).isEqualTo("PENDING");
+        assertThat(request.items().get(0).status()).isEqualTo(BookingItemStatus.PENDING);
     }
 
     @Test
     void rejectsCreatingFromAnOrderThatIsNotPendingBooking() {
         CommercialOrder notRequired = pendingBookingOrderRaw(
                 ProposalItemTypeFixtures.SERVICE_FEE, ProposalItemTypeFixtures.OTHER); // BOOKING_NOT_REQUIRED
-        assertThat(notRequired.status()).isEqualTo("BOOKING_NOT_REQUIRED");
+        assertThat(notRequired.status()).isEqualTo(CommercialOrderStatus.BOOKING_NOT_REQUIRED);
 
         assertThatThrownBy(() -> BookingRequest.createFromOrder(notRequired, null, null, Set.of(), CREATOR))
                 .isInstanceOf(CommercialOrderNotPendingBookingException.class);
@@ -157,7 +142,7 @@ class BookingRequestTest {
     void aFreshRequestWithNoAttemptStaysPending() {
         BookingRequest request = BookingRequest.createFromOrder(
                 pendingBookingOrder(ProposalItemTypeFixtures.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
-        assertThat(request.status()).isEqualTo("PENDING");
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.PENDING);
     }
 
     @Test
@@ -174,7 +159,7 @@ class BookingRequestTest {
                 null,
                 CREATOR);
 
-        assertThat(request.status()).isEqualTo("IN_PROGRESS");
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.IN_PROGRESS);
     }
 
     @Test
@@ -185,7 +170,7 @@ class BookingRequestTest {
         request.confirmTravelPackageItem(
                 itemOfType(request, ProposalItemTypeFixtures.TRAVEL_PACKAGE).id(), confirmation(), CREATOR);
 
-        assertThat(request.status()).isEqualTo("CONFIRMED");
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.CONFIRMED);
     }
 
     @Test
@@ -200,7 +185,7 @@ class BookingRequestTest {
         request.confirmTravelPackageItem(
                 itemOfType(request, ProposalItemTypeFixtures.TRAVEL_PACKAGE).id(), confirmation(), CREATOR);
 
-        assertThat(request.status()).isEqualTo("PARTIALLY_CONFIRMED");
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.PARTIALLY_CONFIRMED);
     }
 
     @Test
@@ -211,7 +196,7 @@ class BookingRequestTest {
         request.failBookingItem(
                 itemOfType(request, ProposalItemTypeFixtures.TRAVEL_PACKAGE).id(), failure(), CREATOR);
 
-        assertThat(request.status()).isEqualTo("FAILED");
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.FAILED);
     }
 
     @Test
@@ -221,11 +206,11 @@ class BookingRequestTest {
         UUID itemId =
                 itemOfType(request, ProposalItemTypeFixtures.TRAVEL_PACKAGE).id();
         request.failBookingItem(itemId, failure(), CREATOR);
-        assertThat(request.status()).isEqualTo("FAILED");
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.FAILED);
 
         request.confirmTravelPackageItem(itemId, confirmation(), CREATOR);
 
-        assertThat(request.status()).isEqualTo("CONFIRMED");
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.CONFIRMED);
     }
 
     private static BookingItemConfirmation confirmation() {
@@ -280,8 +265,7 @@ class BookingRequestTest {
     }
 
     private CommercialOrder pendingBookingOrderRaw(ProposalItemType... types) {
-        return CommercialOrder.createFromProposal(
-                acceptedProposalWith(types), CREATOR, 1L, pendingBooking, bookingNotRequired);
+        return CommercialOrder.createFromProposal(acceptedProposalWith(types), CREATOR, 1L);
     }
 
     private Proposal acceptedProposalWith(ProposalItemType... types) {
@@ -292,20 +276,20 @@ class BookingRequestTest {
                     new ProposalItemCommand(type.id(), "linha", 1, new BigDecimal("100.00"), null, null),
                     CREATOR);
         }
-        p.applySubmit(readyForReview, CREATOR);
-        p.applyApprove(approved, UUID.randomUUID());
-        p.applySend(sent, UUID.randomUUID(), null);
-        p.applyAccept(accepted, UUID.randomUUID(), "ok");
+        p.applySubmit(CREATOR);
+        p.applyApprove(UUID.randomUUID());
+        p.applySend(UUID.randomUUID(), null);
+        p.applyAccept(UUID.randomUUID(), "ok");
         return p;
     }
 
     private Proposal readyDraft() {
         Opportunity o = mock(Opportunity.class);
-        when(o.stage()).thenReturn("READY_FOR_PROPOSAL");
+        when(o.stage()).thenReturn(OpportunityStage.READY_FOR_PROPOSAL);
         when(o.id()).thenReturn(OPP_ID);
         when(o.leadId()).thenReturn(LEAD_ID);
         CreateProposalCommand command = new CreateProposalCommand(
                 OPP_ID, RESPONSIBLE, "Proposta corporativa", null, LocalDate.parse("2026-12-31"), "termos");
-        return Proposal.createFromOpportunity(o, RESPONSIBLE, command, draft, CREATOR);
+        return Proposal.createFromOpportunity(o, RESPONSIBLE, command, CREATOR);
     }
 }

@@ -44,7 +44,7 @@ public record OpportunityListItem(
                 o.responsiblePersonId(),
                 responsibleName,
                 o.responsiblePersonId() == null,
-                o.stage(),
+                o.stage().name(),
                 o.estimatedValue(),
                 o.expectedCloseDate(),
                 o.createdAt(),

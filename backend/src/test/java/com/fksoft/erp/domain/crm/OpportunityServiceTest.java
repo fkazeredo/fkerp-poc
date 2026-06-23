@@ -16,8 +16,10 @@ import com.fksoft.erp.domain.crm.exception.OpportunityAlreadyExistsForLeadExcept
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.crm.model.Lead;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityCreated;
+import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
@@ -28,11 +30,6 @@ import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.service.data.RecordActivityCommand;
 import com.fksoft.erp.domain.crm.service.data.UpdateOpportunityDetailsCommand;
 import com.fksoft.erp.domain.identity.UserRepository;
-import com.fksoft.erp.domain.workflow.WorkflowDefinition;
-import com.fksoft.erp.domain.workflow.WorkflowEngine;
-import com.fksoft.erp.domain.workflow.WorkflowState;
-import com.fksoft.erp.domain.workflow.WorkflowStateCategory;
-import com.fksoft.erp.domain.workflow.WorkflowStateRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
@@ -66,12 +63,6 @@ class OpportunityServiceTest {
     @Mock
     private ApplicationEventPublisher events;
 
-    @Mock
-    private WorkflowEngine workflow;
-
-    @Mock
-    private WorkflowStateRepository workflowStates;
-
     @InjectMocks
     private OpportunityService service;
 
@@ -79,12 +70,6 @@ class OpportunityServiceTest {
     private static final UUID RESPONSIBLE = UUID.randomUUID();
     private static final UUID ACTOR = UUID.randomUUID();
     private static final Origin ORIGIN = Origin.create("WEBSITE", "Website", 1);
-    private static final WorkflowState NEW_STATE = WorkflowState.of(
-            WorkflowDefinition.of("opportunity", "Oportunidade"),
-            "NEW_OPPORTUNITY",
-            "Nova",
-            WorkflowStateCategory.INITIAL,
-            1);
 
     private CreateOpportunityCommand command(UUID responsibleOverride) {
         return new CreateOpportunityCommand(
@@ -95,7 +80,7 @@ class OpportunityServiceTest {
     void createsOpportunityFromQualifiedLeadSeedingLeadData() {
         Lead lead = mock(Lead.class);
         when(lead.id()).thenReturn(LEAD_ID);
-        when(lead.status()).thenReturn("QUALIFIED");
+        when(lead.status()).thenReturn(LeadStatus.QUALIFIED);
         when(lead.name()).thenReturn("Maria");
         when(lead.origin()).thenReturn(ORIGIN);
         when(lead.mainInterest()).thenReturn("Pacote corporativo");
@@ -103,8 +88,6 @@ class OpportunityServiceTest {
         when(leads.findById(LEAD_ID)).thenReturn(Optional.of(lead));
         when(leadAccessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(true);
         when(opportunities.findByLeadId(LEAD_ID)).thenReturn(Optional.empty());
-        when(workflowStates.findByDefinition_CodeAndCode("opportunity", "NEW_OPPORTUNITY"))
-                .thenReturn(Optional.of(NEW_STATE));
 
         UUID id = service.create(command(null), ACTOR, true, false);
 
@@ -112,7 +95,7 @@ class OpportunityServiceTest {
         ArgumentCaptor<Opportunity> captor = ArgumentCaptor.forClass(Opportunity.class);
         verify(opportunities).save(captor.capture());
         Opportunity saved = captor.getValue();
-        assertThat(saved.stage()).isEqualTo("NEW_OPPORTUNITY");
+        assertThat(saved.stage()).isEqualTo(OpportunityStage.NEW_OPPORTUNITY);
         assertThat(saved.leadId()).isEqualTo(LEAD_ID);
         assertThat(saved.origin()).isEqualTo(ORIGIN);
         assertThat(saved.responsiblePersonId()).isEqualTo(RESPONSIBLE); // preserved from the lead
@@ -124,7 +107,7 @@ class OpportunityServiceTest {
     @Test
     void rejectsCreatingFromANonQualifiedLead() {
         Lead lead = mock(Lead.class);
-        when(lead.status()).thenReturn("CONTACTED");
+        when(lead.status()).thenReturn(LeadStatus.CONTACTED);
         when(leads.findById(LEAD_ID)).thenReturn(Optional.of(lead));
         when(leadAccessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(true);
 
@@ -148,7 +131,7 @@ class OpportunityServiceTest {
     void rejectsASecondOpportunityForTheSameLead() {
         Lead lead = mock(Lead.class);
         when(lead.id()).thenReturn(LEAD_ID);
-        when(lead.status()).thenReturn("QUALIFIED");
+        when(lead.status()).thenReturn(LeadStatus.QUALIFIED);
         when(leads.findById(LEAD_ID)).thenReturn(Optional.of(lead));
         when(leadAccessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(true);
         Opportunity existing = mock(Opportunity.class);
@@ -164,7 +147,7 @@ class OpportunityServiceTest {
     void rejectsAnUnknownResponsibleOverride() {
         Lead lead = mock(Lead.class);
         when(lead.id()).thenReturn(LEAD_ID);
-        when(lead.status()).thenReturn("QUALIFIED");
+        when(lead.status()).thenReturn(LeadStatus.QUALIFIED);
         when(leads.findById(LEAD_ID)).thenReturn(Optional.of(lead));
         when(leadAccessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean())).thenReturn(true);
         when(opportunities.findByLeadId(LEAD_ID)).thenReturn(Optional.empty());
