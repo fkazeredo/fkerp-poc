@@ -86,12 +86,21 @@
         </div>
       }
     }
-    <p class="muted hint">
-      <strong>Clique numa caixa (estado)</strong> para editar o seu rótulo, ordem e situação no painel
-      <em>Edição</em>. As <strong>setas (transições)</strong> são somente leitura — a estrutura do fluxo é
-      definida pelo sistema. Itens marcados como <strong>sistema</strong> podem ser renomeados e
-      ativados/desativados, mas não excluídos.
-    </p>
+    @if (wf.transitions.length === 0) {
+      <p class="muted hint">
+        <strong>Clique numa caixa (estado)</strong> para editar o seu rótulo, ordem e situação no painel
+        <em>Edição</em>. Este fluxo <strong>não possui transições</strong> — as situações são determinadas
+        automaticamente pelo sistema (não há passos a percorrer pelo usuário). Itens marcados como
+        <strong>sistema</strong> podem ser renomeados e ativados/desativados, mas não excluídos.
+      </p>
+    } @else {
+      <p class="muted hint">
+        <strong>Clique numa caixa (estado)</strong> para editar o seu rótulo, ordem e situação no painel
+        <em>Edição</em>. As <strong>setas (transições)</strong> são somente leitura — a estrutura do fluxo é
+        definida pelo sistema. Itens marcados como <strong>sistema</strong> podem ser renomeados e
+        ativados/desativados, mas não excluídos.
+      </p>
+    }
   </p-card>
 
   <div class="panels">

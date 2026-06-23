@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
-import { of, throwError } from 'rxjs';
+import { BehaviorSubject, of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { WorkflowEditor } from './workflow-editor';
 import { WorkflowDetail, WorkflowService, WorkflowStateView } from '../../../core/api/workflow.service';
@@ -26,6 +26,9 @@ describe('WorkflowEditor', () => {
   const messages = { add: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
   const auth = { canManageWorkflows: vi.fn().mockReturnValue(true) };
+
+  const routeParam = (code: string) => ({ get: (k: string) => (k === 'code' ? code : null) });
+  let paramMap$: BehaviorSubject<ReturnType<typeof routeParam>>;
 
   const state = (over: Partial<WorkflowStateView>): WorkflowStateView => ({
     id: 'st',
@@ -98,7 +101,7 @@ describe('WorkflowEditor', () => {
         { provide: MessageService, useValue: messages },
         { provide: Router, useValue: router },
         { provide: AuthService, useValue: auth },
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'opportunity' } } } },
+        { provide: ActivatedRoute, useValue: { paramMap: paramMap$ } },
       ],
     });
   }
@@ -111,6 +114,7 @@ describe('WorkflowEditor', () => {
   }
 
   beforeEach(() => {
+    paramMap$ = new BehaviorSubject(routeParam('opportunity'));
     Object.values(workflows).forEach((fn) => fn.mockReset());
     messages.add.mockReset();
     router.navigateByUrl.mockReset();
@@ -135,6 +139,17 @@ describe('WorkflowEditor', () => {
     // The main path flows left to right.
     expect(find('DISCOVERY').x).toBeGreaterThan(find('NEW_OPPORTUNITY').x);
     expect(dg.edges[0].label).toBe('Avançar');
+  });
+
+  it('reloads when the route :code changes (navigating between workflows via the sidebar)', () => {
+    const comp = build();
+    expect(workflows.detail).toHaveBeenLastCalledWith('opportunity');
+    comp['selection'].set({ kind: 'attention-new' }); // an open panel...
+
+    paramMap$.next(routeParam('lead'));
+
+    expect(workflows.detail).toHaveBeenLastCalledWith('lead');
+    expect(comp['selection']()).toBeNull(); // ...is reset on switch
   });
 
   it('shows a permission message on 403', () => {
@@ -294,6 +309,14 @@ describe('WorkflowEditor', () => {
       expect(legend?.textContent).toContain('Em andamento');
       expect(legend?.textContent).toContain('Sucesso');
       expect(legend?.querySelectorAll('.sw').length).toBeGreaterThanOrEqual(5);
+    });
+
+    it('explains there are no transitions for a computed-status workflow (no arrows to draw)', () => {
+      workflows.detail.mockReturnValue(of({ ...detail(), transitions: [] }));
+      const el = render();
+      expect(el.querySelectorAll('.wf-node')).toHaveLength(4); // states still drawn
+      expect(el.querySelectorAll('.wf-edge-line')).toHaveLength(0); // no arrows
+      expect(el.textContent).toContain('não possui transições');
     });
 
     it('hides the delete control for a system rule but shows it for a custom rule', () => {
