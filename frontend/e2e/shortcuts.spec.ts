@@ -38,10 +38,20 @@ test('global keyboard shortcuts navigate the app', async ({ page }) => {
   await expect(page).toHaveURL(/\/reservas$/);
 });
 
-test('the command palette opens from the top bar', async ({ page }) => {
-  await login(page);
+test('the command palette opens from the top bar and a selected command navigates', async ({ page }) => {
+  await login(page); // lands on the home page
+  const palette = page.getByRole('dialog', { name: 'Comandos' });
+
   await page.getByRole('button', { name: /Buscar comando/ }).click();
-  await expect(page.getByRole('dialog', { name: 'Comandos' })).toBeVisible();
+  await expect(palette).toBeVisible();
+
+  // Selecting a command MUST navigate. Regression: the palette's option list was built by a getter that
+  // returned a fresh array every change-detection cycle, so the p-listbox re-rendered continuously and its
+  // option element detached from the DOM the instant it was clicked — the selection silently did nothing.
+  // Driven from the home page, where the continuous re-render reproduces the dropped click deterministically.
+  await palette.getByText('Cadastros', { exact: true }).click();
+  await expect(page).toHaveURL(/\/cadastros$/);
+  await expect(palette).toBeHidden();
 });
 
 test('the "i" shortcut opens the interaction dialog on a lead detail', async ({ page }) => {
