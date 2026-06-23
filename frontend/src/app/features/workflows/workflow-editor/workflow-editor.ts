@@ -11,7 +11,6 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Edge, GraphComponent, LayoutService, Node } from '@swimlane/ngx-graph';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
@@ -21,7 +20,6 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { CheckboxModule } from 'primeng/checkbox';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
-import { Subject } from 'rxjs';
 import {
   ConditionDescriptor,
   WorkflowAttentionRuleView,
@@ -36,37 +34,38 @@ import {
   HasUnsavedChanges,
   UnsavedChangesService,
 } from '../../../core/forms/unsaved-changes.service';
+import { Diagram, buildDiagram } from './workflow-diagram';
 
 type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'danger';
 
 const CATEGORY_LABELS: Record<string, string> = {
   INITIAL: 'Inicial',
-  INTERMEDIATE: 'Intermediário',
-  SUCCESS: 'Sucesso',
-  TERMINAL: 'Terminal',
+  ACTIVE: 'Em andamento',
+  TERMINAL_POSITIVE: 'Sucesso',
+  TERMINAL_NEGATIVE: 'Encerrado',
 };
 
 /** What the side panel is editing. */
 type Selection =
-  | { kind: 'state'; id: string }
+  | { kind: 'state'; code: string }
   | { kind: 'transition'; id: string }
   | { kind: 'attention-new' }
   | { kind: 'attention'; id: string }
   | null;
 
 /**
- * Visual workflow editor: renders a configurable workflow as a graph (states = nodes, transitions = edges,
- * via {@code @swimlane/ngx-graph} with a left-to-right dagre layout) and edits the editable attributes — a
- * state's label/order/active and the attention rules that drive the pending-items worklists (create, edit,
- * delete) — respecting the {@code system} lock the read models expose. Gated by {@code workflow:manage}; the
- * backend stays the only authority. Transitions and their rules are shown read-only (the workflow topology is
- * coded structure, not data the admin edits here).
+ * Visual workflow editor: renders a configurable workflow as a clean, hand-rolled **SVG flowchart** (states =
+ * nodes laid out left-to-right by flow depth with terminal states on a lower row, transitions = arrows) and
+ * edits the editable attributes — a state's label/order/active and the attention rules that drive the
+ * pending-items worklists (create, edit, delete) — respecting the {@code system} lock the read models expose.
+ * Gated by {@code workflow:manage}; the backend stays the only authority. Transitions and their rules are shown
+ * read-only (the workflow topology is coded structure, not data the admin edits here). The layout is computed in
+ * TypeScript (no library), so it renders identically in the browser and in jsdom tests.
  */
 @Component({
   selector: 'app-workflow-editor',
   imports: [
     FormsModule,
-    GraphComponent,
     ButtonModule,
     CardModule,
     TagModule,
@@ -78,8 +77,6 @@ type Selection =
   ],
   templateUrl: './workflow-editor.html',
   styleUrl: './workflow-editor.css',
-  // ngx-graph's standalone GraphComponent injects LayoutService (the GraphModule would otherwise provide it).
-  providers: [LayoutService],
 })
 export class WorkflowEditor implements OnInit, OnDestroy, HasUnsavedChanges {
   private readonly route = inject(ActivatedRoute);
@@ -95,26 +92,8 @@ export class WorkflowEditor implements OnInit, OnDestroy, HasUnsavedChanges {
   protected readonly error = signal<string | null>(null);
   protected readonly acting = signal(false);
 
-  /** Nudges ngx-graph to re-run its layout after the data loads. */
-  protected readonly update$ = new Subject<boolean>();
-
-  // The graph model derived from the workflow topology.
-  protected readonly nodes = computed<Node[]>(() =>
-    (this.workflow()?.states ?? []).map((s) => ({
-      id: nodeId(s.code),
-      label: s.label,
-      data: { state: s },
-    })),
-  );
-  protected readonly links = computed<Edge[]>(() =>
-    (this.workflow()?.transitions ?? []).map((t) => ({
-      id: edgeId(t.code),
-      source: nodeId(t.fromState),
-      target: nodeId(t.toState),
-      label: t.label,
-      data: { transition: t },
-    })),
-  );
+  /** The computed SVG diagram (positioned nodes + edges + viewBox), derived from the workflow topology. */
+  protected readonly diagram = computed<Diagram>(() => buildDiagram(this.workflow()));
 
   protected readonly selection = signal<Selection>(null);
 
@@ -156,8 +135,6 @@ export class WorkflowEditor implements OnInit, OnDestroy, HasUnsavedChanges {
       next: (detail) => {
         this.workflow.set(detail);
         this.loading.set(false);
-        // Let the SVG settle, then ask ngx-graph to lay out + fit.
-        setTimeout(() => this.update$.next(true));
       },
       error: (err: HttpErrorResponse) => {
         this.loading.set(false);
@@ -180,23 +157,13 @@ export class WorkflowEditor implements OnInit, OnDestroy, HasUnsavedChanges {
     switch (category) {
       case 'INITIAL':
         return 'info';
-      case 'SUCCESS':
+      case 'TERMINAL_POSITIVE':
         return 'success';
-      case 'TERMINAL':
+      case 'TERMINAL_NEGATIVE':
         return 'danger';
       default:
         return 'secondary';
     }
-  }
-
-  /** The condition descriptors available for this workflow (drives the new-rule form). */
-  protected conditionOptions(): ConditionDescriptor[] {
-    return this.catalog()?.attentionConditions[this.code] ?? [];
-  }
-
-  /** The chosen condition's descriptor (which parameters it uses). */
-  protected chosenCondition(): ConditionDescriptor | undefined {
-    return this.conditionOptions().find((c) => c.conditionKey === this.ruleConditionKey);
   }
 
   /** The contextual title of the edit panel, so the user always knows what they are editing. */
@@ -216,10 +183,20 @@ export class WorkflowEditor implements OnInit, OnDestroy, HasUnsavedChanges {
     }
   }
 
-  /** Whether the given graph node is the currently selected state (for the node highlight). */
-  protected isStateSelected(id: string): boolean {
+  /** Whether the given state is the currently selected one (for the node highlight). */
+  protected isStateSelected(code: string): boolean {
     const sel = this.selection();
-    return sel?.kind === 'state' && sel.id === id;
+    return sel?.kind === 'state' && sel.code === code;
+  }
+
+  /** The condition descriptors available for this workflow (drives the new-rule form). */
+  protected conditionOptions(): ConditionDescriptor[] {
+    return this.catalog()?.attentionConditions[this.code] ?? [];
+  }
+
+  /** The chosen condition's descriptor (which parameters it uses). */
+  protected chosenCondition(): ConditionDescriptor | undefined {
+    return this.conditionOptions().find((c) => c.conditionKey === this.ruleConditionKey);
   }
 
   protected selectedState(): WorkflowStateView | null {
@@ -227,7 +204,7 @@ export class WorkflowEditor implements OnInit, OnDestroy, HasUnsavedChanges {
     if (sel?.kind !== 'state') {
       return null;
     }
-    return this.workflow()?.states.find((s) => nodeId(s.code) === sel.id) ?? null;
+    return this.workflow()?.states.find((s) => s.code === sel.code) ?? null;
   }
 
   protected selectedTransition(): WorkflowTransitionView | null {
@@ -235,7 +212,7 @@ export class WorkflowEditor implements OnInit, OnDestroy, HasUnsavedChanges {
     if (sel?.kind !== 'transition') {
       return null;
     }
-    return this.workflow()?.transitions.find((t) => edgeId(t.code) === sel.id) ?? null;
+    return this.workflow()?.transitions.find((t) => t.id === sel.id) ?? null;
   }
 
   protected editingRule(): WorkflowAttentionRuleView | null {
@@ -247,18 +224,17 @@ export class WorkflowEditor implements OnInit, OnDestroy, HasUnsavedChanges {
   }
 
   /** Opens the panel for a clicked state node. */
-  protected onNodeClick(node: Node): void {
-    const state = (node.data as { state: WorkflowStateView }).state;
+  protected onNodeClick(state: WorkflowStateView): void {
     this.stateLabel = state.label;
     this.stateSortOrder = state.sortOrder;
     this.stateActive = state.active;
-    this.selection.set({ kind: 'state', id: node.id });
+    this.selection.set({ kind: 'state', code: state.code });
     this.snapshot = this.liveSnapshot();
   }
 
   /** Opens the (read-only) panel for a clicked transition edge. */
-  protected onLinkClick(link: Edge): void {
-    this.selection.set({ kind: 'transition', id: link.id! });
+  protected onEdgeClick(transition: WorkflowTransitionView): void {
+    this.selection.set({ kind: 'transition', id: transition.id });
     this.snapshot = this.liveSnapshot();
   }
 
@@ -426,12 +402,4 @@ export class WorkflowEditor implements OnInit, OnDestroy, HasUnsavedChanges {
       this.back();
     }
   }
-}
-
-function nodeId(code: string): string {
-  return 's_' + code;
-}
-
-function edgeId(code: string): string {
-  return 't_' + code;
 }

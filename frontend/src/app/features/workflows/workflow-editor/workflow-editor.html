@@ -24,87 +24,80 @@
   </header>
 
   <p-card styleClass="graph-card">
-    @if (nodes().length === 0) {
-      <p class="muted">Este workflow não tem estados.</p>
-    } @else {
-      <div class="chart-wrap">
-        <ngx-graph
-          class="chart"
-          [nodes]="nodes()"
-          [links]="links()"
-          [layout]="'dagre'"
-          [layoutSettings]="{ orientation: 'LR', marginX: 40, marginY: 40, rankPadding: 80 }"
-          [update$]="update$"
-          [enableDrag]="false"
-          [enablePan]="false"
-          [enableZoom]="false"
-          [autoZoom]="true"
-          [autoCenter]="true"
-          [nodeWidth]="190"
-          [nodeHeight]="70"
-        >
-          <ng-template #defsTemplate>
-            <svg:marker
-              id="arrow"
-              viewBox="0 -5 10 10"
-              refX="9"
-              refY="0"
-              markerWidth="7"
-              markerHeight="7"
-              orient="auto"
-            >
-              <svg:path d="M0,-5L10,0L0,5" class="arrow-head" />
-            </svg:marker>
-          </ng-template>
+    @if (diagram(); as dg) {
+      @if (dg.nodes.length === 0) {
+        <p class="muted">Este workflow não tem estados.</p>
+      } @else {
+        <div class="chart-wrap">
+          <svg
+            class="wf-diagram"
+            [attr.viewBox]="'0 0 ' + dg.width + ' ' + dg.height"
+            preserveAspectRatio="xMidYMid meet"
+            role="img"
+            aria-label="Diagrama do fluxo de trabalho"
+          >
+            <defs>
+              <marker
+                id="wf-arrow"
+                viewBox="0 0 10 10"
+                refX="9"
+                refY="5"
+                markerWidth="7"
+                markerHeight="7"
+                orient="auto-start-reverse"
+              >
+                <path d="M0,0 L10,5 L0,10 z" class="wf-arrow-head" />
+              </marker>
+            </defs>
 
-          <ng-template #nodeTemplate let-node>
-            <svg:g
-              class="wf-node"
-              [class.inactive]="!node.data.state.active"
-              [class.selected]="isStateSelected(node.id)"
-              (click)="onNodeClick(node)"
-            >
-              <svg:rect
-                [attr.width]="node.dimension?.width || 190"
-                [attr.height]="node.dimension?.height || 70"
-                rx="10"
-                [attr.class]="'node-box cat-' + node.data.state.category"
-              />
-              <svg:text class="node-label" x="14" [attr.y]="28">{{ node.label }}</svg:text>
-              <svg:text class="node-cat" x="14" [attr.y]="50">
-                {{ categoryLabel(node.data.state.category) }}
-                @if (node.data.state.system) {
-                  · sistema
-                }
-                @if (!node.data.state.active) {
-                  · inativo
-                }
-              </svg:text>
-            </svg:g>
-          </ng-template>
+            @for (e of dg.edges; track e.id) {
+              <g class="wf-edge" (click)="onEdgeClick(e.transition)">
+                <path class="wf-edge-line" [attr.d]="e.d" marker-end="url(#wf-arrow)" />
+                <g class="wf-edge-label">
+                  <rect
+                    [attr.x]="e.labelX - e.pillW / 2"
+                    [attr.y]="e.labelY - 9"
+                    [attr.width]="e.pillW"
+                    height="18"
+                    rx="9"
+                  />
+                  <text [attr.x]="e.labelX" [attr.y]="e.labelY + 4" text-anchor="middle">{{ e.label }}</text>
+                </g>
+              </g>
+            }
 
-          <ng-template #linkTemplate let-link>
-            <svg:g class="wf-edge" (click)="onLinkClick(link)">
-              <svg:path class="line" marker-end="url(#arrow)"></svg:path>
-              <svg:text class="edge-label" text-anchor="middle">
-                <svg:textPath
-                  class="text-path"
-                  [attr.href]="'#' + link.id"
-                  startOffset="50%"
-                  >{{ link.label }}</svg:textPath
-                >
-              </svg:text>
-            </svg:g>
-          </ng-template>
-        </ngx-graph>
-      </div>
-      <div class="legend">
-        <span class="lg"><i class="sw cat-INITIAL"></i> Inicial</span>
-        <span class="lg"><i class="sw cat-INTERMEDIATE"></i> Intermediário</span>
-        <span class="lg"><i class="sw cat-SUCCESS"></i> Sucesso</span>
-        <span class="lg"><i class="sw cat-TERMINAL"></i> Terminal</span>
-        <span class="lg"><i class="sw dashed"></i> Inativo</span>
-      </div>
+            @for (n of dg.nodes; track n.state.code) {
+              <g
+                class="wf-node"
+                [class.selected]="isStateSelected(n.state.code)"
+                [class.inactive]="!n.state.active"
+                [attr.transform]="'translate(' + n.x + ',' + n.y + ')'"
+                (click)="onNodeClick(n.state)"
+              >
+                <rect
+                  [attr.class]="'wf-node-box cat-' + n.state.category"
+                  [attr.width]="n.w"
+                  [attr.height]="n.h"
+                  rx="12"
+                />
+                <text class="wf-node-label" [attr.x]="n.w / 2" [attr.y]="n.h / 2 - 2" text-anchor="middle">
+                  {{ n.state.label }}
+                </text>
+                <text class="wf-node-cat" [attr.x]="n.w / 2" [attr.y]="n.h / 2 + 14" text-anchor="middle">
+                  {{ categoryLabel(n.state.category) }}@if (n.state.system) { · sistema}
+                </text>
+              </g>
+            }
+          </svg>
+        </div>
+        <div class="legend">
+          <span class="lg"><i class="sw cat-INITIAL"></i> Inicial</span>
+          <span class="lg"><i class="sw cat-ACTIVE"></i> Em andamento</span>
+          <span class="lg"><i class="sw cat-TERMINAL_POSITIVE"></i> Sucesso</span>
+          <span class="lg"><i class="sw cat-TERMINAL_NEGATIVE"></i> Encerrado</span>
+          <span class="lg"><i class="sw dashed"></i> Inativo</span>
+        </div>
+      }
     }
     <p class="muted hint">
       <strong>Clique numa caixa (estado)</strong> para editar o seu rótulo, ordem e situação no painel
