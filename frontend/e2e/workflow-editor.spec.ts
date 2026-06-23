@@ -64,6 +64,32 @@ test('the admin edits a workflow state and manages an attention rule through the
   await expect(page.locator('.rule-list')).not.toContainText(label);
 });
 
+test('navigates between workflows via the sidebar and the command palette (the editor reloads)', async ({
+  page,
+}) => {
+  await login(page);
+
+  await page.goto('/fluxos/opportunity');
+  await expect(page.getByRole('heading', { name: 'Oportunidade' })).toBeVisible();
+  // Opportunity has transitions → the diagram draws arrowheads (the inline ones, immune to <base href>).
+  await expect(page.locator('.wf-arrow-head').first()).toBeVisible();
+
+  // Click the "Lead" workflow sub-item in the sidebar: the editor (a reused component) reloads on the :code
+  // change instead of staying on the previous workflow.
+  await page.locator('aside').getByRole('link', { name: 'Lead', exact: true }).click();
+  await expect(page).toHaveURL(/\/fluxos\/lead$/);
+  await expect(page.getByRole('heading', { name: 'Lead' })).toBeVisible();
+  await expect(page.locator('.wf-arrow-head').first()).toBeVisible();
+
+  // Switch again through the command palette (Ctrl/Cmd+K) — selecting a workflow command must navigate too.
+  await page.keyboard.press('ControlOrMeta+k');
+  const palette = page.getByRole('dialog', { name: 'Comandos' });
+  await expect(palette).toBeVisible();
+  await palette.getByText('Pedido Comercial', { exact: true }).click();
+  await expect(page).toHaveURL(/\/fluxos\/order$/);
+  await expect(page.getByRole('heading', { name: 'Pedido Comercial' })).toBeVisible();
+});
+
 test('a user without workflow:manage cannot reach the editor', async ({ page }) => {
   // `representante` is a sales rep without reference:manage / workflow:manage.
   await page.goto('/login');
