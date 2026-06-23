@@ -24,7 +24,7 @@
         <i class="pi pi-home" aria-hidden="true"></i><span>Início</span>
       </a>
 
-      @for (m of modules; track m.id) {
+      @for (m of modules(); track m.id) {
         <div class="nav-module">
           <div class="nav-section">
             <a
@@ -121,7 +121,7 @@
   [style]="{ width: '34rem' }"
 >
   <p-listbox
-    [options]="commands"
+    [options]="commands()"
     optionLabel="label"
     [filter]="true"
     filterPlaceholder="Buscar comando…"

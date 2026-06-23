@@ -136,7 +136,7 @@ describe('Shell keyboard shortcuts', () => {
 
   it('derives the command palette from the navigation config plus the global actions', () => {
     auth.canSeeProposals.mockReturnValue(true);
-    const labels = build()['commands'].map((c) => c.label);
+    const labels = build()['commands']().map((c) => c.label);
     // Always: Início + the global actions; Comercial (proposals visible) + Cadastros (always).
     expect(labels).toContain('Início');
     expect(labels).toContain('Comercial');
@@ -149,7 +149,7 @@ describe('Shell keyboard shortcuts', () => {
 
   it('lists the Reservas destination in the command palette when bookings are visible', () => {
     auth.canSeeBookings.mockReturnValue(true);
-    const labels = build()['commands'].map((c) => c.label);
+    const labels = build()['commands']().map((c) => c.label);
     expect(labels).toContain('Reservas');
     auth.canSeeBookings.mockReturnValue(false);
   });
