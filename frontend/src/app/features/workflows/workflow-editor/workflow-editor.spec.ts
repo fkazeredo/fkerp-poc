@@ -275,8 +275,10 @@ describe('WorkflowEditor', () => {
       expect(nodes).toHaveLength(4);
       expect(el.querySelector('svg.wf-diagram')?.textContent).toContain('Nova');
       expect(el.querySelector('svg.wf-diagram')?.textContent).toContain('Perdida');
-      // One edge path per transition.
+      // One edge line + one inline arrowhead per transition (no SVG <marker>, which a <base href> breaks).
       expect(el.querySelectorAll('.wf-edge-line')).toHaveLength(2);
+      expect(el.querySelectorAll('.wf-arrow-head')).toHaveLength(2);
+      expect(el.querySelector('marker')).toBeNull();
       expect(el.textContent).toContain('Sem atividade recente');
       expect(el.textContent).toContain('Regra custom');
     });

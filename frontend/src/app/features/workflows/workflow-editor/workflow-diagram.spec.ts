@@ -37,9 +37,11 @@ describe('buildDiagram', () => {
     // terminals below the main row.
     expect(at('DONE').y).toBeGreaterThan(at('NEW').y);
     expect(at('LOST').y).toBe(at('DONE').y);
-    // an edge per transition, each with a path and a label.
+    // an edge per transition, each with a curve path, an inline arrowhead and a label.
     expect(dg.edges).toHaveLength(2);
     expect(dg.edges.every((e) => e.d.startsWith('M') && e.label.length > 0)).toBe(true);
+    // The arrowhead is drawn inline (no SVG <marker>/url(#id) — immune to <base href>): a closed triangle.
+    expect(dg.edges.every((e) => e.arrow.startsWith('M') && e.arrow.trim().endsWith('z'))).toBe(true);
     expect(dg.width).toBeGreaterThan(0);
     expect(dg.height).toBeGreaterThan(0);
   });
