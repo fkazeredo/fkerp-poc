@@ -91,7 +91,13 @@ public class ReceivableService {
         // The Customer normally already exists (materialized at Order creation); resolve defensively.
         Customer customer = customerService.findOrCreateFromLead(order.leadId(), userId);
         Receivable receivable = Receivable.createFromOrder(
-                order, customer, cmd.dueDate(), cmd.paymentNotes(), cmd.financialResponsiblePersonId(), userId);
+                order,
+                customer,
+                cmd.dueDate(),
+                cmd.paymentNotes(),
+                cmd.financialResponsiblePersonId(),
+                cmd.installments(),
+                userId);
         receivables.save(receivable);
         events.publishEvent(new ReceivableCreated(receivable.id(), order.id(), customer.id(), userId));
         return receivable.id();

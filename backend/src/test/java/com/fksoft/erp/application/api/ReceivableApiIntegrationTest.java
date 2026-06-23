@@ -105,6 +105,12 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.dueDate").value("2026-07-15"))
                 .andExpect(jsonPath("$.paymentNotes").value("boleto"))
                 .andExpect(jsonPath("$.customerName").value("Lead Conf"))
+                // No explicit schedule → one full-amount installment, OPEN.
+                .andExpect(jsonPath("$.installments.length()").value(1))
+                .andExpect(jsonPath("$.installments[0].number").value(1))
+                .andExpect(jsonPath("$.installments[0].amount").value(500.00))
+                .andExpect(jsonPath("$.installments[0].dueDate").value("2026-07-15"))
+                .andExpect(jsonPath("$.installments[0].status").value("OPEN"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -129,12 +135,97 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
                         "dueDate",
                         "paymentNotes",
                         "status",
+                        "installments",
                         "createdAt",
                         "createdByName");
 
         // No Payment, Commission or Booking row was created by originating the Receivable.
         assertThat(jdbc.queryForObject("SELECT count(*) FROM booking_requests", Integer.class))
                 .isZero();
+    }
+
+    @Test
+    void financeCreatesAMultiInstallmentReceivableSummingToTheTotal() throws Exception {
+        UUID order = confirmedOrder("Multi", "CONFIRMED");
+        String fin = finance();
+
+        String created = mvc.perform(post("/api/receivables")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                """
+                                {"commercialOrderId":"%s","dueDate":"2026-07-15","installments":[
+                                  {"amount":200.00,"dueDate":"2026-07-15","paymentNotes":"entrada"},
+                                  {"amount":300.00,"dueDate":"2026-08-15"}
+                                ]}"""
+                                        .formatted(order)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String receivableId = JsonPath.read(created, "$.id");
+
+        mvc.perform(get("/api/receivables/" + receivableId).header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalAmount").value(500.00))
+                .andExpect(jsonPath("$.installments.length()").value(2))
+                .andExpect(jsonPath("$.installments[0].number").value(1))
+                .andExpect(jsonPath("$.installments[0].amount").value(200.00))
+                .andExpect(jsonPath("$.installments[0].dueDate").value("2026-07-15"))
+                .andExpect(jsonPath("$.installments[0].paymentNotes").value("entrada"))
+                .andExpect(jsonPath("$.installments[0].status").value("OPEN"))
+                .andExpect(jsonPath("$.installments[1].number").value(2))
+                .andExpect(jsonPath("$.installments[1].amount").value(300.00))
+                .andExpect(jsonPath("$.installments[1].dueDate").value("2026-08-15"))
+                .andExpect(jsonPath("$.installments[1].status").value("OPEN"));
+    }
+
+    @Test
+    void cannotCreateWhenInstallmentsDoNotSumToTheTotal() throws Exception {
+        UUID order = confirmedOrder("Mismatch", "CONFIRMED");
+
+        mvc.perform(post("/api/receivables")
+                        .header("Authorization", "Bearer " + finance())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                """
+                                {"commercialOrderId":"%s","dueDate":"2026-07-15","installments":[
+                                  {"amount":100.00,"dueDate":"2026-07-15"},
+                                  {"amount":100.00,"dueDate":"2026-08-15"}
+                                ]}"""
+                                        .formatted(order)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("financial.receivable.installment-schedule-invalid"));
+    }
+
+    @Test
+    void rejectsANegativeInstallmentAmount() throws Exception {
+        UUID order = confirmedOrder("Neg", "CONFIRMED");
+
+        mvc.perform(post("/api/receivables")
+                        .header("Authorization", "Bearer " + finance())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                """
+                                {"commercialOrderId":"%s","dueDate":"2026-07-15","installments":[
+                                  {"amount":600.00,"dueDate":"2026-07-15"},
+                                  {"amount":-100.00,"dueDate":"2026-08-15"}
+                                ]}"""
+                                        .formatted(order)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rejectsAMissingInstallmentDueDate() throws Exception {
+        UUID order = confirmedOrder("NoDue", "CONFIRMED");
+
+        mvc.perform(post("/api/receivables")
+                        .header("Authorization", "Bearer " + finance())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"commercialOrderId\":\"%s\",\"dueDate\":\"2026-07-15\",\"installments\":[{\"amount\":500.00}]}"
+                                        .formatted(order)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

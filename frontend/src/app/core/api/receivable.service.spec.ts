@@ -38,6 +38,25 @@ describe('ReceivableService', () => {
     req.flush({ id: 'r1', status: 'OPEN' });
   });
 
+  it('posts a multi-installment create payload', () => {
+    const payload: CreateReceivable = {
+      commercialOrderId: 'ord1',
+      dueDate: '2026-07-15',
+      paymentNotes: null,
+      financialResponsiblePersonId: null,
+      installments: [
+        { amount: 1000, dueDate: '2026-07-15', paymentNotes: 'entrada' },
+        { amount: 500, dueDate: '2026-08-15', paymentNotes: null },
+      ],
+    };
+    service.create(payload).subscribe();
+    const req = http.expectOne('/api/receivables');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.installments).toHaveLength(2);
+    expect(req.request.body.installments[0].amount).toBe(1000);
+    req.flush({ id: 'r1', status: 'OPEN' });
+  });
+
   it('fetches a receivable detail by id', () => {
     service.detail('r1').subscribe();
     const req = http.expectOne('/api/receivables/r1');

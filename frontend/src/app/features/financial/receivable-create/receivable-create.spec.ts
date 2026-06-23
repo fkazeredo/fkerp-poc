@@ -147,6 +147,73 @@ describe('ReceivableCreate', () => {
     expect(comp.hasUnsavedChanges()).toBe(true);
   });
 
+  describe('installments', () => {
+    it('adds and removes installment rows and tracks the live remaining against the order total', () => {
+      const comp = build();
+      comp.ngOnInit();
+      comp['form'].controls.commercialOrderId.setValue('ord1'); // total 1500
+      expect(comp['hasInstallments']()).toBe(false);
+
+      comp['addInstallment']();
+      comp['addInstallment']();
+      expect(comp['hasInstallments']()).toBe(true);
+      const rows = comp['installments'].controls;
+      rows[0].patchValue({ amount: 1000, dueDate: new Date(2026, 6, 15) });
+      rows[1].patchValue({ amount: 500, dueDate: new Date(2026, 7, 15) });
+
+      expect(comp['installmentsSum']()).toBe(1500);
+      expect(comp['remaining']()).toBe(0);
+      expect(comp['scheduleBalanced']()).toBe(true);
+
+      comp['removeInstallment'](1);
+      expect(comp['installments'].length).toBe(1);
+      expect(comp['remaining']()).toBe(500); // 1500 - 1000
+      expect(comp['scheduleBalanced']()).toBe(false);
+    });
+
+    it('submits a multi-installment schedule and derives the reference due date from the first installment', () => {
+      receivables.create.mockReturnValue(of({ id: 'r1', status: 'OPEN' }));
+      const comp = build();
+      comp.ngOnInit();
+      comp['form'].controls.commercialOrderId.setValue('ord1'); // total 1500
+      comp['addInstallment']();
+      comp['addInstallment']();
+      comp['installments'].controls[0].patchValue({
+        amount: 1000,
+        dueDate: new Date(2026, 6, 15),
+        paymentNotes: 'entrada',
+      });
+      comp['installments'].controls[1].patchValue({ amount: 500, dueDate: new Date(2026, 7, 15) });
+
+      comp['submit']();
+
+      expect(receivables.create).toHaveBeenCalledWith({
+        commercialOrderId: 'ord1',
+        dueDate: '2026-07-15',
+        financialResponsiblePersonId: null,
+        paymentNotes: null,
+        installments: [
+          { amount: 1000, dueDate: '2026-07-15', paymentNotes: 'entrada' },
+          { amount: 500, dueDate: '2026-08-15', paymentNotes: null },
+        ],
+      });
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/financeiro/contas-a-receber/r1');
+    });
+
+    it('does not submit when the installments do not sum to the order total', () => {
+      const comp = build();
+      comp.ngOnInit();
+      comp['form'].controls.commercialOrderId.setValue('ord1'); // total 1500
+      comp['addInstallment']();
+      comp['installments'].controls[0].patchValue({ amount: 100, dueDate: new Date(2026, 6, 15) });
+
+      comp['submit']();
+
+      expect(receivables.create).not.toHaveBeenCalled();
+      expect(comp['formError']()).toContain('soma das parcelas');
+    });
+  });
+
   describe('DOM rendering', () => {
     it('renders the form fields and the submit/cancel actions', () => {
       const el = render();
@@ -157,6 +224,9 @@ describe('ReceivableCreate', () => {
       expect(el.textContent).toContain('Observações de pagamento');
       expect(el.textContent).toContain('Gerar conta a receber');
       expect(el.textContent).toContain('Cancelar');
+      // The installment editor section with its add action.
+      expect(el.textContent).toContain('Parcelas');
+      expect(el.textContent).toContain('Adicionar parcela');
     });
   });
 });

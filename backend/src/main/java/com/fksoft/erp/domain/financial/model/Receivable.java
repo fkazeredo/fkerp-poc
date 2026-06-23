@@ -1,21 +1,29 @@
 package com.fksoft.erp.domain.financial.model;
 
 import com.fksoft.erp.domain.crm.model.Customer;
+import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
+import com.fksoft.erp.domain.financial.service.data.InstallmentInput;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -93,6 +101,12 @@ public class Receivable {
     @Column(nullable = false, length = 20)
     private ReceivableStatus status;
 
+    // The installment schedule (part of the aggregate): the slices of the amount due. Always sums to the total
+    // (one full-amount installment when the Receivable is not split). Defined at creation.
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "receivable_id", nullable = false)
+    private List<ReceivableInstallment> installments = new ArrayList<>();
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -114,12 +128,15 @@ public class Receivable {
      *
      * @param order the source Commercial Order; its {@code bookingStatus} must be {@code CONFIRMED}
      * @param customer the payer (the Customer materialized from the Order's Lead)
-     * @param dueDate the due date (required)
+     * @param dueDate the receivable's reference due date (required; used for the single installment when the
+     *     schedule is not split)
      * @param paymentNotes optional descriptive payment notes (free text — not a Payment record)
      * @param financialResponsibleId the financial responsible, or {@code null}
+     * @param installmentInputs the installment schedule; empty/{@code null} ⇒ one full-amount installment
      * @param createdBy id of the user creating the Receivable
      * @return a new, unsaved Receivable
      * @throws OrderBookingNotConfirmedException if the Order's booking is not CONFIRMED
+     * @throws InstallmentScheduleInvalidException if the installments do not sum to the total or are invalid
      */
     public static Receivable createFromOrder(
             CommercialOrder order,
@@ -127,6 +144,7 @@ public class Receivable {
             LocalDate dueDate,
             String paymentNotes,
             UUID financialResponsibleId,
+            List<InstallmentInput> installmentInputs,
             UUID createdBy) {
         if (!"CONFIRMED".equals(order.bookingStatus())) {
             throw new OrderBookingNotConfirmedException();
@@ -146,7 +164,38 @@ public class Receivable {
         receivable.status = ReceivableStatus.OPEN;
         receivable.createdBy = createdBy;
         receivable.updatedBy = createdBy;
+        receivable.scheduleInstallments(installmentInputs);
         return receivable;
+    }
+
+    /**
+     * Builds the installment schedule. An empty/{@code null} schedule yields a single installment for the full
+     * total (every Receivable always has at least one installment). Otherwise the installments must sum to the
+     * total (each non-negative, with a due date), and are numbered 1..n in the given order. Creates no Payment,
+     * Commission or Invoice data.
+     *
+     * @param inputs the installments, or empty/{@code null} for a single full-amount installment
+     * @throws InstallmentScheduleInvalidException if the installments do not sum to the total or are invalid
+     */
+    private void scheduleInstallments(List<InstallmentInput> inputs) {
+        if (inputs == null || inputs.isEmpty()) {
+            installments.add(ReceivableInstallment.of(1, totalAmount, dueDate, null));
+            return;
+        }
+        BigDecimal sum = BigDecimal.ZERO;
+        for (InstallmentInput input : inputs) {
+            if (input.amount() == null || input.amount().signum() < 0 || input.dueDate() == null) {
+                throw new InstallmentScheduleInvalidException();
+            }
+            sum = sum.add(input.amount());
+        }
+        if (sum.setScale(2, RoundingMode.HALF_UP).compareTo(totalAmount.setScale(2, RoundingMode.HALF_UP)) != 0) {
+            throw new InstallmentScheduleInvalidException();
+        }
+        int number = 1;
+        for (InstallmentInput input : inputs) {
+            installments.add(ReceivableInstallment.of(number++, input.amount(), input.dueDate(), input.paymentNotes()));
+        }
     }
 
     private static String emptyToNull(String value) {

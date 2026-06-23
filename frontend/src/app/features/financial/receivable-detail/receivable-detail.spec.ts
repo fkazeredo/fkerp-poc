@@ -33,6 +33,10 @@ describe('ReceivableDetailPage', () => {
     dueDate: '2026-07-15',
     paymentNotes: 'Boleto à vista',
     status: 'OPEN',
+    installments: [
+      { number: 1, amount: 600, dueDate: '2026-07-15', status: 'OPEN', paymentNotes: 'entrada' },
+      { number: 2, amount: 900, dueDate: '2026-08-15', status: 'OPEN', paymentNotes: null },
+    ],
     createdAt: '2026-06-20T10:00:00Z',
     createdByName: 'financeiro',
   };
@@ -124,6 +128,17 @@ describe('ReceivableDetailPage', () => {
       // The contract carries no Payment/Commission/Invoice labels.
       expect(el.textContent).not.toContain('Comissão');
       expect(el.textContent).not.toContain('Pagamento registrado');
+    });
+
+    it('renders the installment schedule (numbers, amounts and status)', () => {
+      receivables.detail.mockReturnValue(of(sample));
+      const el = render();
+      expect(el.textContent).toContain('Parcelas');
+      expect(el.textContent).toContain('entrada'); // installment 1 notes
+      expect(el.textContent).toContain('R$'); // currency-formatted amounts
+      // Two installment rows are rendered (number column shows 1 and 2).
+      const rows = el.querySelectorAll('.installments-table tbody tr');
+      expect(rows.length).toBe(2);
     });
 
     it('renders the error state with a back button on 403', () => {

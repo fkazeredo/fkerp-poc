@@ -45,18 +45,104 @@
     </div>
   }
 
-  <div class="field">
-    <label for="dueDate">Vencimento <span class="req">*</span></label>
-    <p-datepicker
-      inputId="dueDate"
-      formControlName="dueDate"
-      dateFormat="dd/mm/yy"
-      [showButtonBar]="true"
-      styleClass="w-full"
-      appendTo="body"
-    />
-    @if (form.controls.dueDate.touched && form.controls.dueDate.invalid) {
-      <small class="error">Informe a data de vencimento.</small>
+  @if (!hasInstallments()) {
+    <div class="field">
+      <label for="dueDate">Vencimento <span class="req">*</span></label>
+      <p-datepicker
+        inputId="dueDate"
+        formControlName="dueDate"
+        dateFormat="dd/mm/yy"
+        [showButtonBar]="true"
+        styleClass="w-full"
+        appendTo="body"
+      />
+      @if (form.controls.dueDate.touched && form.controls.dueDate.invalid) {
+        <small class="error">Informe a data de vencimento.</small>
+      }
+    </div>
+  }
+
+  <div class="installments">
+    <div class="installments-head">
+      <span class="installments-title">Parcelas</span>
+      <p-button
+        type="button"
+        label="Adicionar parcela"
+        icon="pi pi-plus"
+        severity="secondary"
+        [text]="true"
+        size="small"
+        (onClick)="addInstallment()"
+      />
+    </div>
+
+    @if (!hasInstallments()) {
+      <p class="muted installments-hint">
+        Sem parcelas: a conta nasce com uma única parcela no valor total, no vencimento informado acima.
+      </p>
+    } @else {
+      <table class="installments-table">
+        <thead>
+          <tr>
+            <th class="col-num">Nº</th>
+            <th>Valor</th>
+            <th>Vencimento</th>
+            <th>Observações</th>
+            <th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody [formArrayName]="'installments'">
+          @for (row of installmentRows(); track row; let i = $index) {
+            <tr [formGroupName]="i">
+              <td class="col-num">{{ i + 1 }}</td>
+              <td>
+                <p-inputNumber
+                  formControlName="amount"
+                  mode="currency"
+                  currency="BRL"
+                  locale="pt-BR"
+                  [min]="0"
+                  styleClass="w-full"
+                  [inputStyleClass]="'w-full installment-amount'"
+                />
+              </td>
+              <td>
+                <p-datepicker
+                  formControlName="dueDate"
+                  dateFormat="dd/mm/yy"
+                  [showButtonBar]="true"
+                  styleClass="w-full"
+                  appendTo="body"
+                />
+              </td>
+              <td>
+                <input pInputText formControlName="paymentNotes" class="w-full" />
+              </td>
+              <td class="col-actions">
+                <p-button
+                  type="button"
+                  icon="pi pi-trash"
+                  severity="danger"
+                  [text]="true"
+                  size="small"
+                  ariaLabel="Remover parcela"
+                  (onClick)="removeInstallment(i)"
+                />
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="installments-summary" [class.balanced]="scheduleBalanced()">
+        <span class="muted">Total das parcelas:</span>
+        <strong>{{ installmentsSum() | currency: 'BRL' }}</strong>
+        <span class="muted">· Restante:</span>
+        <strong [class.error]="!scheduleBalanced()">{{ remaining() | currency: 'BRL' }}</strong>
+      </div>
+      @if (!scheduleBalanced()) {
+        <small class="error">A soma das parcelas deve ser igual ao valor do pedido.</small>
+      }
     }
   </div>
 
@@ -89,7 +175,13 @@
   </div>
 
   <div class="actions">
-    <p-button type="submit" label="Gerar conta a receber" icon="pi pi-check" [loading]="loading()" />
+    <p-button
+      type="submit"
+      label="Gerar conta a receber"
+      icon="pi pi-check"
+      [loading]="loading()"
+      [disabled]="!scheduleBalanced()"
+    />
     <p-button
       type="button"
       label="Cancelar"

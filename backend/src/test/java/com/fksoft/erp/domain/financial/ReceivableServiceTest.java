@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import com.fksoft.erp.domain.crm.model.Customer;
 import com.fksoft.erp.domain.crm.repository.CustomerRepository;
 import com.fksoft.erp.domain.crm.service.CustomerService;
+import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAccessDeniedException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAlreadyExistsException;
@@ -27,12 +28,14 @@ import com.fksoft.erp.domain.financial.repository.ReceivableRepository;
 import com.fksoft.erp.domain.financial.service.ReceivableAccessPolicy;
 import com.fksoft.erp.domain.financial.service.ReceivableService;
 import com.fksoft.erp.domain.financial.service.data.CreateReceivableCommand;
+import com.fksoft.erp.domain.financial.service.data.InstallmentInput;
 import com.fksoft.erp.domain.identity.UserRepository;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -90,7 +93,11 @@ class ReceivableServiceTest {
     }
 
     private CreateReceivableCommand command() {
-        return new CreateReceivableCommand(orderId, LocalDate.of(2026, 7, 15), "boleto", null);
+        return new CreateReceivableCommand(orderId, LocalDate.of(2026, 7, 15), "boleto", null, List.of());
+    }
+
+    private CreateReceivableCommand command(List<InstallmentInput> installments) {
+        return new CreateReceivableCommand(orderId, LocalDate.of(2026, 7, 15), "boleto", null, installments);
     }
 
     @Test
@@ -113,12 +120,56 @@ class ReceivableServiceTest {
         assertThat(saved.getValue().status()).isEqualTo(ReceivableStatus.OPEN);
         assertThat(saved.getValue().customerId()).isEqualTo(customerId);
         assertThat(saved.getValue().totalAmount()).isEqualByComparingTo("1500.00");
+        // No explicit schedule → one full-amount installment.
+        assertThat(saved.getValue().installments()).hasSize(1);
+        assertThat(saved.getValue().installments().get(0).amount()).isEqualByComparingTo("1500.00");
         assertThat(result).isEqualTo(saved.getValue().id());
 
         ArgumentCaptor<ReceivableCreated> event = ArgumentCaptor.forClass(ReceivableCreated.class);
         verify(events).publishEvent(event.capture());
         assertThat(event.getValue().commercialOrderId()).isEqualTo(orderId);
         assertThat(event.getValue().customerId()).isEqualTo(customerId);
+    }
+
+    @Test
+    void createPassesAMatchingMultiInstallmentScheduleThrough() {
+        CommercialOrder order = confirmedOrder();
+        when(orders.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderAccessPolicy.canSee(order, userId, true, false)).thenReturn(true);
+        when(receivables.findFirstByCommercialOrderIdAndStatusIn(orderId, ReceivableStatus.active()))
+                .thenReturn(Optional.empty());
+        Customer customer = mock(Customer.class);
+        when(customer.id()).thenReturn(UUID.randomUUID());
+        when(customerService.findOrCreateFromLead(leadId, userId)).thenReturn(customer);
+        when(receivables.save(any(Receivable.class))).thenAnswer(inv -> inv.getArgument(0));
+        List<InstallmentInput> schedule = List.of(
+                new InstallmentInput(new BigDecimal("1000.00"), LocalDate.of(2026, 7, 1), null),
+                new InstallmentInput(new BigDecimal("500.00"), LocalDate.of(2026, 8, 1), null));
+
+        service.create(command(schedule), userId, true, false);
+
+        ArgumentCaptor<Receivable> saved = ArgumentCaptor.forClass(Receivable.class);
+        verify(receivables).save(saved.capture());
+        assertThat(saved.getValue().installments()).hasSize(2);
+        assertThat(saved.getValue().installments().get(0).amount()).isEqualByComparingTo("1000.00");
+        assertThat(saved.getValue().installments().get(1).number()).isEqualTo(2);
+    }
+
+    @Test
+    void createRejectsAScheduleThatDoesNotSumToTheTotal() {
+        CommercialOrder order = confirmedOrder();
+        when(orders.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderAccessPolicy.canSee(order, userId, true, false)).thenReturn(true);
+        when(receivables.findFirstByCommercialOrderIdAndStatusIn(orderId, ReceivableStatus.active()))
+                .thenReturn(Optional.empty());
+        when(customerService.findOrCreateFromLead(leadId, userId)).thenReturn(mock(Customer.class));
+        List<InstallmentInput> schedule =
+                List.of(new InstallmentInput(new BigDecimal("100.00"), LocalDate.of(2026, 7, 1), null));
+
+        assertThatThrownBy(() -> service.create(command(schedule), userId, true, false))
+                .isInstanceOf(InstallmentScheduleInvalidException.class);
+        verify(receivables, never()).save(any());
+        verify(events, never()).publishEvent(any());
     }
 
     @Test

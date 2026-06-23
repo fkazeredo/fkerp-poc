@@ -30,7 +30,13 @@ test('finance reaches the receivables list and the create form (empty stack: no 
   await page.getByRole('link', { name: 'Nova conta a receber' }).click();
   await expect(page).toHaveURL(/\/financeiro\/contas-a-receber\/nova/);
   await expect(page.getByRole('heading', { name: 'Nova conta a receber' })).toBeVisible();
-  await expect(page.getByText('Vencimento')).toBeVisible();
+  await expect(page.locator('label[for="dueDate"]')).toBeVisible();
+
+  // The installment editor is present: a "Parcelas" section with an add-installment action that, when used,
+  // reveals the live "Remaining" balance against the order total.
+  await expect(page.getByText('Parcelas', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Adicionar parcela' }).click();
+  await expect(page.getByText('Restante')).toBeVisible();
 });
 
 test('the "g f" shortcut jumps to the receivables list', async ({ page }) => {

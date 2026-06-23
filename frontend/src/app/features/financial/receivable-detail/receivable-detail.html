@@ -60,6 +60,36 @@
     </p-card>
   </div>
 
+  <p-card header="Parcelas" styleClass="section">
+    <table class="installments-table">
+      <thead>
+        <tr>
+          <th class="col-num">Nº</th>
+          <th class="num">Valor</th>
+          <th>Vencimento</th>
+          <th>Status</th>
+          <th>Observações</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (i of r.installments; track i.number) {
+          <tr>
+            <td class="col-num">{{ i.number }}</td>
+            <td class="num">{{ i.amount | currency: 'BRL' }}</td>
+            <td>{{ i.dueDate | date: 'dd/MM/yyyy' }}</td>
+            <td>
+              <p-tag
+                [value]="installmentStatusLabel(i.status)"
+                [severity]="installmentStatusSeverity(i.status)"
+              />
+            </td>
+            <td>{{ i.paymentNotes ?? '—' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </p-card>
+
   <div class="back">
     <p-button
       label="Voltar para contas a receber"
