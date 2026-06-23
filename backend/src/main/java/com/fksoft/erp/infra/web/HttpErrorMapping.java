@@ -40,6 +40,7 @@ import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.exception.OriginNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.error.DomainException;
+import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAccessDeniedException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAlreadyExistsException;
@@ -151,6 +152,7 @@ public class HttpErrorMapping {
             entry(BookingFailureReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(CustomerNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(OrderBookingNotConfirmedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(InstallmentScheduleInvalidException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ReceivableAlreadyExistsException.class, HttpStatus.CONFLICT),
             entry(ReceivableNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(ReceivableAccessDeniedException.class, HttpStatus.FORBIDDEN),

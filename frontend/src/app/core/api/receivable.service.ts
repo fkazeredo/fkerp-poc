@@ -6,6 +6,18 @@ import { PageResponse, Responsible } from './lead.service';
 /** The Receivable lifecycle status (Financial Operations, Sprint 5). */
 export type ReceivableStatus = 'OPEN' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 
+/** The lifecycle status of a single Receivable installment (mirrors the Receivable status). */
+export type InstallmentStatus = 'OPEN' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+
+/** One installment of a Receivable's schedule. Installment data only — never Payment/Commission/Invoice data. */
+export interface ReceivableInstallment {
+  number: number;
+  amount: number;
+  dueDate: string;
+  status: InstallmentStatus;
+  paymentNotes: string | null;
+}
+
 /**
  * Receivable list item (the operational Financial worklist). Carries receivable + commercial-origin data only
  * — never Payment, Commission or Invoice data. The human identifier is the source Order number
@@ -45,6 +57,7 @@ export interface ReceivableDetail {
   dueDate: string;
   paymentNotes: string | null;
   status: ReceivableStatus;
+  installments: ReceivableInstallment[];
   createdAt: string;
   createdByName: string | null;
 }
@@ -66,12 +79,24 @@ export interface ReceivableFilters {
   order?: string | null;
 }
 
-/** Payload to create a Receivable from a Commercial Order with a confirmed booking. */
+/** One installment supplied when creating a Receivable (amount + due date + optional notes). */
+export interface CreateInstallment {
+  amount: number;
+  dueDate: string;
+  paymentNotes?: string | null;
+}
+
+/**
+ * Payload to create a Receivable from a Commercial Order with a confirmed booking. {@code installments} is
+ * optional: absent/empty ⇒ one full-amount installment; when present, the installments must sum to the order
+ * total.
+ */
 export interface CreateReceivable {
   commercialOrderId: string;
   dueDate: string;
   paymentNotes?: string | null;
   financialResponsiblePersonId?: string | null;
+  installments?: CreateInstallment[];
 }
 
 export interface ReceivableCreated {

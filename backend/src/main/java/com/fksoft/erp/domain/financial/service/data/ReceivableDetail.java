@@ -1,15 +1,19 @@
 package com.fksoft.erp.domain.financial.service.data;
 
 import com.fksoft.erp.domain.financial.model.Receivable;
+import com.fksoft.erp.domain.financial.model.ReceivableInstallment;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /**
  * Full detail of a Receivable, keeping the commercial origin (Order / Proposal / Opportunity / Lead /
- * Customer) traceable. Carries receivable data only — never Payment, Commission or Invoice data.
+ * Customer) traceable and exposing its installment schedule. Carries receivable data only — never Payment,
+ * Commission or Invoice data.
  */
 public record ReceivableDetail(
         UUID id,
@@ -28,6 +32,7 @@ public record ReceivableDetail(
         LocalDate dueDate,
         String paymentNotes,
         String status,
+        List<InstallmentView> installments,
         Instant createdAt,
         String createdByName) {
 
@@ -58,6 +63,10 @@ public record ReceivableDetail(
                 r.dueDate(),
                 r.paymentNotes(),
                 r.status().name(),
+                r.installments().stream()
+                        .sorted(Comparator.comparingInt(ReceivableInstallment::number))
+                        .map(InstallmentView::from)
+                        .toList(),
                 r.createdAt(),
                 nameOf(names, r.createdBy()));
     }

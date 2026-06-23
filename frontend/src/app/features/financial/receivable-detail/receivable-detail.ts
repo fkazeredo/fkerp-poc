@@ -6,7 +6,12 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { MessageModule } from 'primeng/message';
-import { ReceivableDetail, ReceivableService, ReceivableStatus } from '../../../core/api/receivable.service';
+import {
+  InstallmentStatus,
+  ReceivableDetail,
+  ReceivableService,
+  ReceivableStatus,
+} from '../../../core/api/receivable.service';
 
 const STATUS_LABELS: Record<ReceivableStatus, string> = {
   OPEN: 'Em aberto',
@@ -58,6 +63,15 @@ export class ReceivableDetailPage implements OnInit {
   }
 
   protected statusSeverity(status: ReceivableStatus): TagSeverity {
+    return STATUS_SEVERITY[status];
+  }
+
+  /** Installment statuses mirror the Receivable statuses (same values), so the same labels/severities apply. */
+  protected installmentStatusLabel(status: InstallmentStatus): string {
+    return STATUS_LABELS[status];
+  }
+
+  protected installmentStatusSeverity(status: InstallmentStatus): TagSeverity {
     return STATUS_SEVERITY[status];
   }
 
