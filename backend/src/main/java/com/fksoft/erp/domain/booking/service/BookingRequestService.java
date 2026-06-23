@@ -51,6 +51,8 @@ import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
+import com.fksoft.erp.domain.workflow.WorkflowAttentionRule;
+import com.fksoft.erp.domain.workflow.WorkflowAttentionRuleRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -96,6 +98,7 @@ public class BookingRequestService {
     private final BookingAttemptTypeRepository attemptTypes;
     private final BookingAttemptResultRepository attemptResults;
     private final BookingFailureReasonRepository failureReasons;
+    private final WorkflowAttentionRuleRepository attentionRules;
 
     /**
      * Creates a Booking Request from a Commercial Order the caller is allowed to see and that is
@@ -228,7 +231,9 @@ public class BookingRequestService {
             Pageable pageable, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Instant now = Instant.now();
         LocalDate today = LocalDate.ofInstant(now, ZoneOffset.UTC);
-        Specification<BookingRequest> spec = BookingRequestPendingSpecifications.pending(now, today)
+        List<WorkflowAttentionRule> rules =
+                attentionRules.findByDefinition_CodeAndActiveTrueOrderBySortOrderAsc("booking_request");
+        Specification<BookingRequest> spec = BookingRequestPendingSpecifications.pending(now, today, rules)
                 .and(accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned));
         Page<BookingRequest> page = bookingRequests.findAll(spec, pageable);
 
@@ -252,7 +257,7 @@ public class BookingRequestService {
                     nameOf(names, r.bookingOperatorId()),
                     nameOf(names, r.responsiblePersonId()),
                     c,
-                    BookingRequestPendingReasons.of(r, now, today, hasFailed, hasPendingRequired));
+                    BookingRequestPendingReasons.of(r, now, today, hasFailed, hasPendingRequired, rules));
         });
     }
 

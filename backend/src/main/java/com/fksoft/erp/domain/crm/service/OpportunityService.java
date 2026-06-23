@@ -39,6 +39,8 @@ import com.fksoft.erp.domain.crm.service.data.UpdateOpportunityDetailsCommand;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
 import com.fksoft.erp.domain.reference.ReferenceData;
+import com.fksoft.erp.domain.workflow.WorkflowAttentionRule;
+import com.fksoft.erp.domain.workflow.WorkflowAttentionRuleRepository;
 import com.fksoft.erp.domain.workflow.WorkflowContext;
 import com.fksoft.erp.domain.workflow.WorkflowEngine;
 import com.fksoft.erp.domain.workflow.WorkflowState;
@@ -85,6 +87,7 @@ public class OpportunityService {
     private final OpportunityActivityTypeRepository activityTypes;
     private final OpportunityActivityResultRepository activityResults;
     private final OpportunityLossReasonRepository lossReasons;
+    private final WorkflowAttentionRuleRepository attentionRules;
 
     /** The workflow definition code for the Opportunity lifecycle. */
     private static final String OPPORTUNITY_WORKFLOW = "opportunity";
@@ -200,7 +203,9 @@ public class OpportunityService {
             Pageable pageable, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Instant now = Instant.now();
         LocalDate today = LocalDate.ofInstant(now, ZoneOffset.UTC);
-        Specification<Opportunity> spec = OpportunityPendingSpecifications.pending(now, today)
+        List<WorkflowAttentionRule> rules =
+                attentionRules.findByDefinition_CodeAndActiveTrueOrderBySortOrderAsc("opportunity");
+        Specification<Opportunity> spec = OpportunityPendingSpecifications.pending(now, today, rules)
                 .and(accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned));
         Page<Opportunity> page = opportunities.findAll(spec, pageable);
 
@@ -227,7 +232,7 @@ public class OpportunityService {
                     opportunity,
                     nameOf(names, opportunity.responsiblePersonId()),
                     lastActivityAt,
-                    OpportunityPendingReasons.of(opportunity, now, today, lastActivityAt));
+                    OpportunityPendingReasons.of(opportunity, now, today, lastActivityAt, rules));
         });
     }
 

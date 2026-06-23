@@ -36,6 +36,8 @@ import com.fksoft.erp.domain.crm.service.data.Responsible;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
 import com.fksoft.erp.domain.reference.ReferenceData;
+import com.fksoft.erp.domain.workflow.WorkflowAttentionRule;
+import com.fksoft.erp.domain.workflow.WorkflowAttentionRuleRepository;
 import com.fksoft.erp.domain.workflow.WorkflowContext;
 import com.fksoft.erp.domain.workflow.WorkflowEngine;
 import com.fksoft.erp.domain.workflow.WorkflowState;
@@ -81,6 +83,7 @@ public class LeadService {
     private final ApplicationEventPublisher events;
     private final WorkflowEngine workflow;
     private final WorkflowStateRepository workflowStates;
+    private final WorkflowAttentionRuleRepository attentionRules;
 
     /** The workflow definition code for the Lead lifecycle. */
     private static final String LEAD_WORKFLOW = "lead";
@@ -191,7 +194,9 @@ public class LeadService {
     public Page<PendingLead> pending(
             Pageable pageable, UUID currentUserId, boolean canSeeAll, boolean canSeeUnassigned) {
         Instant now = Instant.now();
-        Specification<Lead> spec = LeadPendingSpecifications.pending(now)
+        List<WorkflowAttentionRule> rules =
+                attentionRules.findByDefinition_CodeAndActiveTrueOrderBySortOrderAsc("lead");
+        Specification<Lead> spec = LeadPendingSpecifications.pending(now, rules)
                 .and(accessPolicy.visibleTo(currentUserId, canSeeAll, canSeeUnassigned));
         Page<Lead> page = leads.findAll(spec, pageable);
 
@@ -206,7 +211,7 @@ public class LeadService {
         return page.map(lead -> PendingLead.from(
                 lead,
                 nameOf(names, lead.responsiblePersonId()),
-                PendingLeadReasons.of(lead, now, withInteractions.contains(lead.id()))));
+                PendingLeadReasons.of(lead, now, withInteractions.contains(lead.id()), rules)));
     }
 
     /**
