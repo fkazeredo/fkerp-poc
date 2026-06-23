@@ -1,14 +1,17 @@
 package com.fksoft.erp.domain.crm.service;
 
 import com.fksoft.erp.domain.crm.model.Lead;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.service.data.LeadSearchCriteria;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 
 /** Dynamic query predicates for the operational Lead list. */
@@ -46,10 +49,22 @@ public final class LeadSpecifications {
     private static Specification<Lead> statusFilter(Set<String> statuses) {
         return (root, query, cb) -> {
             if (statuses == null || statuses.isEmpty()) {
-                return cb.notEqual(root.get("status"), "LOST");
+                return cb.notEqual(root.get("status"), LeadStatus.LOST);
             }
-            return root.get("status").in(statuses);
+            Set<LeadStatus> parsed = statuses.stream()
+                    .map(LeadSpecifications::toStatus)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            return parsed.isEmpty() ? cb.disjunction() : root.get("status").in(parsed);
         };
+    }
+
+    private static LeadStatus toStatus(String value) {
+        try {
+            return LeadStatus.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private static Specification<Lead> originFilter(UUID originId) {

@@ -8,6 +8,8 @@ import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -69,13 +71,11 @@ public class BookingItem {
     @Column(name = "requires_booking", nullable = false)
     private boolean requiresBooking;
 
-    // Denormalized status code (mirrors a 'booking_item' workflow state); the current_state_id FK is kept in
-    // sync from this code by a DB trigger. The item's status is computed by its own transitions (it is never a
-    // user-chosen target), so the code stays the entity's source value and the FK is derived (data-driven storage).
-    @NotBlank
-    @Size(max = 60)
-    @Column(nullable = false)
-    private String status;
+    // The item's status is computed by its own transitions (it is never a user-chosen target).
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 60)
+    private BookingItemStatus status;
 
     // The manual confirmation of the external reservation — populated only when the item is confirmed (null
     // otherwise). Carries no monetary data.
@@ -110,7 +110,7 @@ public class BookingItem {
         item.description = source.description();
         item.quantity = source.quantity();
         item.requiresBooking = requiresBooking(source.type(), explicitlyRequired);
-        item.status = item.requiresBooking ? "PENDING" : "NOT_REQUIRED";
+        item.status = item.requiresBooking ? BookingItemStatus.PENDING : BookingItemStatus.NOT_REQUIRED;
         return item;
     }
 
@@ -162,11 +162,11 @@ public class BookingItem {
         if (!expectedTypeCode.equals(type.code()) || !requiresBooking) {
             throw new BookingItemNotConfirmableException();
         }
-        if ("CONFIRMED".equals(status) || "CANCELLED".equals(status)) {
+        if (status.isResolved()) {
             throw new BookingItemAlreadyResolvedException();
         }
         this.confirmation = confirmation;
-        this.status = "CONFIRMED";
+        this.status = BookingItemStatus.CONFIRMED;
     }
 
     /**
@@ -184,10 +184,10 @@ public class BookingItem {
         if (!requiresBooking) {
             throw new BookingItemNotFailableException();
         }
-        if ("CONFIRMED".equals(status) || "CANCELLED".equals(status)) {
+        if (status.isResolved()) {
             throw new BookingItemAlreadyResolvedException();
         }
         this.failure = failure;
-        this.status = "FAILED";
+        this.status = BookingItemStatus.FAILED;
     }
 }

@@ -76,8 +76,8 @@ public record CommercialOrderDetail(
                 o.proposalId(),
                 o.opportunityId(),
                 o.leadId(),
-                o.status(),
-                "PENDING_BOOKING".equals(o.status()),
+                o.status().name(),
+                "PENDING_BOOKING".equals(o.status().name()),
                 o.bookingStatus(),
                 o.responsiblePersonId(),
                 nameOf(names, o.responsiblePersonId()),
@@ -90,13 +90,22 @@ public record CommercialOrderDetail(
                 new SourceProposal(
                         proposal.id(),
                         proposal.title(),
-                        proposal.status(),
+                        proposal.status().name(),
                         proposal.validUntil(),
                         proposal.commercialTerms(),
                         proposal.notes(),
                         proposal.paymentNotes()),
-                new SourceOpportunity(opportunity.id(), opportunity.name(), opportunity.stage()),
-                new SourceLead(lead.id(), lead.name(), lead.phone(), lead.whatsapp(), lead.email(), lead.status()));
+                new SourceOpportunity(
+                        opportunity.id(),
+                        opportunity.name(),
+                        opportunity.stage().name()),
+                new SourceLead(
+                        lead.id(),
+                        lead.name(),
+                        lead.phone(),
+                        lead.whatsapp(),
+                        lead.email(),
+                        lead.status().name()));
     }
 
     private static String nameOf(Map<UUID, String> names, UUID id) {

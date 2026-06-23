@@ -82,7 +82,7 @@ public record LeadDetail(
                 lead.whatsapp(),
                 lead.email(),
                 lead.origin().label(),
-                lead.status(),
+                lead.status().name(),
                 lead.responsiblePersonId(),
                 nameOf(names, lead.responsiblePersonId()),
                 lead.responsiblePersonId() == null,

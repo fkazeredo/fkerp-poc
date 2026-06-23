@@ -1,6 +1,7 @@
 package com.fksoft.erp.domain.sales.repository;
 
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
+import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -48,7 +49,7 @@ public class OrderIndicatorQueries {
         q.groupBy(root.get("status"));
         Map<String, Long> result = new LinkedHashMap<>();
         for (Object[] row : em.createQuery(q).getResultList()) {
-            result.put((String) row[0], (Long) row[1]);
+            result.put(((CommercialOrderStatus) row[0]).name(), (Long) row[1]);
         }
         return result;
     }

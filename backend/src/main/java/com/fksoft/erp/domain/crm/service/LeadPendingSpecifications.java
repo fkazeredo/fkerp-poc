@@ -2,67 +2,50 @@ package com.fksoft.erp.domain.crm.service;
 
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadInteraction;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.PendingLeadReasons;
-import com.fksoft.erp.domain.workflow.WorkflowAttentionRule;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
 
 /**
- * Query predicate selecting Leads that need action — the OR of the active attention rules' conditions.
- * Mirrors {@link PendingLeadReasons#of}; both are driven by the same configurable
- * {@link WorkflowAttentionRule}s of the {@code lead} workflow.
+ * Query predicate selecting Leads that need action — the OR of the fixed pre-defined pending conditions.
+ * Mirrors {@link PendingLeadReasons#of} so the page contains exactly the Leads that have at least one reason.
  */
 public final class LeadPendingSpecifications {
 
     private LeadPendingSpecifications() {}
 
     /**
-     * A Lead is pending when at least one active attention rule matches.
+     * A Lead is pending when at least one of the pre-defined reasons applies.
      *
      * @param now the reference instant for "overdue"
-     * @param rules the active attention rules of the {@code lead} workflow
      * @return the pending Specification
      */
-    public static Specification<Lead> pending(Instant now, List<WorkflowAttentionRule> rules) {
+    public static Specification<Lead> pending(Instant now) {
         return (root, query, cb) -> {
-            List<Predicate> ors = new ArrayList<>();
-            for (WorkflowAttentionRule rule : rules) {
-                Predicate predicate = predicate(rule, root, query, cb, now);
-                if (predicate != null) {
-                    ors.add(predicate);
-                }
-            }
-            return ors.isEmpty() ? cb.disjunction() : cb.or(ors.toArray(Predicate[]::new));
-        };
-    }
+            var status = root.get("status");
 
-    private static Predicate predicate(
-            WorkflowAttentionRule rule, Root<Lead> root, CriteriaQuery<?> query, CriteriaBuilder cb, Instant now) {
-        var status = root.get("status");
-        return switch (rule.conditionKey()) {
-            case "UNASSIGNED" -> cb.and(cb.isNull(root.get("responsiblePersonId")), cb.notEqual(status, "LOST"));
-            case "NEW_WITHOUT_INTERACTION" -> {
-                Subquery<UUID> interactions = query.subquery(UUID.class);
-                var li = interactions.from(LeadInteraction.class);
-                interactions.select(li.get("leadId")).where(cb.equal(li.get("leadId"), root.get("id")));
-                yield cb.and(cb.equal(status, "NEW"), cb.not(cb.exists(interactions)));
-            }
-            case "OVERDUE_NEXT_CONTACT" -> cb.and(
+            Predicate unassigned =
+                    cb.and(cb.isNull(root.get("responsiblePersonId")), cb.notEqual(status, LeadStatus.LOST));
+
+            Subquery<UUID> interactions = query.subquery(UUID.class);
+            var li = interactions.from(LeadInteraction.class);
+            interactions.select(li.get("leadId")).where(cb.equal(li.get("leadId"), root.get("id")));
+            Predicate newWithoutInteraction = cb.and(cb.equal(status, LeadStatus.NEW), cb.not(cb.exists(interactions)));
+
+            Predicate overdueNextContact = cb.and(
                     cb.isNotNull(root.get("nextContactAt")),
                     cb.lessThan(root.<Instant>get("nextContactAt"), now),
-                    cb.notEqual(status, "QUALIFIED"),
-                    cb.notEqual(status, "LOST"));
-            case "CONTACTED_WITHOUT_OUTCOME" -> cb.and(
-                    cb.equal(status, "CONTACTED"), cb.isNull(root.get("nextContactAt")));
-            default -> null;
+                    cb.notEqual(status, LeadStatus.QUALIFIED),
+                    cb.notEqual(status, LeadStatus.LOST));
+
+            Predicate contactedWithoutOutcome =
+                    cb.and(cb.equal(status, LeadStatus.CONTACTED), cb.isNull(root.get("nextContactAt")));
+
+            return cb.or(unassigned, newWithoutInteraction, overdueNextContact, contactedWithoutOutcome);
         };
     }
 }

@@ -1,18 +1,16 @@
 package com.fksoft.erp.domain.sales.model;
 
 import com.fksoft.erp.domain.sales.exception.ProposalNotAcceptedException;
-import com.fksoft.erp.domain.workflow.WorkflowState;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
@@ -71,17 +69,10 @@ public class CommercialOrder {
     @Column(name = "responsible_person_id")
     private UUID responsiblePersonId;
 
-    // Denormalized status code (== currentState.code()), kept for cheap filtering/grouping and the read
-    // contract; the data-driven source of truth is the workflow state, kept in sync on every change.
-    @NotBlank
-    @Size(max = 60)
-    @Column(nullable = false)
-    private String status;
-
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "current_state_id", nullable = false)
-    private WorkflowState currentState;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 60)
+    private CommercialOrderStatus status;
 
     // The consolidated booking status code, reflected from the Booking Operations context (Sales owns this column;
     // it is set by a Sales event listener, never by Booking). Null until a Booking Request exists for this Order.
@@ -127,18 +118,11 @@ public class CommercialOrder {
      * @param proposal the source Proposal; must be {@code ACCEPTED}
      * @param createdBy id of the user creating the Order
      * @param number the sequential order number (assigned from the order-number sequence)
-     * @param pendingBookingState the workflow state to start in when the Order requires booking
-     * @param bookingNotRequiredState the workflow state to start in when no item requires booking
      * @return a new, unsaved Commercial Order
      * @throws ProposalNotAcceptedException if the Proposal is not Accepted
      */
-    public static CommercialOrder createFromProposal(
-            Proposal proposal,
-            UUID createdBy,
-            long number,
-            WorkflowState pendingBookingState,
-            WorkflowState bookingNotRequiredState) {
-        if (!"ACCEPTED".equals(proposal.status())) {
+    public static CommercialOrder createFromProposal(Proposal proposal, UUID createdBy, long number) {
+        if (proposal.status() != ProposalStatus.ACCEPTED) {
             throw new ProposalNotAcceptedException();
         }
         CommercialOrder order = new CommercialOrder();
@@ -151,9 +135,9 @@ public class CommercialOrder {
         proposal.items().forEach(item -> order.items.add(CommercialOrderItem.snapshotOf(item)));
         order.subtotal = proposal.subtotal();
         order.total = proposal.total();
-        WorkflowState initialState = order.requiresBooking() ? pendingBookingState : bookingNotRequiredState;
-        order.currentState = initialState;
-        order.status = initialState.code();
+        order.status = order.requiresBooking()
+                ? CommercialOrderStatus.PENDING_BOOKING
+                : CommercialOrderStatus.BOOKING_NOT_REQUIRED;
         order.createdBy = createdBy;
         order.updatedBy = createdBy;
         return order;

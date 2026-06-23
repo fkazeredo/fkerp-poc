@@ -3,41 +3,31 @@ package com.fksoft.erp.domain.crm;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fksoft.erp.domain.crm.exception.LeadCannotBeMarkedLostException;
+import com.fksoft.erp.domain.crm.exception.LeadCannotBeQualifiedException;
 import com.fksoft.erp.domain.crm.exception.LeadContactRequiredException;
+import com.fksoft.erp.domain.crm.exception.LeadQualificationRequiresResponsibleException;
 import com.fksoft.erp.domain.crm.model.InteractionResult;
 import com.fksoft.erp.domain.crm.model.InteractionType;
 import com.fksoft.erp.domain.crm.model.Lead;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.LossReason;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.service.data.RegisterLeadCommand;
-import com.fksoft.erp.domain.workflow.WorkflowDefinition;
-import com.fksoft.erp.domain.workflow.WorkflowState;
-import com.fksoft.erp.domain.workflow.WorkflowStateCategory;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for the Lead aggregate. Since the workflow reform, the lifecycle transitions are validated by
- * the workflow engine in the application service; the entity exposes field-setting methods that move it to a
- * (pre-validated) target state. This test covers that entity surface — registration, the qualification/loss
- * outcome, the system contact move, the append-only interaction history (which no longer changes the state)
- * and assignment history. The transition <em>guards</em> (e.g. qualify requires CONTACTED + a responsible,
- * lose is not allowed from LOST) are covered end-to-end by the API integration tests.
+ * Unit tests for the Lead aggregate. The lifecycle is a fixed enum state machine with pre-defined
+ * transitions enforced on the entity: a contact moves NEW → CONTACTED; qualify requires CONTACTED and a
+ * responsible; lose is allowed from any non-terminal state. Covers registration, the transitions and their
+ * guards (happy + sad paths), the append-only interaction history and the assignment history.
  */
 class LeadTest {
 
     private static final UUID CREATOR = UUID.randomUUID();
-
-    private final WorkflowDefinition workflow = WorkflowDefinition.of("lead", "Lead");
-    private final WorkflowState newState = WorkflowState.of(workflow, "NEW", "Novo", WorkflowStateCategory.INITIAL, 1);
-    private final WorkflowState contacted =
-            WorkflowState.of(workflow, "CONTACTED", "Contatado", WorkflowStateCategory.ACTIVE, 2);
-    private final WorkflowState qualified =
-            WorkflowState.of(workflow, "QUALIFIED", "Qualificado", WorkflowStateCategory.ACTIVE, 3);
-    private final WorkflowState lost =
-            WorkflowState.of(workflow, "LOST", "Perdido", WorkflowStateCategory.TERMINAL_NEGATIVE, 4);
 
     private final Origin origin = Origin.create("WEBSITE", "Website", 1);
     private final InteractionType noteType = InteractionType.create("INTERNAL_NOTE", "Nota interna", 5);
@@ -52,14 +42,13 @@ class LeadTest {
     }
 
     private Lead register(String phone, String whatsapp, String email, UUID responsible) {
-        return Lead.register(command(phone, whatsapp, email, responsible), origin, newState, CREATOR);
+        return Lead.register(command(phone, whatsapp, email, responsible), origin, CREATOR);
     }
 
     @Test
     void startsInTheInitialState() {
         Lead lead = register("11999999999", null, null, null);
-        assertThat(lead.status()).isEqualTo("NEW");
-        assertThat(lead.currentState()).isSameAs(newState);
+        assertThat(lead.status()).isEqualTo(LeadStatus.NEW);
         assertThat(lead.origin()).isSameAs(origin);
         assertThat(lead.createdBy()).isEqualTo(CREATOR);
     }
@@ -89,11 +78,11 @@ class LeadTest {
     void applyQualificationSetsTheOutcomeAndState() {
         Lead lead = register("11999999999", null, null, UUID.randomUUID());
         UUID byUser = UUID.randomUUID();
+        lead.markContacted(byUser);
 
-        lead.applyQualification(qualified, "Pacote corporativo", "bom perfil", byUser);
+        lead.applyQualification("Pacote corporativo", "bom perfil", byUser);
 
-        assertThat(lead.status()).isEqualTo("QUALIFIED");
-        assertThat(lead.currentState()).isSameAs(qualified);
+        assertThat(lead.status()).isEqualTo(LeadStatus.QUALIFIED);
         assertThat(lead.qualifiedBy()).isEqualTo(byUser);
         assertThat(lead.qualifiedAt()).isNotNull();
         assertThat(lead.mainInterest()).isEqualTo("Pacote corporativo");
@@ -101,14 +90,28 @@ class LeadTest {
     }
 
     @Test
+    void qualifyingANewLeadIsRejected() {
+        Lead lead = register("11999999999", null, null, UUID.randomUUID());
+        assertThatThrownBy(() -> lead.applyQualification("Pacote", null, CREATOR))
+                .isInstanceOf(LeadCannotBeQualifiedException.class);
+    }
+
+    @Test
+    void qualifyingWithoutAResponsibleIsRejected() {
+        Lead lead = register("11999999999", null, null, null);
+        lead.markContacted(CREATOR);
+        assertThatThrownBy(() -> lead.applyQualification("Pacote", null, CREATOR))
+                .isInstanceOf(LeadQualificationRequiresResponsibleException.class);
+    }
+
+    @Test
     void applyLossSetsTheOutcomeAndState() {
         Lead lead = register("11999999999", null, null, null);
         LossReason reason = LossReason.create("NO_RESPONSE", "Sem resposta", 1);
 
-        lead.applyLoss(lost, reason, CREATOR, "sumiu");
+        lead.applyLoss(reason, CREATOR, "sumiu");
 
-        assertThat(lead.status()).isEqualTo("LOST");
-        assertThat(lead.currentState()).isSameAs(lost);
+        assertThat(lead.status()).isEqualTo(LeadStatus.LOST);
         assertThat(lead.lossReason()).isSameAs(reason);
         assertThat(lead.lostBy()).isEqualTo(CREATOR);
         assertThat(lead.lostAt()).isNotNull();
@@ -118,8 +121,16 @@ class LeadTest {
     @Test
     void applyLossAcceptsAnOptionalNullNote() {
         Lead lead = register("11999999999", null, null, null);
-        lead.applyLoss(lost, LossReason.create("NO_RESPONSE", "Sem resposta", 1), CREATOR, null);
+        lead.applyLoss(LossReason.create("NO_RESPONSE", "Sem resposta", 1), CREATOR, null);
         assertThat(lead.lossNote()).isNull();
+    }
+
+    @Test
+    void losingAnAlreadyLostLeadIsRejected() {
+        Lead lead = register("11999999999", null, null, null);
+        lead.applyLoss(LossReason.create("NO_RESPONSE", "Sem resposta", 1), CREATOR, null);
+        assertThatThrownBy(() -> lead.applyLoss(LossReason.create("NO_RESPONSE", "Sem resposta", 1), CREATOR, null))
+                .isInstanceOf(LeadCannotBeMarkedLostException.class);
     }
 
     @Test
@@ -127,10 +138,9 @@ class LeadTest {
         Lead lead = register("11999999999", null, null, null);
         UUID author = UUID.randomUUID();
 
-        lead.markContacted(contacted, author);
+        lead.markContacted(author);
 
-        assertThat(lead.status()).isEqualTo("CONTACTED");
-        assertThat(lead.currentState()).isSameAs(contacted);
+        assertThat(lead.status()).isEqualTo(LeadStatus.CONTACTED);
         assertThat(lead.updatedBy()).isEqualTo(author);
     }
 
@@ -140,8 +150,8 @@ class LeadTest {
 
         lead.recordInteraction(callType, result("CONTACT_MADE"), "Conversamos", Instant.now(), null, CREATOR);
 
-        // the state move (NEW -> CONTACTED) is the service's job via the engine; the entity only records
-        assertThat(lead.status()).isEqualTo("NEW");
+        // the state move (NEW -> CONTACTED) is the service's job; the entity only records the interaction
+        assertThat(lead.status()).isEqualTo(LeadStatus.NEW);
         assertThat(lead.interactions()).hasSize(1);
         assertThat(lead.interactions().get(0).result().code()).isEqualTo("CONTACT_MADE");
         assertThat(lead.updatedBy()).isEqualTo(CREATOR);

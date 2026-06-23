@@ -62,7 +62,7 @@ public record PendingBookingRequest(
                 orderNumber,
                 r.proposalId(),
                 proposalTitle,
-                r.status(),
+                r.status().name(),
                 r.bookingOperatorId(),
                 operatorName,
                 r.bookingOperatorId() == null,

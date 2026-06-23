@@ -216,17 +216,8 @@ class ProposalLifecycleApiIntegrationTest extends AbstractIntegrationTest {
                 mgrProposal,
                 "{\"typeId\":\"" + proposalItemTypeId("OTHER")
                         + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00}");
-        // Force the Proposal out of DRAFT: with the data-driven workflow, the transition graph is driven by
-        // current_state_id (the FK), so move both the denormalized status and the FK to the SENT state.
-        jdbc.update(
-                """
-                UPDATE proposals SET status = 'SENT', current_state_id = (
-                    SELECT s.id FROM workflow_states s
-                    JOIN workflow_definitions d ON d.id = s.definition_id
-                    WHERE d.code = 'proposal' AND s.code = 'SENT')
-                WHERE id = cast(? as uuid)
-                """,
-                mgrProposal.toString());
+        // Force the Proposal out of DRAFT (the status is the enum-backed source of truth) so editing is rejected.
+        jdbc.update("UPDATE proposals SET status = 'SENT' WHERE id = cast(? as uuid)", mgrProposal.toString());
 
         mvc.perform(put("/api/proposals/" + mgrProposal)
                         .header("Authorization", "Bearer " + mgr)

@@ -2,6 +2,7 @@ package com.fksoft.erp.domain.sales.service;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.sales.model.Proposal;
+import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.service.data.ProposalSearchCriteria;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -11,8 +12,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 
 /** Dynamic query predicates for the operational Proposal list. */
@@ -42,10 +45,22 @@ public final class ProposalSpecifications {
     private static Specification<Proposal> statusFilter(Set<String> statuses) {
         return (root, query, cb) -> {
             if (statuses == null || statuses.isEmpty()) {
-                return root.get("status").in(List.of("DRAFT", "READY_FOR_REVIEW", "APPROVED", "SENT", "ACCEPTED"));
+                return root.get("status").in(ProposalStatus.open());
             }
-            return root.get("status").in(statuses);
+            Set<ProposalStatus> parsed = statuses.stream()
+                    .map(ProposalSpecifications::toStatus)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            return parsed.isEmpty() ? cb.disjunction() : root.get("status").in(parsed);
         };
+    }
+
+    private static ProposalStatus toStatus(String value) {
+        try {
+            return ProposalStatus.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private static Specification<Proposal> responsibleFilter(UUID responsibleId, boolean unassignedOnly) {

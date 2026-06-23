@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
+import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
@@ -14,11 +15,9 @@ import com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalValidityRequiredException;
 import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
+import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
-import com.fksoft.erp.domain.workflow.WorkflowDefinition;
-import com.fksoft.erp.domain.workflow.WorkflowState;
-import com.fksoft.erp.domain.workflow.WorkflowStateCategory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -30,18 +29,13 @@ class ProposalTotalsTest {
 
     private static final UUID ACTOR = UUID.randomUUID();
 
-    private final WorkflowDefinition wf = WorkflowDefinition.of("proposal", "Proposta");
-    private final WorkflowState draft = WorkflowState.of(wf, "DRAFT", "Rascunho", WorkflowStateCategory.INITIAL, 1);
-    private final WorkflowState readyForReview =
-            WorkflowState.of(wf, "READY_FOR_REVIEW", "Em revisão", WorkflowStateCategory.ACTIVE, 2);
-
     private Proposal draftProposal() {
         Opportunity opportunity = mock(Opportunity.class);
-        when(opportunity.stage()).thenReturn("READY_FOR_PROPOSAL");
+        when(opportunity.stage()).thenReturn(OpportunityStage.READY_FOR_PROPOSAL);
         when(opportunity.id()).thenReturn(UUID.randomUUID());
         when(opportunity.leadId()).thenReturn(UUID.randomUUID());
         CreateProposalCommand command = new CreateProposalCommand(null, ACTOR, "Proposta", null, null, null);
-        return Proposal.createFromOpportunity(opportunity, ACTOR, command, draft, ACTOR);
+        return Proposal.createFromOpportunity(opportunity, ACTOR, command, ACTOR);
     }
 
     private ProposalItemCommand item(String unitValue, int quantity) {
@@ -128,43 +122,40 @@ class ProposalTotalsTest {
     void submittingForReviewMovesADraftToReadyForReview() {
         Proposal p = proposalWithSubtotal("100.00", 1);
         p.updateCommercialDetails(LocalDate.of(2026, 12, 31), null, null, null, null, ACTOR); // validity
-        p.applySubmit(readyForReview, ACTOR);
-        assertThat(p.status()).isEqualTo("READY_FOR_REVIEW");
+        p.applySubmit(ACTOR);
+        assertThat(p.status()).isEqualTo(ProposalStatus.READY_FOR_REVIEW);
     }
 
     @Test
     void rejectsSubmittingForReviewWithoutItems() {
         Proposal p = draftProposal();
-        assertThatThrownBy(() -> p.applySubmit(readyForReview, ACTOR)).isInstanceOf(ProposalHasNoItemsException.class);
+        assertThatThrownBy(() -> p.applySubmit(ACTOR)).isInstanceOf(ProposalHasNoItemsException.class);
     }
 
     @Test
     void rejectsSubmittingForReviewWhenTheTotalIsNotPositive() {
         Proposal p = proposalWithSubtotal("0.00", 1); // subtotal 0, total 0
-        assertThatThrownBy(() -> p.applySubmit(readyForReview, ACTOR))
-                .isInstanceOf(ProposalTotalRequiredException.class);
+        assertThatThrownBy(() -> p.applySubmit(ACTOR)).isInstanceOf(ProposalTotalRequiredException.class);
     }
 
     @Test
     void rejectsSubmittingForReviewWithoutAValidityDate() {
         Proposal p = proposalWithSubtotal("100.00", 1); // has item + positive total, but no validity
-        assertThatThrownBy(() -> p.applySubmit(readyForReview, ACTOR))
-                .isInstanceOf(ProposalValidityRequiredException.class);
+        assertThatThrownBy(() -> p.applySubmit(ACTOR)).isInstanceOf(ProposalValidityRequiredException.class);
     }
 
     @Test
     void rejectsSubmittingForReviewWithoutAResponsible() {
         Opportunity opportunity = mock(Opportunity.class);
-        when(opportunity.stage()).thenReturn("READY_FOR_PROPOSAL");
+        when(opportunity.stage()).thenReturn(OpportunityStage.READY_FOR_PROPOSAL);
         when(opportunity.id()).thenReturn(UUID.randomUUID());
         when(opportunity.leadId()).thenReturn(UUID.randomUUID());
         CreateProposalCommand command = new CreateProposalCommand(null, null, "Proposta", null, null, null);
-        Proposal p = Proposal.createFromOpportunity(opportunity, null, command, draft, ACTOR); // no responsible
+        Proposal p = Proposal.createFromOpportunity(opportunity, null, command, ACTOR); // no responsible
         p.addItem(ProposalItemTypeFixtures.TRAVEL_PACKAGE, item("100.00", 1), ACTOR);
         p.updateCommercialDetails(LocalDate.of(2026, 12, 31), null, null, null, null, ACTOR); // validity set
 
-        assertThatThrownBy(() -> p.applySubmit(readyForReview, ACTOR))
-                .isInstanceOf(ProposalResponsibleRequiredException.class);
+        assertThatThrownBy(() -> p.applySubmit(ACTOR)).isInstanceOf(ProposalResponsibleRequiredException.class);
     }
 
     @Test
@@ -172,7 +163,7 @@ class ProposalTotalsTest {
         // The submit-from-the-wrong-state guard now lives in the workflow engine (covered by the API
         // integration tests); the entity still protects its Draft-only edits.
         Proposal p = proposalWithSubtotal("100.00", 1);
-        ReflectionTestUtils.setField(p, "status", "READY_FOR_REVIEW");
+        ReflectionTestUtils.setField(p, "status", ProposalStatus.READY_FOR_REVIEW);
 
         assertThatThrownBy(() -> p.updateCommercialDetails(null, null, null, null, null, ACTOR))
                 .isInstanceOf(ProposalNotEditableException.class);

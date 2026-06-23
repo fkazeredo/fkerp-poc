@@ -1,11 +1,15 @@
 package com.fksoft.erp.domain.crm.model;
 
+import com.fksoft.erp.domain.crm.exception.LeadCannotBeMarkedLostException;
+import com.fksoft.erp.domain.crm.exception.LeadCannotBeQualifiedException;
 import com.fksoft.erp.domain.crm.exception.LeadContactRequiredException;
+import com.fksoft.erp.domain.crm.exception.LeadQualificationRequiresResponsibleException;
 import com.fksoft.erp.domain.crm.service.data.RegisterLeadCommand;
-import com.fksoft.erp.domain.workflow.WorkflowState;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -71,17 +75,10 @@ public class Lead {
     @JoinColumn(name = "origin_id", nullable = false)
     private Origin origin;
 
-    // Denormalized state code (== currentState.code()), kept for cheap filtering/grouping and the read
-    // contract; the data-driven source of truth is the workflow state below, kept in sync on every transition.
-    @NotBlank
-    @Size(max = 60)
-    @Column(nullable = false)
-    private String status;
-
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "current_state_id", nullable = false)
-    private WorkflowState currentState;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 60)
+    private LeadStatus status;
 
     @Column(name = "responsible_person_id")
     private UUID responsiblePersonId;
@@ -147,19 +144,17 @@ public class Lead {
     private UUID updatedBy;
 
     /**
-     * Registers a new Lead in the workflow's initial state ({@code NEW}). Requires at least one contact
-     * method; the responsible person is optional (the lead is then a pending assignment). When a
-     * responsible is set, the first assignment-history entry is recorded.
+     * Registers a new Lead in the initial state ({@code NEW}). Requires at least one contact method; the
+     * responsible person is optional (the lead is then a pending assignment). When a responsible is set, the
+     * first assignment-history entry is recorded.
      *
      * @param command the lead data
      * @param origin the (active) origin cadastro value
-     * @param initialState the Lead workflow's initial state ({@code NEW})
      * @param createdBy id of the user creating the lead
      * @return a new, unsaved Lead
      * @throws LeadContactRequiredException if no phone, WhatsApp or e-mail is provided
      */
-    public static Lead register(
-            RegisterLeadCommand command, Origin origin, WorkflowState initialState, UUID createdBy) {
+    public static Lead register(RegisterLeadCommand command, Origin origin, UUID createdBy) {
         if (isBlank(command.phone()) && isBlank(command.whatsapp()) && isBlank(command.email())) {
             throw new LeadContactRequiredException();
         }
@@ -170,8 +165,7 @@ public class Lead {
         lead.whatsapp = emptyToNull(command.whatsapp());
         lead.email = emptyToNull(command.email());
         lead.origin = origin;
-        lead.currentState = initialState;
-        lead.status = initialState.code();
+        lead.status = LeadStatus.NEW;
         lead.responsiblePersonId = command.responsiblePersonId();
         lead.createdBy = createdBy;
         lead.updatedBy = createdBy;
@@ -195,8 +189,8 @@ public class Lead {
     /**
      * Registers a new interaction (contact, attempt or note) in the lead history. The history is
      * append-only. The status change on an <em>effective</em> contact (NEW → CONTACTED) is driven by the
-     * workflow engine in the application service (the {@code contact} system transition), not here. When
-     * the interaction schedules a next contact, it becomes the lead's current next-contact date.
+     * application service (which calls {@link #markContacted}), not here. When the interaction schedules a
+     * next contact, it becomes the lead's current next-contact date.
      *
      * @param type the interaction type (active)
      * @param result the interaction result (active)
@@ -220,31 +214,35 @@ public class Lead {
     }
 
     /**
-     * Moves the lead into the given workflow state (the {@code contact} system transition: NEW →
-     * CONTACTED), after the engine has validated it. Records no extra data beyond the audit fields.
+     * Moves the lead from {@code NEW} to {@code CONTACTED} (the contact transition, triggered by the service
+     * on an effective contact). Records no extra data beyond the audit fields.
      *
-     * @param target the destination workflow state
      * @param byUser id of the user whose action triggered the transition
      */
-    public void markContacted(WorkflowState target, UUID byUser) {
-        currentState = target;
-        status = target.code();
+    public void markContacted(UUID byUser) {
+        status = LeadStatus.CONTACTED;
         updatedBy = byUser;
     }
 
     /**
-     * Applies the qualification outcome onto the lead and moves it to the given state (the {@code qualify}
-     * transition), after the engine has validated it (state + require-responsible). The qualification
-     * (interest/who/when/note) is kept for history and to seed a future Opportunity.
+     * Applies the qualification outcome onto the lead and moves it to {@code QUALIFIED}. Legal only from
+     * {@code CONTACTED} and only when the lead has a responsible. The qualification (interest/who/when/note)
+     * is kept for history and to seed a future Opportunity.
      *
-     * @param target the destination workflow state ({@code QUALIFIED})
      * @param mainInterest the main commercial interest (required)
      * @param note optional commercial note
      * @param byUser id of the user qualifying the lead
+     * @throws LeadCannotBeQualifiedException if the lead is not in {@code CONTACTED}
+     * @throws LeadQualificationRequiresResponsibleException if the lead has no responsible person
      */
-    public void applyQualification(WorkflowState target, String mainInterest, String note, UUID byUser) {
-        currentState = target;
-        status = target.code();
+    public void applyQualification(String mainInterest, String note, UUID byUser) {
+        if (status != LeadStatus.CONTACTED) {
+            throw new LeadCannotBeQualifiedException();
+        }
+        if (responsiblePersonId == null) {
+            throw new LeadQualificationRequiresResponsibleException();
+        }
+        status = LeadStatus.QUALIFIED;
         qualifiedAt = Instant.now();
         qualifiedBy = byUser;
         this.mainInterest = mainInterest;
@@ -253,17 +251,19 @@ public class Lead {
     }
 
     /**
-     * Applies the loss outcome onto the lead and moves it to the given state (the {@code lose} transition),
-     * after the engine has validated it. The loss (reason/who/when/note) is kept for history.
+     * Applies the loss outcome onto the lead and moves it to {@code LOST}. Legal from any non-terminal state.
+     * The loss (reason/who/when/note) is kept for history.
      *
-     * @param target the destination workflow state ({@code LOST})
      * @param reason the (active) loss reason
      * @param byUser id of the user marking the lead lost
      * @param note optional loss note
+     * @throws LeadCannotBeMarkedLostException if the lead is already lost
      */
-    public void applyLoss(WorkflowState target, LossReason reason, UUID byUser, String note) {
-        currentState = target;
-        status = target.code();
+    public void applyLoss(LossReason reason, UUID byUser, String note) {
+        if (status.isTerminal()) {
+            throw new LeadCannotBeMarkedLostException();
+        }
+        status = LeadStatus.LOST;
         lossReason = reason;
         lostAt = Instant.now();
         lostBy = byUser;
