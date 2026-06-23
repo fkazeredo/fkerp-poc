@@ -201,7 +201,7 @@ class OpportunitySprint2JourneyApiIntegrationTest extends AbstractIntegrationTes
                         manager)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stage").value("LOST"))
-                .andExpect(jsonPath("$.loss.reason").value("Produto não aderente"))
+                .andExpect(jsonPath("$.loss.reason").value("Incompatibilidade de produto"))
                 .andExpect(jsonPath("$.loss.lostBy").value("comercial"))
                 .andExpect(jsonPath("$.loss.lostAt").value(notNullValue()))
                 .andExpect(jsonPath("$.loss.note").value("Produto não atende ao perfil"));

@@ -24,11 +24,11 @@ INSERT INTO booking_attempt_types (id, code, label, sort_order) VALUES
     (gen_random_uuid(), 'SUPPLIER_PHONE_CONTACT', 'Contato telefônico com fornecedor', 2),
     (gen_random_uuid(), 'SUPPLIER_EMAIL_CONTACT', 'Contato por e-mail com fornecedor', 3),
     (gen_random_uuid(), 'INTERNAL_VERIFICATION', 'Verificação interna', 4),
-    (gen_random_uuid(), 'MANUAL_AVAILABILITY_CHECK', 'Verificação manual de disponibilidade', 5),
+    (gen_random_uuid(), 'MANUAL_AVAILABILITY_CHECK', 'Checagem manual de disponibilidade', 5),
     (gen_random_uuid(), 'OTHER', 'Outro', 6);
 
 INSERT INTO booking_attempt_results (id, code, label, sort_order) VALUES
-    (gen_random_uuid(), 'STARTED', 'Iniciado', 1),
+    (gen_random_uuid(), 'STARTED', 'Iniciada', 1),
     (gen_random_uuid(), 'WAITING_FOR_SUPPLIER', 'Aguardando fornecedor', 2),
     (gen_random_uuid(), 'WAITING_FOR_INTERNAL_INFO', 'Aguardando informação interna', 3),
     (gen_random_uuid(), 'AVAILABILITY_FOUND', 'Disponibilidade encontrada', 4),
@@ -41,7 +41,7 @@ INSERT INTO booking_failure_reasons (id, code, label, sort_order) VALUES
     (gen_random_uuid(), 'NO_AVAILABILITY', 'Sem disponibilidade', 1),
     (gen_random_uuid(), 'SUPPLIER_UNAVAILABLE', 'Fornecedor indisponível', 2),
     (gen_random_uuid(), 'INVALID_COMMERCIAL_DATA', 'Dados comerciais inválidos', 3),
-    (gen_random_uuid(), 'MISSING_TRAVELER_DATA', 'Dados do viajante ausentes', 4),
+    (gen_random_uuid(), 'MISSING_TRAVELER_DATA', 'Dados do passageiro ausentes', 4),
     (gen_random_uuid(), 'EXTERNAL_SYSTEM_UNAVAILABLE', 'Sistema externo indisponível', 5),
     (gen_random_uuid(), 'PRICE_CHANGED', 'Preço alterado', 6),
     (gen_random_uuid(), 'MANUAL_OPERATION_ERROR', 'Erro de operação manual', 7),

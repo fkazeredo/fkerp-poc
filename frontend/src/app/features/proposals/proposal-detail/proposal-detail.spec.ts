@@ -232,12 +232,31 @@ describe('ProposalDetailPage', () => {
     expect(comp['itemOpen']()).toBe(false);
   });
 
+  // The item type is an explicit, required choice (no silent default to a reserved code): the add dialog
+  // opens with no type, and the form cannot be saved until the user picks one. This also keeps the dialog
+  // free of the async-default re-render that disrupted the number inputs in E2E.
+  it('opens the add dialog with no item type and requires the user to choose one', () => {
+    const comp = build();
+    comp.ngOnInit();
+
+    comp['openAddItem']();
+    expect(comp['itemType']).toBeNull();
+    comp['itemDescription'] = 'Pacote Caribe';
+    comp['itemQuantity'] = 2;
+    comp['itemUnitValue'] = 1000;
+    expect(comp['canSaveItem']()).toBe(false); // no type chosen yet → cannot save
+
+    comp['itemType'] = 'TRAVEL_PACKAGE'; // the user selects a type
+    expect(comp['canSaveItem']()).toBe(true);
+  });
+
   it('sends a percent discount when that mode is selected', () => {
     proposals.addItem.mockReturnValue(of(withItem));
     const comp = build();
     comp.ngOnInit();
 
     comp['openAddItem']();
+    comp['itemType'] = 'TRAVEL_PACKAGE';
     comp['itemDescription'] = 'Com desconto';
     comp['itemUnitValue'] = 1000;
     comp['itemDiscountMode'] = 'PERCENT';
@@ -254,6 +273,7 @@ describe('ProposalDetailPage', () => {
     const comp = build();
     comp.ngOnInit();
     comp['openAddItem']();
+    comp['itemType'] = 'TRAVEL_PACKAGE'; // isolate the discount condition from the (now required) type
     comp['itemDescription'] = 'X';
     comp['itemUnitValue'] = 100;
     comp['itemDiscountMode'] = 'AMOUNT';

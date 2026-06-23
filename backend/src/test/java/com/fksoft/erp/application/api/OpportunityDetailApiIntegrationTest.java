@@ -139,7 +139,7 @@ class OpportunityDetailApiIntegrationTest extends AbstractIntegrationTest {
                         .header("Authorization", "Bearer " + manager()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stage").value("LOST"))
-                .andExpect(jsonPath("$.loss.reason").value("Escolheu concorrente"))
+                .andExpect(jsonPath("$.loss.reason").value("Concorrente escolhido"))
                 .andExpect(jsonPath("$.loss.lostBy").value("comercial"))
                 .andExpect(jsonPath("$.loss.lostAt").value(notNullValue()))
                 .andExpect(jsonPath("$.loss.note").value("Cliente fechou com concorrente"));

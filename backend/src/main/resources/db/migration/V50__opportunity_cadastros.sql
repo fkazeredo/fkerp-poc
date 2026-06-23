@@ -39,8 +39,8 @@ INSERT INTO opportunity_activity_types (id, code, label, sort_order) VALUES
     (gen_random_uuid(), 'MEETING', 'Reunião', 4),
     (gen_random_uuid(), 'INTERNAL_NOTE', 'Nota interna', 5),
     (gen_random_uuid(), 'DOCUMENT_REQUEST', 'Solicitação de documento', 6),
-    (gen_random_uuid(), 'PRICE_DISCUSSION', 'Negociação de preço', 7),
-    (gen_random_uuid(), 'TRAVEL_REQUIREMENT_CLARIFICATION', 'Esclarecimento de requisitos de viagem', 8),
+    (gen_random_uuid(), 'PRICE_DISCUSSION', 'Discussão de preço', 7),
+    (gen_random_uuid(), 'TRAVEL_REQUIREMENT_CLARIFICATION', 'Esclarecimento de requisito de viagem', 8),
     (gen_random_uuid(), 'OTHER', 'Outro', 9);
 
 INSERT INTO opportunity_activity_results (id, code, label, sort_order) VALUES
@@ -50,15 +50,15 @@ INSERT INTO opportunity_activity_results (id, code, label, sort_order) VALUES
     (gen_random_uuid(), 'WAITING_FOR_INTERNAL_INFO', 'Aguardando informação interna', 4),
     (gen_random_uuid(), 'PRODUCT_FIT_IDENTIFIED', 'Aderência identificada', 5),
     (gen_random_uuid(), 'READY_FOR_PROPOSAL', 'Pronta para proposta', 6),
-    (gen_random_uuid(), 'NOT_INTERESTED', 'Não interessado', 7),
+    (gen_random_uuid(), 'NOT_INTERESTED', 'Sem interesse', 7),
     (gen_random_uuid(), 'OTHER', 'Outro', 8);
 
 INSERT INTO opportunity_loss_reasons (id, code, label, sort_order) VALUES
     (gen_random_uuid(), 'NO_BUDGET', 'Sem orçamento', 1),
     (gen_random_uuid(), 'NO_DECISION', 'Sem decisão', 2),
     (gen_random_uuid(), 'NO_RESPONSE', 'Sem resposta', 3),
-    (gen_random_uuid(), 'COMPETITOR_CHOSEN', 'Escolheu concorrente', 4),
-    (gen_random_uuid(), 'PRODUCT_MISMATCH', 'Produto não aderente', 5),
+    (gen_random_uuid(), 'COMPETITOR_CHOSEN', 'Concorrente escolhido', 4),
+    (gen_random_uuid(), 'PRODUCT_MISMATCH', 'Incompatibilidade de produto', 5),
     (gen_random_uuid(), 'PRICE_TOO_HIGH', 'Preço muito alto', 6),
     (gen_random_uuid(), 'TRAVEL_CANCELLED', 'Viagem cancelada', 7),
     (gen_random_uuid(), 'DUPLICATED_OPPORTUNITY', 'Oportunidade duplicada', 8),

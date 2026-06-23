@@ -305,7 +305,9 @@ export class ProposalDetailPage implements OnInit, OnDestroy, HasUnsavedChanges 
 
   protected openAddItem(): void {
     this.editingItemId = null;
-    this.itemType = this.itemTypeOptions()[0]?.id ?? null;
+    // The type is an explicit choice (like every other cadastro-backed select in the app), so the user
+    // consciously picks it — there is no silent default to a reserved code such as TRAVEL_PACKAGE.
+    this.itemType = null;
     this.itemDescription = '';
     this.itemQuantity = 1;
     this.itemUnitValue = null;

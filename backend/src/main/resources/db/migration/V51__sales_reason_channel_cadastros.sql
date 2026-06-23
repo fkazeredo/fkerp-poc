@@ -22,10 +22,10 @@ CREATE TABLE sending_channels (
 INSERT INTO proposal_rejection_reasons (id, code, label, sort_order) VALUES
     (gen_random_uuid(), 'PRICE_TOO_HIGH', 'Preço muito alto', 1),
     (gen_random_uuid(), 'DISCOUNT_OUT_OF_POLICY', 'Desconto fora da política', 2),
-    (gen_random_uuid(), 'INCOMPLETE_INFORMATION', 'Informação incompleta', 3),
-    (gen_random_uuid(), 'TERMS_NOT_ACCEPTABLE', 'Termos não aceitáveis', 4),
+    (gen_random_uuid(), 'INCOMPLETE_INFORMATION', 'Informações incompletas', 3),
+    (gen_random_uuid(), 'TERMS_NOT_ACCEPTABLE', 'Termos comerciais inadequados', 4),
     (gen_random_uuid(), 'VALIDITY_TOO_SHORT', 'Validade muito curta', 5),
-    (gen_random_uuid(), 'DUPLICATE', 'Duplicada', 6),
+    (gen_random_uuid(), 'DUPLICATE', 'Proposta duplicada', 6),
     (gen_random_uuid(), 'OTHER', 'Outro', 7);
 
 INSERT INTO customer_rejection_reasons (id, code, label, sort_order) VALUES
@@ -33,9 +33,9 @@ INSERT INTO customer_rejection_reasons (id, code, label, sort_order) VALUES
     (gen_random_uuid(), 'CHOSE_COMPETITOR', 'Escolheu concorrente', 2),
     (gen_random_uuid(), 'TRAVEL_POSTPONED', 'Viagem adiada', 3),
     (gen_random_uuid(), 'TRAVEL_CANCELLED', 'Viagem cancelada', 4),
-    (gen_random_uuid(), 'CHANGED_DESTINATION', 'Mudou destino', 5),
-    (gen_random_uuid(), 'NO_RESPONSE', 'Sem resposta', 6),
-    (gen_random_uuid(), 'PRODUCT_MISMATCH', 'Produto não aderente', 7),
+    (gen_random_uuid(), 'CHANGED_DESTINATION', 'Mudou de destino', 5),
+    (gen_random_uuid(), 'NO_RESPONSE', 'Sem resposta após a proposta', 6),
+    (gen_random_uuid(), 'PRODUCT_MISMATCH', 'Produto não atende', 7),
     (gen_random_uuid(), 'OTHER', 'Outro', 8);
 
 INSERT INTO sending_channels (id, code, label, sort_order) VALUES
