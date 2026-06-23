@@ -72,7 +72,8 @@ class ProposalLifecycleApiIntegrationTest extends AbstractIntegrationTest {
         addItem(
                 mgr,
                 mgrProposal,
-                "{\"type\":\"TRAVEL_PACKAGE\",\"description\":\"Pacote\",\"quantity\":3,\"unitValue\":100.00}");
+                "{\"typeId\":\"" + proposalItemTypeId("TRAVEL_PACKAGE")
+                        + "\",\"description\":\"Pacote\",\"quantity\":3,\"unitValue\":100.00}");
 
         String body = mvc.perform(
                         put("/api/proposals/" + mgrProposal)
@@ -95,7 +96,11 @@ class ProposalLifecycleApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void rejectsAProposalDiscountAboveTheSubtotal() throws Exception {
         String mgr = manager();
-        addItem(mgr, mgrProposal, "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00}");
+        addItem(
+                mgr,
+                mgrProposal,
+                "{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                        + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00}");
 
         mvc.perform(put("/api/proposals/" + mgrProposal)
                         .header("Authorization", "Bearer " + mgr)
@@ -108,7 +113,11 @@ class ProposalLifecycleApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void submitsForReviewWhenItHasItemsAPositiveTotalValidityAndResponsible() throws Exception {
         String mgr = manager();
-        addItem(mgr, mgrProposal, "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":500.00}");
+        addItem(
+                mgr,
+                mgrProposal,
+                "{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                        + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":500.00}");
         // A validity date is required to submit (the proposal already has a responsible).
         mvc.perform(put("/api/proposals/" + mgrProposal)
                         .header("Authorization", "Bearer " + mgr)
@@ -134,7 +143,11 @@ class ProposalLifecycleApiIntegrationTest extends AbstractIntegrationTest {
     void rejectsSubmittingForReviewWithoutAValidityDate() throws Exception {
         String mgr = manager();
         // mgrProposal has a responsible (MANAGER) but no validity date.
-        addItem(mgr, mgrProposal, "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00}");
+        addItem(
+                mgr,
+                mgrProposal,
+                "{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                        + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00}");
 
         mvc.perform(post("/api/proposals/" + mgrProposal + "/submit").header("Authorization", "Bearer " + mgr))
                 .andExpect(status().isUnprocessableEntity())
@@ -148,7 +161,11 @@ class ProposalLifecycleApiIntegrationTest extends AbstractIntegrationTest {
         UUID lead = insertLead("Unassigned", null);
         UUID opp = insertOpportunity("Unassigned", "READY_FOR_PROPOSAL", MANAGER, lead);
         UUID unassigned = insertProposal(opp, lead, null);
-        addItem(mgr, unassigned, "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00}");
+        addItem(
+                mgr,
+                unassigned,
+                "{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                        + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00}");
         mvc.perform(put("/api/proposals/" + unassigned)
                         .header("Authorization", "Bearer " + mgr)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -180,7 +197,11 @@ class ProposalLifecycleApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void rejectsSubmittingForReviewWhenTheTotalIsNotPositive() throws Exception {
         String mgr = manager();
-        addItem(mgr, mgrProposal, "{\"type\":\"OTHER\",\"description\":\"grátis\",\"quantity\":1,\"unitValue\":0.00}");
+        addItem(
+                mgr,
+                mgrProposal,
+                "{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                        + "\",\"description\":\"grátis\",\"quantity\":1,\"unitValue\":0.00}");
 
         mvc.perform(post("/api/proposals/" + mgrProposal + "/submit").header("Authorization", "Bearer " + mgr))
                 .andExpect(status().isUnprocessableEntity())
@@ -190,7 +211,11 @@ class ProposalLifecycleApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void rejectsEditingOrSubmittingWhenTheProposalIsNotADraft() throws Exception {
         String mgr = manager();
-        addItem(mgr, mgrProposal, "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00}");
+        addItem(
+                mgr,
+                mgrProposal,
+                "{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                        + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00}");
         // Force the Proposal out of DRAFT: with the data-driven workflow, the transition graph is driven by
         // current_state_id (the FK), so move both the denormalized status and the FK to the SENT state.
         jdbc.update(

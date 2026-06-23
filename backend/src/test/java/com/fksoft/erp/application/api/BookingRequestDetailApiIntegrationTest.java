@@ -155,6 +155,7 @@ class BookingRequestDetailApiIntegrationTest extends AbstractIntegrationTest {
                         "id",
                         "orderItemId",
                         "type",
+                        "typeLabel",
                         "description",
                         "quantity",
                         "requiresBooking",

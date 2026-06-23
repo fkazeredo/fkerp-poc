@@ -9,7 +9,6 @@ import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.Proposal;
-import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -147,7 +146,8 @@ public record BookingRequestDetail(
     public record Item(
             UUID id,
             UUID orderItemId,
-            ProposalItemType type,
+            String type,
+            String typeLabel,
             String description,
             int quantity,
             boolean requiresBooking,
@@ -186,7 +186,8 @@ public record BookingRequestDetail(
             return new Item(
                     i.id(),
                     i.orderItemId(),
-                    i.type(),
+                    i.type().code(),
+                    i.type().label(),
                     i.description(),
                     i.quantity(),
                     i.requiresBooking(),

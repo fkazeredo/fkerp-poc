@@ -6,7 +6,6 @@ import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CommercialOrderItem;
 import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
-import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -127,7 +126,8 @@ public record CommercialOrderDetail(
     /** A single order line (snapshot of a Proposal item), with its computed line total. */
     public record Item(
             UUID id,
-            ProposalItemType type,
+            String type,
+            String typeLabel,
             String description,
             int quantity,
             BigDecimal unitValue,
@@ -138,7 +138,8 @@ public record CommercialOrderDetail(
         static Item from(CommercialOrderItem i) {
             return new Item(
                     i.id(),
-                    i.type(),
+                    i.type().code(),
+                    i.type().label(),
                     i.description(),
                     i.quantity(),
                     i.unitValue(),

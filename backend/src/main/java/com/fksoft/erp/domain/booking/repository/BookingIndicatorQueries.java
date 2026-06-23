@@ -2,7 +2,6 @@ package com.fksoft.erp.domain.booking.repository;
 
 import com.fksoft.erp.domain.booking.model.BookingItem;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
-import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -12,7 +11,6 @@ import jakarta.persistence.criteria.Root;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,20 +62,20 @@ public class BookingIndicatorQueries {
      * @param visible the visibility predicate
      * @param from inclusive lower bound on creation (or {@code null})
      * @param to exclusive upper bound on creation (or {@code null})
-     * @return item counts keyed by type
+     * @return item counts keyed by item-type code
      */
-    public Map<ProposalItemType, Long> countItemsByType(
-            Specification<BookingRequest> visible, Instant from, Instant to) {
+    public Map<String, Long> countItemsByType(Specification<BookingRequest> visible, Instant from, Instant to) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<Object[]> q = cb.createQuery(Object[].class);
         Root<BookingRequest> root = q.from(BookingRequest.class);
         Join<BookingRequest, BookingItem> items = root.join("items");
-        q.multiselect(items.get("type"), cb.count(items));
+        var typeCode = items.join("type").get("code");
+        q.multiselect(typeCode, cb.count(items));
         q.where(where(cb, root, q, visible, from, to));
-        q.groupBy(items.get("type"));
-        Map<ProposalItemType, Long> result = new EnumMap<>(ProposalItemType.class);
+        q.groupBy(typeCode);
+        Map<String, Long> result = new LinkedHashMap<>();
         for (Object[] row : em.createQuery(q).getResultList()) {
-            result.put((ProposalItemType) row[0], (Long) row[1]);
+            result.put((String) row[0], (Long) row[1]);
         }
         return result;
     }

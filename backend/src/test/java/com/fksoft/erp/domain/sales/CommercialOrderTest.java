@@ -50,7 +50,7 @@ class CommercialOrderTest {
 
     @Test
     void createsFromAnAcceptedProposalSnapshottingItemsTotalAndReferences() {
-        Proposal proposal = acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE);
+        Proposal proposal = acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE);
 
         CommercialOrder order = order(proposal, 7L);
 
@@ -62,7 +62,7 @@ class CommercialOrderTest {
         assertThat(order.subtotal()).isEqualByComparingTo(proposal.subtotal());
         assertThat(order.total()).isEqualByComparingTo(proposal.total());
         assertThat(order.items()).hasSize(proposal.items().size());
-        assertThat(order.items().get(0).type()).isEqualTo(ProposalItemType.TRAVEL_PACKAGE);
+        assertThat(order.items().get(0).type()).isEqualTo(ProposalItemTypeFixtures.TRAVEL_PACKAGE);
         assertThat(order.items().get(0).lineTotal())
                 .isEqualByComparingTo(proposal.items().get(0).lineTotal());
         assertThat(order.createdBy()).isEqualTo(CREATOR);
@@ -71,27 +71,32 @@ class CommercialOrderTest {
 
     @Test
     void startsPendingBookingWhenItContainsABookableItem() {
-        assertThat(order(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), 1L)
+        assertThat(order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L)
                         .status())
                 .isEqualTo("PENDING_BOOKING");
-        assertThat(order(acceptedProposalWith(ProposalItemType.CAR_RENTAL), 2L).status())
+        assertThat(order(acceptedProposalWith(ProposalItemTypeFixtures.CAR_RENTAL), 2L)
+                        .status())
                 .isEqualTo("PENDING_BOOKING");
         // A mix that includes a bookable item still requires booking.
-        assertThat(order(acceptedProposalWith(ProposalItemType.SERVICE_FEE, ProposalItemType.CAR_RENTAL), 3L)
+        assertThat(order(
+                                acceptedProposalWith(
+                                        ProposalItemTypeFixtures.SERVICE_FEE, ProposalItemTypeFixtures.CAR_RENTAL),
+                                3L)
                         .status())
                 .isEqualTo("PENDING_BOOKING");
     }
 
     @Test
     void startsBookingNotRequiredWhenNoItemRequiresBooking() {
-        CommercialOrder order = order(acceptedProposalWith(ProposalItemType.SERVICE_FEE, ProposalItemType.OTHER), 1L);
+        CommercialOrder order =
+                order(acceptedProposalWith(ProposalItemTypeFixtures.SERVICE_FEE, ProposalItemTypeFixtures.OTHER), 1L);
 
         assertThat(order.status()).isEqualTo("BOOKING_NOT_REQUIRED");
     }
 
     @Test
     void rejectsCreatingFromANonAcceptedProposal() {
-        Proposal sent = acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE);
+        Proposal sent = acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE);
         // Build a Proposal that is only SENT (not accepted).
         Proposal onlySent = sentProposal();
 
@@ -102,13 +107,13 @@ class CommercialOrderTest {
 
     @Test
     void startsWithNoReflectedBookingStatus() {
-        CommercialOrder order = order(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), 1L);
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L);
         assertThat(order.bookingStatus()).isNull();
     }
 
     @Test
     void reflectsTheConsolidatedBookingStatusWithoutChangingTheLifecycle() {
-        CommercialOrder order = order(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), 1L);
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L);
 
         order.reflectBookingStatus("CONFIRMED");
 
@@ -121,7 +126,7 @@ class CommercialOrderTest {
 
     @Test
     void aFailedBookingReflectionDoesNotCancelTheOrder() {
-        CommercialOrder order = order(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), 1L);
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L);
 
         order.reflectBookingStatus("FAILED");
 
@@ -132,7 +137,7 @@ class CommercialOrderTest {
 
     @Test
     void reflectingANewStatusReplacesThePreviousReflection() {
-        CommercialOrder order = order(acceptedProposalWith(ProposalItemType.TRAVEL_PACKAGE), 1L);
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L);
 
         order.reflectBookingStatus("PENDING");
         order.reflectBookingStatus("PARTIALLY_CONFIRMED");
@@ -147,13 +152,16 @@ class CommercialOrderTest {
     }
 
     private Proposal sentProposal() {
-        return sentProposalWith(ProposalItemType.TRAVEL_PACKAGE);
+        return sentProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE);
     }
 
     private Proposal sentProposalWith(ProposalItemType... types) {
         Proposal p = readyDraft();
         for (ProposalItemType type : types) {
-            p.addItem(new ProposalItemCommand(type, "linha", 1, new BigDecimal("100.00"), null, null), CREATOR);
+            p.addItem(
+                    type,
+                    new ProposalItemCommand(type.id(), "linha", 1, new BigDecimal("100.00"), null, null),
+                    CREATOR);
         }
         p.applySubmit(readyForReview, CREATOR);
         p.applyApprove(approved, UUID.randomUUID());

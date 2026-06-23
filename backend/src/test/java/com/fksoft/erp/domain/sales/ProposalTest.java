@@ -10,7 +10,6 @@ import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalExcep
 import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonRequiredException;
 import com.fksoft.erp.domain.sales.model.CustomerRejectionReason;
 import com.fksoft.erp.domain.sales.model.Proposal;
-import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import com.fksoft.erp.domain.sales.model.SendingChannel;
@@ -107,7 +106,9 @@ class ProposalTest {
     void submitRecordsTheStatusChangeWithTheActor() {
         Proposal proposal = readyDraft();
         proposal.addItem(
-                new ProposalItemCommand(ProposalItemType.OTHER, "linha", 1, new BigDecimal("10.00"), null, null),
+                ProposalItemTypeFixtures.OTHER,
+                new ProposalItemCommand(
+                        ProposalItemTypeFixtures.OTHER.id(), "linha", 1, new BigDecimal("10.00"), null, null),
                 CREATOR);
         UUID submitter = UUID.randomUUID();
 
@@ -254,7 +255,9 @@ class ProposalTest {
     private Proposal submittedProposal() {
         Proposal p = readyDraft(); // command() already carries a validity date and a responsible
         p.addItem(
-                new ProposalItemCommand(ProposalItemType.OTHER, "linha", 1, new BigDecimal("10.00"), null, null),
+                ProposalItemTypeFixtures.OTHER,
+                new ProposalItemCommand(
+                        ProposalItemTypeFixtures.OTHER.id(), "linha", 1, new BigDecimal("10.00"), null, null),
                 CREATOR);
         p.applySubmit(readyForReview, CREATOR);
         return p;

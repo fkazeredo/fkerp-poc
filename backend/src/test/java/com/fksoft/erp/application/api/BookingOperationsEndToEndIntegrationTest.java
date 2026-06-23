@@ -324,8 +324,8 @@ class BookingOperationsEndToEndIntegrationTest extends AbstractIntegrationTest {
             mvc.perform(post("/api/proposals/" + proposal + "/items")
                             .header("Authorization", "Bearer " + mgr)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"type\":\"%s\",\"description\":\"x\",\"quantity\":1,\"unitValue\":500.00}"
-                                    .formatted(type)))
+                            .content("{\"typeId\":\"%s\",\"description\":\"x\",\"quantity\":1,\"unitValue\":500.00}"
+                                    .formatted(proposalItemTypeId(type))))
                     .andExpect(status().isOk());
         }
         mvc.perform(put("/api/proposals/" + proposal)

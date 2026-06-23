@@ -15,6 +15,7 @@ import com.fksoft.erp.domain.booking.model.BookingItemConfirmation;
 import com.fksoft.erp.domain.booking.model.BookingItemFailure;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.crm.model.Opportunity;
+import com.fksoft.erp.domain.sales.ProposalItemTypeFixtures;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
@@ -64,7 +65,8 @@ class BookingRequestTest {
 
     @Test
     void createsFromPendingBookingOrderPreservingRefsAndClassifyingItems() {
-        CommercialOrder order = pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE, ProposalItemType.SERVICE_FEE);
+        CommercialOrder order =
+                pendingBookingOrder(ProposalItemTypeFixtures.TRAVEL_PACKAGE, ProposalItemTypeFixtures.SERVICE_FEE);
 
         BookingRequest request =
                 BookingRequest.createFromOrder(order, OPERATOR, "Reservar com urgência", Set.of(), CREATOR);
@@ -81,39 +83,43 @@ class BookingRequestTest {
 
         // Each order item becomes a booking item, classified by booking need, preserving the source line.
         assertThat(request.items()).hasSize(2);
-        BookingItem pkg = itemOfType(request, ProposalItemType.TRAVEL_PACKAGE);
+        BookingItem pkg = itemOfType(request, ProposalItemTypeFixtures.TRAVEL_PACKAGE);
         assertThat(pkg.requiresBooking()).isTrue();
         assertThat(pkg.status()).isEqualTo("PENDING");
-        assertThat(pkg.orderItemId()).isEqualTo(orderItemId(order, ProposalItemType.TRAVEL_PACKAGE));
+        assertThat(pkg.orderItemId()).isEqualTo(orderItemId(order, ProposalItemTypeFixtures.TRAVEL_PACKAGE));
         assertThat(pkg.description()).isEqualTo("linha");
-        BookingItem fee = itemOfType(request, ProposalItemType.SERVICE_FEE);
+        BookingItem fee = itemOfType(request, ProposalItemTypeFixtures.SERVICE_FEE);
         assertThat(fee.requiresBooking()).isFalse();
         assertThat(fee.status()).isEqualTo("NOT_REQUIRED");
     }
 
     @Test
     void otherItemRequiresBookingOnlyWhenExplicitlyMarked() {
-        CommercialOrder order = pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE, ProposalItemType.OTHER);
-        UUID otherId = orderItemId(order, ProposalItemType.OTHER);
+        CommercialOrder order =
+                pendingBookingOrder(ProposalItemTypeFixtures.TRAVEL_PACKAGE, ProposalItemTypeFixtures.OTHER);
+        UUID otherId = orderItemId(order, ProposalItemTypeFixtures.OTHER);
 
         // Not marked → NOT_REQUIRED.
         BookingRequest unmarked = BookingRequest.createFromOrder(order, null, null, Set.of(), CREATOR);
-        assertThat(itemOfType(unmarked, ProposalItemType.OTHER).requiresBooking())
+        assertThat(itemOfType(unmarked, ProposalItemTypeFixtures.OTHER).requiresBooking())
                 .isFalse();
-        assertThat(itemOfType(unmarked, ProposalItemType.OTHER).status()).isEqualTo("NOT_REQUIRED");
+        assertThat(itemOfType(unmarked, ProposalItemTypeFixtures.OTHER).status())
+                .isEqualTo("NOT_REQUIRED");
 
         // Explicitly marked → PENDING; the travel package still requires booking regardless.
         BookingRequest marked = BookingRequest.createFromOrder(order, null, null, Set.of(otherId), CREATOR);
-        assertThat(itemOfType(marked, ProposalItemType.OTHER).requiresBooking()).isTrue();
-        assertThat(itemOfType(marked, ProposalItemType.OTHER).status()).isEqualTo("PENDING");
-        assertThat(itemOfType(marked, ProposalItemType.TRAVEL_PACKAGE).requiresBooking())
+        assertThat(itemOfType(marked, ProposalItemTypeFixtures.OTHER).requiresBooking())
+                .isTrue();
+        assertThat(itemOfType(marked, ProposalItemTypeFixtures.OTHER).status()).isEqualTo("PENDING");
+        assertThat(itemOfType(marked, ProposalItemTypeFixtures.TRAVEL_PACKAGE).requiresBooking())
                 .isTrue();
     }
 
     @Test
     void rejectsMarkingANonOtherItem() {
-        CommercialOrder order = pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE, ProposalItemType.SERVICE_FEE);
-        UUID serviceFeeId = orderItemId(order, ProposalItemType.SERVICE_FEE);
+        CommercialOrder order =
+                pendingBookingOrder(ProposalItemTypeFixtures.TRAVEL_PACKAGE, ProposalItemTypeFixtures.SERVICE_FEE);
+        UUID serviceFeeId = orderItemId(order, ProposalItemTypeFixtures.SERVICE_FEE);
 
         assertThatThrownBy(() -> BookingRequest.createFromOrder(order, null, null, Set.of(serviceFeeId), CREATOR))
                 .isInstanceOf(BookingItemNotMarkableException.class);
@@ -121,7 +127,7 @@ class BookingRequestTest {
 
     @Test
     void rejectsMarkingAnIdNotInTheOrder() {
-        CommercialOrder order = pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE);
+        CommercialOrder order = pendingBookingOrder(ProposalItemTypeFixtures.TRAVEL_PACKAGE);
 
         assertThatThrownBy(() -> BookingRequest.createFromOrder(order, null, null, Set.of(UUID.randomUUID()), CREATOR))
                 .isInstanceOf(BookingItemNotMarkableException.class);
@@ -130,7 +136,7 @@ class BookingRequestTest {
     @Test
     void acceptsNullOperatorAndNotes() {
         BookingRequest request = BookingRequest.createFromOrder(
-                pendingBookingOrder(ProposalItemType.CAR_RENTAL), null, null, Set.of(), CREATOR);
+                pendingBookingOrder(ProposalItemTypeFixtures.CAR_RENTAL), null, null, Set.of(), CREATOR);
 
         assertThat(request.bookingOperatorId()).isNull();
         assertThat(request.notes()).isNull();
@@ -139,8 +145,8 @@ class BookingRequestTest {
 
     @Test
     void rejectsCreatingFromAnOrderThatIsNotPendingBooking() {
-        CommercialOrder notRequired =
-                pendingBookingOrderRaw(ProposalItemType.SERVICE_FEE, ProposalItemType.OTHER); // BOOKING_NOT_REQUIRED
+        CommercialOrder notRequired = pendingBookingOrderRaw(
+                ProposalItemTypeFixtures.SERVICE_FEE, ProposalItemTypeFixtures.OTHER); // BOOKING_NOT_REQUIRED
         assertThat(notRequired.status()).isEqualTo("BOOKING_NOT_REQUIRED");
 
         assertThatThrownBy(() -> BookingRequest.createFromOrder(notRequired, null, null, Set.of(), CREATOR))
@@ -150,14 +156,14 @@ class BookingRequestTest {
     @Test
     void aFreshRequestWithNoAttemptStaysPending() {
         BookingRequest request = BookingRequest.createFromOrder(
-                pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
+                pendingBookingOrder(ProposalItemTypeFixtures.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
         assertThat(request.status()).isEqualTo("PENDING");
     }
 
     @Test
     void recordingAnAttemptConsolidatesToInProgress() {
         BookingRequest request = BookingRequest.createFromOrder(
-                pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
+                pendingBookingOrder(ProposalItemTypeFixtures.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
 
         request.recordAttempt(
                 null,
@@ -174,10 +180,10 @@ class BookingRequestTest {
     @Test
     void confirmingEveryRequiringItemConsolidatesToConfirmed() {
         BookingRequest request = BookingRequest.createFromOrder(
-                pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
+                pendingBookingOrder(ProposalItemTypeFixtures.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
 
         request.confirmTravelPackageItem(
-                itemOfType(request, ProposalItemType.TRAVEL_PACKAGE).id(), confirmation(), CREATOR);
+                itemOfType(request, ProposalItemTypeFixtures.TRAVEL_PACKAGE).id(), confirmation(), CREATOR);
 
         assertThat(request.status()).isEqualTo("CONFIRMED");
     }
@@ -185,14 +191,14 @@ class BookingRequestTest {
     @Test
     void confirmingSomeButNotAllRequiringItemsConsolidatesToPartiallyConfirmed() {
         BookingRequest request = BookingRequest.createFromOrder(
-                pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE, ProposalItemType.CAR_RENTAL),
+                pendingBookingOrder(ProposalItemTypeFixtures.TRAVEL_PACKAGE, ProposalItemTypeFixtures.CAR_RENTAL),
                 null,
                 null,
                 Set.of(),
                 CREATOR);
 
         request.confirmTravelPackageItem(
-                itemOfType(request, ProposalItemType.TRAVEL_PACKAGE).id(), confirmation(), CREATOR);
+                itemOfType(request, ProposalItemTypeFixtures.TRAVEL_PACKAGE).id(), confirmation(), CREATOR);
 
         assertThat(request.status()).isEqualTo("PARTIALLY_CONFIRMED");
     }
@@ -200,10 +206,10 @@ class BookingRequestTest {
     @Test
     void failingWithNothingConfirmedConsolidatesToFailed() {
         BookingRequest request = BookingRequest.createFromOrder(
-                pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
+                pendingBookingOrder(ProposalItemTypeFixtures.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
 
         request.failBookingItem(
-                itemOfType(request, ProposalItemType.TRAVEL_PACKAGE).id(), failure(), CREATOR);
+                itemOfType(request, ProposalItemTypeFixtures.TRAVEL_PACKAGE).id(), failure(), CREATOR);
 
         assertThat(request.status()).isEqualTo("FAILED");
     }
@@ -211,8 +217,9 @@ class BookingRequestTest {
     @Test
     void confirmingAFailedItemReconsolidatesTheRequest() {
         BookingRequest request = BookingRequest.createFromOrder(
-                pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
-        UUID itemId = itemOfType(request, ProposalItemType.TRAVEL_PACKAGE).id();
+                pendingBookingOrder(ProposalItemTypeFixtures.TRAVEL_PACKAGE), null, null, Set.of(), CREATOR);
+        UUID itemId =
+                itemOfType(request, ProposalItemTypeFixtures.TRAVEL_PACKAGE).id();
         request.failBookingItem(itemId, failure(), CREATOR);
         assertThat(request.status()).isEqualTo("FAILED");
 
@@ -280,7 +287,10 @@ class BookingRequestTest {
     private Proposal acceptedProposalWith(ProposalItemType... types) {
         Proposal p = readyDraft();
         for (ProposalItemType type : types) {
-            p.addItem(new ProposalItemCommand(type, "linha", 1, new BigDecimal("100.00"), null, null), CREATOR);
+            p.addItem(
+                    type,
+                    new ProposalItemCommand(type.id(), "linha", 1, new BigDecimal("100.00"), null, null),
+                    CREATOR);
         }
         p.applySubmit(readyForReview, CREATOR);
         p.applyApprove(approved, UUID.randomUUID());

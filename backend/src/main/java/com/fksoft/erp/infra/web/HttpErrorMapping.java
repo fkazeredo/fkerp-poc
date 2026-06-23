@@ -53,6 +53,7 @@ import com.fksoft.erp.domain.sales.exception.ProposalDiscountInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalHasNoItemsException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemInvalidException;
 import com.fksoft.erp.domain.sales.exception.ProposalItemNotFoundException;
+import com.fksoft.erp.domain.sales.exception.ProposalItemTypeNotAvailableException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotAcceptedException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
@@ -122,6 +123,7 @@ public class HttpErrorMapping {
             entry(ProposalRejectionReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(CustomerRejectionReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(SendingChannelNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ProposalItemTypeNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotApprovedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotSentException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ProposalNotAcceptedException.class, HttpStatus.UNPROCESSABLE_ENTITY),

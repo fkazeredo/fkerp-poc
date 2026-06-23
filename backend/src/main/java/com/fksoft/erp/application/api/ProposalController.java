@@ -326,7 +326,7 @@ public class ProposalController {
 
     private static ProposalItemCommand toCommand(ProposalItemRequest r) {
         return new ProposalItemCommand(
-                r.type(), r.description(), r.quantity(), r.unitValue(), r.discountType(), r.discountValue());
+                r.typeId(), r.description(), r.quantity(), r.unitValue(), r.discountType(), r.discountValue());
     }
 
     // The creation period is given as calendar dates; the column is an instant, so anchor at UTC midnight

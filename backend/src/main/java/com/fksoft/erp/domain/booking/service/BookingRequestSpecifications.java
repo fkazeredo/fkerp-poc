@@ -3,7 +3,6 @@ package com.fksoft.erp.domain.booking.service;
 import com.fksoft.erp.domain.booking.model.BookingItem;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
-import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -85,16 +84,17 @@ public final class BookingRequestSpecifications {
     }
 
     // "Contains an item of this type": an EXISTS over the request's items, correlated to the parent so we never
-    // need a back-reference field on BookingItem nor a join that would duplicate rows under pagination.
-    private static Specification<BookingRequest> itemTypeFilter(ProposalItemType type) {
+    // need a back-reference field on BookingItem nor a join that would duplicate rows under pagination. Matched by
+    // the item-type cadastro code (stable identifier).
+    private static Specification<BookingRequest> itemTypeFilter(String typeCode) {
         return (root, query, cb) -> {
-            if (type == null) {
+            if (typeCode == null) {
                 return cb.conjunction();
             }
             Subquery<Integer> sub = query.subquery(Integer.class);
             Root<BookingRequest> parent = sub.correlate(root);
             Join<BookingRequest, BookingItem> items = parent.join("items");
-            sub.select(cb.literal(1)).where(cb.equal(items.get("type"), type));
+            sub.select(cb.literal(1)).where(cb.equal(items.join("type").get("code"), typeCode));
             return cb.exists(sub);
         };
     }

@@ -14,7 +14,6 @@ import com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalValidityRequiredException;
 import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
-import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.workflow.WorkflowDefinition;
@@ -47,20 +46,20 @@ class ProposalTotalsTest {
 
     private ProposalItemCommand item(String unitValue, int quantity) {
         return new ProposalItemCommand(
-                ProposalItemType.TRAVEL_PACKAGE, "linha", quantity, new BigDecimal(unitValue), null, null);
+                ProposalItemTypeFixtures.TRAVEL_PACKAGE.id(), "linha", quantity, new BigDecimal(unitValue), null, null);
     }
 
     private Proposal proposalWithSubtotal(String unitValue, int quantity) {
         Proposal p = draftProposal();
-        p.addItem(item(unitValue, quantity), ACTOR);
+        p.addItem(ProposalItemTypeFixtures.TRAVEL_PACKAGE, item(unitValue, quantity), ACTOR);
         return p;
     }
 
     @Test
     void subtotalIsTheSumOfTheItemsAndTotalEqualsItWithoutDiscount() {
         Proposal p = draftProposal();
-        p.addItem(item("100.00", 2), ACTOR); // 200
-        p.addItem(item("50.00", 1), ACTOR); // 50
+        p.addItem(ProposalItemTypeFixtures.TRAVEL_PACKAGE, item("100.00", 2), ACTOR); // 200
+        p.addItem(ProposalItemTypeFixtures.TRAVEL_PACKAGE, item("50.00", 1), ACTOR); // 50
 
         assertThat(p.subtotal()).isEqualByComparingTo("250.00");
         assertThat(p.total()).isEqualByComparingTo("250.00");
@@ -113,7 +112,7 @@ class ProposalTotalsTest {
     @Test
     void totalNeverGoesNegativeWhenItemsAreRemovedBelowAFixedDiscount() {
         Proposal p = draftProposal();
-        p.addItem(item("100.00", 2), ACTOR); // subtotal 200
+        p.addItem(ProposalItemTypeFixtures.TRAVEL_PACKAGE, item("100.00", 2), ACTOR); // subtotal 200
         UUID firstItem = p.items().get(0).id();
         p.updateCommercialDetails(null, null, null, DiscountType.AMOUNT, new BigDecimal("150.00"), ACTOR); // total 50
         assertThat(p.total()).isEqualByComparingTo("50.00");
@@ -161,7 +160,7 @@ class ProposalTotalsTest {
         when(opportunity.leadId()).thenReturn(UUID.randomUUID());
         CreateProposalCommand command = new CreateProposalCommand(null, null, "Proposta", null, null, null);
         Proposal p = Proposal.createFromOpportunity(opportunity, null, command, draft, ACTOR); // no responsible
-        p.addItem(item("100.00", 1), ACTOR);
+        p.addItem(ProposalItemTypeFixtures.TRAVEL_PACKAGE, item("100.00", 1), ACTOR);
         p.updateCommercialDetails(LocalDate.of(2026, 12, 31), null, null, null, null, ACTOR); // validity set
 
         assertThatThrownBy(() -> p.applySubmit(readyForReview, ACTOR))

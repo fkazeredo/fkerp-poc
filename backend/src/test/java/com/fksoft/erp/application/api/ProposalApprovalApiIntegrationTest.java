@@ -331,7 +331,8 @@ class ProposalApprovalApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + proposal + "/items")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":500.00}"))
+                        .content("{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                                + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":500.00}"))
                 .andExpect(status().isOk());
         mvc.perform(put("/api/proposals/" + proposal)
                         .header("Authorization", "Bearer " + token)

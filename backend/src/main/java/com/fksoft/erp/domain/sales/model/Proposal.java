@@ -237,15 +237,16 @@ public class Proposal {
      * Adds an item to the Proposal (Draft only) and refreshes the total. Creates no Booking, Financial or
      * Commission data and does not check external availability.
      *
-     * @param command the item data (type, description, quantity, unit value, optional discount)
+     * @param type the resolved item type (active cadastro value, resolved by the service)
+     * @param command the item data (description, quantity, unit value, optional discount)
      * @param byUser id of the user editing the Proposal
      * @throws ProposalNotEditableException if the Proposal is not a Draft
      * @throws com.fksoft.erp.domain.sales.exception.ProposalItemInvalidException if the discount is invalid
      */
-    public void addItem(ProposalItemCommand command, UUID byUser) {
+    public void addItem(ProposalItemType type, ProposalItemCommand command, UUID byUser) {
         requireDraft();
         items.add(ProposalItem.of(
-                command.type(),
+                type,
                 command.description(),
                 command.quantity(),
                 command.unitValue(),
@@ -259,20 +260,21 @@ public class Proposal {
      * Updates an existing item (Draft only) and refreshes the total.
      *
      * @param itemId the item id
+     * @param type the resolved item type (active cadastro value, resolved by the service)
      * @param command the new item data
      * @param byUser id of the user editing the Proposal
      * @throws ProposalNotEditableException if the Proposal is not a Draft
      * @throws ProposalItemNotFoundException if the item does not belong to this Proposal
      * @throws com.fksoft.erp.domain.sales.exception.ProposalItemInvalidException if the discount is invalid
      */
-    public void updateItem(UUID itemId, ProposalItemCommand command, UUID byUser) {
+    public void updateItem(UUID itemId, ProposalItemType type, ProposalItemCommand command, UUID byUser) {
         requireDraft();
         ProposalItem item = items.stream()
                 .filter(i -> i.id().equals(itemId))
                 .findFirst()
                 .orElseThrow(ProposalItemNotFoundException::new);
         item.update(
-                command.type(),
+                type,
                 command.description(),
                 command.quantity(),
                 command.unitValue(),

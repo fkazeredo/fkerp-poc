@@ -96,6 +96,7 @@ public class ProposalService {
     private final ProposalRejectionReasonRepository rejectionReasons;
     private final CustomerRejectionReasonRepository customerRejectionReasons;
     private final SendingChannelRepository sendingChannels;
+    private final ProposalItemTypeService itemTypes;
 
     /** The workflow definition code for the Proposal lifecycle. */
     private static final String PROPOSAL_WORKFLOW = "proposal";
@@ -195,7 +196,7 @@ public class ProposalService {
     public ProposalDetail addItem(
             UUID proposalId, ProposalItemCommand command, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
-        proposal.addItem(command, userId);
+        proposal.addItem(itemTypes.requireActive(command.typeId()), command, userId);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 
@@ -224,7 +225,7 @@ public class ProposalService {
             boolean canSeeAll,
             boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
-        proposal.updateItem(itemId, command, userId);
+        proposal.updateItem(itemId, itemTypes.requireActive(command.typeId()), command, userId);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 

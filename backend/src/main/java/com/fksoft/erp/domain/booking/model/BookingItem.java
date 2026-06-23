@@ -8,9 +8,10 @@ import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -38,6 +39,11 @@ import org.hibernate.annotations.CreationTimestamp;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class BookingItem {
 
+    // Reserved item-type codes that anchor the type-specific confirmation flows (the cadastro keeps these codes
+    // immutable and never hard-deletes them, so the anchoring holds even if a value is renamed/deactivated).
+    private static final String TRAVEL_PACKAGE_CODE = "TRAVEL_PACKAGE";
+    private static final String CAR_RENTAL_CODE = "CAR_RENTAL";
+
     @Id
     private UUID id;
 
@@ -47,8 +53,8 @@ public class BookingItem {
     private UUID orderItemId;
 
     @NotNull
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "type_id", nullable = false)
     private ProposalItemType type;
 
     @NotBlank
@@ -109,19 +115,17 @@ public class BookingItem {
     }
 
     /**
-     * Whether an order item of the given type requires booking: a travel package or a car rental always do, a
-     * service fee never does, and an OTHER item only when explicitly marked as booking-required.
+     * Whether an order item of the given type requires booking: the type's cadastro classification
+     * ({@code requiresBooking}) decides — a travel package or a car rental are flagged as requiring it, a service
+     * fee is not — or an item is explicitly marked as booking-required (only an OTHER item can be, enforced at
+     * the request boundary).
      *
-     * @param type the order item type
-     * @param explicitlyRequired whether an OTHER item was explicitly marked as requiring booking
+     * @param type the order item type (cadastro value)
+     * @param explicitlyRequired whether the item was explicitly marked as requiring booking
      * @return {@code true} if the item requires a booking operation
      */
     static boolean requiresBooking(ProposalItemType type, boolean explicitlyRequired) {
-        return switch (type) {
-            case TRAVEL_PACKAGE, CAR_RENTAL -> true;
-            case SERVICE_FEE -> false;
-            case OTHER -> explicitlyRequired;
-        };
+        return type.requiresBooking() || explicitlyRequired;
     }
 
     /**
@@ -135,7 +139,7 @@ public class BookingItem {
      * @throws BookingItemAlreadyResolvedException if this item is already confirmed or cancelled
      */
     void confirmTravelPackage(BookingItemConfirmation confirmation) {
-        confirm(confirmation, ProposalItemType.TRAVEL_PACKAGE);
+        confirm(confirmation, TRAVEL_PACKAGE_CODE);
     }
 
     /**
@@ -149,13 +153,13 @@ public class BookingItem {
      * @throws BookingItemAlreadyResolvedException if this item is already confirmed or cancelled
      */
     void confirmCarRental(BookingItemConfirmation confirmation) {
-        confirm(confirmation, ProposalItemType.CAR_RENTAL);
+        confirm(confirmation, CAR_RENTAL_CODE);
     }
 
-    // Shared confirmation guard + transition: only an item of the expected type that requires booking and is not
-    // already resolved can be confirmed (the item protects its own invariant, §5.3).
-    private void confirm(BookingItemConfirmation confirmation, ProposalItemType expectedType) {
-        if (type != expectedType || !requiresBooking) {
+    // Shared confirmation guard + transition: only an item of the expected (reserved) type code that requires
+    // booking and is not already resolved can be confirmed (the item protects its own invariant, §5.3).
+    private void confirm(BookingItemConfirmation confirmation, String expectedTypeCode) {
+        if (!expectedTypeCode.equals(type.code()) || !requiresBooking) {
             throw new BookingItemNotConfirmableException();
         }
         if ("CONFIRMED".equals(status) || "CANCELLED".equals(status)) {

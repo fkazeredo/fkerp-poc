@@ -79,15 +79,18 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
         addItem(
                         mgr,
                         mgrProposal,
-                        "{\"type\":\"TRAVEL_PACKAGE\",\"description\":\"Pacote\",\"quantity\":2,\"unitValue\":100.00}")
+                        "{\"typeId\":\"" + proposalItemTypeId("TRAVEL_PACKAGE")
+                                + "\",\"description\":\"Pacote\",\"quantity\":2,\"unitValue\":100.00}")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].type").value("TRAVEL_PACKAGE"))
+                .andExpect(jsonPath("$.items[0].typeLabel").value("Pacote de viagem"))
                 .andExpect(jsonPath("$.items[0].lineTotal").value(notNullValue()));
 
         String body = addItem(
                         mgr,
                         mgrProposal,
-                        "{\"type\":\"SERVICE_FEE\",\"description\":\"Taxa\",\"quantity\":1,\"unitValue\":50.00}")
+                        "{\"typeId\":\"" + proposalItemTypeId("SERVICE_FEE")
+                                + "\",\"description\":\"Taxa\",\"quantity\":1,\"unitValue\":50.00}")
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -98,11 +101,23 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void rejectsAnUnknownItemTypeWithUnprocessableEntity() throws Exception {
+        addItem(
+                        manager(),
+                        mgrProposal,
+                        "{\"typeId\":\"" + UUID.randomUUID()
+                                + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00}")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("proposal.item-type-not-available"));
+    }
+
+    @Test
     void appliesAPercentDiscountToTheTotal() throws Exception {
         String body = addItem(
                         manager(),
                         mgrProposal,
-                        "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":2,\"unitValue\":100.00,\"discountType\":\"PERCENT\",\"discountValue\":10}")
+                        "{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                                + "\",\"description\":\"x\",\"quantity\":2,\"unitValue\":100.00,\"discountType\":\"PERCENT\",\"discountValue\":10}")
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -112,7 +127,8 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void rejectsMissingRequiredFields() throws Exception {
-        addItem(manager(), mgrProposal, "{\"type\":\"OTHER\"}").andExpect(status().isBadRequest());
+        addItem(manager(), mgrProposal, "{\"typeId\":\"" + proposalItemTypeId("OTHER") + "\"}")
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -120,7 +136,8 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
         addItem(
                         manager(),
                         mgrProposal,
-                        "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00,\"discountType\":\"PERCENT\",\"discountValue\":150}")
+                        "{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                                + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":100.00,\"discountType\":\"PERCENT\",\"discountValue\":150}")
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("proposal.item-invalid"));
     }
@@ -131,18 +148,18 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
         String added = addItem(
                         mgr,
                         mgrProposal,
-                        "{\"type\":\"TRAVEL_PACKAGE\",\"description\":\"Pacote\",\"quantity\":1,\"unitValue\":100.00}")
+                        "{\"typeId\":\"" + proposalItemTypeId("TRAVEL_PACKAGE")
+                                + "\",\"description\":\"Pacote\",\"quantity\":1,\"unitValue\":100.00}")
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
         String itemId = JsonPath.read(added, "$.items[0].id");
 
-        String body = mvc.perform(
-                        put("/api/proposals/" + mgrProposal + "/items/" + itemId)
-                                .header("Authorization", "Bearer " + mgr)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        "{\"type\":\"TRAVEL_PACKAGE\",\"description\":\"Pacote\",\"quantity\":3,\"unitValue\":100.00}"))
+        String body = mvc.perform(put("/api/proposals/" + mgrProposal + "/items/" + itemId)
+                        .header("Authorization", "Bearer " + mgr)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"typeId\":\"" + proposalItemTypeId("TRAVEL_PACKAGE")
+                                + "\",\"description\":\"Pacote\",\"quantity\":3,\"unitValue\":100.00}"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -156,7 +173,8 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
         String added = addItem(
                         mgr,
                         mgrProposal,
-                        "{\"type\":\"TRAVEL_PACKAGE\",\"description\":\"Pacote\",\"quantity\":2,\"unitValue\":100.00}")
+                        "{\"typeId\":\"" + proposalItemTypeId("TRAVEL_PACKAGE")
+                                + "\",\"description\":\"Pacote\",\"quantity\":2,\"unitValue\":100.00}")
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -176,7 +194,11 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void rejectsEditingItemsWhenTheProposalIsNotADraft() throws Exception {
         jdbc.update("UPDATE proposals SET status = 'SENT' WHERE id = cast(? as uuid)", mgrProposal.toString());
-        addItem(manager(), mgrProposal, "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":10.00}")
+        addItem(
+                        manager(),
+                        mgrProposal,
+                        "{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                                + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":10.00}")
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("proposal.not-editable"));
     }
@@ -184,7 +206,11 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void representativeCannotAddToAnotherUsersProposal() throws Exception {
         String rep = login("representante", "representante123");
-        addItem(rep, mgrProposal, "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":10.00}")
+        addItem(
+                        rep,
+                        mgrProposal,
+                        "{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                                + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":10.00}")
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("proposal.access-denied"));
     }
@@ -192,7 +218,11 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void financeHasNoAccessToItems() throws Exception {
         String fin = login("financeiro", "financeiro123");
-        addItem(fin, mgrProposal, "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":10.00}")
+        addItem(
+                        fin,
+                        mgrProposal,
+                        "{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                                + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":10.00}")
                 .andExpect(status().isForbidden());
     }
 
@@ -200,7 +230,11 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
     void rejectsWithoutTheUpdateScope() throws Exception {
         // diretor consults all (sales:proposal:read:all) but holds no sales:proposal:update scope.
         String dir = login("diretor", "diretor123");
-        addItem(dir, mgrProposal, "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":10.00}")
+        addItem(
+                        dir,
+                        mgrProposal,
+                        "{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                                + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":10.00}")
                 .andExpect(status().isForbidden());
     }
 
@@ -208,7 +242,8 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
     void rejectsUnauthenticated() throws Exception {
         mvc.perform(post("/api/proposals/" + mgrProposal + "/items")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":10.00}"))
+                        .content("{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                                + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":10.00}"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -217,7 +252,8 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
         String body = addItem(
                         manager(),
                         mgrProposal,
-                        "{\"type\":\"OTHER\",\"description\":\"x\",\"quantity\":1,\"unitValue\":10.00}")
+                        "{\"typeId\":\"" + proposalItemTypeId("OTHER")
+                                + "\",\"description\":\"x\",\"quantity\":1,\"unitValue\":10.00}")
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -226,6 +262,7 @@ class ProposalItemsApiIntegrationTest extends AbstractIntegrationTest {
                 .containsExactlyInAnyOrder(
                         "id",
                         "type",
+                        "typeLabel",
                         "description",
                         "quantity",
                         "unitValue",

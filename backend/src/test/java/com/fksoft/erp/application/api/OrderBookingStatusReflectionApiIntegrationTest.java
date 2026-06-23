@@ -270,7 +270,8 @@ class OrderBookingStatusReflectionApiIntegrationTest extends AbstractIntegration
 
     private UUID bookingItemId(UUID requestId, String type) {
         return jdbc.queryForObject(
-                "SELECT id FROM booking_items WHERE booking_request_id = ?::uuid AND type = ? LIMIT 1",
+                "SELECT bi.id FROM booking_items bi JOIN proposal_item_types t ON t.id = bi.type_id "
+                        + "WHERE bi.booking_request_id = ?::uuid AND t.code = ? LIMIT 1",
                 UUID.class,
                 requestId.toString(),
                 type);

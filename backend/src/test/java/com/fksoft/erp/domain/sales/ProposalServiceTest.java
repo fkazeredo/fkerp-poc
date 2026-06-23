@@ -23,9 +23,9 @@ import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunity
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalCreated;
-import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.ProposalAccessPolicy;
+import com.fksoft.erp.domain.sales.service.ProposalItemTypeService;
 import com.fksoft.erp.domain.sales.service.ProposalService;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
@@ -75,6 +75,9 @@ class ProposalServiceTest {
 
     @Mock
     private WorkflowStateRepository workflowStates;
+
+    @Mock
+    private ProposalItemTypeService itemTypes;
 
     @InjectMocks
     private ProposalService service;
@@ -269,7 +272,8 @@ class ProposalServiceTest {
     }
 
     private ProposalItemCommand itemCommand() {
-        return new ProposalItemCommand(ProposalItemType.OTHER, "linha", 1, new BigDecimal("10.00"), null, null);
+        return new ProposalItemCommand(
+                ProposalItemTypeFixtures.OTHER.id(), "linha", 1, new BigDecimal("10.00"), null, null);
     }
 
     private UpdateProposalCommand updateCommand() {

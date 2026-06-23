@@ -4,7 +4,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -38,8 +41,8 @@ public class CommercialOrderItem {
     private UUID id;
 
     @NotNull
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "type_id", nullable = false)
     private ProposalItemType type;
 
     @NotBlank
@@ -99,8 +102,8 @@ public class CommercialOrderItem {
         return subtotal().subtract(discountAmount()).setScale(SCALE, RoundingMode.HALF_UP);
     }
 
-    /** Whether this item requires a booking operation (a travel package or a car rental). */
+    /** Whether this item requires a booking operation (per the item type's cadastro classification). */
     public boolean requiresBooking() {
-        return type == ProposalItemType.TRAVEL_PACKAGE || type == ProposalItemType.CAR_RENTAL;
+        return type.requiresBooking();
     }
 }

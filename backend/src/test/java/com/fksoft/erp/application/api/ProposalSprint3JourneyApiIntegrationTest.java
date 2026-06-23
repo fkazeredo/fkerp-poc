@@ -329,8 +329,8 @@ class ProposalSprint3JourneyApiIntegrationTest extends AbstractIntegrationTest {
         return mvc.perform(post("/api/proposals/" + proposal + "/items")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"type\":\"%s\",\"description\":\"Item\",\"quantity\":%d,\"unitValue\":%s}"
-                        .formatted(type, quantity, unitValue)));
+                .content("{\"typeId\":\"%s\",\"description\":\"Item\",\"quantity\":%d,\"unitValue\":%s}"
+                        .formatted(proposalItemTypeId(type), quantity, unitValue)));
     }
 
     private ResultActions proposalDetail(String proposal, String token) throws Exception {

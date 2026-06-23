@@ -118,7 +118,8 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
 
         // The booking items snapshot the Order items, classified by booking need (no monetary columns exist).
         List<Map<String, Object>> items = jdbc.queryForList(
-                "SELECT type, requires_booking, status FROM booking_items WHERE booking_request_id = ?::uuid",
+                "SELECT t.code AS type, bi.requires_booking, bi.status FROM booking_items bi "
+                        + "JOIN proposal_item_types t ON t.id = bi.type_id WHERE bi.booking_request_id = ?::uuid",
                 requestId.toString());
         assertThat(items).hasSize(2);
         Map<String, Object> pkg = items.stream()
@@ -228,7 +229,8 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
         UUID requestId = UUID.fromString(JsonPath.read(created, "$.id"));
 
         List<Map<String, Object>> items = jdbc.queryForList(
-                "SELECT type, requires_booking, status FROM booking_items WHERE booking_request_id = ?::uuid",
+                "SELECT t.code AS type, bi.requires_booking, bi.status FROM booking_items bi "
+                        + "JOIN proposal_item_types t ON t.id = bi.type_id WHERE bi.booking_request_id = ?::uuid",
                 requestId.toString());
         assertThat(items).hasSize(3);
         // The explicitly-marked OTHER item now requires booking and is PENDING.
@@ -267,7 +269,9 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
         UUID requestId = UUID.fromString(JsonPath.read(created, "$.id"));
 
         Map<String, Object> other = jdbc.queryForList(
-                        "SELECT requires_booking, status FROM booking_items WHERE booking_request_id = ?::uuid AND type = 'OTHER'",
+                        "SELECT bi.requires_booking, bi.status FROM booking_items bi "
+                                + "JOIN proposal_item_types t ON t.id = bi.type_id "
+                                + "WHERE bi.booking_request_id = ?::uuid AND t.code = 'OTHER'",
                         requestId.toString())
                 .get(0);
         assertThat(other.get("requires_booking")).isEqualTo(false);

@@ -1,6 +1,5 @@
 package com.fksoft.erp.domain.booking.service.data;
 
-import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import java.util.List;
 
 /**
@@ -37,6 +36,6 @@ public record BookingIndicators(
     /** Booking Request count for a lifecycle status code. */
     public record StatusCount(String status, long count) {}
 
-    /** Booking item count for an item type. */
-    public record ItemTypeCount(ProposalItemType type, long count) {}
+    /** Booking item count for an item type (keyed by the item-type code). */
+    public record ItemTypeCount(String type, long count) {}
 }

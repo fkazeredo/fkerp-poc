@@ -161,7 +161,8 @@ public class BookingRequest {
         Map<UUID, ProposalItemType> typeById =
                 order.items().stream().collect(Collectors.toMap(CommercialOrderItem::id, CommercialOrderItem::type));
         for (UUID id : required) {
-            if (typeById.get(id) != ProposalItemType.OTHER) {
+            ProposalItemType type = typeById.get(id);
+            if (type == null || !"OTHER".equals(type.code())) {
                 throw new BookingItemNotMarkableException(id);
             }
         }

@@ -281,8 +281,8 @@ class CommercialOrderApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + proposal + "/items")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"%s\",\"description\":\"x\",\"quantity\":1,\"unitValue\":500.00}"
-                                .formatted(itemType)))
+                        .content("{\"typeId\":\"%s\",\"description\":\"x\",\"quantity\":1,\"unitValue\":500.00}"
+                                .formatted(proposalItemTypeId(itemType))))
                 .andExpect(status().isOk());
         mvc.perform(put("/api/proposals/" + proposal)
                         .header("Authorization", "Bearer " + token)

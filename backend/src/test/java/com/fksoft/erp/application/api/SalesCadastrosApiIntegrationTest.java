@@ -3,6 +3,7 @@ package com.fksoft.erp.application.api;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -48,6 +49,54 @@ class SalesCadastrosApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].code", hasItem("EMAIL")))
                 .andExpect(jsonPath("$[*].label", hasItem("E-mail")));
+    }
+
+    @Test
+    void listsSeededProposalItemTypesWithTheirBookingRequirement() throws Exception {
+        mvc.perform(get("/api/sales/proposal-item-types").header("Authorization", "Bearer " + token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].code", hasItem("TRAVEL_PACKAGE")))
+                .andExpect(jsonPath("$[*].label", hasItem("Pacote de viagem")))
+                .andExpect(jsonPath("$[?(@.code=='TRAVEL_PACKAGE')].requiresBooking", hasItem(true)))
+                .andExpect(jsonPath("$[?(@.code=='SERVICE_FEE')].requiresBooking", hasItem(false)));
+    }
+
+    @Test
+    void createsAProposalItemTypeCarryingItsBookingRequirement() throws Exception {
+        String created = mvc.perform(
+                        post("/api/sales/proposal-item-types")
+                                .header("Authorization", "Bearer " + token())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"code\":\"HOTEL\",\"label\":\"Hotelaria\",\"sortOrder\":9,\"requiresBooking\":true}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.code").value("HOTEL"))
+                .andExpect(jsonPath("$.requiresBooking").value(true))
+                .andExpect(jsonPath("$.active").value(true))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String id = JsonPath.read(created, "$.id");
+
+        // The booking-requirement flag is updatable like the label/order/active.
+        mvc.perform(put("/api/sales/proposal-item-types/" + id)
+                        .header("Authorization", "Bearer " + token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"label\":\"Hotelaria\",\"sortOrder\":9,\"active\":true,\"requiresBooking\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requiresBooking").value(false));
+    }
+
+    @Test
+    void createProposalItemTypeRequiresTheManageScope() throws Exception {
+        String noScope = tokens.issueAccessToken(new AuthenticatedUser(UUID.randomUUID(), "viewer", Set.of()));
+        mvc.perform(
+                        post("/api/sales/proposal-item-types")
+                                .header("Authorization", "Bearer " + noScope)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"code\":\"INSURANCE\",\"label\":\"Seguro\",\"sortOrder\":9,\"requiresBooking\":false}"))
+                .andExpect(status().isForbidden());
     }
 
     @Test
