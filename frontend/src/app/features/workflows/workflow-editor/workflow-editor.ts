@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   HostListener,
   OnDestroy,
   OnInit,
@@ -8,6 +9,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -81,6 +83,7 @@ type Selection =
 export class WorkflowEditor implements OnInit, OnDestroy, HasUnsavedChanges {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly workflows = inject(WorkflowService);
   private readonly messages = inject(MessageService);
   private readonly auth = inject(AuthService);
@@ -119,9 +122,15 @@ export class WorkflowEditor implements OnInit, OnDestroy, HasUnsavedChanges {
   }
 
   ngOnInit(): void {
-    this.code = this.route.snapshot.paramMap.get('code') ?? '';
-    this.load();
     this.workflows.catalog().subscribe({ next: (c) => this.catalog.set(c) });
+    // React to the :code param so navigating between workflows (e.g. via the sidebar sub-items) reloads the
+    // editor. The router reuses this component across same-route param changes, so ngOnInit runs only once —
+    // reading route.snapshot alone would keep showing the first workflow opened.
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.code = params.get('code') ?? '';
+      this.selection.set(null);
+      this.load();
+    });
   }
 
   ngOnDestroy(): void {
