@@ -101,9 +101,14 @@ test('a ready opportunity originates a commercial proposal, reachable in the Com
   await expect(page.getByText('Nenhum item ainda.')).toBeVisible();
   await page.getByRole('button', { name: 'Adicionar item' }).click();
   const itemDialog = page.getByRole('dialog');
+  // The item type is an explicit choice (waiting for the option also ensures the cadastro has loaded).
+  await itemDialog.getByText('Selecione o tipo').click();
+  await page.getByRole('option', { name: 'Pacote de viagem' }).click();
   await itemDialog.locator('#idesc').fill('Pacote de viagem corporativo');
   await itemDialog.locator('#iqty').fill('2');
-  await itemDialog.locator('#iunit').fill('1500');
+  // Type the unit value as real keystrokes (PrimeNG inputNumber ignores Playwright's synthetic fill();
+  // focusing it also commits the quantity above). This is how a real user enters the value.
+  await itemDialog.locator('#iunit').pressSequentially('1500');
   await itemDialog.getByRole('button', { name: 'Adicionar' }).click();
   await expect(page.getByText('Item adicionado')).toBeVisible();
 
@@ -135,8 +140,9 @@ test('a ready opportunity originates a commercial proposal, reachable in the Com
   await expect(page.getByText('Dados atualizados')).toBeVisible();
   await expect(page.getByText(/2[.,]700/).first()).toBeVisible();
 
-  // Submit the proposal for review (Slice 3): it leaves Draft and becomes "Pronta para revisão".
-  await page.getByRole('button', { name: 'Enviar para revisão' }).click();
+  // Submit the proposal for review (Slice 3): it leaves Draft and becomes "Pronta para revisão". The `s`
+  // shortcut dodges the lingering success toast that overlaps the header button (top-right overlap).
+  await page.keyboard.press('s');
   await expect(page.getByText('Proposta enviada para revisão')).toBeVisible();
   await expect(page.getByText('Pronta para revisão').first()).toBeVisible();
 

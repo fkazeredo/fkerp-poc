@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -85,12 +84,19 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
         leads.deleteAll();
     }
 
-    private static final String VALID =
-            """
-            {"type":"SUPPLIER_PHONE_CONTACT","result":"WAITING_FOR_SUPPLIER",
-             "description":"Liguei para o fornecedor","occurredAt":"2026-06-10T10:00:00Z",
-             "nextActionDate":"2026-06-25"}
-            """;
+    private String valid() {
+        return ("{\"typeId\":\"%s\",\"resultId\":\"%s\","
+                        + "\"description\":\"Liguei para o fornecedor\",\"occurredAt\":\"2026-06-10T10:00:00Z\","
+                        + "\"nextActionDate\":\"2026-06-25\"}")
+                .formatted(
+                        refId("booking_attempt_types", "SUPPLIER_PHONE_CONTACT"),
+                        refId("booking_attempt_results", "WAITING_FOR_SUPPLIER"));
+    }
+
+    private UUID refId(String table, String code) {
+        return UUID.fromString(
+                jdbc.queryForObject("SELECT id::text FROM " + table + " WHERE code = ?", String.class, code));
+    }
 
     @Test
     void registersAnAttemptThatAppearsInTheDetailAndMovesPendingToInProgress() throws Exception {
@@ -99,13 +105,13 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/bookings/" + request + "/attempts")
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isOk())
                 // The attempt moved the request to IN_PROGRESS but confirmed nothing.
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
                 .andExpect(jsonPath("$.attempts.length()").value(1))
-                .andExpect(jsonPath("$.attempts[0].type").value("SUPPLIER_PHONE_CONTACT"))
-                .andExpect(jsonPath("$.attempts[0].result").value("WAITING_FOR_SUPPLIER"))
+                .andExpect(jsonPath("$.attempts[0].type").value("Contato telefônico com fornecedor"))
+                .andExpect(jsonPath("$.attempts[0].result").value("Aguardando fornecedor"))
                 .andExpect(jsonPath("$.attempts[0].description").value("Liguei para o fornecedor"))
                 .andExpect(jsonPath("$.attempts[0].nextActionDate").value("2026-06-25"))
                 .andExpect(jsonPath("$.attempts[0].registeredByName").value("operacoes"))
@@ -121,7 +127,7 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/bookings/" + request + "/attempts")
                         .header("Authorization", "Bearer " + login("comercial", "comercial123"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isOk());
     }
 
@@ -129,38 +135,43 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
     void requiresTypeResultDateAndDescription() throws Exception {
         UUID request = pendingRequest();
         String token = operator();
+        UUID type = refId("booking_attempt_types", "OTHER");
+        UUID result = refId("booking_attempt_results", "STARTED");
         // Missing type.
-        mvc.perform(
-                        post("/api/bookings/" + request + "/attempts")
-                                .header("Authorization", "Bearer " + token)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        "{\"result\":\"STARTED\",\"description\":\"x\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"))
+        mvc.perform(post("/api/bookings/" + request + "/attempts")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"resultId\":\"%s\",\"description\":\"x\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"
+                                .formatted(result)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("validation.failed"));
         // Missing description.
         mvc.perform(post("/api/bookings/" + request + "/attempts")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"OTHER\",\"result\":\"STARTED\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"))
+                        .content("{\"typeId\":\"%s\",\"resultId\":\"%s\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"
+                                .formatted(type, result)))
                 .andExpect(status().isBadRequest());
         // Missing date.
         mvc.perform(post("/api/bookings/" + request + "/attempts")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"OTHER\",\"result\":\"STARTED\",\"description\":\"x\"}"))
+                        .content("{\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"x\"}"
+                                .formatted(type, result)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void rejectsAFutureDate() throws Exception {
         UUID request = pendingRequest();
-        mvc.perform(
-                        post("/api/bookings/" + request + "/attempts")
-                                .header("Authorization", "Bearer " + operator())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        "{\"type\":\"OTHER\",\"result\":\"STARTED\",\"description\":\"x\",\"occurredAt\":\"2099-01-01T10:00:00Z\"}"))
+        mvc.perform(post("/api/bookings/" + request + "/attempts")
+                        .header("Authorization", "Bearer " + operator())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"x\",\"occurredAt\":\"2099-01-01T10:00:00Z\"}"
+                                        .formatted(
+                                                refId("booking_attempt_types", "OTHER"),
+                                                refId("booking_attempt_results", "STARTED"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fields[?(@.field=='occurredAt')]").exists());
     }
@@ -168,12 +179,14 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void nextActionDateIsOptional() throws Exception {
         UUID request = pendingRequest();
-        mvc.perform(
-                        post("/api/bookings/" + request + "/attempts")
-                                .header("Authorization", "Bearer " + operator())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        "{\"type\":\"INTERNAL_VERIFICATION\",\"result\":\"STARTED\",\"description\":\"Conferi internamente\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"))
+        mvc.perform(post("/api/bookings/" + request + "/attempts")
+                        .header("Authorization", "Bearer " + operator())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"Conferi internamente\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"
+                                        .formatted(
+                                                refId("booking_attempt_types", "INTERNAL_VERIFICATION"),
+                                                refId("booking_attempt_results", "STARTED"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.attempts[0].nextActionDate").value(Matchers.nullValue()));
     }
@@ -189,8 +202,11 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(
-                                "{\"bookingItemId\":\"%s\",\"type\":\"MANUAL_AVAILABILITY_CHECK\",\"result\":\"AVAILABILITY_FOUND\",\"description\":\"Disponível\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"
-                                        .formatted(itemId)))
+                                "{\"bookingItemId\":\"%s\",\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"Disponível\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"
+                                        .formatted(
+                                                itemId,
+                                                refId("booking_attempt_types", "MANUAL_AVAILABILITY_CHECK"),
+                                                refId("booking_attempt_results", "AVAILABILITY_FOUND"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.attempts[0].bookingItemId").value(itemId.toString()));
     }
@@ -202,8 +218,11 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(
-                                "{\"bookingItemId\":\"%s\",\"type\":\"OTHER\",\"result\":\"STARTED\",\"description\":\"x\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"
-                                        .formatted(UUID.randomUUID())))
+                                "{\"bookingItemId\":\"%s\",\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"x\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"
+                                        .formatted(
+                                                UUID.randomUUID(),
+                                                refId("booking_attempt_types", "OTHER"),
+                                                refId("booking_attempt_results", "STARTED"))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("booking.item-not-found"));
     }
@@ -215,7 +234,7 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/bookings/" + request + "/attempts")
                         .header("Authorization", "Bearer " + login("diretor", "diretor123"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isForbidden());
     }
 
@@ -225,7 +244,7 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/bookings/" + request + "/attempts")
                         .header("Authorization", "Bearer " + login("vendedor", "vendedor123"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isForbidden());
     }
 
@@ -238,7 +257,7 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/bookings/" + request + "/attempts")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("booking.access-denied"));
     }
@@ -248,7 +267,7 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/bookings/" + UUID.randomUUID() + "/attempts")
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("booking.not-found"));
     }
@@ -257,7 +276,7 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
     void rejectsUnauthenticated() throws Exception {
         mvc.perform(post("/api/bookings/" + UUID.randomUUID() + "/attempts")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -268,7 +287,7 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/bookings/" + request + "/attempts")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isOk());
         // The list now exposes the latest attempt instant for that request.
         mvc.perform(get("/api/bookings").header("Authorization", "Bearer " + token))
@@ -371,7 +390,7 @@ class BookingAttemptApiIntegrationTest extends AbstractIntegrationTest {
                 leadId.toString(),
                 originId.toString(),
                 MANAGER.toString(),
-                OpportunityStage.WON.name(),
+                "WON",
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

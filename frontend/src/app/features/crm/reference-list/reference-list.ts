@@ -40,6 +40,7 @@ export class ReferenceList implements OnDestroy, HasUnsavedChanges {
 
   protected readonly title = signal('');
   private readonly path = signal('');
+  private readonly base = signal('crm');
 
   protected readonly items = signal<ReferenceItem[]>([]);
   protected readonly loading = signal(false);
@@ -63,6 +64,7 @@ export class ReferenceList implements OnDestroy, HasUnsavedChanges {
     this.route.data.subscribe((data) => {
       this.title.set(data['title'] ?? 'Cadastro');
       this.path.set(data['path'] ?? '');
+      this.base.set(data['base'] ?? 'crm');
       this.reload();
     });
     // Keep the global unsaved flag (tab-close warning) in sync with the create/edit dialog state.
@@ -80,7 +82,7 @@ export class ReferenceList implements OnDestroy, HasUnsavedChanges {
 
   protected reload(): void {
     this.loading.set(true);
-    this.api.list(this.path(), this.includeInactive()).subscribe({
+    this.api.list(this.path(), this.includeInactive(), this.base()).subscribe({
       next: (list) => {
         this.items.set(list);
         this.loading.set(false);
@@ -148,16 +150,17 @@ export class ReferenceList implements OnDestroy, HasUnsavedChanges {
     const v = this.form.getRawValue();
     const current = this.editing();
     const request = current
-      ? this.api.update(this.path(), current.id, {
-          label: v.label.trim(),
-          sortOrder: v.sortOrder,
-          active: v.active,
-        })
-      : this.api.create(this.path(), {
-          code: v.code.trim(),
-          label: v.label.trim(),
-          sortOrder: v.sortOrder,
-        });
+      ? this.api.update(
+          this.path(),
+          current.id,
+          { label: v.label.trim(), sortOrder: v.sortOrder, active: v.active },
+          this.base(),
+        )
+      : this.api.create(
+          this.path(),
+          { code: v.code.trim(), label: v.label.trim(), sortOrder: v.sortOrder },
+          this.base(),
+        );
 
     request.subscribe({
       next: () => {
@@ -179,7 +182,7 @@ export class ReferenceList implements OnDestroy, HasUnsavedChanges {
   }
 
   protected deactivate(item: ReferenceItem): void {
-    this.api.deactivate(this.path(), item.id).subscribe({
+    this.api.deactivate(this.path(), item.id, this.base()).subscribe({
       next: () => {
         this.messages.add({ severity: 'success', summary: 'Inativado', detail: item.label });
         this.reload();
@@ -195,7 +198,12 @@ export class ReferenceList implements OnDestroy, HasUnsavedChanges {
 
   protected activate(item: ReferenceItem): void {
     this.api
-      .update(this.path(), item.id, { label: item.label, sortOrder: item.sortOrder, active: true })
+      .update(
+        this.path(),
+        item.id,
+        { label: item.label, sortOrder: item.sortOrder, active: true },
+        this.base(),
+      )
       .subscribe({
         next: () => {
           this.messages.add({ severity: 'success', summary: 'Reativado', detail: item.label });

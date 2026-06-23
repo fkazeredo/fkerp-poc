@@ -13,7 +13,6 @@ import com.fksoft.erp.domain.crm.exception.OpportunityAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.OpportunityAccessPolicy;
@@ -24,14 +23,18 @@ import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunity
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalCreated;
-import com.fksoft.erp.domain.sales.model.ProposalItemType;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.ProposalAccessPolicy;
+import com.fksoft.erp.domain.sales.service.ProposalItemTypeService;
 import com.fksoft.erp.domain.sales.service.ProposalService;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.sales.service.data.UpdateProposalCommand;
+import com.fksoft.erp.domain.workflow.WorkflowDefinition;
+import com.fksoft.erp.domain.workflow.WorkflowEngine;
+import com.fksoft.erp.domain.workflow.WorkflowState;
+import com.fksoft.erp.domain.workflow.WorkflowStateCategory;
+import com.fksoft.erp.domain.workflow.WorkflowStateRepository;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
@@ -67,6 +70,15 @@ class ProposalServiceTest {
     @Mock
     private ApplicationEventPublisher events;
 
+    @Mock
+    private WorkflowEngine workflow;
+
+    @Mock
+    private WorkflowStateRepository workflowStates;
+
+    @Mock
+    private ProposalItemTypeService itemTypes;
+
     @InjectMocks
     private ProposalService service;
 
@@ -81,7 +93,7 @@ class ProposalServiceTest {
 
     private Opportunity readyOpportunity() {
         Opportunity o = mock(Opportunity.class);
-        when(o.stage()).thenReturn(OpportunityStage.READY_FOR_PROPOSAL);
+        when(o.stage()).thenReturn("READY_FOR_PROPOSAL");
         return o;
     }
 
@@ -95,6 +107,9 @@ class ProposalServiceTest {
         when(opportunityAccessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean()))
                 .thenReturn(true);
         when(proposals.findFirstByOpportunityIdAndStatusIn(any(), any())).thenReturn(Optional.empty());
+        WorkflowState draft = WorkflowState.of(
+                WorkflowDefinition.of("proposal", "Proposta"), "DRAFT", "Rascunho", WorkflowStateCategory.INITIAL, 1);
+        when(workflowStates.findByDefinition_CodeAndCode("proposal", "DRAFT")).thenReturn(Optional.of(draft));
 
         UUID id = service.create(command(null), ACTOR, true, false);
 
@@ -102,7 +117,7 @@ class ProposalServiceTest {
         ArgumentCaptor<Proposal> captor = ArgumentCaptor.forClass(Proposal.class);
         verify(proposals).save(captor.capture());
         Proposal saved = captor.getValue();
-        assertThat(saved.status()).isEqualTo(ProposalStatus.DRAFT);
+        assertThat(saved.status()).isEqualTo("DRAFT");
         assertThat(saved.opportunityId()).isEqualTo(OPP_ID);
         assertThat(saved.leadId()).isEqualTo(LEAD_ID);
         assertThat(saved.responsiblePersonId()).isEqualTo(RESPONSIBLE); // preserved from the opportunity
@@ -133,7 +148,7 @@ class ProposalServiceTest {
     @Test
     void rejectsWhenTheOpportunityIsNotReadyForProposal() {
         Opportunity opp = mock(Opportunity.class);
-        when(opp.stage()).thenReturn(OpportunityStage.PRODUCT_FIT);
+        when(opp.stage()).thenReturn("PRODUCT_FIT");
         when(opportunities.findById(OPP_ID)).thenReturn(Optional.of(opp));
         when(opportunityAccessPolicy.canSee(any(), any(), anyBoolean(), anyBoolean()))
                 .thenReturn(true);
@@ -257,7 +272,8 @@ class ProposalServiceTest {
     }
 
     private ProposalItemCommand itemCommand() {
-        return new ProposalItemCommand(ProposalItemType.OTHER, "linha", 1, new BigDecimal("10.00"), null, null);
+        return new ProposalItemCommand(
+                ProposalItemTypeFixtures.OTHER.id(), "linha", 1, new BigDecimal("10.00"), null, null);
     }
 
     private UpdateProposalCommand updateCommand() {

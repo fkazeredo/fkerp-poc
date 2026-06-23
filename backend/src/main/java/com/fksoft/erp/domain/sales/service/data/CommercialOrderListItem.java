@@ -1,8 +1,6 @@
 package com.fksoft.erp.domain.sales.service.data;
 
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -25,13 +23,13 @@ public record CommercialOrderListItem(
         String proposalTitle,
         UUID opportunityId,
         String opportunityName,
-        CommercialOrderStatus status,
+        String status,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,
         BigDecimal total,
         boolean requiresBooking,
-        BookingRequestStatus bookingStatus,
+        String bookingStatus,
         Instant createdAt) {
 
     /**
@@ -58,7 +56,7 @@ public record CommercialOrderListItem(
                 responsibleName,
                 o.responsiblePersonId() == null,
                 o.total(),
-                o.status() == CommercialOrderStatus.PENDING_BOOKING,
+                "PENDING_BOOKING".equals(o.status()),
                 o.bookingStatus(),
                 o.createdAt());
     }

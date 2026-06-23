@@ -16,9 +16,6 @@ import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { Observable } from 'rxjs';
 import {
-  BookingAttemptResult,
-  BookingAttemptType,
-  BookingFailureReason,
   BookingItemStatus,
   BookingRequestDetail,
   BookingRequestItem,
@@ -27,7 +24,8 @@ import {
 } from '../../../core/api/booking.service';
 import { OpportunityStage } from '../../../core/api/opportunity.service';
 import { CommercialOrderStatus } from '../../../core/api/order.service';
-import { ProposalItemType, ProposalStatus } from '../../../core/api/proposal.service';
+import { ProposalStatus } from '../../../core/api/proposal.service';
+import { ReferenceItem, ReferenceService } from '../../../core/api/reference.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HasUnsavedChanges, UnsavedChangesService } from '../../../core/forms/unsaved-changes.service';
 
@@ -69,13 +67,6 @@ const ITEM_STATUS_SEVERITY: Record<BookingItemStatus, TagSeverity> = {
   CANCELLED: 'secondary',
 };
 
-const ITEM_TYPE_LABELS: Record<ProposalItemType, string> = {
-  TRAVEL_PACKAGE: 'Pacote de viagem',
-  CAR_RENTAL: 'Locação de veículo',
-  SERVICE_FEE: 'Taxa de serviço',
-  OTHER: 'Outro',
-};
-
 const ORDER_STATUS_LABELS: Record<CommercialOrderStatus, string> = {
   PENDING_BOOKING: 'Pendente de reserva',
   BOOKING_NOT_REQUIRED: 'Reserva não necessária',
@@ -101,49 +92,6 @@ const PROPOSAL_STATUS_LABELS: Record<ProposalStatus, string> = {
   EXPIRED: 'Expirada',
   CANCELLED: 'Cancelada',
 };
-
-const ATTEMPT_TYPE_LABELS: Record<BookingAttemptType, string> = {
-  EXTERNAL_SYSTEM_ACCESS: 'Acesso a sistema externo',
-  SUPPLIER_PHONE_CONTACT: 'Contato telefônico com fornecedor',
-  SUPPLIER_EMAIL_CONTACT: 'Contato por e-mail com fornecedor',
-  INTERNAL_VERIFICATION: 'Verificação interna',
-  MANUAL_AVAILABILITY_CHECK: 'Checagem manual de disponibilidade',
-  OTHER: 'Outro',
-};
-
-const ATTEMPT_RESULT_LABELS: Record<BookingAttemptResult, string> = {
-  STARTED: 'Iniciada',
-  WAITING_FOR_SUPPLIER: 'Aguardando fornecedor',
-  WAITING_FOR_INTERNAL_INFO: 'Aguardando informação interna',
-  AVAILABILITY_FOUND: 'Disponibilidade encontrada',
-  AVAILABILITY_NOT_FOUND: 'Sem disponibilidade',
-  NEEDS_RETRY: 'Precisa nova tentativa',
-  FAILED: 'Falhou',
-  OTHER: 'Outro',
-};
-
-const FAILURE_REASON_LABELS: Record<BookingFailureReason, string> = {
-  NO_AVAILABILITY: 'Sem disponibilidade',
-  SUPPLIER_UNAVAILABLE: 'Fornecedor indisponível',
-  INVALID_COMMERCIAL_DATA: 'Dados comerciais inválidos',
-  MISSING_TRAVELER_DATA: 'Dados do passageiro ausentes',
-  EXTERNAL_SYSTEM_UNAVAILABLE: 'Sistema externo indisponível',
-  PRICE_CHANGED: 'Preço alterado',
-  MANUAL_OPERATION_ERROR: 'Erro de operação manual',
-  OUT_OF_POLICY: 'Fora da política',
-  OTHER: 'Outro',
-};
-
-const ATTEMPT_TYPE_OPTIONS = (Object.keys(ATTEMPT_TYPE_LABELS) as BookingAttemptType[]).map((value) => ({
-  value,
-  label: ATTEMPT_TYPE_LABELS[value],
-}));
-const ATTEMPT_RESULT_OPTIONS = (Object.keys(ATTEMPT_RESULT_LABELS) as BookingAttemptResult[]).map(
-  (value) => ({ value, label: ATTEMPT_RESULT_LABELS[value] }),
-);
-const FAILURE_REASON_OPTIONS = (Object.keys(FAILURE_REASON_LABELS) as BookingFailureReason[]).map(
-  (value) => ({ value, label: FAILURE_REASON_LABELS[value] }),
-);
 
 // Sentinel option value for "the whole request" (no item link) in the item select.
 const WHOLE_REQUEST = '';
@@ -181,6 +129,7 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
   private readonly bookings = inject(BookingService);
   private readonly messages = inject(MessageService);
   private readonly auth = inject(AuthService);
+  private readonly references = inject(ReferenceService);
   private readonly unsaved = inject(UnsavedChangesService);
 
   protected readonly booking = signal<BookingRequestDetail | null>(null);
@@ -189,10 +138,10 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
 
   protected readonly attemptOpen = signal(false);
   protected readonly acting = signal(false);
-  protected readonly attemptTypeOptions = ATTEMPT_TYPE_OPTIONS;
-  protected readonly attemptResultOptions = ATTEMPT_RESULT_OPTIONS;
-  protected attemptType: BookingAttemptType | null = null;
-  protected attemptResult: BookingAttemptResult | null = null;
+  protected readonly attemptTypeOptions = signal<ReferenceItem[]>([]);
+  protected readonly attemptResultOptions = signal<ReferenceItem[]>([]);
+  protected attemptType: string | null = null;
+  protected attemptResult: string | null = null;
   protected attemptDescription = '';
   protected attemptOccurredAt: Date = new Date();
   protected attemptItemId: string = WHOLE_REQUEST;
@@ -202,7 +151,9 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
   protected readonly confirmOpen = signal(false);
   protected confirmItemId = '';
   protected confirmItemLabel = '';
-  protected confirmItemType: ProposalItemType = 'TRAVEL_PACKAGE';
+  // The item-type code (anchors the travel-package vs car-rental confirm flow) + its display label.
+  protected confirmItemType = 'TRAVEL_PACKAGE';
+  protected confirmItemTypeLabel = '';
   protected confirmExternalSystem = '';
   protected confirmExternalLocator = '';
   protected confirmDate: Date = new Date();
@@ -222,10 +173,10 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
 
   // Fail dialog state — mark a booking item as failed (reason required).
   protected readonly failOpen = signal(false);
-  protected readonly failReasonOptions = FAILURE_REASON_OPTIONS;
+  protected readonly failReasonOptions = signal<ReferenceItem[]>([]);
   protected failItemId = '';
   protected failItemLabel = '';
-  protected failReason: BookingFailureReason | null = null;
+  protected failReason: string | null = null;
   protected failDate: Date = new Date();
   protected failNote = '';
 
@@ -246,6 +197,11 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
   ngOnInit(): void {
     this.bookingId = this.route.snapshot.paramMap.get('id') ?? '';
     this.load();
+    this.references.list('booking-attempt-types', false, 'booking').subscribe((i) => this.attemptTypeOptions.set(i));
+    this.references
+      .list('booking-attempt-results', false, 'booking')
+      .subscribe((i) => this.attemptResultOptions.set(i));
+    this.references.list('booking-failure-reasons', false, 'booking').subscribe((i) => this.failReasonOptions.set(i));
   }
 
   ngOnDestroy(): void {
@@ -302,10 +258,6 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
     return ITEM_STATUS_SEVERITY[status];
   }
 
-  protected itemTypeLabel(type: ProposalItemType): string {
-    return ITEM_TYPE_LABELS[type];
-  }
-
   protected orderStatusLabel(status: CommercialOrderStatus): string {
     return ORDER_STATUS_LABELS[status];
   }
@@ -316,18 +268,6 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
 
   protected proposalStatusLabel(status: ProposalStatus): string {
     return PROPOSAL_STATUS_LABELS[status];
-  }
-
-  protected attemptTypeLabel(type: BookingAttemptType): string {
-    return ATTEMPT_TYPE_LABELS[type];
-  }
-
-  protected attemptResultLabel(result: BookingAttemptResult): string {
-    return ATTEMPT_RESULT_LABELS[result];
-  }
-
-  protected failureReasonLabel(reason: BookingFailureReason): string {
-    return FAILURE_REASON_LABELS[reason];
   }
 
   /** The human-friendly reservation code — the source Order number rendered PC-000n. */
@@ -345,7 +285,7 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
     const items = this.booking()?.items ?? [];
     return [
       { value: WHOLE_REQUEST, label: 'Reserva toda' },
-      ...items.map((i) => ({ value: i.id, label: `${ITEM_TYPE_LABELS[i.type]} — ${i.description}` })),
+      ...items.map((i) => ({ value: i.id, label: `${i.typeLabel} — ${i.description}` })),
     ];
   }
 
@@ -355,7 +295,7 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
       return 'Reserva toda';
     }
     const item = this.booking()?.items.find((i) => i.id === bookingItemId);
-    return item ? `${ITEM_TYPE_LABELS[item.type]} — ${item.description}` : 'Item da reserva';
+    return item ? `${item.typeLabel} — ${item.description}` : 'Item da reserva';
   }
 
   protected openAttempt(): void {
@@ -385,8 +325,8 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
     this.act(
       this.bookings.registerAttempt(this.bookingId, {
         bookingItemId: this.attemptItemId || null,
-        type: this.attemptType!,
-        result: this.attemptResult!,
+        typeId: this.attemptType!,
+        resultId: this.attemptResult!,
         description: this.attemptDescription.trim(),
         occurredAt: this.attemptOccurredAt.toISOString(),
         nextActionDate: toIsoDate(this.attemptNextActionDate),
@@ -415,7 +355,8 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
   protected openConfirm(item: BookingRequestItem): void {
     this.confirmItemId = item.id;
     this.confirmItemType = item.type;
-    this.confirmItemLabel = `${ITEM_TYPE_LABELS[item.type]} — ${item.description}`;
+    this.confirmItemTypeLabel = item.typeLabel;
+    this.confirmItemLabel = `${item.typeLabel} — ${item.description}`;
     this.confirmExternalSystem = '';
     this.confirmExternalLocator = '';
     this.confirmDate = new Date();
@@ -494,7 +435,7 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
 
   protected openFail(item: BookingRequestItem): void {
     this.failItemId = item.id;
-    this.failItemLabel = `${ITEM_TYPE_LABELS[item.type]} — ${item.description}`;
+    this.failItemLabel = `${item.typeLabel} — ${item.description}`;
     this.failReason = null;
     this.failDate = new Date();
     this.failNote = '';
@@ -512,7 +453,7 @@ export class BookingDetail implements OnInit, OnDestroy, HasUnsavedChanges {
     }
     this.act(
       this.bookings.failBookingItem(this.bookingId, this.failItemId, {
-        failureReason: this.failReason!,
+        failureReasonId: this.failReason!,
         failureNote: this.failNote.trim() || null,
         failedAt: this.failDate.toISOString(),
       }),

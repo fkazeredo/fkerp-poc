@@ -841,17 +841,23 @@ booking access does not see these indicators. It is an **operational** view, not
 
 ## 11. Managing reference data (*cadastros*)
 
-Reference data are the lists that feed the lead form and future workflows. There are
-four, all managed the same way:
+Reference data are the **lists that feed the forms** across the whole system — the options you pick in the
+type, reason, result and channel fields. As of this release, **nearly all of those lists are editable** by
+administration: you can **add, rename, reorder and deactivate** options **without waiting for a new version
+of the system**. What used to be fixed in the program is now data you control.
 
-| Cadastro | Used for |
-|----------|----------|
-| **Origens** (Origins) | Where leads come from. |
-| **Motivos de perda** (Loss reasons) | Why a lead is eventually lost. |
-| **Tipos de interação** (Interaction types) | Kinds of contact (call, WhatsApp, note…). |
-| **Resultados de interação** (Interaction results) | Outcome of a contact. |
+They are all managed the same way, organised by area:
 
-Open them from **Cadastros** in the top menu or via the command palette.
+| Area | Reference lists (*cadastros*) |
+|------|-------------------------------|
+| **Leads** | Origins · Loss reasons · Interaction types · Interaction results |
+| **Opportunities** | Activity types · Activity results · Loss reasons (opportunity) |
+| **Proposals** | Rejection reasons · Customer-rejection reasons · Sending channels · Item types |
+| **Bookings** | Attempt types · Attempt results · Failure reasons |
+
+When you rename an option, the new label appears on the operational screens immediately; when you
+**deactivate** an option, it is no longer offered on new records but stays visible on the older records that
+already used it (historical accuracy). Open them from **Cadastros** in the menu, or via the command palette.
 
 ### 11.1 The list
 
@@ -879,6 +885,33 @@ it is **Active** or **Inactive**. By default only active records are shown; use
   for historical accuracy but **cannot be used on new leads**.
 - For an inactive record, click the **check** icon to **reactivate** it.
 
+### 11.5 The workflow editor (Workflows)
+
+Beyond the simple lists, an administrator can view and adjust the system's **workflows** — the paths a Lead,
+an Opportunity or a Booking follows. Open **Cadastros → Workflows** (shortcut `g` then `w`, or via the command
+palette). This destination only appears for users with the administration profile.
+
+The list shows one card per workflow (for example **Lead**, **Opportunity**, **Booking**). Opening a workflow
+draws it as a **diagram**: each **state** (situation) is a box and each **transition** (allowed step between
+situations) is an arrow — a visual way to understand how the work advances.
+
+In the editor you can:
+
+- **Adjust a state** — click a box in the diagram to open the edit panel and change the **label** (the
+  displayed name), the **order**, and whether it is **active**. The internal code and the state's type are
+  fixed.
+- **Inspect a transition** — the arrows show the step and its flow rules read-only; the structure of the
+  process is defined by the system and is not changed here.
+- **Manage the attention rules** — in the side panel, each workflow carries the **rules that explain why a
+  record shows up in the pending-items list** (for example "no recent activity", "next action overdue"). You
+  can **create** a new rule (choosing the condition, a code, a description and — when the condition needs one —
+  a window in days or a reference state), **rename** or **reorder** existing ones, **activate/deactivate**, and
+  **delete** the ones you created. The rules that ship with the system can be renamed and activated/deactivated
+  but not deleted.
+
+This means **what counts as "pending"** in each area is no longer fixed in the program — it becomes
+configurable by administration, with no version change.
+
 ---
 
 ## 12. Messages and validation
@@ -904,7 +937,8 @@ also reachable by keyboard:
 - **`Ctrl`/`Cmd` + `K`** — the **command palette**: search and jump to any screen or action from anywhere.
 - **`?`** — show the full shortcut help at any time.
 - **Go to (press `g`, then a letter):** `g i` Home · `g l` Leads · `g o` Opportunities · `g p` Proposals ·
-  `g d` Orders · `g r` Bookings · `g c` Reference data. **`n`** creates a new lead.
+  `g d` Orders · `g r` Bookings · `g c` Reference data · `g w` Workflows (administration). **`n`** creates a
+  new lead.
 - **On a lead:** `i` log interaction · `q` qualify · `o` create opportunity · `p` mark lost · `r` reassign ·
   `Esc` back.
 - **On an opportunity:** `a` log activity · `e` edit details · `s` advance stage · `p` mark lost · `Esc` back.

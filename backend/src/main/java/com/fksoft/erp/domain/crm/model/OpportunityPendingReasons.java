@@ -1,6 +1,7 @@
 package com.fksoft.erp.domain.crm.model;
 
 import com.fksoft.erp.domain.crm.service.OpportunityPendingSpecifications;
+import com.fksoft.erp.domain.workflow.WorkflowAttentionRule;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -8,58 +9,68 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Computes why an Opportunity is pending. Single source of truth for the reason tags shown in the
- * worklist; {@link OpportunityPendingSpecifications#pending} mirrors these predicates at the query level
- * so the page contains exactly the Opportunities that have at least one reason. A LOST Opportunity is
- * terminal and never pending. "Stuck in a stage" uses the creation date as the age proxy (the stage
- * history is not consulted).
+ * Computes why an Opportunity is pending, driven by the configurable {@link WorkflowAttentionRule}s of the
+ * {@code opportunity} workflow (the data-driven replacement for the former pending-reason enum). It is the
+ * single source of truth for the reason tags shown in the worklist; {@link OpportunityPendingSpecifications}
+ * mirrors these predicates at the query level so the page contains exactly the Opportunities that have at
+ * least one reason. A WON / LOST Opportunity is terminal and never pending. "Stuck in a stage" uses the
+ * creation date as the age proxy (the stage history is not consulted).
  */
 public final class OpportunityPendingReasons {
-
-    /** Staleness window (days): with no recent activity / stuck in an early stage past this is pending. */
-    public static final int STALE_DAYS = 14;
 
     private OpportunityPendingReasons() {}
 
     /**
-     * The pending reasons that currently apply to an Opportunity (empty when it needs no action).
+     * The pending reason codes that currently apply to an Opportunity (empty when it needs no action), one per
+     * matching active rule (in rule order).
      *
      * @param opportunity the opportunity
      * @param now the reference instant (for the staleness window)
      * @param today the reference calendar date (for "overdue" date comparisons)
-     * @param lastActivityAt the most recent activity instant, or {@code null} when none (passed in to
-     *     avoid a lazy load / N+1)
-     * @return the matching reasons (an Opportunity may have several)
+     * @param lastActivityAt the most recent activity instant, or {@code null} when none (passed in to avoid an
+     *     N+1)
+     * @param rules the active attention rules of the {@code opportunity} workflow, in order
+     * @return the matching reason codes (an Opportunity may have several)
      */
-    public static List<OpportunityPendingReason> of(
-            Opportunity opportunity, Instant now, LocalDate today, Instant lastActivityAt) {
-        List<OpportunityPendingReason> reasons = new ArrayList<>();
-        if (opportunity.stage().isTerminal()) {
+    public static List<String> of(
+            Opportunity opportunity,
+            Instant now,
+            LocalDate today,
+            Instant lastActivityAt,
+            List<WorkflowAttentionRule> rules) {
+        List<String> reasons = new ArrayList<>();
+        if ("WON".equals(opportunity.stage()) || "LOST".equals(opportunity.stage())) {
             return reasons;
         }
-        Instant staleBefore = now.minus(STALE_DAYS, ChronoUnit.DAYS);
-        boolean stale = opportunity.createdAt().isBefore(staleBefore);
-        boolean hasRecentActivity = lastActivityAt != null && !lastActivityAt.isBefore(staleBefore);
-
-        if (stale && !hasRecentActivity) {
-            reasons.add(OpportunityPendingReason.WITHOUT_RECENT_ACTIVITY);
-        }
-        if (opportunity.nextActionDate() != null && opportunity.nextActionDate().isBefore(today)) {
-            reasons.add(OpportunityPendingReason.OVERDUE_NEXT_ACTION);
-        }
-        if (opportunity.stage() == OpportunityStage.NEW_OPPORTUNITY && stale) {
-            reasons.add(OpportunityPendingReason.STUCK_IN_NEW);
-        }
-        if (opportunity.stage() == OpportunityStage.DISCOVERY && stale) {
-            reasons.add(OpportunityPendingReason.STUCK_IN_DISCOVERY);
-        }
-        if (opportunity.stage() == OpportunityStage.READY_FOR_PROPOSAL) {
-            reasons.add(OpportunityPendingReason.READY_FOR_PROPOSAL);
-        }
-        if (opportunity.expectedCloseDate() != null
-                && opportunity.expectedCloseDate().isBefore(today)) {
-            reasons.add(OpportunityPendingReason.EXPECTED_CLOSE_OVERDUE);
+        for (WorkflowAttentionRule rule : rules) {
+            if (matches(rule, opportunity, now, today, lastActivityAt)) {
+                reasons.add(rule.code());
+            }
         }
         return reasons;
+    }
+
+    private static boolean matches(
+            WorkflowAttentionRule rule, Opportunity o, Instant now, LocalDate today, Instant lastActivityAt) {
+        return switch (rule.conditionKey()) {
+            case "NO_RECENT_ACTIVITY" -> {
+                Instant staleBefore = now.minus(days(rule), ChronoUnit.DAYS);
+                boolean stale = o.createdAt().isBefore(staleBefore);
+                boolean recent = lastActivityAt != null && !lastActivityAt.isBefore(staleBefore);
+                yield stale && !recent;
+            }
+            case "NEXT_ACTION_OVERDUE" -> o.nextActionDate() != null
+                    && o.nextActionDate().isBefore(today);
+            case "IN_STATE_LONGER_THAN" -> rule.stateValue().equals(o.stage())
+                    && o.createdAt().isBefore(now.minus(days(rule), ChronoUnit.DAYS));
+            case "IN_STATE" -> rule.stateValue().equals(o.stage());
+            case "EXPECTED_CLOSE_OVERDUE" -> o.expectedCloseDate() != null
+                    && o.expectedCloseDate().isBefore(today);
+            default -> false;
+        };
+    }
+
+    private static int days(WorkflowAttentionRule rule) {
+        return rule.thresholdDays() == null ? 0 : rule.thresholdDays();
     }
 }

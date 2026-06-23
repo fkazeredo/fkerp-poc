@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -145,10 +144,10 @@ class ProposalSprint3JourneyApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + proposal + "/send")
                         .header("Authorization", "Bearer " + manager)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"channel\":\"EMAIL\"}"))
+                        .content("{\"channelId\":\"%s\"}".formatted(refId("sending_channels", "EMAIL"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SENT"))
-                .andExpect(jsonPath("$.sendingChannel").value("EMAIL"));
+                .andExpect(jsonPath("$.sendingChannel").value("E-mail"));
 
         // 10. The commercial user records the customer's acceptance (Sent → Accepted).
         mvc.perform(post("/api/proposals/" + proposal + "/accept")
@@ -221,10 +220,11 @@ class ProposalSprint3JourneyApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + proposal + "/reject")
                         .header("Authorization", "Bearer " + manager)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"PRICE_TOO_HIGH\",\"note\":\"Acima do orçamento\"}"))
+                        .content("{\"reasonId\":\"%s\",\"note\":\"Acima do orçamento\"}"
+                                .formatted(refId("proposal_rejection_reasons", "PRICE_TOO_HIGH"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("REJECTED"))
-                .andExpect(jsonPath("$.rejectionReason").value("PRICE_TOO_HIGH"));
+                .andExpect(jsonPath("$.rejectionReason").value("Preço muito alto"));
 
         // A REJECTED Proposal cannot be marked sent…
         mvc.perform(post("/api/proposals/" + proposal + "/send")
@@ -246,7 +246,7 @@ class ProposalSprint3JourneyApiIntegrationTest extends AbstractIntegrationTest {
         proposalDetail(proposal, manager)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("REJECTED"))
-                .andExpect(jsonPath("$.rejectionReason").value("PRICE_TOO_HIGH"));
+                .andExpect(jsonPath("$.rejectionReason").value("Preço muito alto"));
     }
 
     @Test
@@ -260,10 +260,11 @@ class ProposalSprint3JourneyApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/proposals/" + proposal + "/decline")
                         .header("Authorization", "Bearer " + manager)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"CHOSE_COMPETITOR\",\"note\":\"Foi com a concorrência\"}"))
+                        .content("{\"reasonId\":\"%s\",\"note\":\"Foi com a concorrência\"}"
+                                .formatted(refId("customer_rejection_reasons", "CHOSE_COMPETITOR"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("REJECTED"))
-                .andExpect(jsonPath("$.customerRejectionReason").value("CHOSE_COMPETITOR"));
+                .andExpect(jsonPath("$.customerRejectionReason").value("Escolheu concorrente"));
 
         // No Commercial Order can be created from a customer-rejected Proposal.
         mvc.perform(post("/api/orders")
@@ -282,7 +283,7 @@ class ProposalSprint3JourneyApiIntegrationTest extends AbstractIntegrationTest {
         proposalDetail(proposal, manager)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("REJECTED"))
-                .andExpect(jsonPath("$.customerRejectionReason").value("CHOSE_COMPETITOR"))
+                .andExpect(jsonPath("$.customerRejectionReason").value("Escolheu concorrente"))
                 .andExpect(jsonPath("$.customerRejectionNote").value("Foi com a concorrência"));
     }
 
@@ -328,12 +329,17 @@ class ProposalSprint3JourneyApiIntegrationTest extends AbstractIntegrationTest {
         return mvc.perform(post("/api/proposals/" + proposal + "/items")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"type\":\"%s\",\"description\":\"Item\",\"quantity\":%d,\"unitValue\":%s}"
-                        .formatted(type, quantity, unitValue)));
+                .content("{\"typeId\":\"%s\",\"description\":\"Item\",\"quantity\":%d,\"unitValue\":%s}"
+                        .formatted(proposalItemTypeId(type), quantity, unitValue)));
     }
 
     private ResultActions proposalDetail(String proposal, String token) throws Exception {
         return mvc.perform(get("/api/proposals/" + proposal).header("Authorization", "Bearer " + token));
+    }
+
+    private UUID refId(String table, String code) {
+        return UUID.fromString(
+                jdbc.queryForObject("SELECT id::text FROM " + table + " WHERE code = ?", String.class, code));
     }
 
     private UUID insertReadyOpportunity(String name, UUID leadId) {
@@ -351,7 +357,7 @@ class ProposalSprint3JourneyApiIntegrationTest extends AbstractIntegrationTest {
                 originId.toString(),
                 MANAGER.toString(),
                 "Pacote " + name,
-                OpportunityStage.READY_FOR_PROPOSAL.name(),
+                "READY_FOR_PROPOSAL",
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

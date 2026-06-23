@@ -9,7 +9,6 @@ import com.fksoft.erp.application.api.dto.ProposalListParams;
 import com.fksoft.erp.application.api.dto.ProposalResponse;
 import com.fksoft.erp.application.api.dto.ProposalUpdateRequest;
 import com.fksoft.erp.application.api.dto.RejectProposalRequest;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.service.ProposalService;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalDetail;
@@ -77,8 +76,7 @@ public class ProposalController {
                 request.commercialTerms());
         UUID id = proposalService.create(
                 command, userContext.currentUserId(), canSeeAllOpportunities(), canSeeUnassignedOpportunities());
-        return ResponseEntity.created(URI.create("/api/proposals/" + id))
-                .body(new ProposalResponse(id, ProposalStatus.DRAFT));
+        return ResponseEntity.created(URI.create("/api/proposals/" + id)).body(new ProposalResponse(id, "DRAFT"));
     }
 
     /**
@@ -217,7 +215,7 @@ public class ProposalController {
     public ProposalDetail reject(@PathVariable UUID id, @Valid @RequestBody RejectProposalRequest request) {
         return proposalService.reject(
                 id,
-                request.reason(),
+                request.reasonId(),
                 request.note(),
                 userContext.currentUserId(),
                 canSeeAllProposals(),
@@ -237,7 +235,11 @@ public class ProposalController {
     @PostMapping("/{id}/send")
     public ProposalDetail send(@PathVariable UUID id, @Valid @RequestBody MarkProposalSentRequest request) {
         return proposalService.markAsSent(
-                id, request.channel(), userContext.currentUserId(), canSeeAllProposals(), canSeeUnassignedProposals());
+                id,
+                request.channelId(),
+                userContext.currentUserId(),
+                canSeeAllProposals(),
+                canSeeUnassignedProposals());
     }
 
     /**
@@ -268,7 +270,7 @@ public class ProposalController {
     public ProposalDetail decline(@PathVariable UUID id, @Valid @RequestBody DeclineProposalRequest request) {
         return proposalService.declineByCustomer(
                 id,
-                request.reason(),
+                request.reasonId(),
                 request.note(),
                 userContext.currentUserId(),
                 canSeeAllProposals(),
@@ -324,7 +326,7 @@ public class ProposalController {
 
     private static ProposalItemCommand toCommand(ProposalItemRequest r) {
         return new ProposalItemCommand(
-                r.type(), r.description(), r.quantity(), r.unitValue(), r.discountType(), r.discountValue());
+                r.typeId(), r.description(), r.quantity(), r.unitValue(), r.discountType(), r.discountValue());
     }
 
     // The creation period is given as calendar dates; the column is an instant, so anchor at UTC midnight

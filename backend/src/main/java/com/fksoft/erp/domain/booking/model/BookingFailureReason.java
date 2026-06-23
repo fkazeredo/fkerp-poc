@@ -1,19 +1,28 @@
 package com.fksoft.erp.domain.booking.model;
 
-/**
- * The reason a {@link BookingItem} was manually marked as failed (Sprint 4). A fixed operational set (enum + DB
- * CHECK, not an editable cadastro); the user-facing labels are resolved in the frontend. A failure is recorded
- * for the operational decision — it never cancels the Commercial Order and creates no Financial/Commission/
- * Customer Care data.
- */
-public enum BookingFailureReason {
-    NO_AVAILABILITY,
-    SUPPLIER_UNAVAILABLE,
-    INVALID_COMMERCIAL_DATA,
-    MISSING_TRAVELER_DATA,
-    EXTERNAL_SYSTEM_UNAVAILABLE,
-    PRICE_CHANGED,
-    MANUAL_OPERATION_ERROR,
-    OUT_OF_POLICY,
-    OTHER
+import com.fksoft.erp.domain.reference.ReferenceData;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+/** Reference data: reason a booking item was manually marked as failed (managed cadastro). */
+@Entity
+@Table(name = "booking_failure_reasons")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class BookingFailureReason extends ReferenceData {
+
+    /**
+     * Creates a new active BookingFailureReason.
+     *
+     * @param code stable code
+     * @param label display label
+     * @param sortOrder sort order
+     * @return the new BookingFailureReason
+     */
+    public static BookingFailureReason create(String code, String label, int sortOrder) {
+        BookingFailureReason value = new BookingFailureReason();
+        value.init(code, label, sortOrder);
+        return value;
+    }
 }

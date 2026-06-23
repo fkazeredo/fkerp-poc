@@ -76,9 +76,13 @@ async function sentProposal(page: Page, name: string): Promise<void> {
 
   await page.getByRole('button', { name: 'Adicionar item' }).click();
   const itemDialog = page.getByRole('dialog');
+  // The item type is an explicit choice (waiting for the option also ensures the cadastro has loaded).
+  await itemDialog.getByText('Selecione o tipo').click();
+  await page.getByRole('option', { name: 'Pacote de viagem' }).click();
   await itemDialog.locator('#idesc').fill('Pacote de viagem');
   await itemDialog.locator('#iqty').fill('1');
-  await itemDialog.locator('#iunit').fill('2000');
+  // Type the unit value as real keystrokes (PrimeNG inputNumber ignores Playwright's synthetic fill()).
+  await itemDialog.locator('#iunit').pressSequentially('2000');
   await itemDialog.getByRole('button', { name: 'Adicionar' }).click();
   await expect(page.getByText('Item adicionado')).toBeVisible();
 
@@ -91,7 +95,8 @@ async function sentProposal(page: Page, name: string): Promise<void> {
   await detailsDialog.getByRole('button', { name: 'Salvar' }).click();
   await expect(page.getByText('Dados atualizados')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Enviar para revisão' }).click();
+  // Submit via the `s` shortcut: keyboard dodges the lingering success toast that overlaps the header button.
+  await page.keyboard.press('s');
   await expect(page.getByText('Proposta enviada para revisão')).toBeVisible();
   await expect(page.getByText('Pronta para revisão').first()).toBeVisible();
 

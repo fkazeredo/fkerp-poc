@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fksoft.erp.AbstractIntegrationTest;
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.InteractionResultRepository;
 import com.fksoft.erp.domain.crm.repository.InteractionTypeRepository;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
@@ -77,7 +76,7 @@ class OpportunityCreationApiIntegrationTest extends AbstractIntegrationTest {
         UUID opportunityId = UUID.fromString(JsonPath.read(response, "$.id"));
 
         Opportunity saved = opportunities.findById(opportunityId).orElseThrow();
-        org.assertj.core.api.Assertions.assertThat(saved.stage()).isEqualTo(OpportunityStage.NEW_OPPORTUNITY);
+        org.assertj.core.api.Assertions.assertThat(saved.stage()).isEqualTo("NEW_OPPORTUNITY");
         org.assertj.core.api.Assertions.assertThat(saved.leadId()).isEqualTo(UUID.fromString(leadId));
         org.assertj.core.api.Assertions.assertThat(saved.responsiblePersonId()).isEqualTo(MANAGER);
         org.assertj.core.api.Assertions.assertThat(saved.mainInterest()).isEqualTo("Pacote corporativo");

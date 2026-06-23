@@ -1,18 +1,11 @@
 package com.fksoft.erp.domain.sales.service.data;
 
 import com.fksoft.erp.domain.crm.model.Lead;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
-import com.fksoft.erp.domain.sales.model.CustomerRejectionReason;
 import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItem;
-import com.fksoft.erp.domain.sales.model.ProposalItemType;
-import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
-import com.fksoft.erp.domain.sales.model.SendingChannel;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -47,7 +40,7 @@ public record ProposalDetail(
         UUID id,
         UUID opportunityId,
         UUID leadId,
-        ProposalStatus status,
+        String status,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,
@@ -66,11 +59,11 @@ public record ProposalDetail(
         SourceOpportunity sourceOpportunity,
         SourceLead sourceLead,
         List<StatusChange> statusHistory,
-        ProposalRejectionReason rejectionReason,
+        String rejectionReason,
         String rejectionNote,
-        SendingChannel sendingChannel,
+        String sendingChannel,
         String acceptanceNote,
-        CustomerRejectionReason customerRejectionReason,
+        String customerRejectionReason,
         String customerRejectionNote,
         UUID commercialOrderId) {
 
@@ -117,11 +110,13 @@ public record ProposalDetail(
                 new SourceOpportunity(opportunity.id(), opportunity.name(), opportunity.stage()),
                 new SourceLead(lead.id(), lead.name(), lead.phone(), lead.whatsapp(), lead.email(), lead.status()),
                 statusHistory,
-                p.rejectionReason(),
+                p.rejectionReason() == null ? null : p.rejectionReason().label(),
                 p.rejectionNote(),
-                p.sendingChannel(),
+                p.sendingChannel() == null ? null : p.sendingChannel().label(),
                 p.acceptanceNote(),
-                p.customerRejectionReason(),
+                p.customerRejectionReason() == null
+                        ? null
+                        : p.customerRejectionReason().label(),
                 p.customerRejectionNote(),
                 commercialOrderId);
     }
@@ -131,18 +126,19 @@ public record ProposalDetail(
     }
 
     /** The source Opportunity, kept traceable from the Proposal. */
-    public record SourceOpportunity(UUID id, String name, OpportunityStage stage) {}
+    public record SourceOpportunity(UUID id, String name, String stage) {}
 
     /** The source Lead, kept traceable from the Proposal (the contact's system of record). */
-    public record SourceLead(UUID id, String name, String phone, String whatsapp, String email, LeadStatus status) {}
+    public record SourceLead(UUID id, String name, String phone, String whatsapp, String email, String status) {}
 
     /** A single Proposal status-change entry (from → to, when, by whom). */
-    public record StatusChange(ProposalStatus from, ProposalStatus to, Instant at, String by) {}
+    public record StatusChange(String from, String to, Instant at, String by) {}
 
     /** A single commercial-offer line, with its computed line total. */
     public record Item(
             UUID id,
-            ProposalItemType type,
+            String type,
+            String typeLabel,
             String description,
             int quantity,
             BigDecimal unitValue,
@@ -153,7 +149,8 @@ public record ProposalDetail(
         static Item from(ProposalItem i) {
             return new Item(
                     i.id(),
-                    i.type(),
+                    i.type().code(),
+                    i.type().label(),
                     i.description(),
                     i.quantity(),
                     i.unitValue(),

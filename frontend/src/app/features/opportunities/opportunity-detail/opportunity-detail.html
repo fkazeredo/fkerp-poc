@@ -117,7 +117,7 @@
       <p-card header="Perda">
         <dl class="data">
           <dt>Motivo</dt>
-          <dd>{{ loss.reason ? lossReasonLabel(loss.reason) : '—' }}</dd>
+          <dd>{{ loss.reason ?? '—' }}</dd>
           <dt>Quando</dt>
           <dd>{{ loss.lostAt | date: 'short' }}</dd>
           <dt>Por</dt>
@@ -138,8 +138,8 @@
           <li>
             <span class="when">{{ a.occurredAt | date: 'short' }}</span>
             <span class="what">
-              <strong>{{ activityTypeLabel(a.type) }}</strong>
-              <span class="muted"> · {{ activityResultLabel(a.result) }}</span>
+              <strong>{{ a.type }}</strong>
+              <span class="muted"> · {{ a.result }}</span>
             </span>
             <span class="note">{{ a.description }}</span>
             @if (a.nextActionDate) {
@@ -181,9 +181,9 @@
       <label for="reason">Motivo da perda <span class="req">*</span></label>
       <p-select
         inputId="reason"
-        [options]="lossReasonOptions"
+        [options]="lossReasonOptions()"
         optionLabel="label"
-        optionValue="value"
+        optionValue="id"
         [(ngModel)]="lossReason"
         placeholder="Selecione"
         [filter]="true"
@@ -248,9 +248,9 @@
       <label for="atype">Tipo <span class="req">*</span></label>
       <p-select
         inputId="atype"
-        [options]="activityTypeOptions"
+        [options]="activityTypeOptions()"
         optionLabel="label"
-        optionValue="value"
+        optionValue="id"
         [(ngModel)]="activityType"
         placeholder="Selecione o tipo"
         styleClass="w-full"
@@ -261,9 +261,9 @@
       <label for="aresult">Resultado <span class="req">*</span></label>
       <p-select
         inputId="aresult"
-        [options]="activityResultOptions"
+        [options]="activityResultOptions()"
         optionLabel="label"
-        optionValue="value"
+        optionValue="id"
         [(ngModel)]="activityResult"
         placeholder="Selecione o resultado"
         styleClass="w-full"

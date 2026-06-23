@@ -3,7 +3,6 @@ package com.fksoft.erp.domain.crm.service.data;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadAssignment;
 import com.fksoft.erp.domain.crm.model.LeadInteraction;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -22,7 +21,7 @@ public record LeadDetail(
         String whatsapp,
         String email,
         String origin,
-        LeadStatus status,
+        String status,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,

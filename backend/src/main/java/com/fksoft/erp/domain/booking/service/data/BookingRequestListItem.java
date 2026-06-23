@@ -1,7 +1,6 @@
 package com.fksoft.erp.domain.booking.service.data;
 
 import com.fksoft.erp.domain.booking.model.BookingRequest;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -23,7 +22,7 @@ public record BookingRequestListItem(
         long commercialOrderNumber,
         UUID proposalId,
         String proposalTitle,
-        BookingRequestStatus status,
+        String status,
         UUID bookingOperatorId,
         String bookingOperatorName,
         boolean operatorUnassigned,

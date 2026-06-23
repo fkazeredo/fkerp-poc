@@ -2,7 +2,6 @@ package com.fksoft.erp.domain.crm.service;
 
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.service.data.OpportunitySearchCriteria;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -40,10 +39,10 @@ public final class OpportunitySpecifications {
 
     // Closed (won/lost) Opportunities never appear in the default operational list; include them in the
     // stage filter to see them.
-    private static Specification<Opportunity> stageFilter(Set<OpportunityStage> stages) {
+    private static Specification<Opportunity> stageFilter(Set<String> stages) {
         return (root, query, cb) -> {
             if (stages == null || stages.isEmpty()) {
-                return cb.not(root.get("stage").in(OpportunityStage.terminalStages()));
+                return cb.not(root.get("stage").in(List.of("WON", "LOST")));
             }
             return root.get("stage").in(stages);
         };

@@ -1,6 +1,5 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import java.util.UUID;
 
 /**
@@ -10,4 +9,4 @@ import java.util.UUID;
  * @param name the lead name
  * @param status the lead status (always NEW on creation)
  */
-public record LeadResponse(UUID id, String name, LeadStatus status) {}
+public record LeadResponse(UUID id, String name, String status) {}

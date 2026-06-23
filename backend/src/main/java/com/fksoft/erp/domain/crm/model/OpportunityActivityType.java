@@ -1,17 +1,28 @@
 package com.fksoft.erp.domain.crm.model;
 
-/**
- * Types of commercial activity that can be registered on an Opportunity (Sprint 2 — a fixed set). The
- * user-facing labels are resolved in the frontend (like the pipeline stages).
- */
-public enum OpportunityActivityType {
-    PHONE_CALL,
-    WHATSAPP,
-    EMAIL,
-    MEETING,
-    INTERNAL_NOTE,
-    DOCUMENT_REQUEST,
-    PRICE_DISCUSSION,
-    TRAVEL_REQUIREMENT_CLARIFICATION,
-    OTHER
+import com.fksoft.erp.domain.reference.ReferenceData;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+/** Reference data: type of a commercial activity registered on an Opportunity (managed cadastro). */
+@Entity
+@Table(name = "opportunity_activity_types")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class OpportunityActivityType extends ReferenceData {
+
+    /**
+     * Creates a new active OpportunityActivityType.
+     *
+     * @param code stable code
+     * @param label display label
+     * @param sortOrder sort order
+     * @return the new OpportunityActivityType
+     */
+    public static OpportunityActivityType create(String code, String label, int sortOrder) {
+        OpportunityActivityType type = new OpportunityActivityType();
+        type.init(code, label, sortOrder);
+        return type;
+    }
 }

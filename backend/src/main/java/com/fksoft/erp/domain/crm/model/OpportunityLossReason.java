@@ -1,19 +1,31 @@
 package com.fksoft.erp.domain.crm.model;
 
+import com.fksoft.erp.domain.reference.ReferenceData;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
 /**
- * Reasons an Opportunity can be marked as lost (Sprint 2 — a fixed, commercial set, distinct from the
- * Lead's contact-oriented loss reasons). The user-facing labels are resolved in the frontend (like the
- * pipeline stages and activity types).
+ * Reference data: reason an Opportunity can be marked as lost (managed cadastro — a commercial set, distinct
+ * from the Lead's contact-oriented loss reasons).
  */
-public enum OpportunityLossReason {
-    NO_BUDGET,
-    NO_DECISION,
-    NO_RESPONSE,
-    COMPETITOR_CHOSEN,
-    PRODUCT_MISMATCH,
-    PRICE_TOO_HIGH,
-    TRAVEL_CANCELLED,
-    DUPLICATED_OPPORTUNITY,
-    OUT_OF_PROFILE,
-    OTHER
+@Entity
+@Table(name = "opportunity_loss_reasons")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class OpportunityLossReason extends ReferenceData {
+
+    /**
+     * Creates a new active OpportunityLossReason.
+     *
+     * @param code stable code
+     * @param label display label
+     * @param sortOrder sort order
+     * @return the new OpportunityLossReason
+     */
+    public static OpportunityLossReason create(String code, String label, int sortOrder) {
+        OpportunityLossReason reason = new OpportunityLossReason();
+        reason.init(code, label, sortOrder);
+        return reason;
+    }
 }

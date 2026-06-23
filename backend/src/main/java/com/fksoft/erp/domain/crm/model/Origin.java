@@ -1,5 +1,6 @@
 package com.fksoft.erp.domain.crm.model;
 
+import com.fksoft.erp.domain.reference.ReferenceData;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;

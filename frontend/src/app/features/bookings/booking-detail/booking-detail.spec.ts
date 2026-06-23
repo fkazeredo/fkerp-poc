@@ -10,6 +10,7 @@ import {
   BookingRequestItem,
   BookingService,
 } from '../../../core/api/booking.service';
+import { ReferenceService } from '../../../core/api/reference.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
@@ -29,6 +30,7 @@ describe('BookingDetail', () => {
   const router = { navigateByUrl: vi.fn() };
   const messages = { add: vi.fn() };
   const auth = { canOperateBookings: vi.fn(() => false) };
+  const references = { list: vi.fn() };
 
   const sample = (over: Partial<BookingRequestDetail> = {}): BookingRequestDetail => ({
     id: 'bk1',
@@ -52,6 +54,7 @@ describe('BookingDetail', () => {
         id: 'i1',
         orderItemId: 'oi1',
         type: 'TRAVEL_PACKAGE',
+        typeLabel: 'Pacote de viagem',
         description: 'Pacote Caribe',
         quantity: 2,
         requiresBooking: true,
@@ -75,8 +78,8 @@ describe('BookingDetail', () => {
         {
           id: 'a1',
           bookingItemId: 'i1',
-          type: 'SUPPLIER_PHONE_CONTACT',
-          result: 'WAITING_FOR_SUPPLIER',
+          type: 'Contato telefônico com fornecedor',
+          result: 'Aguardando fornecedor',
           description: 'Liguei para o fornecedor',
           occurredAt: '2026-06-21T08:00:00Z',
           nextActionDate: '2026-06-25',
@@ -93,6 +96,7 @@ describe('BookingDetail', () => {
         providePrimeNG(),
         ConfirmationService,
         { provide: BookingService, useValue: bookings },
+        { provide: ReferenceService, useValue: references },
         { provide: Router, useValue: router },
         { provide: MessageService, useValue: messages },
         { provide: AuthService, useValue: auth },
@@ -123,6 +127,10 @@ describe('BookingDetail', () => {
     router.navigateByUrl.mockReset();
     messages.add.mockReset();
     auth.canOperateBookings.mockReset().mockReturnValue(false);
+    references.list.mockReset();
+    references.list.mockReturnValue(
+      of([{ id: 'ref1', code: 'SUPPLIER_PHONE_CONTACT', label: 'Telefone', active: true, sortOrder: 1 }]),
+    );
     bookings.detail.mockReturnValue(of(sample()));
   });
 
@@ -134,12 +142,19 @@ describe('BookingDetail', () => {
     expect(comp['loading']()).toBe(false);
   });
 
-  it('maps the reservation, item and attempt status labels to pt-BR', () => {
+  it('maps the reservation and item status labels to pt-BR', () => {
     const comp = build();
     expect(comp['statusLabel']('PARTIALLY_CONFIRMED')).toBe('Parcialmente confirmada');
     expect(comp['itemStatusLabel']('CONFIRMED')).toBe('Confirmado');
-    expect(comp['attemptTypeLabel']('SUPPLIER_PHONE_CONTACT')).toBe('Contato telefônico com fornecedor');
-    expect(comp['attemptResultLabel']('WAITING_FOR_SUPPLIER')).toBe('Aguardando fornecedor');
+  });
+
+  it('loads the attempt-type / result / failure-reason options from the cadastros on init', () => {
+    const comp = build();
+    comp.ngOnInit();
+    expect(references.list).toHaveBeenCalledWith('booking-attempt-types', false, 'booking');
+    expect(references.list).toHaveBeenCalledWith('booking-attempt-results', false, 'booking');
+    expect(references.list).toHaveBeenCalledWith('booking-failure-reasons', false, 'booking');
+    expect(comp['attemptTypeOptions']().length).toBeGreaterThan(0);
   });
 
   it('shows a not-found message on 404', () => {
@@ -198,8 +213,8 @@ describe('BookingDetail', () => {
       expect(bookings.registerAttempt).toHaveBeenCalledWith(
         'bk1',
         expect.objectContaining({
-          type: 'SUPPLIER_PHONE_CONTACT',
-          result: 'WAITING_FOR_SUPPLIER',
+          typeId: 'SUPPLIER_PHONE_CONTACT',
+          resultId: 'WAITING_FOR_SUPPLIER',
           description: 'Liguei para o fornecedor',
           bookingItemId: null,
         }),
@@ -222,6 +237,7 @@ describe('BookingDetail', () => {
             id: 'i1',
             orderItemId: 'oi1',
             type: 'TRAVEL_PACKAGE',
+            typeLabel: 'Pacote de viagem',
             description: 'Pacote Caribe',
             quantity: 2,
             requiresBooking: true,
@@ -257,6 +273,7 @@ describe('BookingDetail', () => {
         id: 'i2',
         orderItemId: 'oi2',
         type: 'CAR_RENTAL',
+        typeLabel: 'Loca��o de ve�culo',
         description: 'Locação SUV',
         quantity: 1,
         requiresBooking: true,
@@ -340,6 +357,7 @@ describe('BookingDetail', () => {
             id: 'i2',
             orderItemId: 'oi2',
             type: 'CAR_RENTAL',
+            typeLabel: 'Loca��o de ve�culo',
             description: 'Locação SUV',
             quantity: 1,
             requiresBooking: true,
@@ -371,6 +389,7 @@ describe('BookingDetail', () => {
         id: 'i2',
         orderItemId: 'oi2',
         type: 'CAR_RENTAL',
+        typeLabel: 'Loca��o de ve�culo',
         description: 'Locação SUV',
         quantity: 1,
         requiresBooking: true,
@@ -428,13 +447,14 @@ describe('BookingDetail', () => {
             id: 'i1',
             orderItemId: 'oi1',
             type: 'TRAVEL_PACKAGE',
+            typeLabel: 'Pacote de viagem',
             description: 'Pacote Caribe',
             quantity: 2,
             requiresBooking: true,
             status: 'FAILED',
             confirmation: null,
             failure: {
-              failureReason: 'NO_AVAILABILITY',
+              failureReason: 'Sem disponibilidade',
               failureNote: 'Sem vagas para a data',
               failedByName: 'operacoes',
               failedAt: '2026-06-21T08:00:00Z',
@@ -447,11 +467,11 @@ describe('BookingDetail', () => {
       return sample().items[0];
     }
 
-    it('maps the failure reasons to pt-BR', () => {
+    it('loads the failure-reason options from the cadastro', () => {
       const comp = build();
-      expect(comp['failureReasonLabel']('NO_AVAILABILITY')).toBe('Sem disponibilidade');
-      expect(comp['failureReasonLabel']('SUPPLIER_UNAVAILABLE')).toBe('Fornecedor indisponível');
-      expect(comp['failureReasonLabel']('OTHER')).toBe('Outro');
+      comp.ngOnInit();
+      expect(references.list).toHaveBeenCalledWith('booking-failure-reasons', false, 'booking');
+      expect(comp['failReasonOptions']().length).toBeGreaterThan(0);
     });
 
     it('offers fail only for a requiring, not-resolved item with the update scope', () => {
@@ -492,7 +512,7 @@ describe('BookingDetail', () => {
         'bk1',
         'i1',
         expect.objectContaining({
-          failureReason: 'NO_AVAILABILITY',
+          failureReasonId: 'NO_AVAILABILITY',
           failureNote: 'Sem vagas para a data',
         }),
       );
@@ -515,7 +535,7 @@ describe('BookingDetail', () => {
       expect(bookings.failBookingItem).toHaveBeenCalledWith(
         'bk1',
         'i1',
-        expect.objectContaining({ failureReason: 'OTHER', failureNote: null }),
+        expect.objectContaining({ failureReasonId: 'OTHER', failureNote: null }),
       );
     });
 

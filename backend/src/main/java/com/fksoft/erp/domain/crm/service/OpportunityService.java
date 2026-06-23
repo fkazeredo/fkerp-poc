@@ -4,21 +4,29 @@ import com.fksoft.erp.domain.crm.exception.LeadAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.LeadNotFoundException;
 import com.fksoft.erp.domain.crm.exception.LeadNotQualifiedForOpportunityException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAccessDeniedException;
+import com.fksoft.erp.domain.crm.exception.OpportunityActivityResultNotAvailableException;
+import com.fksoft.erp.domain.crm.exception.OpportunityActivityTypeNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.OpportunityAlreadyExistsForLeadException;
+import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedLostException;
+import com.fksoft.erp.domain.crm.exception.OpportunityLossReasonNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
+import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.crm.model.Lead;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.model.OpportunityActivity;
+import com.fksoft.erp.domain.crm.model.OpportunityActivityResult;
+import com.fksoft.erp.domain.crm.model.OpportunityActivityType;
 import com.fksoft.erp.domain.crm.model.OpportunityCreated;
 import com.fksoft.erp.domain.crm.model.OpportunityLossReason;
 import com.fksoft.erp.domain.crm.model.OpportunityPendingReasons;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.model.OpportunityStageChange;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
+import com.fksoft.erp.domain.crm.repository.OpportunityActivityResultRepository;
+import com.fksoft.erp.domain.crm.repository.OpportunityActivityTypeRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityIndicatorQueries;
 import com.fksoft.erp.domain.crm.repository.OpportunityLastActivityRow;
+import com.fksoft.erp.domain.crm.repository.OpportunityLossReasonRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.data.CreateOpportunityCommand;
 import com.fksoft.erp.domain.crm.service.data.OpportunityDetail;
@@ -30,6 +38,14 @@ import com.fksoft.erp.domain.crm.service.data.RecordActivityCommand;
 import com.fksoft.erp.domain.crm.service.data.UpdateOpportunityDetailsCommand;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
+import com.fksoft.erp.domain.reference.ReferenceData;
+import com.fksoft.erp.domain.workflow.WorkflowAttentionRule;
+import com.fksoft.erp.domain.workflow.WorkflowAttentionRuleRepository;
+import com.fksoft.erp.domain.workflow.WorkflowContext;
+import com.fksoft.erp.domain.workflow.WorkflowEngine;
+import com.fksoft.erp.domain.workflow.WorkflowState;
+import com.fksoft.erp.domain.workflow.WorkflowStateRepository;
+import com.fksoft.erp.domain.workflow.WorkflowTransitionNotAllowedException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -66,6 +82,15 @@ public class OpportunityService {
     private final OpportunityAccessPolicy accessPolicy;
     private final OpportunityIndicatorQueries indicatorQueries;
     private final ApplicationEventPublisher events;
+    private final WorkflowEngine workflow;
+    private final WorkflowStateRepository workflowStates;
+    private final OpportunityActivityTypeRepository activityTypes;
+    private final OpportunityActivityResultRepository activityResults;
+    private final OpportunityLossReasonRepository lossReasons;
+    private final WorkflowAttentionRuleRepository attentionRules;
+
+    /** The workflow definition code for the Opportunity lifecycle. */
+    private static final String OPPORTUNITY_WORKFLOW = "opportunity";
 
     /**
      * Creates an Opportunity from a Qualified Lead the caller is allowed to see. A Lead originates at
@@ -90,7 +115,7 @@ public class OpportunityService {
         if (!leadAccessPolicy.canSee(lead, createdBy, canSeeAllLeads, canSeeUnassignedLeads)) {
             throw new LeadAccessDeniedException();
         }
-        if (lead.status() != LeadStatus.QUALIFIED) {
+        if (!"QUALIFIED".equals(lead.status())) {
             throw new LeadNotQualifiedForOpportunityException();
         }
         opportunities.findByLeadId(lead.id()).ifPresent(existing -> {
@@ -108,7 +133,10 @@ public class OpportunityService {
             // The lead's responsible is preserved by default (already validated when assigned).
             responsibleId = lead.responsiblePersonId();
         }
-        Opportunity opportunity = Opportunity.createFromLead(lead, responsibleId, command, createdBy);
+        WorkflowState initialState = workflowStates
+                .findByDefinition_CodeAndCode(OPPORTUNITY_WORKFLOW, "NEW_OPPORTUNITY")
+                .orElseThrow(() -> new IllegalStateException("Missing Opportunity workflow initial state"));
+        Opportunity opportunity = Opportunity.createFromLead(lead, responsibleId, command, initialState, createdBy);
         opportunities.save(opportunity);
         events.publishEvent(new OpportunityCreated(opportunity.id(), lead.id(), createdBy, responsibleId));
         return opportunity.id();
@@ -175,7 +203,9 @@ public class OpportunityService {
             Pageable pageable, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Instant now = Instant.now();
         LocalDate today = LocalDate.ofInstant(now, ZoneOffset.UTC);
-        Specification<Opportunity> spec = OpportunityPendingSpecifications.pending(now, today)
+        List<WorkflowAttentionRule> rules =
+                attentionRules.findByDefinition_CodeAndActiveTrueOrderBySortOrderAsc("opportunity");
+        Specification<Opportunity> spec = OpportunityPendingSpecifications.pending(now, today, rules)
                 .and(accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned));
         Page<Opportunity> page = opportunities.findAll(spec, pageable);
 
@@ -202,7 +232,7 @@ public class OpportunityService {
                     opportunity,
                     nameOf(names, opportunity.responsiblePersonId()),
                     lastActivityAt,
-                    OpportunityPendingReasons.of(opportunity, now, today, lastActivityAt));
+                    OpportunityPendingReasons.of(opportunity, now, today, lastActivityAt, rules));
         });
     }
 
@@ -227,19 +257,19 @@ public class OpportunityService {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
 
         // Volume — over the period.
-        Map<OpportunityStage, Long> byStagePeriod = indicatorQueries.countByStage(visible, from, to);
+        Map<String, Long> byStagePeriod = indicatorQueries.countByStage(visible, from, to);
         long total = byStagePeriod.values().stream().mapToLong(Long::longValue).sum();
-        long lost = byStagePeriod.getOrDefault(OpportunityStage.LOST, 0L);
+        long lost = byStagePeriod.getOrDefault("LOST", 0L);
         Map<String, Long> byOrigin = indicatorQueries.countByOrigin(visible, from, to);
         Map<UUID, Long> byResponsibleId = indicatorQueries.countByResponsible(visible, from, to);
 
         // Pipeline — current snapshot (no period).
-        Map<OpportunityStage, Long> byStageNow = indicatorQueries.countByStage(visible, null, null);
+        Map<String, Long> byStageNow = indicatorQueries.countByStage(visible, null, null);
         long active = byStageNow.entrySet().stream()
-                .filter(e -> !e.getKey().isTerminal())
+                .filter(e -> !"WON".equals(e.getKey()) && !"LOST".equals(e.getKey()))
                 .mapToLong(Map.Entry::getValue)
                 .sum();
-        long readyForProposal = byStageNow.getOrDefault(OpportunityStage.READY_FOR_PROPOSAL, 0L);
+        long readyForProposal = byStageNow.getOrDefault("READY_FOR_PROPOSAL", 0L);
         BigDecimal activePipelineValue = indicatorQueries.sumActivePipelineValue(visible);
         Map<UUID, BigDecimal> valueByResponsibleId = indicatorQueries.sumActiveValueByResponsible(visible);
         long overdueClose = indicatorQueries.countActiveOverdueClose(visible, today);
@@ -306,14 +336,20 @@ public class OpportunityService {
      */
     @Transactional
     public OpportunityDetail markLost(
-            UUID id,
-            OpportunityLossReason reason,
-            String note,
-            UUID userId,
-            boolean canSeeAll,
-            boolean canSeeUnassigned) {
+            UUID id, UUID lossReasonId, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Opportunity opportunity = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
-        opportunity.markLost(reason, userId, note);
+        OpportunityLossReason reason = lossReasons
+                .findById(lossReasonId)
+                .filter(ReferenceData::active)
+                .orElseThrow(OpportunityLossReasonNotAvailableException::new);
+        WorkflowState target;
+        try {
+            target = workflow.apply(
+                    OPPORTUNITY_WORKFLOW, opportunity.currentState(), "lose", WorkflowContext.of(opportunity, userId));
+        } catch (WorkflowTransitionNotAllowedException e) {
+            throw new OpportunityCannotBeMarkedLostException();
+        }
+        opportunity.applyLoss(target, reason, userId, note);
         return toDetail(opportunities.saveAndFlush(opportunity));
     }
 
@@ -335,9 +371,23 @@ public class OpportunityService {
      */
     @Transactional
     public OpportunityDetail changeStage(
-            UUID id, OpportunityStage target, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
+            UUID id, String target, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Opportunity opportunity = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
-        opportunity.moveToStage(target, userId);
+        WorkflowState next;
+        try {
+            next = workflow.apply(
+                    OPPORTUNITY_WORKFLOW,
+                    opportunity.currentState(),
+                    "advance",
+                    WorkflowContext.of(opportunity, userId));
+        } catch (WorkflowTransitionNotAllowedException e) {
+            throw new OpportunityStageTransitionException();
+        }
+        // The funnel allows a single forward step; a request for any other (valid) stage is a skip/back.
+        if (!next.code().equals(target)) {
+            throw new OpportunityStageTransitionException();
+        }
+        opportunity.applyStageAdvance(next, userId);
         return toDetail(opportunities.saveAndFlush(opportunity));
     }
 
@@ -358,13 +408,16 @@ public class OpportunityService {
     public OpportunityDetail recordActivity(
             UUID id, RecordActivityCommand command, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Opportunity opportunity = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
+        OpportunityActivityType type = activityTypes
+                .findById(command.typeId())
+                .filter(ReferenceData::active)
+                .orElseThrow(OpportunityActivityTypeNotAvailableException::new);
+        OpportunityActivityResult result = activityResults
+                .findById(command.resultId())
+                .filter(ReferenceData::active)
+                .orElseThrow(OpportunityActivityResultNotAvailableException::new);
         opportunity.recordActivity(
-                command.type(),
-                command.result(),
-                command.description(),
-                command.occurredAt(),
-                command.nextActionDate(),
-                userId);
+                type, result, command.description(), command.occurredAt(), command.nextActionDate(), userId);
         return toDetail(opportunities.saveAndFlush(opportunity));
     }
 

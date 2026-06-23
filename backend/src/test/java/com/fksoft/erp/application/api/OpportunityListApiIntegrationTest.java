@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -67,11 +66,11 @@ class OpportunityListApiIntegrationTest extends AbstractIntegrationTest {
         leads.deleteAll();
         originId = origins.findByActiveTrueOrderBySortOrderAsc().get(0).id();
         phoneSeq = 0;
-        insertOpportunity("Alpha", OpportunityStage.NEW_OPPORTUNITY, REPRESENTANTE, new BigDecimal("1000.00"));
-        insertOpportunity("Bravo", OpportunityStage.DISCOVERY, MANAGER, new BigDecimal("2500.00"));
-        insertOpportunity("Charlie", OpportunityStage.LOST, MANAGER, null);
-        insertOpportunity("Delta", OpportunityStage.NEW_OPPORTUNITY, null, null);
-        insertOpportunity("Echo", OpportunityStage.PRODUCT_FIT, VENDEDOR, null);
+        insertOpportunity("Alpha", "NEW_OPPORTUNITY", REPRESENTANTE, new BigDecimal("1000.00"));
+        insertOpportunity("Bravo", "DISCOVERY", MANAGER, new BigDecimal("2500.00"));
+        insertOpportunity("Charlie", "LOST", MANAGER, null);
+        insertOpportunity("Delta", "NEW_OPPORTUNITY", null, null);
+        insertOpportunity("Echo", "PRODUCT_FIT", VENDEDOR, null);
     }
 
     @Test
@@ -289,7 +288,7 @@ class OpportunityListApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(get("/api/opportunities")).andExpect(status().isUnauthorized());
     }
 
-    private void insertOpportunity(String name, OpportunityStage stage, UUID responsibleId, BigDecimal estimatedValue) {
+    private void insertOpportunity(String name, String stage, UUID responsibleId, BigDecimal estimatedValue) {
         UUID leadId = insertLead(name, responsibleId);
         jdbc.update(
                 """
@@ -305,9 +304,9 @@ class OpportunityListApiIntegrationTest extends AbstractIntegrationTest {
                 originId.toString(),
                 responsibleId == null ? null : responsibleId.toString(),
                 "Pacote " + name,
-                stage.name(),
+                stage,
                 estimatedValue,
-                stage == OpportunityStage.LOST ? "OTHER" : null,
+                "LOST".equals(stage) ? "OTHER" : null,
                 MANAGER.toString(),
                 MANAGER.toString());
     }

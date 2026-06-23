@@ -1,10 +1,9 @@
 package com.fksoft.erp.domain.booking.service;
 
 import com.fksoft.erp.domain.booking.model.BookingItem;
-import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestPendingReasons;
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
+import com.fksoft.erp.domain.workflow.WorkflowAttentionRule;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Join;
@@ -14,54 +13,68 @@ import jakarta.persistence.criteria.Subquery;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.data.jpa.domain.Specification;
 
 /**
- * Query predicate selecting Booking Requests that need action — the OR of the pending categories (Slice 10).
- * Mirrors {@link BookingRequestPendingReasons#of} so the page contains exactly the requests that have at least
- * one reason. Terminal CONFIRMED / CANCELLED requests are always excluded.
+ * Query predicate selecting Booking Requests that need action — the OR of the active attention rules'
+ * conditions (excluding the terminal CONFIRMED / CANCELLED requests). Mirrors
+ * {@link BookingRequestPendingReasons#of}; both are driven by the same configurable
+ * {@link WorkflowAttentionRule}s of the {@code booking_request} workflow.
  */
 public final class BookingRequestPendingSpecifications {
 
     private BookingRequestPendingSpecifications() {}
 
     /**
-     * A Booking Request is pending (and not terminal) when it has no booking operator, is still PENDING, is IN
-     * PROGRESS with no attempt within the staleness window, has a failed item, has a requiring-booking item still
-     * pending, is PARTIALLY_CONFIRMED, or its planned next action is overdue. Mirrors
-     * {@link BookingRequestPendingReasons#of}.
+     * A Booking Request is pending (and not terminal) when at least one active attention rule matches.
      *
      * @param now the reference instant (for the staleness window)
      * @param today the reference calendar date (for "overdue" date comparisons)
+     * @param rules the active attention rules of the {@code booking_request} workflow
      * @return the pending Specification
      */
-    public static Specification<BookingRequest> pending(Instant now, LocalDate today) {
+    public static Specification<BookingRequest> pending(
+            Instant now, LocalDate today, List<WorkflowAttentionRule> rules) {
         return (root, query, cb) -> {
-            var status = root.get("status");
-            Instant staleBefore = now.minus(BookingRequestPendingReasons.STALE_DAYS, ChronoUnit.DAYS);
+            List<Predicate> ors = new ArrayList<>();
+            for (WorkflowAttentionRule rule : rules) {
+                Predicate predicate = predicate(rule, root, query, cb, now, today);
+                if (predicate != null) {
+                    ors.add(predicate);
+                }
+            }
+            Predicate any = ors.isEmpty() ? cb.disjunction() : cb.or(ors.toArray(Predicate[]::new));
+            return cb.and(cb.not(root.get("status").in("CONFIRMED", "CANCELLED")), any);
+        };
+    }
 
-            var unassignedOperator = cb.isNull(root.get("bookingOperatorId"));
-            var pendingWithoutAttempt = cb.equal(status, BookingRequestStatus.PENDING);
-            var inProgressStale = cb.and(
-                    cb.equal(status, BookingRequestStatus.IN_PROGRESS),
-                    cb.or(
-                            cb.isNull(root.get("lastAttemptAt")),
-                            cb.lessThan(root.<Instant>get("lastAttemptAt"), staleBefore)));
-            var partiallyConfirmed = cb.equal(status, BookingRequestStatus.PARTIALLY_CONFIRMED);
-            var overdueNextAction = cb.and(
+    private static Predicate predicate(
+            WorkflowAttentionRule rule,
+            Root<BookingRequest> root,
+            CriteriaQuery<?> query,
+            CriteriaBuilder cb,
+            Instant now,
+            LocalDate today) {
+        var status = root.get("status");
+        return switch (rule.conditionKey()) {
+            case "UNASSIGNED_OPERATOR" -> cb.isNull(root.get("bookingOperatorId"));
+            case "STATUS_IS" -> cb.equal(status, rule.stateValue());
+            case "IN_PROGRESS_STALE" -> {
+                Instant staleBefore = now.minus(days(rule), ChronoUnit.DAYS);
+                yield cb.and(
+                        cb.equal(status, "IN_PROGRESS"),
+                        cb.or(
+                                cb.isNull(root.get("lastAttemptAt")),
+                                cb.lessThan(root.<Instant>get("lastAttemptAt"), staleBefore)));
+            }
+            case "HAS_FAILED_ITEM" -> hasFailedItem(root, query, cb);
+            case "HAS_PENDING_REQUIRED_ITEM" -> hasPendingRequiredItem(root, query, cb);
+            case "NEXT_ACTION_OVERDUE" -> cb.and(
                     cb.isNotNull(root.get("nextActionDate")),
                     cb.lessThan(root.<LocalDate>get("nextActionDate"), today));
-
-            return cb.and(
-                    cb.not(status.in(BookingRequestStatus.CONFIRMED, BookingRequestStatus.CANCELLED)),
-                    cb.or(
-                            unassignedOperator,
-                            pendingWithoutAttempt,
-                            inProgressStale,
-                            hasFailedItem(root, query, cb),
-                            hasPendingRequiredItem(root, query, cb),
-                            partiallyConfirmed,
-                            overdueNextAction));
+            default -> null;
         };
     }
 
@@ -71,7 +84,7 @@ public final class BookingRequestPendingSpecifications {
         Subquery<Integer> sub = query.subquery(Integer.class);
         Root<BookingRequest> parent = sub.correlate(root);
         Join<BookingRequest, BookingItem> items = parent.join("items");
-        sub.select(cb.literal(1)).where(cb.equal(items.get("status"), BookingItemStatus.FAILED));
+        sub.select(cb.literal(1)).where(cb.equal(items.get("status"), "FAILED"));
         return cb.exists(sub);
     }
 
@@ -82,9 +95,11 @@ public final class BookingRequestPendingSpecifications {
         Root<BookingRequest> parent = sub.correlate(root);
         Join<BookingRequest, BookingItem> items = parent.join("items");
         sub.select(cb.literal(1))
-                .where(cb.and(
-                        cb.isTrue(items.get("requiresBooking")),
-                        cb.equal(items.get("status"), BookingItemStatus.PENDING)));
+                .where(cb.and(cb.isTrue(items.get("requiresBooking")), cb.equal(items.get("status"), "PENDING")));
         return cb.exists(sub);
+    }
+
+    private static int days(WorkflowAttentionRule rule) {
+        return rule.thresholdDays() == null ? 0 : rule.thresholdDays();
     }
 }

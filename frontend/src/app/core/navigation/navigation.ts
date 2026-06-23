@@ -116,7 +116,22 @@ export class NavigationService {
       link('Motivos de perda', 'pi pi-database', '/cadastros/motivos-perda', false, 'Por que um lead é perdido.', 'ref'),
       link('Tipos de interação', 'pi pi-database', '/cadastros/tipos-interacao', false, 'Tipos de contato registrados.', 'ref'),
       link('Resultados de interação', 'pi pi-database', '/cadastros/resultados-interacao', false, 'Resultados possíveis de um contato.', 'ref'),
+      link('Tipos de atividade', 'pi pi-database', '/cadastros/tipos-atividade', false, 'Tipos de atividade comercial da oportunidade.', 'ref'),
+      link('Resultados de atividade', 'pi pi-database', '/cadastros/resultados-atividade', false, 'Resultados de uma atividade comercial.', 'ref'),
+      link('Motivos de perda (oportunidade)', 'pi pi-database', '/cadastros/motivos-perda-oportunidade', false, 'Por que uma oportunidade é perdida.', 'ref'),
+      link('Motivos de rejeição', 'pi pi-database', '/cadastros/motivos-rejeicao', false, 'Motivos de rejeição da proposta na revisão.', 'ref'),
+      link('Motivos de recusa do cliente', 'pi pi-database', '/cadastros/motivos-recusa-cliente', false, 'Por que o cliente recusa uma proposta enviada.', 'ref'),
+      link('Canais de envio', 'pi pi-database', '/cadastros/canais-envio', false, 'Canais de envio/apresentação da proposta.', 'ref'),
+      link('Tipos de item', 'pi pi-database', '/cadastros/tipos-item', false, 'Tipos de item da oferta comercial.', 'ref'),
+      link('Tipos de tentativa', 'pi pi-database', '/cadastros/tipos-tentativa', false, 'Tipos de tentativa manual de reserva.', 'ref'),
+      link('Resultados de tentativa', 'pi pi-database', '/cadastros/resultados-tentativa', false, 'Resultados de uma tentativa de reserva.', 'ref'),
+      link('Motivos de falha', 'pi pi-database', '/cadastros/motivos-falha', false, 'Por que um item de reserva falhou.', 'ref'),
     ];
+    if (this.auth.canManageWorkflows()) {
+      cadastros.push(
+        link('Workflows', 'pi pi-sitemap', '/cadastros/workflows', false, 'Os fluxos configuráveis: estados, transições e regras de atenção.', 'ref'),
+      );
+    }
 
     return [
       module('comercial', 'Comercial', 'pi pi-briefcase', 'leads', '/comercial', 'O funil comercial: leads, oportunidades, propostas e pedidos.', comercial, comercialActions),

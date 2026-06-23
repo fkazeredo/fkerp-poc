@@ -2,7 +2,6 @@ package com.fksoft.erp.domain.sales.service;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.sales.model.Proposal;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.service.data.ProposalSearchCriteria;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -40,10 +39,10 @@ public final class ProposalSpecifications {
 
     // Terminal-negative Proposals (REJECTED/EXPIRED/CANCELLED) never appear by default; pass them in the
     // status filter explicitly to see inactive Proposals.
-    private static Specification<Proposal> statusFilter(Set<ProposalStatus> statuses) {
+    private static Specification<Proposal> statusFilter(Set<String> statuses) {
         return (root, query, cb) -> {
             if (statuses == null || statuses.isEmpty()) {
-                return root.get("status").in(ProposalStatus.openStatuses());
+                return root.get("status").in(List.of("DRAFT", "READY_FOR_REVIEW", "APPROVED", "SENT", "ACCEPTED"));
             }
             return root.get("status").in(statuses);
         };

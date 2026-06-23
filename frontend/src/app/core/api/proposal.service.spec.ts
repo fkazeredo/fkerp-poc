@@ -51,7 +51,7 @@ describe('ProposalService', () => {
   });
 
   it('adds, updates and removes an item on the right endpoints', () => {
-    const item = { type: 'OTHER' as const, description: 'x', quantity: 1, unitValue: 10 };
+    const item = { typeId: 'item-type-id', description: 'x', quantity: 1, unitValue: 10 };
 
     service.addItem('p1', item).subscribe();
     const add = http.expectOne('/api/proposals/p1/items');

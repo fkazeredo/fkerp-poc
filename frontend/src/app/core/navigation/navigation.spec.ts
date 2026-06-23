@@ -10,6 +10,7 @@ describe('NavigationService', () => {
     canSeeProposals: vi.fn(),
     canSeeOrders: vi.fn(),
     canSeeBookings: vi.fn(),
+    canManageWorkflows: vi.fn(() => false),
   };
 
   function build(): NavigationService {
@@ -29,6 +30,7 @@ describe('NavigationService', () => {
     auth.canSeeProposals.mockReset().mockReturnValue(false);
     auth.canSeeOrders.mockReset().mockReturnValue(false);
     auth.canSeeBookings.mockReset().mockReturnValue(false);
+    auth.canManageWorkflows.mockReset().mockReturnValue(false);
   });
 
   it('shows only the modules the user can access', () => {
@@ -72,6 +74,14 @@ describe('NavigationService', () => {
 
     auth.canCreateLead.mockReturnValue(false);
     expect(build().module('comercial')!.actions).toHaveLength(0);
+  });
+
+  it('adds the Workflows destination to Cadastros only with the workflow:manage scope', () => {
+    const links = () => build().module('cadastros')!.items.map((i) => i.link);
+    expect(links()).not.toContain('/cadastros/workflows');
+
+    auth.canManageWorkflows.mockReturnValue(true);
+    expect(links()).toContain('/cadastros/workflows');
   });
 
   it('shows the Reservas module only when the user can see bookings', () => {

@@ -10,11 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
-import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.jayway.jsonpath.JsonPath;
 import java.math.BigDecimal;
@@ -75,10 +73,10 @@ class ProposalListingApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void defaultListExcludesTerminalNegativeProposals() throws Exception {
-        insertProposal("Ativa", MANAGER, ProposalStatus.DRAFT);
-        insertProposal("Cancelada", MANAGER, ProposalStatus.CANCELLED);
-        insertProposal("Rejeitada", MANAGER, ProposalStatus.REJECTED);
-        insertProposal("Expirada", MANAGER, ProposalStatus.EXPIRED);
+        insertProposal("Ativa", MANAGER, "DRAFT");
+        insertProposal("Cancelada", MANAGER, "CANCELLED");
+        insertProposal("Rejeitada", MANAGER, "REJECTED");
+        insertProposal("Expirada", MANAGER, "EXPIRED");
 
         mvc.perform(get("/api/proposals").header("Authorization", "Bearer " + manager()))
                 .andExpect(status().isOk())
@@ -90,8 +88,8 @@ class ProposalListingApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void filtersByStatusIncludingInactiveWhenAsked() throws Exception {
-        insertProposal("Ativa", MANAGER, ProposalStatus.DRAFT);
-        insertProposal("Cancelada", MANAGER, ProposalStatus.CANCELLED);
+        insertProposal("Ativa", MANAGER, "DRAFT");
+        insertProposal("Cancelada", MANAGER, "CANCELLED");
 
         mvc.perform(get("/api/proposals?status=CANCELLED").header("Authorization", "Bearer " + manager()))
                 .andExpect(status().isOk())
@@ -102,8 +100,8 @@ class ProposalListingApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void filtersByResponsible() throws Exception {
-        insertProposal("DoGerente", MANAGER, ProposalStatus.DRAFT);
-        insertProposal("DoRep", REPRESENTANTE, ProposalStatus.DRAFT);
+        insertProposal("DoGerente", MANAGER, "DRAFT");
+        insertProposal("DoRep", REPRESENTANTE, "DRAFT");
 
         mvc.perform(get("/api/proposals?responsible=" + REPRESENTANTE).header("Authorization", "Bearer " + manager()))
                 .andExpect(status().isOk())
@@ -139,8 +137,8 @@ class ProposalListingApiIntegrationTest extends AbstractIntegrationTest {
     void filtersBySourceOpportunity() throws Exception {
         Seeded a = insertOpportunity("OppA", MANAGER);
         Seeded b = insertOpportunity("OppB", MANAGER);
-        insertProposalFor("DaOppA", a, MANAGER, ProposalStatus.DRAFT, new BigDecimal("100.00"), null, Instant.now());
-        insertProposalFor("DaOppB", b, MANAGER, ProposalStatus.DRAFT, new BigDecimal("100.00"), null, Instant.now());
+        insertProposalFor("DaOppA", a, MANAGER, "DRAFT", new BigDecimal("100.00"), null, Instant.now());
+        insertProposalFor("DaOppB", b, MANAGER, "DRAFT", new BigDecimal("100.00"), null, Instant.now());
 
         mvc.perform(get("/api/proposals?opportunityId=" + a.opportunityId())
                         .header("Authorization", "Bearer " + manager()))
@@ -163,9 +161,8 @@ class ProposalListingApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void searchesByTitleAndSourceOpportunityName() throws Exception {
         Seeded acme = insertOpportunity("Acme Viagens", MANAGER);
-        insertProposalFor(
-                "Pacote Premium", acme, MANAGER, ProposalStatus.DRAFT, new BigDecimal("100.00"), null, Instant.now());
-        insertProposal("Outra coisa", MANAGER, ProposalStatus.DRAFT);
+        insertProposalFor("Pacote Premium", acme, MANAGER, "DRAFT", new BigDecimal("100.00"), null, Instant.now());
+        insertProposal("Outra coisa", MANAGER, "DRAFT");
 
         // By Proposal title.
         mvc.perform(get("/api/proposals?q=premium").header("Authorization", "Bearer " + manager()))
@@ -178,8 +175,8 @@ class ProposalListingApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void representativeSeesOnlyOwnProposals() throws Exception {
-        insertProposal("DoGerente", MANAGER, ProposalStatus.DRAFT);
-        insertProposal("DoRep", REPRESENTANTE, ProposalStatus.DRAFT);
+        insertProposal("DoGerente", MANAGER, "DRAFT");
+        insertProposal("DoRep", REPRESENTANTE, "DRAFT");
 
         mvc.perform(get("/api/proposals")
                         .header("Authorization", "Bearer " + login("representante", "representante123")))
@@ -191,8 +188,7 @@ class ProposalListingApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void exposesOnlyOperationalColumns() throws Exception {
         Seeded acme = insertOpportunity("Acme Viagens", MANAGER);
-        insertProposalFor(
-                "Contrato", acme, MANAGER, ProposalStatus.DRAFT, new BigDecimal("2500.00"), null, Instant.now());
+        insertProposalFor("Contrato", acme, MANAGER, "DRAFT", new BigDecimal("2500.00"), null, Instant.now());
 
         String body = mvc.perform(get("/api/proposals").header("Authorization", "Bearer " + manager()))
                 .andExpect(status().isOk())
@@ -232,7 +228,7 @@ class ProposalListingApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void filterByStatusNeverBypassesVisibility() throws Exception {
-        insertProposal("DoGerente", MANAGER, ProposalStatus.DRAFT);
+        insertProposal("DoGerente", MANAGER, "DRAFT");
         // Even asking for an explicit status, a representative still only sees their own (none here).
         mvc.perform(get("/api/proposals?status=DRAFT")
                         .header("Authorization", "Bearer " + login("representante", "representante123")))
@@ -244,33 +240,32 @@ class ProposalListingApiIntegrationTest extends AbstractIntegrationTest {
 
     private record Seeded(UUID opportunityId, UUID leadId) {}
 
-    private UUID insertProposal(String title, UUID responsibleId, ProposalStatus status) {
+    private UUID insertProposal(String title, UUID responsibleId, String status) {
         Seeded src = insertOpportunity(title, responsibleId);
         return insertProposalFor(title, src, responsibleId, status, new BigDecimal("100.00"), null, Instant.now());
     }
 
     private UUID insertProposalCreatedAt(String title, UUID responsibleId, Instant createdAt) {
         Seeded src = insertOpportunity(title, responsibleId);
-        return insertProposalFor(
-                title, src, responsibleId, ProposalStatus.DRAFT, new BigDecimal("100.00"), null, createdAt);
+        return insertProposalFor(title, src, responsibleId, "DRAFT", new BigDecimal("100.00"), null, createdAt);
     }
 
     private UUID insertProposalValidUntil(String title, UUID responsibleId, LocalDate validUntil) {
         Seeded src = insertOpportunity(title, responsibleId);
         return insertProposalFor(
-                title, src, responsibleId, ProposalStatus.DRAFT, new BigDecimal("100.00"), validUntil, Instant.now());
+                title, src, responsibleId, "DRAFT", new BigDecimal("100.00"), validUntil, Instant.now());
     }
 
     private UUID insertProposalTotal(String title, UUID responsibleId, BigDecimal total) {
         Seeded src = insertOpportunity(title, responsibleId);
-        return insertProposalFor(title, src, responsibleId, ProposalStatus.DRAFT, total, null, Instant.now());
+        return insertProposalFor(title, src, responsibleId, "DRAFT", total, null, Instant.now());
     }
 
     private UUID insertProposalFor(
             String title,
             Seeded src,
             UUID responsibleId,
-            ProposalStatus status,
+            String status,
             BigDecimal total,
             LocalDate validUntil,
             Instant createdAt) {
@@ -289,7 +284,7 @@ class ProposalListingApiIntegrationTest extends AbstractIntegrationTest {
                 responsibleId == null ? null : responsibleId.toString(),
                 title,
                 validUntil == null ? null : java.sql.Date.valueOf(validUntil),
-                status.name(),
+                status,
                 total,
                 total,
                 java.sql.Timestamp.from(createdAt),
@@ -314,7 +309,7 @@ class ProposalListingApiIntegrationTest extends AbstractIntegrationTest {
                 originId.toString(),
                 responsibleId == null ? null : responsibleId.toString(),
                 "Pacote " + name,
-                OpportunityStage.READY_FOR_PROPOSAL.name(),
+                "READY_FOR_PROPOSAL",
                 MANAGER.toString(),
                 MANAGER.toString());
         return new Seeded(id, leadId);

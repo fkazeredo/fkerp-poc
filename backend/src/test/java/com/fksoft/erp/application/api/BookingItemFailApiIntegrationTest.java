@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -88,10 +87,15 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         leads.deleteAll();
     }
 
-    private static final String VALID =
-            """
-            {"failureReason":"NO_AVAILABILITY","failureNote":"Fornecedor sem vaga","failedAt":"2026-06-10T10:00:00Z"}
-            """;
+    private String valid() {
+        return "{\"failureReasonId\":\"%s\",\"failureNote\":\"Fornecedor sem vaga\",\"failedAt\":\"2026-06-10T10:00:00Z\"}"
+                .formatted(refId("booking_failure_reasons", "NO_AVAILABILITY"));
+    }
+
+    private UUID refId(String table, String code) {
+        return UUID.fromString(
+                jdbc.queryForObject("SELECT id::text FROM " + table + " WHERE code = ?", String.class, code));
+    }
 
     private String failUrl(UUID request, UUID item) {
         return "/api/bookings/" + request + "/items/" + item + "/fail";
@@ -111,7 +115,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         String body = mvc.perform(post(failUrl(request, item))
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FAILED"))
                 .andExpect(jsonPath("$.itemsFailed").value(1))
@@ -124,7 +128,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         assertThat(pkg.get(0).get("status")).isEqualTo("FAILED");
         @SuppressWarnings("unchecked")
         Map<String, Object> failure = (Map<String, Object>) pkg.get(0).get("failure");
-        assertThat(failure.get("failureReason")).isEqualTo("NO_AVAILABILITY");
+        assertThat(failure.get("failureReason")).isEqualTo("Sem disponibilidade");
         assertThat(failure.get("failureNote")).isEqualTo("Fornecedor sem vaga");
         assertThat(failure.get("failedByName")).isEqualTo("operacoes");
         assertThat(failure.get("failedAt")).isNotNull();
@@ -150,7 +154,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post(failUrl(request, itemId(request, "CAR_RENTAL")))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PARTIALLY_CONFIRMED"))
                 .andExpect(jsonPath("$.itemsConfirmed").value(1))
@@ -169,18 +173,19 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
                         .content("{\"failedAt\":\"2026-06-10T10:00:00Z\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("validation.failed"))
-                .andExpect(jsonPath("$.fields[?(@.field=='failureReason')]").exists());
+                .andExpect(jsonPath("$.fields[?(@.field=='failureReasonId')]").exists());
+        UUID other = refId("booking_failure_reasons", "OTHER");
         // Missing date.
         mvc.perform(post(failUrl(request, item))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"failureReason\":\"OTHER\"}"))
+                        .content("{\"failureReasonId\":\"%s\"}".formatted(other)))
                 .andExpect(status().isBadRequest());
         // Future date.
         mvc.perform(post(failUrl(request, item))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"failureReason\":\"OTHER\",\"failedAt\":\"2099-01-01T10:00:00Z\"}"))
+                        .content("{\"failureReasonId\":\"%s\",\"failedAt\":\"2099-01-01T10:00:00Z\"}".formatted(other)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fields[?(@.field=='failedAt')]").exists());
     }
@@ -192,7 +197,8 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         String body = mvc.perform(post(failUrl(request, item))
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"failureReason\":\"PRICE_CHANGED\",\"failedAt\":\"2026-06-10T10:00:00Z\"}"))
+                        .content("{\"failureReasonId\":\"%s\",\"failedAt\":\"2026-06-10T10:00:00Z\"}"
+                                .formatted(refId("booking_failure_reasons", "PRICE_CHANGED"))))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -200,7 +206,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         List<Map<String, Object>> pkg = JsonPath.read(body, "$.items[?(@.type=='TRAVEL_PACKAGE')]");
         @SuppressWarnings("unchecked")
         Map<String, Object> failure = (Map<String, Object>) pkg.get(0).get("failure");
-        assertThat(failure.get("failureReason")).isEqualTo("PRICE_CHANGED");
+        assertThat(failure.get("failureReason")).isEqualTo("Preço alterado");
         assertThat(failure.get("failureNote")).isNull();
     }
 
@@ -211,7 +217,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post(failUrl(request, feeItem))
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("booking.item-not-failable"));
     }
@@ -231,7 +237,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post(failUrl(request, item))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("booking.item-already-resolved"));
     }
@@ -242,7 +248,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post(failUrl(request, UUID.randomUUID()))
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("booking.item-not-found"));
     }
@@ -255,7 +261,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post(failUrl(request, item))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FAILED"));
         // Registering a new attempt on the failed item is allowed; it is history and the item stays FAILED.
@@ -263,8 +269,11 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(
-                                "{\"bookingItemId\":\"%s\",\"type\":\"SUPPLIER_PHONE_CONTACT\",\"result\":\"NEEDS_RETRY\",\"description\":\"Tentando outro fornecedor\",\"occurredAt\":\"2026-06-10T11:00:00Z\"}"
-                                        .formatted(item)))
+                                "{\"bookingItemId\":\"%s\",\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"Tentando outro fornecedor\",\"occurredAt\":\"2026-06-10T11:00:00Z\"}"
+                                        .formatted(
+                                                item,
+                                                refId("booking_attempt_types", "SUPPLIER_PHONE_CONTACT"),
+                                                refId("booking_attempt_results", "NEEDS_RETRY"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FAILED"))
                 .andExpect(jsonPath("$.attempts.length()").value(1))
@@ -280,7 +289,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post(failUrl(request, item))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FAILED"));
         // Retry success: confirm the previously failed travel package → item CONFIRMED, request CONFIRMED.
@@ -304,7 +313,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post(failUrl(request, item))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isOk());
         mvc.perform(get("/api/bookings?hasFailedItems=true").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -318,7 +327,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post(failUrl(request, item))
                         .header("Authorization", "Bearer " + login("diretor", "diretor123"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isForbidden());
     }
 
@@ -329,7 +338,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post(failUrl(request, item))
                         .header("Authorization", "Bearer " + login("vendedor", "vendedor123"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isForbidden());
     }
 
@@ -342,7 +351,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post(failUrl(request, item))
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("booking.access-denied"));
     }
@@ -352,7 +361,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post(failUrl(UUID.randomUUID(), UUID.randomUUID()))
                         .header("Authorization", "Bearer " + operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("booking.not-found"));
     }
@@ -361,7 +370,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
     void rejectsUnauthenticated() throws Exception {
         mvc.perform(post(failUrl(UUID.randomUUID(), UUID.randomUUID()))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(VALID))
+                        .content(valid()))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -468,7 +477,7 @@ class BookingItemFailApiIntegrationTest extends AbstractIntegrationTest {
                 leadId.toString(),
                 originId.toString(),
                 MANAGER.toString(),
-                OpportunityStage.WON.name(),
+                "WON",
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

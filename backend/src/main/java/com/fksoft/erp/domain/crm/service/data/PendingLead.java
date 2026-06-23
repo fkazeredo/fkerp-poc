@@ -1,8 +1,6 @@
 package com.fksoft.erp.domain.crm.service.data;
 
 import com.fksoft.erp.domain.crm.model.Lead;
-import com.fksoft.erp.domain.crm.model.LeadStatus;
-import com.fksoft.erp.domain.crm.model.PendingReason;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -16,13 +14,13 @@ public record PendingLead(
         UUID id,
         String name,
         String mainContact,
-        LeadStatus status,
+        String status,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,
         Instant createdAt,
         Instant nextContactAt,
-        List<PendingReason> reasons) {
+        List<String> reasons) {
 
     /**
      * Maps a Lead entity (plus enrichment) to the pending item.
@@ -32,7 +30,7 @@ public record PendingLead(
      * @param reasons the pending reasons that currently apply
      * @return the pending item
      */
-    public static PendingLead from(Lead lead, String responsibleName, List<PendingReason> reasons) {
+    public static PendingLead from(Lead lead, String responsibleName, List<String> reasons) {
         return new PendingLead(
                 lead.id(),
                 lead.name(),

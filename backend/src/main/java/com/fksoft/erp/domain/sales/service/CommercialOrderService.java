@@ -1,6 +1,7 @@
 package com.fksoft.erp.domain.sales.service;
 
 import com.fksoft.erp.domain.crm.exception.LeadNotFoundException;
+import com.fksoft.erp.domain.crm.exception.OpportunityCannotBeMarkedWonException;
 import com.fksoft.erp.domain.crm.exception.OpportunityNotFoundException;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
@@ -15,7 +16,6 @@ import com.fksoft.erp.domain.sales.exception.ProposalAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CommercialOrderCreated;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.OrderIndicatorQueries;
@@ -24,6 +24,11 @@ import com.fksoft.erp.domain.sales.service.data.CommercialOrderDetail;
 import com.fksoft.erp.domain.sales.service.data.CommercialOrderListItem;
 import com.fksoft.erp.domain.sales.service.data.CommercialOrderSearchCriteria;
 import com.fksoft.erp.domain.sales.service.data.OrderIndicators;
+import com.fksoft.erp.domain.workflow.WorkflowContext;
+import com.fksoft.erp.domain.workflow.WorkflowEngine;
+import com.fksoft.erp.domain.workflow.WorkflowState;
+import com.fksoft.erp.domain.workflow.WorkflowStateRepository;
+import com.fksoft.erp.domain.workflow.WorkflowTransitionNotAllowedException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -52,8 +57,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class CommercialOrderService {
 
     // An Order counts against the "one active Order per Proposal" rule while it is not cancelled.
-    private static final Set<CommercialOrderStatus> ACTIVE_STATUSES =
-            Set.of(CommercialOrderStatus.PENDING_BOOKING, CommercialOrderStatus.BOOKING_NOT_REQUIRED);
+    private static final Set<String> ACTIVE_STATUSES = Set.of("PENDING_BOOKING", "BOOKING_NOT_REQUIRED");
+
+    /** The workflow definition code for the Commercial Order lifecycle. */
+    private static final String ORDER_WORKFLOW = "order";
 
     private final CommercialOrderRepository orders;
     private final OrderAccessPolicy accessPolicy;
@@ -64,6 +71,8 @@ public class CommercialOrderService {
     private final LeadRepository leads;
     private final UserRepository users;
     private final ApplicationEventPublisher events;
+    private final WorkflowEngine workflow;
+    private final WorkflowStateRepository workflowStates;
 
     /**
      * Creates a Commercial Order from an Accepted Proposal the caller is allowed to see, marks the source
@@ -90,12 +99,22 @@ public class CommercialOrderService {
         orders.findFirstByProposalIdAndStatusIn(proposalId, ACTIVE_STATUSES).ifPresent(existing -> {
             throw new CommercialOrderAlreadyExistsException(existing.id());
         });
-        CommercialOrder order = CommercialOrder.createFromProposal(proposal, userId, orders.nextOrderNumber());
+        WorkflowState pendingBooking = orderState("PENDING_BOOKING");
+        WorkflowState bookingNotRequired = orderState("BOOKING_NOT_REQUIRED");
+        CommercialOrder order = CommercialOrder.createFromProposal(
+                proposal, userId, orders.nextOrderNumber(), pendingBooking, bookingNotRequired);
         orders.save(order);
         // Close the source Opportunity as won (same transaction); this creates no Finance or Booking behavior.
         Opportunity opportunity =
                 opportunities.findById(proposal.opportunityId()).orElseThrow(OpportunityNotFoundException::new);
-        opportunity.markWon(userId);
+        WorkflowState wonState;
+        try {
+            wonState = workflow.apply(
+                    "opportunity", opportunity.currentState(), "win", WorkflowContext.of(opportunity, userId));
+        } catch (WorkflowTransitionNotAllowedException e) {
+            throw new OpportunityCannotBeMarkedWonException();
+        }
+        opportunity.applyWin(wonState, userId);
         opportunities.save(opportunity);
         events.publishEvent(new CommercialOrderCreated(
                 order.id(),
@@ -178,15 +197,14 @@ public class CommercialOrderService {
         Specification<CommercialOrder> visible = accessPolicy.visibleTo(userId, canSeeAll, canSeeUnassigned);
 
         // Volume — over the period.
-        Map<CommercialOrderStatus, Long> countByStatus = indicatorQueries.countByStatus(visible, from, to);
+        Map<String, Long> countByStatus = indicatorQueries.countByStatus(visible, from, to);
         long total = countByStatus.values().stream().mapToLong(Long::longValue).sum();
         BigDecimal totalAmount = indicatorQueries.sumTotal(visible, from, to);
         Map<UUID, Long> byResponsibleId = indicatorQueries.countByResponsible(visible, from, to);
 
         // Operational — current snapshot (no period).
-        long pendingBooking = indicatorQueries
-                .countByStatus(visible, null, null)
-                .getOrDefault(CommercialOrderStatus.PENDING_BOOKING, 0L);
+        long pendingBooking =
+                indicatorQueries.countByStatus(visible, null, null).getOrDefault("PENDING_BOOKING", 0L);
 
         Map<UUID, String> names = resolveNames(byResponsibleId.keySet().stream());
         List<OrderIndicators.ResponsibleCount> responsibleCounts = byResponsibleId.entrySet().stream()
@@ -203,6 +221,12 @@ public class CommercialOrderService {
         Lead lead = leads.findById(order.leadId()).orElseThrow(LeadNotFoundException::new);
         Map<UUID, String> names = resolveNames(Stream.of(order.responsiblePersonId(), order.createdBy()));
         return CommercialOrderDetail.from(order, proposal, opportunity, lead, names);
+    }
+
+    private WorkflowState orderState(String code) {
+        return workflowStates
+                .findByDefinition_CodeAndCode(ORDER_WORKFLOW, code)
+                .orElseThrow(() -> new IllegalStateException("Missing Commercial Order workflow state: " + code));
     }
 
     private CommercialOrder loadVisible(UUID id, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {

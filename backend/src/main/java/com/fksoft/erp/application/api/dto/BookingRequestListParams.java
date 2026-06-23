@@ -1,7 +1,5 @@
 package com.fksoft.erp.application.api.dto;
 
-import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
-import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
@@ -18,15 +16,15 @@ import org.springframework.format.annotation.DateTimeFormat;
  * @param createdFrom inclusive lower bound on the creation date (ISO date)
  * @param createdTo inclusive upper bound on the creation date (ISO date)
  * @param order restrict to a single source Commercial Order id
- * @param itemType restrict to requests that contain an item of this type
+ * @param itemType restrict to requests that contain an item of this type (the item-type code)
  * @param hasFailedItems restrict to requests that contain at least one failed item
  */
 public record BookingRequestListParams(
-        Set<BookingRequestStatus> status,
+        Set<String> status,
         String operator,
         UUID responsible,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdTo,
         UUID order,
-        ProposalItemType itemType,
+        String itemType,
         Boolean hasFailedItems) {}

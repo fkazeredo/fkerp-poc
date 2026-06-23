@@ -1,6 +1,5 @@
 package com.fksoft.erp.domain.crm.service.data;
 
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -25,7 +24,7 @@ import java.util.UUID;
  *     (name and contacts)
  */
 public record OpportunitySearchCriteria(
-        Set<OpportunityStage> stages,
+        Set<String> stages,
         UUID responsibleId,
         boolean unassignedOnly,
         UUID originId,

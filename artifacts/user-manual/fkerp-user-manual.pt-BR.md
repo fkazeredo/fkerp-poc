@@ -836,17 +836,25 @@ dados financeiros, de pagamento, de comissão ou de integração externa (integr
 
 ## 11. Gerenciando cadastros
 
-Os cadastros são as listas que alimentam o formulário de Lead e fluxos futuros. São quatro, todas
-gerenciadas do mesmo jeito:
+Os cadastros são as **listas que alimentam os formulários** de todo o sistema — as opções que você
+escolhe nos campos de tipo, motivo, resultado e canal. A partir desta versão, **praticamente todas essas
+listas são editáveis** pela administração: você pode **adicionar, renomear, reordenar e desativar** opções
+**sem depender de uma nova versão do sistema**. O que antes era fixo no programa agora é dado que você
+controla.
 
-| Cadastro | Usado para |
-|----------|------------|
-| **Origens** | De onde vêm os Leads. |
-| **Motivos de perda** | Por que um Lead acaba sendo perdido. |
-| **Tipos de interação** | Tipos de contato (ligação, WhatsApp, nota…). |
-| **Resultados de interação** | Desfecho de um contato. |
+São gerenciadas do mesmo jeito, organizadas por área:
 
-Abra-os em **Cadastros** no menu superior ou pela paleta de comandos.
+| Área | Cadastros |
+|------|-----------|
+| **Leads** | Origens · Motivos de perda · Tipos de interação · Resultados de interação |
+| **Oportunidades** | Tipos de atividade · Resultados de atividade · Motivos de perda (oportunidade) |
+| **Propostas** | Motivos de rejeição · Motivos de recusa do cliente · Canais de envio · Tipos de item |
+| **Reservas** | Tipos de tentativa · Resultados de tentativa · Motivos de falha |
+
+Quando você renomeia uma opção, o novo rótulo passa a aparecer nas telas operacionais imediatamente; quando
+você **desativa** uma opção, ela deixa de ser oferecida em novos registros, mas continua visível nos
+registros antigos que já a usavam (fidelidade histórica). Abra os cadastros em **Cadastros** no menu, ou
+pela paleta de comandos.
 
 ### 11.1 A lista
 
@@ -874,6 +882,33 @@ alternar.
   permanecem para a fidelidade histórica, mas **não podem ser usados em novos Leads**.
 - Para um registro inativo, clique no ícone de **check** para **reativá-lo**.
 
+### 11.5 Editor de fluxos de trabalho (Workflows)
+
+Além das listas simples, o administrador pode visualizar e ajustar os **fluxos de trabalho** do sistema —
+os caminhos que um Lead, uma Oportunidade ou uma Reserva percorre. Abra **Cadastros → Workflows** (atalho
+`g` depois `w`, ou pela paleta de comandos). Esse destino só aparece para quem tem o perfil de
+administração.
+
+A lista mostra um cartão por fluxo (por exemplo, **Lead**, **Oportunidade**, **Reserva**). Ao abrir um
+fluxo, ele é desenhado como um **diagrama**: cada **estado** (situação) é uma caixa e cada **transição**
+(passo permitido entre situações) é uma seta. É a forma visual de entender como o trabalho avança.
+
+No editor você pode:
+
+- **Ajustar um estado** — clique numa caixa do diagrama para abrir o painel de edição e alterar o **rótulo**
+  (o nome exibido), a **ordem** e se ele está **ativo**. O código interno e o tipo do estado são fixos.
+- **Consultar uma transição** — as setas mostram o passo e as regras do fluxo apenas para leitura; a estrutura
+  do processo é definida pelo sistema e não é alterada aqui.
+- **Gerenciar as regras de atenção** — no painel ao lado, cada fluxo tem as **regras que explicam por que um
+  registro aparece na lista de pendências** (por exemplo, "sem atividade recente", "próxima ação vencida").
+  Você pode **criar** uma regra nova (escolhendo a condição, um código, uma descrição e, quando a condição
+  pedir, uma janela em dias ou um estado de referência), **renomear** ou **reordenar** as existentes,
+  **ativar/desativar** e **excluir** as que você criou. As regras que já vêm com o sistema podem ser
+  renomeadas e ativadas/desativadas, mas não excluídas.
+
+Assim, **o que conta como "pendência"** em cada área deixa de ser fixo no programa e passa a ser configurável
+pela administração — sem trocar de versão.
+
 ---
 
 ## 12. Mensagens e validação
@@ -900,7 +935,8 @@ acessível pelo teclado:
 - **`Ctrl`/`Cmd` + `K`** — a **paleta de comandos**: busque e vá para qualquer tela ou ação de qualquer lugar.
 - **`?`** — mostra a ajuda completa de atalhos a qualquer momento.
 - **Ir para (tecle `g`, depois uma letra):** `g i` Início · `g l` Leads · `g o` Oportunidades · `g p`
-  Propostas · `g d` Pedidos · `g r` Reservas · `g c` Cadastros. **`n`** cria um novo lead.
+  Propostas · `g d` Pedidos · `g r` Reservas · `g c` Cadastros · `g w` Workflows (administração). **`n`**
+  cria um novo lead.
 - **Em um lead:** `i` registrar interação · `q` qualificar · `o` criar oportunidade · `p` marcar perdido ·
   `r` reatribuir · `Esc` voltar.
 - **Em uma oportunidade:** `a` registrar atividade · `e` editar dados · `s` avançar estágio · `p` marcar

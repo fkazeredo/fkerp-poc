@@ -3,9 +3,9 @@ package com.fksoft.erp.application.api;
 import com.fksoft.erp.application.api.dto.ReferenceCreateRequest;
 import com.fksoft.erp.application.api.dto.ReferenceResponse;
 import com.fksoft.erp.application.api.dto.ReferenceUpdateRequest;
-import com.fksoft.erp.domain.crm.model.ReferenceData;
-import com.fksoft.erp.domain.crm.service.AbstractReferenceDataService;
-import com.fksoft.erp.domain.crm.service.data.ReferenceCommand;
+import com.fksoft.erp.domain.reference.AbstractReferenceDataService;
+import com.fksoft.erp.domain.reference.ReferenceCommand;
+import com.fksoft.erp.domain.reference.ReferenceData;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -21,8 +21,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
- * Shared CRUD endpoints for a CRM reference-data cadastro. Reading requires authentication; writing
- * requires the {@code crm:reference:manage} scope (enforced by the security config). Delete is a
+ * Shared CRUD endpoints for a reference-data cadastro (any domain). Reading requires authentication;
+ * writing requires the {@code reference:manage} scope (enforced by the security config). Delete is a
  * soft delete (deactivate).
  *
  * @param <T> the reference-data type

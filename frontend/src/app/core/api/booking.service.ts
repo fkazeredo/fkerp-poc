@@ -44,23 +44,23 @@ export type BookingAttemptResult =
   | 'FAILED'
   | 'OTHER';
 
-/** A single manual booking attempt in the operational history. */
+/** A single manual booking attempt in the operational history ({@code type}/{@code result} are labels). */
 export interface BookingAttempt {
   id: string;
   bookingItemId: string | null;
-  type: BookingAttemptType;
-  result: BookingAttemptResult;
+  type: string;
+  result: string;
   description: string;
   occurredAt: string;
   nextActionDate: string | null;
   registeredByName: string | null;
 }
 
-/** Payload to register a manual booking attempt. */
+/** Payload to register a manual booking attempt (the attempt-type / result cadastro ids). */
 export interface RegisterBookingAttempt {
   bookingItemId?: string | null;
-  type: BookingAttemptType;
-  result: BookingAttemptResult;
+  typeId: string;
+  resultId: string;
   description: string;
   occurredAt: string;
   nextActionDate?: string | null;
@@ -158,17 +158,17 @@ export type BookingFailureReason =
   | 'OUT_OF_POLICY'
   | 'OTHER';
 
-/** The failure recorded when a booking item is manually marked as failed. No monetary data. */
+/** The failure recorded when a booking item is manually marked as failed ({@code failureReason} is a label). */
 export interface BookingItemFailure {
-  failureReason: BookingFailureReason;
+  failureReason: string;
   failureNote: string | null;
   failedByName: string | null;
   failedAt: string;
 }
 
-/** Payload to mark a booking item as failed. */
+/** Payload to mark a booking item as failed (the failure-reason cadastro id). */
 export interface FailBookingItem {
-  failureReason: BookingFailureReason;
+  failureReasonId: string;
   failureNote?: string | null;
   failedAt: string;
 }
@@ -200,7 +200,8 @@ export interface BookingItemConfirmation {
 export interface BookingRequestItem {
   id: string;
   orderItemId: string;
-  type: ProposalItemType;
+  type: string;
+  typeLabel: string;
   description: string;
   quantity: number;
   requiresBooking: boolean;
@@ -299,9 +300,9 @@ export interface BookingStatusCount {
   count: number;
 }
 
-/** A booking-item count for an item type (indicators). */
+/** A booking-item count for an item type (indicators); {@code type} is the item-type code. */
 export interface BookingItemTypeCount {
-  type: ProposalItemType;
+  type: string;
   count: number;
 }
 

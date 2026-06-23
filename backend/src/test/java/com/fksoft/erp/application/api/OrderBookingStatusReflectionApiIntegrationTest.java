@@ -7,11 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
-import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.jayway.jsonpath.JsonPath;
@@ -101,12 +99,14 @@ class OrderBookingStatusReflectionApiIntegrationTest extends AbstractIntegration
         String token = operator();
         UUID request = createRequest(order, token);
 
-        mvc.perform(
-                        post("/api/bookings/" + request + "/attempts")
-                                .header("Authorization", "Bearer " + token)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        "{\"type\":\"INTERNAL_VERIFICATION\",\"result\":\"STARTED\",\"description\":\"Checando\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"))
+        mvc.perform(post("/api/bookings/" + request + "/attempts")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"Checando\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"
+                                        .formatted(
+                                                refId("booking_attempt_types", "INTERNAL_VERIFICATION"),
+                                                refId("booking_attempt_results", "STARTED"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
 
@@ -156,14 +156,15 @@ class OrderBookingStatusReflectionApiIntegrationTest extends AbstractIntegration
         mvc.perform(post("/api/bookings/" + request + "/items/" + bookingItemId(request, "TRAVEL_PACKAGE") + "/fail")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"failureReason\":\"NO_AVAILABILITY\",\"failedAt\":\"2026-06-10T10:00:00Z\"}"))
+                        .content("{\"failureReasonId\":\"%s\",\"failedAt\":\"2026-06-10T10:00:00Z\"}"
+                                .formatted(refId("booking_failure_reasons", "NO_AVAILABILITY"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FAILED"));
 
         // The Order is identifiable as having a booking problem, but is NOT cancelled (Booking takes no ownership).
         assertThat(bookingStatusOf(order, token)).isEqualTo("FAILED");
         assertThat(lifecycleStatusOf(order, token)).isEqualTo("PENDING_BOOKING");
-        assertThat(lifecycleStatusOf(order, token)).isNotEqualTo(CommercialOrderStatus.CANCELLED.name());
+        assertThat(lifecycleStatusOf(order, token)).isNotEqualTo("CANCELLED");
     }
 
     @Test
@@ -176,7 +177,8 @@ class OrderBookingStatusReflectionApiIntegrationTest extends AbstractIntegration
         mvc.perform(post("/api/bookings/" + request + "/items/" + item + "/fail")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"failureReason\":\"NO_AVAILABILITY\",\"failedAt\":\"2026-06-10T10:00:00Z\"}"))
+                        .content("{\"failureReasonId\":\"%s\",\"failedAt\":\"2026-06-10T10:00:00Z\"}"
+                                .formatted(refId("booking_failure_reasons", "NO_AVAILABILITY"))))
                 .andExpect(status().isOk());
         assertThat(bookingStatusOf(order, token)).isEqualTo("FAILED");
 
@@ -231,6 +233,11 @@ class OrderBookingStatusReflectionApiIntegrationTest extends AbstractIntegration
                         "sourceLead");
     }
 
+    private UUID refId(String table, String code) {
+        return UUID.fromString(
+                jdbc.queryForObject("SELECT id::text FROM " + table + " WHERE code = ?", String.class, code));
+    }
+
     private UUID createRequest(UUID order, String token) throws Exception {
         String created = mvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer " + token)
@@ -263,7 +270,8 @@ class OrderBookingStatusReflectionApiIntegrationTest extends AbstractIntegration
 
     private UUID bookingItemId(UUID requestId, String type) {
         return jdbc.queryForObject(
-                "SELECT id FROM booking_items WHERE booking_request_id = ?::uuid AND type = ? LIMIT 1",
+                "SELECT bi.id FROM booking_items bi JOIN proposal_item_types t ON t.id = bi.type_id "
+                        + "WHERE bi.booking_request_id = ?::uuid AND t.code = ? LIMIT 1",
                 UUID.class,
                 requestId.toString(),
                 type);
@@ -339,7 +347,7 @@ class OrderBookingStatusReflectionApiIntegrationTest extends AbstractIntegration
                 originId.toString(),
                 MANAGER.toString(),
                 "Pacote " + name,
-                OpportunityStage.WON.name(),
+                "WON",
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fksoft.erp.AbstractIntegrationTest;
-import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
@@ -53,9 +52,9 @@ class OpportunityStageApiIntegrationTest extends AbstractIntegrationTest {
         leads.deleteAll();
         originId = origins.findByActiveTrueOrderBySortOrderAsc().get(0).id();
         phoneSeq = 0;
-        managerOpp = insertOpportunity("Aurora", OpportunityStage.NEW_OPPORTUNITY, MANAGER);
-        repOpp = insertOpportunity("Beta", OpportunityStage.NEW_OPPORTUNITY, REPRESENTANTE);
-        lostOpp = insertOpportunity("Gamma", OpportunityStage.LOST, MANAGER);
+        managerOpp = insertOpportunity("Aurora", "NEW_OPPORTUNITY", MANAGER);
+        repOpp = insertOpportunity("Beta", "NEW_OPPORTUNITY", REPRESENTANTE);
+        lostOpp = insertOpportunity("Gamma", "LOST", MANAGER);
     }
 
     @Test
@@ -154,7 +153,10 @@ class OpportunityStageApiIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"stage\":\"BOGUS\"}")
                         .header("Authorization", "Bearer " + manager()))
-                .andExpect(status().isBadRequest());
+                // With the data-driven workflow, an unknown/disallowed target stage is rejected by the engine
+                // as an invalid transition (422), not as an enum-deserialization error (400).
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("opportunity.invalid-stage-transition"));
     }
 
     @Test
@@ -162,7 +164,10 @@ class OpportunityStageApiIntegrationTest extends AbstractIntegrationTest {
         String token = manager();
         mvc.perform(post("/api/opportunities/" + managerOpp + "/lose")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"NO_BUDGET\"}")
+                        .content("{\"lossReasonId\":\"%s\"}"
+                                .formatted(UUID.fromString(jdbc.queryForObject(
+                                        "SELECT id::text FROM opportunity_loss_reasons WHERE code = 'NO_BUDGET'",
+                                        String.class))))
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stage").value("LOST"))
@@ -181,7 +186,7 @@ class OpportunityStageApiIntegrationTest extends AbstractIntegrationTest {
                 .header("Authorization", "Bearer " + token));
     }
 
-    private UUID insertOpportunity(String name, OpportunityStage stage, UUID responsibleId) {
+    private UUID insertOpportunity(String name, String stage, UUID responsibleId) {
         UUID leadId = insertLead(name, responsibleId);
         UUID id = UUID.randomUUID();
         jdbc.update(
@@ -197,8 +202,8 @@ class OpportunityStageApiIntegrationTest extends AbstractIntegrationTest {
                 originId.toString(),
                 responsibleId == null ? null : responsibleId.toString(),
                 "Interesse " + name,
-                stage.name(),
-                stage == OpportunityStage.LOST ? "OTHER" : null,
+                stage,
+                "LOST".equals(stage) ? "OTHER" : null,
                 MANAGER.toString(),
                 MANAGER.toString());
         return id;

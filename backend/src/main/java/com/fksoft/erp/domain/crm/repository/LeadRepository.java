@@ -51,7 +51,7 @@ public interface LeadRepository extends JpaRepository<Lead, UUID>, JpaSpecificat
     @Query(
             """
             SELECT l FROM Lead l
-            WHERE l.status <> com.fksoft.erp.domain.crm.model.LeadStatus.LOST
+            WHERE l.status <> 'LOST'
               AND ( (:email IS NOT NULL AND LOWER(l.email) = :email)
                  OR (:phone IS NOT NULL AND (l.phone = :phone OR l.whatsapp = :phone))
                  OR (:whatsapp IS NOT NULL AND (l.phone = :whatsapp OR l.whatsapp = :whatsapp)) )
