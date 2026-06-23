@@ -5,6 +5,7 @@ import { crmReadGuard } from './core/auth/crm-read.guard';
 import { opportunityReadGuard } from './core/auth/opportunity-read.guard';
 import { orderReadGuard } from './core/auth/order-read.guard';
 import { proposalReadGuard } from './core/auth/proposal-read.guard';
+import { workflowManageGuard } from './core/auth/workflow-manage.guard';
 import { unsavedChangesGuard } from './core/guards/unsaved-changes.guard';
 
 export const routes: Routes = [
@@ -216,6 +217,19 @@ export const routes: Routes = [
         canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
+      },
+      {
+        path: 'cadastros/workflows',
+        canActivate: [workflowManageGuard],
+        loadComponent: () =>
+          import('./features/workflows/workflow-list/workflow-list').then((m) => m.WorkflowList),
+      },
+      {
+        path: 'cadastros/workflows/:code',
+        canActivate: [workflowManageGuard],
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/workflows/workflow-editor/workflow-editor').then((m) => m.WorkflowEditor),
       },
     ],
   },

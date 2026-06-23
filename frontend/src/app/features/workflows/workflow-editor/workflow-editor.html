@@ -1,0 +1,235 @@
+@if (loading()) {
+  <p class="muted">Carregando…</p>
+} @else if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+  <div class="back">
+    <p-button label="Voltar aos workflows" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
+  </div>
+} @else if (workflow(); as wf) {
+  <header class="head">
+    <p-button
+      icon="pi pi-arrow-left"
+      [text]="true"
+      severity="secondary"
+      size="small"
+      (onClick)="back()"
+    />
+    <h1>{{ wf.label }}</h1>
+    <span class="muted code">{{ wf.code }}</span>
+  </header>
+
+  <p-card styleClass="graph-card">
+    @if (nodes().length === 0) {
+      <p class="muted">Este workflow não tem estados.</p>
+    } @else {
+      <div class="chart-wrap">
+        <ngx-graph
+          class="chart"
+          [nodes]="nodes()"
+          [links]="links()"
+          [layout]="'dagre'"
+          [layoutSettings]="{ orientation: 'LR', marginX: 40, marginY: 40, rankPadding: 80 }"
+          [update$]="update$"
+          [enableDrag]="false"
+          [enablePan]="false"
+          [enableZoom]="false"
+          [autoZoom]="true"
+          [autoCenter]="true"
+          [nodeWidth]="190"
+          [nodeHeight]="70"
+        >
+          <ng-template #defsTemplate>
+            <svg:marker
+              id="arrow"
+              viewBox="0 -5 10 10"
+              refX="9"
+              refY="0"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto"
+            >
+              <svg:path d="M0,-5L10,0L0,5" class="arrow-head" />
+            </svg:marker>
+          </ng-template>
+
+          <ng-template #nodeTemplate let-node>
+            <svg:g
+              class="wf-node"
+              [class.inactive]="!node.data.state.active"
+              [class.selected]="isStateSelected(node.id)"
+              (click)="onNodeClick(node)"
+            >
+              <svg:rect
+                [attr.width]="node.dimension?.width || 190"
+                [attr.height]="node.dimension?.height || 70"
+                rx="10"
+                [attr.class]="'node-box cat-' + node.data.state.category"
+              />
+              <svg:text class="node-label" x="14" [attr.y]="28">{{ node.label }}</svg:text>
+              <svg:text class="node-cat" x="14" [attr.y]="50">
+                {{ categoryLabel(node.data.state.category) }}
+                @if (node.data.state.system) {
+                  · sistema
+                }
+                @if (!node.data.state.active) {
+                  · inativo
+                }
+              </svg:text>
+            </svg:g>
+          </ng-template>
+
+          <ng-template #linkTemplate let-link>
+            <svg:g class="wf-edge" (click)="onLinkClick(link)">
+              <svg:path class="line" marker-end="url(#arrow)"></svg:path>
+              <svg:text class="edge-label" text-anchor="middle">
+                <svg:textPath
+                  class="text-path"
+                  [attr.href]="'#' + link.id"
+                  startOffset="50%"
+                  >{{ link.label }}</svg:textPath
+                >
+              </svg:text>
+            </svg:g>
+          </ng-template>
+        </ngx-graph>
+      </div>
+    }
+    <p class="muted hint">
+      Clique num estado para editar seu rótulo, ordem e situação. As transições mostram as regras do fluxo
+      (somente leitura — a topologia é estrutura do sistema).
+    </p>
+  </p-card>
+
+  <div class="panels">
+    <p-card styleClass="panel" header="Edição">
+      @if (selectedState(); as st) {
+        <div class="field">
+          <label>Código</label>
+          <div class="readonly">{{ st.code }} <p-tag [value]="categoryLabel(st.category)" [severity]="categorySeverity(st.category)" /></div>
+        </div>
+        <div class="field">
+          <label for="slabel">Rótulo <span class="req">*</span></label>
+          <input pInputText id="slabel" [(ngModel)]="stateLabel" maxlength="120" class="w-full" />
+        </div>
+        <div class="field">
+          <label for="sorder">Ordem</label>
+          <p-inputNumber inputId="sorder" [(ngModel)]="stateSortOrder" [min]="0" styleClass="w-full" />
+        </div>
+        <div class="field-check">
+          <p-checkbox inputId="sactive" [(ngModel)]="stateActive" [binary]="true" />
+          <label for="sactive">Ativo</label>
+        </div>
+        <div class="actions">
+          <p-button label="Salvar estado" icon="pi pi-check" [disabled]="!canSaveState()" [loading]="acting()" (onClick)="saveState()" />
+          <p-button label="Fechar" severity="secondary" [text]="true" (onClick)="closePanel()" />
+        </div>
+      } @else if (selectedTransition(); as tr) {
+        <div class="field">
+          <label>Transição</label>
+          <div class="readonly">{{ tr.fromState }} → {{ tr.toState }}</div>
+        </div>
+        <div class="field"><label>Rótulo</label><div class="readonly">{{ tr.label }}</div></div>
+        <div class="field"><label>Gatilho</label><div class="readonly">{{ tr.trigger }}</div></div>
+        <div class="field">
+          <label>Regras do fluxo</label>
+          @if (tr.rules.length === 0) {
+            <div class="readonly muted">Sem regras.</div>
+          } @else {
+            <ul class="rules">
+              @for (r of tr.rules; track r.id) {
+                <li><strong>{{ r.kind }}</strong> · {{ r.ruleKey }} @if (r.params) { <span class="muted">({{ r.params }})</span> }</li>
+              }
+            </ul>
+          }
+        </div>
+        <div class="actions">
+          <p-button label="Fechar" severity="secondary" [text]="true" (onClick)="closePanel()" />
+        </div>
+      } @else if (selection()?.kind === 'attention-new' || selection()?.kind === 'attention') {
+        @let editing = editingRule();
+        <div class="field">
+          <label for="rcond">Condição <span class="req">*</span></label>
+          <p-select
+            inputId="rcond"
+            [options]="conditionOptions()"
+            optionLabel="conditionKey"
+            optionValue="conditionKey"
+            [(ngModel)]="ruleConditionKey"
+            [disabled]="!!editing"
+            placeholder="Selecione a condição"
+            styleClass="w-full"
+            appendTo="body"
+          />
+        </div>
+        <div class="field">
+          <label for="rcode">Código <span class="req">*</span></label>
+          <input pInputText id="rcode" [(ngModel)]="ruleCode" [disabled]="!!editing" maxlength="60" class="w-full" placeholder="EX_MOTIVO" />
+        </div>
+        <div class="field">
+          <label for="rlabel">Descrição <span class="req">*</span></label>
+          <input pInputText id="rlabel" [(ngModel)]="ruleLabel" maxlength="120" class="w-full" />
+        </div>
+        @if (chosenCondition()?.usesDays) {
+          <div class="field">
+            <label for="rdays">Janela (dias) <span class="req">*</span></label>
+            <p-inputNumber inputId="rdays" [(ngModel)]="ruleThresholdDays" [min]="0" styleClass="w-full" />
+          </div>
+        }
+        @if (chosenCondition()?.usesState && !editing) {
+          <div class="field">
+            <label for="rstate">Estado/Status <span class="req">*</span></label>
+            <input pInputText id="rstate" [(ngModel)]="ruleStateValue" maxlength="60" class="w-full" />
+          </div>
+        }
+        <div class="field">
+          <label for="rorder">Ordem</label>
+          <p-inputNumber inputId="rorder" [(ngModel)]="ruleSortOrder" [min]="0" styleClass="w-full" />
+        </div>
+        @if (editing) {
+          <div class="field-check">
+            <p-checkbox inputId="ractive" [(ngModel)]="ruleActive" [binary]="true" />
+            <label for="ractive">Ativa</label>
+          </div>
+        }
+        <div class="actions">
+          <p-button [label]="editing ? 'Salvar regra' : 'Criar regra'" icon="pi pi-check" [disabled]="!canSaveRule()" [loading]="acting()" (onClick)="saveRule()" />
+          <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="closePanel()" />
+        </div>
+      } @else {
+        <p class="muted">Clique num estado no diagrama, ou numa regra de atenção ao lado, para editar.</p>
+      }
+    </p-card>
+
+    <p-card styleClass="panel" header="Regras de atenção">
+      <p class="muted hint">
+        Os motivos que marcam por que um registro aparece na lista de pendências deste fluxo.
+      </p>
+      @if (wf.attentionRules.length === 0) {
+        <p class="muted">Nenhuma regra ainda.</p>
+      } @else {
+        <ul class="rule-list">
+          @for (r of wf.attentionRules; track r.id) {
+            <li [class.inactive]="!r.active" [class.selected]="selection()?.kind === 'attention' && editingRule()?.id === r.id">
+              <button type="button" class="rule-open" (click)="openRule(r)">
+                <span class="rule-label">{{ r.label }}</span>
+                <span class="rule-meta muted">
+                  {{ r.conditionKey }}
+                  @if (r.thresholdDays != null) { · {{ r.thresholdDays }}d }
+                  @if (r.stateValue) { · {{ r.stateValue }} }
+                  @if (r.system) { · sistema }
+                  @if (!r.active) { · inativa }
+                </span>
+              </button>
+              @if (!r.system) {
+                <p-button icon="pi pi-trash" severity="danger" [text]="true" [rounded]="true" size="small" (onClick)="deleteRule(r)" />
+              }
+            </li>
+          }
+        </ul>
+      }
+      <div class="actions">
+        <p-button label="Nova regra de atenção" icon="pi pi-plus" size="small" [disabled]="conditionOptions().length === 0" (onClick)="openNewRule()" />
+      </div>
+    </p-card>
+  </div>
+}

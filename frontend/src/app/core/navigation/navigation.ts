@@ -127,6 +127,11 @@ export class NavigationService {
       link('Resultados de tentativa', 'pi pi-database', '/cadastros/resultados-tentativa', false, 'Resultados de uma tentativa de reserva.', 'ref'),
       link('Motivos de falha', 'pi pi-database', '/cadastros/motivos-falha', false, 'Por que um item de reserva falhou.', 'ref'),
     ];
+    if (this.auth.canManageWorkflows()) {
+      cadastros.push(
+        link('Workflows', 'pi pi-sitemap', '/cadastros/workflows', false, 'Os fluxos configuráveis: estados, transições e regras de atenção.', 'ref'),
+      );
+    }
 
     return [
       module('comercial', 'Comercial', 'pi pi-briefcase', 'leads', '/comercial', 'O funil comercial: leads, oportunidades, propostas e pedidos.', comercial, comercialActions),
