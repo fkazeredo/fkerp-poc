@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -65,10 +65,13 @@ export class Shell {
       .subscribe(() => this.openModule.set(this.activeModuleId()));
   }
 
-  /** The modules the user can navigate (single source of truth, shared with the homes). */
-  protected get modules() {
-    return this.nav.modules();
-  }
+  /**
+   * The modules the user can navigate (single source of truth, shared with the homes). A memoized signal: it
+   * recomputes only when the auth scopes change (login/logout), so the array keeps a stable identity between
+   * change-detection cycles. That stability is essential — fed a fresh array every cycle, the command
+   * palette's p-listbox re-renders and detaches its option DOM mid-click, silently dropping the selection.
+   */
+  protected readonly modules = computed(() => this.nav.modules());
 
   /** Whether a module's sub-menu is open (only one at a time — the selected/active module). */
   protected isOpen(id: string): boolean {
@@ -92,10 +95,15 @@ export class Shell {
     return null;
   }
 
-  /** The command palette, derived from the navigation config plus the global actions. */
-  protected get commands(): Command[] {
+  /**
+   * The command palette, derived from the navigation config plus the global actions. A memoized signal (see
+   * {@link modules}) so the option list keeps a stable identity across change-detection cycles; otherwise the
+   * p-listbox re-renders every cycle and its option elements detach mid-click, silently dropping the
+   * selection (the click never lands).
+   */
+  protected readonly commands = computed<Command[]>(() => {
     const navCommands: Command[] = [{ label: 'Início', icon: 'pi pi-home', run: () => this.go('/') }];
-    for (const m of this.modules) {
+    for (const m of this.modules()) {
       navCommands.push({ label: m.title, icon: m.icon, run: () => this.go(m.home) });
       for (const item of [...m.items, ...m.actions]) {
         navCommands.push({ label: item.label, icon: item.icon, run: () => this.go(item.link) });
@@ -107,7 +115,7 @@ export class Shell {
       { label: 'Atalhos do teclado', icon: 'pi pi-question-circle', run: () => this.helpOpen.set(true) },
       { label: 'Sair', icon: 'pi pi-sign-out', run: () => this.logout() },
     ];
-  }
+  });
 
   protected openPalette(): void {
     this.paletteOpen.set(true);
