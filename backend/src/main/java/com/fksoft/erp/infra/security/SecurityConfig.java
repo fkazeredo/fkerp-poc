@@ -175,6 +175,9 @@ public class SecurityConfig {
                         .authenticated()
                         .requestMatchers("/api/sales/**", "/api/booking/**")
                         .hasAuthority("SCOPE_reference:manage")
+                        // Workflow administration (the visual editor + attention-rule panel) — admin only.
+                        .requestMatchers("/api/workflows/**")
+                        .hasAuthority("SCOPE_workflow:manage")
                         .anyRequest()
                         .authenticated())
                 .oauth2ResourceServer(

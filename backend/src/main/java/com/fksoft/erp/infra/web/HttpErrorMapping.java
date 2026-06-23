@@ -66,6 +66,9 @@ import com.fksoft.erp.domain.sales.exception.ProposalResponsibleRequiredExceptio
 import com.fksoft.erp.domain.sales.exception.ProposalTotalRequiredException;
 import com.fksoft.erp.domain.sales.exception.ProposalValidityRequiredException;
 import com.fksoft.erp.domain.sales.exception.SendingChannelNotAvailableException;
+import com.fksoft.erp.domain.workflow.WorkflowConditionUnknownException;
+import com.fksoft.erp.domain.workflow.WorkflowNotFoundException;
+import com.fksoft.erp.domain.workflow.WorkflowSystemRuleProtectedException;
 import com.fksoft.erp.domain.workflow.WorkflowTransitionNotAllowedException;
 import java.util.Map;
 import java.util.Set;
@@ -144,7 +147,10 @@ public class HttpErrorMapping {
             entry(BookingAttemptResultNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(BookingFailureReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND),
-            entry(WorkflowTransitionNotAllowedException.class, HttpStatus.UNPROCESSABLE_ENTITY));
+            entry(WorkflowTransitionNotAllowedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(WorkflowNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(WorkflowConditionUnknownException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(WorkflowSystemRuleProtectedException.class, HttpStatus.UNPROCESSABLE_ENTITY));
 
     public HttpStatus statusFor(DomainException ex) {
         return mappings.getOrDefault(ex.getClass(), HttpStatus.UNPROCESSABLE_ENTITY);
