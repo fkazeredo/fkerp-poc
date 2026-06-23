@@ -1,0 +1,194 @@
+package com.fksoft.erp.domain.financial;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.fksoft.erp.domain.crm.model.Customer;
+import com.fksoft.erp.domain.crm.repository.CustomerRepository;
+import com.fksoft.erp.domain.crm.service.CustomerService;
+import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
+import com.fksoft.erp.domain.financial.exception.ReceivableAccessDeniedException;
+import com.fksoft.erp.domain.financial.exception.ReceivableAlreadyExistsException;
+import com.fksoft.erp.domain.financial.exception.ReceivableNotFoundException;
+import com.fksoft.erp.domain.financial.exception.SourceOrderAccessDeniedException;
+import com.fksoft.erp.domain.financial.exception.SourceOrderNotFoundException;
+import com.fksoft.erp.domain.financial.model.Receivable;
+import com.fksoft.erp.domain.financial.model.ReceivableCreated;
+import com.fksoft.erp.domain.financial.model.ReceivableStatus;
+import com.fksoft.erp.domain.financial.repository.ReceivableRepository;
+import com.fksoft.erp.domain.financial.service.ReceivableAccessPolicy;
+import com.fksoft.erp.domain.financial.service.ReceivableService;
+import com.fksoft.erp.domain.financial.service.data.CreateReceivableCommand;
+import com.fksoft.erp.domain.identity.UserRepository;
+import com.fksoft.erp.domain.sales.model.CommercialOrder;
+import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
+import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+/** Unit tests of the Receivable Application Service (create + detail) with all collaborators mocked. */
+@ExtendWith(MockitoExtension.class)
+class ReceivableServiceTest {
+
+    @Mock
+    private ReceivableRepository receivables;
+
+    @Mock
+    private ReceivableAccessPolicy accessPolicy;
+
+    @Mock
+    private CommercialOrderRepository orders;
+
+    @Mock
+    private OrderAccessPolicy orderAccessPolicy;
+
+    @Mock
+    private CustomerService customerService;
+
+    @Mock
+    private CustomerRepository customers;
+
+    @Mock
+    private UserRepository users;
+
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher events;
+
+    @InjectMocks
+    private ReceivableService service;
+
+    private final UUID userId = UUID.randomUUID();
+    private final UUID orderId = UUID.randomUUID();
+    private final UUID leadId = UUID.randomUUID();
+
+    private CommercialOrder confirmedOrder() {
+        CommercialOrder order = mock(CommercialOrder.class);
+        lenient().when(order.id()).thenReturn(orderId);
+        lenient().when(order.bookingStatus()).thenReturn("CONFIRMED");
+        lenient().when(order.proposalId()).thenReturn(UUID.randomUUID());
+        lenient().when(order.opportunityId()).thenReturn(UUID.randomUUID());
+        lenient().when(order.leadId()).thenReturn(leadId);
+        lenient().when(order.responsiblePersonId()).thenReturn(UUID.randomUUID());
+        lenient().when(order.total()).thenReturn(new BigDecimal("1500.00"));
+        return order;
+    }
+
+    private CreateReceivableCommand command() {
+        return new CreateReceivableCommand(orderId, LocalDate.of(2026, 7, 15), "boleto", null);
+    }
+
+    @Test
+    void createBuildsAnOpenReceivableAndPublishesTheEvent() {
+        CommercialOrder order = confirmedOrder();
+        when(orders.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderAccessPolicy.canSee(order, userId, true, false)).thenReturn(true);
+        when(receivables.findFirstByCommercialOrderIdAndStatusIn(orderId, ReceivableStatus.active()))
+                .thenReturn(Optional.empty());
+        Customer customer = mock(Customer.class);
+        UUID customerId = UUID.randomUUID();
+        when(customer.id()).thenReturn(customerId);
+        when(customerService.findOrCreateFromLead(leadId, userId)).thenReturn(customer);
+        when(receivables.save(any(Receivable.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UUID result = service.create(command(), userId, true, false);
+
+        ArgumentCaptor<Receivable> saved = ArgumentCaptor.forClass(Receivable.class);
+        verify(receivables).save(saved.capture());
+        assertThat(saved.getValue().status()).isEqualTo(ReceivableStatus.OPEN);
+        assertThat(saved.getValue().customerId()).isEqualTo(customerId);
+        assertThat(saved.getValue().totalAmount()).isEqualByComparingTo("1500.00");
+        assertThat(result).isEqualTo(saved.getValue().id());
+
+        ArgumentCaptor<ReceivableCreated> event = ArgumentCaptor.forClass(ReceivableCreated.class);
+        verify(events).publishEvent(event.capture());
+        assertThat(event.getValue().commercialOrderId()).isEqualTo(orderId);
+        assertThat(event.getValue().customerId()).isEqualTo(customerId);
+    }
+
+    @Test
+    void createThrowsWhenTheSourceOrderDoesNotExist() {
+        when(orders.findById(orderId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.create(command(), userId, true, false))
+                .isInstanceOf(SourceOrderNotFoundException.class);
+        verify(receivables, never()).save(any());
+        verify(events, never()).publishEvent(any());
+    }
+
+    @Test
+    void createThrowsWhenTheCallerCannotSeeTheSourceOrder() {
+        CommercialOrder order = confirmedOrder();
+        when(orders.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderAccessPolicy.canSee(eq(order), eq(userId), anyBoolean(), anyBoolean()))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> service.create(command(), userId, false, false))
+                .isInstanceOf(SourceOrderAccessDeniedException.class);
+        verify(receivables, never()).save(any());
+    }
+
+    @Test
+    void createThrowsWhenTheOrderBookingIsNotConfirmed() {
+        CommercialOrder order = mock(CommercialOrder.class);
+        when(order.bookingStatus()).thenReturn("FAILED");
+        when(orders.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderAccessPolicy.canSee(order, userId, true, false)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(command(), userId, true, false))
+                .isInstanceOf(OrderBookingNotConfirmedException.class);
+        verify(receivables, never()).save(any());
+    }
+
+    @Test
+    void createThrowsWhenTheOrderAlreadyHasAnActiveReceivable() {
+        CommercialOrder order = confirmedOrder();
+        when(orders.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderAccessPolicy.canSee(order, userId, true, false)).thenReturn(true);
+        Receivable existing = mock(Receivable.class);
+        UUID existingId = UUID.randomUUID();
+        when(existing.id()).thenReturn(existingId);
+        when(receivables.findFirstByCommercialOrderIdAndStatusIn(orderId, ReceivableStatus.active()))
+                .thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.create(command(), userId, true, false))
+                .isInstanceOf(ReceivableAlreadyExistsException.class)
+                .satisfies(ex -> assertThat(((ReceivableAlreadyExistsException) ex).details())
+                        .containsEntry("receivableId", existingId.toString()));
+        verify(receivables, never()).save(any());
+        verify(customerService, never()).findOrCreateFromLead(any(), any());
+    }
+
+    @Test
+    void detailThrowsNotFoundWhenAbsent() {
+        UUID id = UUID.randomUUID();
+        when(receivables.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.detail(id, userId, true)).isInstanceOf(ReceivableNotFoundException.class);
+    }
+
+    @Test
+    void detailThrowsAccessDeniedWhenNotVisible() {
+        UUID id = UUID.randomUUID();
+        Receivable receivable = mock(Receivable.class);
+        when(receivables.findById(id)).thenReturn(Optional.of(receivable));
+        when(accessPolicy.canSee(receivable, userId, false)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.detail(id, userId, false)).isInstanceOf(ReceivableAccessDeniedException.class);
+    }
+}

@@ -88,6 +88,22 @@ describe('AuthService', () => {
     expect(service.canApproveProposal()).toBe(false); // update is not approve
   });
 
+  it('grants Receivable read through any read tier and create only with the create scope', () => {
+    service.accessToken.set(jwt({ sub: 'u', scope: 'financial:receivable:read:all' }));
+    expect(service.canSeeReceivables()).toBe(true);
+    expect(service.canCreateReceivable()).toBe(false); // consult-only
+
+    service.accessToken.set(
+      jwt({ sub: 'u', scope: 'financial:receivable:read financial:receivable:create' }),
+    );
+    expect(service.canSeeReceivables()).toBe(true);
+    expect(service.canCreateReceivable()).toBe(true);
+
+    service.accessToken.set(jwt({ sub: 'u', scope: 'sales:order:read:all' }));
+    expect(service.canSeeReceivables()).toBe(false);
+    expect(service.canCreateReceivable()).toBe(false);
+  });
+
   it('exposes no scopes and a null subject when there is no token', () => {
     expect(service.scopes()).toEqual([]);
     expect(service.userId()).toBeNull();

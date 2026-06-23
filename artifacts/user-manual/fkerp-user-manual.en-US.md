@@ -86,9 +86,11 @@ rules always hold even outside the screen:
   buttons** and no *Novo lead*.
 - Users **without Lead access** don't see the **Leads** menu and are sent back to the home screen,
   which shows a short "no access" notice.
-- The same profile logic applies to the other modules (Opportunities, Proposals, Orders, Bookings): you only
-  see and operate what your profile allows (detailed in the respective sections).
-- **Administration** (the reference-data profile) manages **Cadastros** (section 11); that module only appears
+- The same profile logic applies to the other modules (Opportunities, Proposals, Orders, Bookings, Finance):
+  you only see and operate what your profile allows (detailed in the respective sections).
+- In **Finance** (section 11), the *financeiro* profile creates and sees all **receivables** (and gains
+  read access to the commercial orders to locate the origin), while the **Manager** and the **Board** consult.
+- **Administration** (the reference-data profile) manages **Cadastros** (section 12); that module only appears
   in the menu for users with that profile.
 
 ---
@@ -143,11 +145,13 @@ modules follow the **workflow**:
 - **Comercial** (Commercial) — the sales funnel in order: **Leads → Oportunidades → Propostas → Pedidos** (plus
   the **New lead** action).
 - **Reservas** (Bookings) — the operational worklist of booking requests born from closed orders (section 10).
+- **Financeiro** (Finance) — the financial operations, starting with the **receivables** generated from orders
+  whose booking is confirmed (section 11).
 - **Acompanhamento** (Monitoring) — the cross-funnel monitoring gathered into two hubs: **Pendências** (what
   needs action — Leads, Opportunities and **Bookings**) and **Indicadores** (the funnel's numbers — Leads,
   Opportunities, Proposals, Orders and **Bookings**). Each hub is a **tabbed** page by area — you see only the
   tabs your profile may see.
-- **Cadastros** (Reference data) — the support lists that feed the workflows (section 11).
+- **Cadastros** (Reference data) — the support lists that feed the workflows (section 12).
 
 Clicking a card opens that **module's home**, with the shortcuts to its screens.
 
@@ -850,7 +854,73 @@ The same **visibility rules** apply: operations and commercial managers see the 
 booking access does not see these indicators. It is an **operational** view, not an executive dashboard — with
 **no** finance, payment, commission or external-integration data (integrations do not exist yet).
 
-## 11. Managing reference data (*cadastros*)
+## 11. Financial operations — receivables (the *Financeiro* module)
+
+The **Financeiro** (Finance) module starts the **financial operations** from deals that are already closed. In
+this release it delivers **receivables**: the amount the company has to receive from a client for an order whose
+**booking is confirmed**. It is the first billing step — **still with no payments, commissions or invoices**,
+which arrive in later releases.
+
+### 11.1 Profiles and access
+
+- **Finance** (the *financeiro* profile) **creates and sees all** receivables. To locate the source order, this
+  profile also gains **read access to the commercial orders** (read-only — it neither creates nor changes
+  orders).
+- The **Commercial Manager** and the **Board/Director** **consult** receivables (read-only), for monitoring.
+- **Sellers, representatives** and **HR/IT** do **not** see the Finance module.
+
+As everywhere, **the server is the authority**: the screen only hides what your profile may not do.
+
+### 11.2 The customer (payer)
+
+When a **commercial order is created** (the deal closes), the system **graduates the Lead into a Customer**
+automatically — copying the Lead's name and contacts. That **Customer is the payer** shown on the receivable.
+There is no manual customer registry in this release: it is born on its own at the close. The document (national
+ID) and billing address are left for a later step.
+
+### 11.3 Generating a receivable
+
+There are two paths:
+
+- In **Financeiro → Contas a receber** (Receivables), click **Nova conta a receber** (New receivable).
+- On the **detail of an order** with a **confirmed booking**, click **Gerar conta a receber** (Generate
+  receivable) — the order comes pre-selected.
+
+In the form, provide:
+
+- **Order** (required) — the list offers only the **eligible orders**: those with a **confirmed booking** that do
+  **not yet** have an active receivable. The order amount is shown for reference.
+- **Due date** (required) — the single due date.
+- **Financial responsible** (optional) — who in Finance owns this receivable.
+- **Payment notes** (optional) — free text (not a payment record).
+
+The receivable **preserves the commercial origin** (order, proposal, opportunity and lead), the **customer** and
+the order's **total amount**, and is born in the **Open** state. Each order has **at most one active receivable**
+— if one already exists, the system warns you. Only orders with a **confirmed booking** can originate a
+receivable; an order without that condition is rejected with a clear message. Generating the receivable creates
+**no** payment, commission or invoice and never changes the order.
+
+### 11.4 The list and the detail
+
+The **Receivables** screen shows, for each receivable: the source **order** (code PC-000n), the **customer**, the
+**amount**, the **due date**, the **status**, the **financial responsible** and the creation date. You can
+**filter by status**; by default, the **cancelled** ones are hidden. Each profile sees only the receivables it is
+allowed to see.
+
+The **detail** of a receivable gathers the **summary** (amount, due date, status, responsible and notes), the
+**customer (payer)** and the traceable **commercial origin** — with links to open the source **order**,
+**proposal** and **opportunity**. The screen shows **receivable data only** — never payments, commissions or
+invoices.
+
+### 11.5 Receivable states
+
+A receivable can be **Open**, **Partially paid**, **Paid**, **Overdue** or **Cancelled**. In this release every
+receivable is born **Open**; registering payments (and the transitions to paid/partial/overdue) arrives in the
+next step of Sprint 5.
+
+---
+
+## 12. Managing reference data (*cadastros*)
 
 Reference data are the **lists that feed the forms** across the whole system — the options you pick in the
 type, reason, result and channel fields. As of this release, **nearly all of those lists are editable** by
@@ -898,7 +968,7 @@ it is **Active** or **Inactive**. By default only active records are shown; use
 
 ---
 
-## 12. Messages and validation
+## 13. Messages and validation
 
 FKERP validates your input and shows clear, Portuguese-language messages:
 
@@ -912,33 +982,34 @@ FKERP validates your input and shows clear, Portuguese-language messages:
 
 ---
 
-## 12.1 Keyboard shortcuts
+## 13.1 Keyboard shortcuts
 
-The menu is organized into clear **modules** — **Comercial**, **Reservas**, **Acompanhamento** and
-**Cadastros** — each a collapsible section in the sidebar with its own **home** (see section 4). Everything is
-also reachable by keyboard:
+The menu is organized into clear **modules** — **Comercial**, **Reservas**, **Financeiro**, **Acompanhamento**
+and **Cadastros** — each a collapsible section in the sidebar with its own **home** (see section 4). Everything
+is also reachable by keyboard:
 
 - **`Ctrl`/`Cmd` + `K`** — the **command palette**: search and jump to any screen or action from anywhere.
 - **`?`** — show the full shortcut help at any time.
 - **Go to (press `g`, then a letter):** `g i` Home · `g l` Leads · `g o` Opportunities · `g p` Proposals ·
-  `g d` Orders · `g r` Bookings · `g c` Reference data.
+  `g d` Orders · `g r` Bookings · `g f` Finance (receivables) · `g c` Reference data.
   **`n`** creates a new lead.
 - **On a lead:** `i` log interaction · `q` qualify · `o` create opportunity · `p` mark lost · `r` reassign ·
   `Esc` back.
 - **On an opportunity:** `a` log activity · `e` edit details · `s` advance stage · `p` mark lost · `Esc` back.
 - **On a proposal:** `i` add item · `e` edit commercial details · `s` submit for review · `Esc` back.
 - **On a booking:** `a` register attempt · `Esc` back.
+- **On a receivable (detail or creation):** `Esc` back / cancel.
 
 ---
 
-## 13. Signing out
+## 14. Signing out
 
 Click **Sair** (Sign out) in the top-right of the menu bar. You are returned to the login
 screen and your session is closed.
 
 ---
 
-## 14. What's next
+## 15. What's next
 
 This edition covers the full **Sprint 1** lead lifecycle (registering and finding leads, the lead
 detail, assignment, interaction history with the **Contacted** rule, **qualification**, the **Lost**
@@ -962,14 +1033,17 @@ history**, **confirming** Travel package and Car rental items, **registering fai
 as *ready for Finance* or *having a booking problem* —, the **Pending bookings** view (section 10.8) and the
 **Booking indicators** (section 10.9) in the Acompanhamento hub. The delivery was **validated end to end**.
 
-The next step (**Sprint 5 — Financial Operations**) starts from the **orders with a confirmed booking**: Finance
-reads the record that is already in place (the amount on the Order; the locators, dates and supplier on the
-booking) to begin invoicing, without re-typing data. Booking and Commercial stay separate; receivables, payments
-and commission arrive in that cycle. This manual will be updated as each ships.
+**Sprint 5 — Financial Operations** has started: the **Financeiro** module (section 11) already lets you
+**generate receivables** from the **orders with a confirmed booking**, with the **Customer** (payer) created
+automatically at the close, the **list** and the **detail** of the receivables, all with per-profile visibility.
+Finance reads the record that is already in place (the amount on the Order; the locators, dates and supplier on
+the booking) without re-typing data, and Booking and Commercial stay separate. The **next steps** in this Sprint
+bring **registering payments** (and the transitions to *Paid* / *Partially paid* / *Overdue*), the financial
+status reflected onto the order, and **commission**. This manual will be updated as each ships.
 
 ---
 
-*Document status: Sprints 1, 2, 3 and 4 closed — Sprint 4 (Booking operations) wrapped up with the Reservas
-module (creation, item classification, worklist, detail, attempts, Travel package and Car rental confirmation,
-failures with retry, consolidated status, reflection onto the Order, pending items and indicators), validated end
-to end. Next cycle: Sprint 5 — Financial Operations. Maintained alongside the product.*
+*Document status: Sprints 1, 2, 3 and 4 closed and Sprint 5 (Financial Operations) started — first delivery of
+the Finance module: generating receivables from orders with a confirmed booking, the Customer (payer)
+materialized at the close, the list and the detail of the receivables, with per-profile visibility. Next steps in
+Sprint 5: payments and commission. Maintained alongside the product.*

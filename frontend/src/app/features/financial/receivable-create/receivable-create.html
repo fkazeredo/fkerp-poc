@@ -1,0 +1,101 @@
+<header class="page-head">
+  <div>
+    <h1>Nova conta a receber</h1>
+    <p class="sub muted">Gere uma conta a receber a partir de um pedido com reserva confirmada.</p>
+  </div>
+</header>
+
+@if (formError()) {
+  <p-message severity="error" [text]="formError()!" styleClass="w-full form-banner" />
+}
+
+<form [formGroup]="form" (ngSubmit)="submit()" class="receivable-form surface pad">
+  <div class="field">
+    <label for="commercialOrderId">Pedido <span class="req">*</span></label>
+    <p-select
+      inputId="commercialOrderId"
+      formControlName="commercialOrderId"
+      [options]="eligibleOrders()"
+      [optionLabel]="'number'"
+      optionValue="orderId"
+      placeholder="Selecione um pedido com reserva confirmada"
+      [filter]="true"
+      filterBy="number,customerName"
+      [loading]="loadingOrders()"
+      [emptyMessage]="'Nenhum pedido elegível (reserva confirmada e sem conta ativa).'"
+      styleClass="w-full"
+      appendTo="body"
+    >
+      <ng-template let-o pTemplate="item">
+        <span>{{ orderLabel(o) }}</span>
+      </ng-template>
+      <ng-template let-o pTemplate="selectedItem">
+        <span>{{ orderLabel(o) }}</span>
+      </ng-template>
+    </p-select>
+    @if (form.controls.commercialOrderId.touched && form.controls.commercialOrderId.invalid) {
+      <small class="error">Selecione um pedido.</small>
+    }
+  </div>
+
+  @if (selectedOrder(); as o) {
+    <div class="order-summary">
+      <span class="muted">Valor do pedido:</span>
+      <strong>{{ o.total | currency: 'BRL' }}</strong>
+    </div>
+  }
+
+  <div class="field">
+    <label for="dueDate">Vencimento <span class="req">*</span></label>
+    <p-datepicker
+      inputId="dueDate"
+      formControlName="dueDate"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+    @if (form.controls.dueDate.touched && form.controls.dueDate.invalid) {
+      <small class="error">Informe a data de vencimento.</small>
+    }
+  </div>
+
+  <div class="field">
+    <label for="financialResponsibleId">Responsável financeiro</label>
+    <p-select
+      inputId="financialResponsibleId"
+      formControlName="financialResponsibleId"
+      [options]="responsibles()"
+      optionLabel="name"
+      optionValue="id"
+      placeholder="Sem responsável"
+      [showClear]="true"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+
+  <div class="field">
+    <label for="paymentNotes">Observações de pagamento</label>
+    <textarea
+      pTextarea
+      id="paymentNotes"
+      formControlName="paymentNotes"
+      rows="3"
+      class="w-full"
+      [autoResize]="true"
+    ></textarea>
+  </div>
+
+  <div class="actions">
+    <p-button type="submit" label="Gerar conta a receber" icon="pi pi-check" [loading]="loading()" />
+    <p-button
+      type="button"
+      label="Cancelar"
+      severity="secondary"
+      [text]="true"
+      (onClick)="cancel()"
+    />
+  </div>
+</form>

@@ -158,10 +158,12 @@ class OrderIndicatorsApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void financeHasNoAccessToIndicators() throws Exception {
+    void financeCanReadIndicatorsWithOrderReadAll() throws Exception {
+        // financeiro now holds sales:order:read:all (to see source orders for Receivables, Sprint 5) → may read
+        // the order indicators. The genuine no-read case is covered by rejectsWithoutAReadScope below.
         String fin = login("financeiro", "financeiro123");
         mvc.perform(get("/api/orders/indicators").header("Authorization", "Bearer " + fin))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 
     @Test

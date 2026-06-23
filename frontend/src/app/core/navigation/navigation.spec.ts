@@ -10,6 +10,7 @@ describe('NavigationService', () => {
     canSeeProposals: vi.fn(),
     canSeeOrders: vi.fn(),
     canSeeBookings: vi.fn(),
+    canSeeReceivables: vi.fn(),
   };
 
   function build(): NavigationService {
@@ -29,6 +30,7 @@ describe('NavigationService', () => {
     auth.canSeeProposals.mockReset().mockReturnValue(false);
     auth.canSeeOrders.mockReset().mockReturnValue(false);
     auth.canSeeBookings.mockReset().mockReturnValue(false);
+    auth.canSeeReceivables.mockReset().mockReturnValue(false);
   });
 
   it('shows only the modules the user can access', () => {
@@ -82,6 +84,16 @@ describe('NavigationService', () => {
     const reservas = build().module('reservas')!;
     expect(reservas.home).toBe('/reservas');
     expect(reservas.items.map((i) => i.link)).toEqual(['/reservas']);
+  });
+
+  it('shows the Financeiro module only when the user can see receivables', () => {
+    auth.canSeeReceivables.mockReturnValue(false);
+    expect(build().module('financeiro')).toBeUndefined();
+
+    auth.canSeeReceivables.mockReturnValue(true);
+    const financeiro = build().module('financeiro')!;
+    expect(financeiro.home).toBe('/financeiro');
+    expect(financeiro.items.map((i) => i.link)).toEqual(['/financeiro/contas-a-receber']);
   });
 
   it('builds the Acompanhamento hubs: pendencias from CRM scopes, indicadores from any funnel scope', () => {

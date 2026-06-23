@@ -91,6 +91,15 @@ export class NavigationService {
       );
     }
 
+    // Financeiro: the financial operations module. Contas a receber (Receivables) is the first destination,
+    // generated from a Commercial Order with a confirmed booking; it grows with payments in later slices.
+    const financeiro: NavLink[] = [];
+    if (this.auth.canSeeReceivables()) {
+      financeiro.push(
+        link('Contas a receber', 'pi pi-wallet', '/financeiro/contas-a-receber', false, 'O que há a receber dos negócios fechados.', 'sales'),
+      );
+    }
+
     // Acompanhamento: the cross-funnel monitoring hubs — one place for all the pending-items lists and one for
     // all the indicators (each is a tabbed hub gated per profile).
     const acompanhamento: NavLink[] = [];
@@ -131,6 +140,7 @@ export class NavigationService {
     return [
       module('comercial', 'Comercial', 'pi pi-briefcase', 'leads', '/comercial', 'O funil comercial: leads, oportunidades, propostas e pedidos.', comercial, comercialActions),
       module('reservas', 'Reservas', 'pi pi-bookmark', 'sales', '/reservas', 'As reservas a operar a partir dos pedidos fechados.', reservas, []),
+      module('financeiro', 'Financeiro', 'pi pi-wallet', 'sales', '/financeiro', 'As operações financeiras: contas a receber dos negócios fechados.', financeiro, []),
       module('acompanhamento', 'Acompanhamento', 'pi pi-chart-bar', 'indicators', '/acompanhamento', 'Pendências e indicadores de todo o funil.', acompanhamento, []),
       module('cadastros', 'Cadastros', 'pi pi-database', 'ref', '/cadastros', 'As listas que alimentam os fluxos.', cadastros, []),
     ];

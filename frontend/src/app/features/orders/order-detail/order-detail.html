@@ -17,6 +17,14 @@
         />
       }
     </div>
+    @if (canGenerateReceivable()) {
+      <p-button
+        label="Gerar conta a receber"
+        icon="pi pi-wallet"
+        size="small"
+        (onClick)="generateReceivable()"
+      />
+    }
   </header>
 
   <div class="grid">

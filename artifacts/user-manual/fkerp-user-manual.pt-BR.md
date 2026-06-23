@@ -85,9 +85,11 @@ valem sempre, mesmo fora da tela:
   **nenhum botão de ação** nem *Novo lead*.
 - Usuários **sem acesso a Leads** não veem o menu **Leads** e são levados de volta à tela inicial, que
   mostra um aviso curto de "sem acesso".
-- A mesma lógica de perfis vale para os demais módulos (Oportunidades, Propostas, Pedidos, Reservas): você só
-  vê e opera o que o seu perfil permite (detalhado nas respectivas seções).
-- A **administração** (perfil de cadastros) gerencia os **Cadastros** (seção 11); esse módulo só aparece no
+- A mesma lógica de perfis vale para os demais módulos (Oportunidades, Propostas, Pedidos, Reservas,
+  Financeiro): você só vê e opera o que o seu perfil permite (detalhado nas respectivas seções).
+- No **Financeiro** (seção 11), o perfil **financeiro** cria e vê todas as **contas a receber** (e passa a
+  consultar os pedidos comerciais para localizar a origem), enquanto **Gerente** e **Diretoria** consultam.
+- A **administração** (perfil de cadastros) gerencia os **Cadastros** (seção 12); esse módulo só aparece no
   menu para quem tem esse perfil.
 
 ---
@@ -142,11 +144,13 @@ acesso. Os módulos seguem o **fluxo de trabalho**:
 - **Comercial** — o funil comercial em ordem: **Leads → Oportunidades → Propostas → Pedidos** (mais a ação
   **Novo lead**).
 - **Reservas** — a fila operacional das reservas a operar, nascidas dos pedidos fechados (seção 10).
+- **Financeiro** — as operações financeiras, começando pelas **contas a receber** geradas dos pedidos com reserva
+  confirmada (seção 11).
 - **Acompanhamento** — o monitoramento de todo o funil reunido em dois hubs: **Pendências** (o que precisa de
   ação — Leads, Oportunidades e **Reservas**) e **Indicadores** (os números do funil — Leads, Oportunidades,
   Propostas, Pedidos e **Reservas**). Cada hub é uma página com **abas** por área — você vê apenas as abas que o
   seu perfil pode ver.
-- **Cadastros** — as listas de apoio que alimentam os fluxos (seção 11).
+- **Cadastros** — as listas de apoio que alimentam os fluxos (seção 12).
 
 Clicar em um card abre a **home daquele módulo**, com os atalhos para suas telas.
 
@@ -847,7 +851,74 @@ Valem as mesmas **regras de visibilidade**: gestores de operações e comerciais
 tem acesso a reservas não vê estes indicadores. É uma visão **operacional**, não um painel executivo — **sem**
 dados financeiros, de pagamento, de comissão ou de integração externa (integrações ainda não existem).
 
-## 11. Gerenciando cadastros
+## 11. Operações financeiras — contas a receber (módulo Financeiro)
+
+O módulo **Financeiro** inicia as **operações financeiras** a partir dos negócios já fechados. Nesta versão ele
+entrega as **contas a receber**: o valor que a empresa tem a receber de um cliente por um pedido cuja **reserva
+está confirmada**. É o primeiro passo do faturamento — **ainda sem registrar pagamentos, comissões ou notas
+fiscais**, que chegam nas próximas versões.
+
+### 11.1 Perfis e acesso
+
+- O **Financeiro** (perfil financeiro) **cria e vê todas** as contas a receber. Para localizar o pedido de
+  origem, esse perfil também passa a **consultar os pedidos comerciais** (apenas leitura — ele não cria nem
+  altera pedidos).
+- O **Gerente comercial** e a **Diretoria** **consultam** as contas a receber (somente leitura), para
+  acompanhamento.
+- **Vendedores, representantes** e as áreas de **RH/TI** **não** veem o módulo Financeiro.
+
+Como em todo o sistema, **o servidor é a autoridade**: a tela apenas esconde o que o seu perfil não pode fazer.
+
+### 11.2 O cliente (pagador)
+
+Quando um **pedido comercial é criado** (o fechamento do negócio), o sistema **promove o Lead a Cliente**
+automaticamente — copiando o nome e os contatos do Lead. Esse **Cliente é o pagador** que aparece na conta a
+receber. Não há um cadastro manual de clientes nesta versão: ele nasce sozinho no fechamento. Documento (CPF/CNPJ)
+e endereço de cobrança ficam para uma etapa futura.
+
+### 11.3 Gerando uma conta a receber
+
+Há dois caminhos:
+
+- No módulo **Financeiro → Contas a receber**, clique em **Nova conta a receber**.
+- No **detalhe de um pedido** com a **reserva confirmada**, clique em **Gerar conta a receber** — o pedido já vem
+  selecionado.
+
+No formulário, informe:
+
+- **Pedido** (obrigatório) — a lista oferece apenas os **pedidos elegíveis**: aqueles com **reserva confirmada** e
+  que **ainda não têm** uma conta a receber ativa. O valor do pedido aparece como referência.
+- **Vencimento** (obrigatório) — a data única de vencimento.
+- **Responsável financeiro** (opcional) — quem, no Financeiro, cuida desta conta.
+- **Observações de pagamento** (opcional) — um texto livre (não é um registro de pagamento).
+
+A conta a receber **preserva a origem comercial** (pedido, proposta, oportunidade e lead), o **cliente** e o
+**valor total** do pedido, e nasce no estado **Em aberto**. Cada pedido tem **no máximo uma conta a receber ativa**
+— se já houver uma, o sistema avisa. Só pedidos com **reserva confirmada** podem gerar uma conta; um pedido sem essa
+condição é recusado com uma mensagem clara. Gerar a conta **não** cria pagamento, comissão, nota fiscal nem altera o
+pedido.
+
+### 11.4 A lista e o detalhe
+
+A tela **Contas a receber** mostra, para cada conta: o **pedido** de origem (código PC-000n), o **cliente**, o
+**valor**, o **vencimento**, o **status**, o **responsável financeiro** e a data de criação. Você pode **filtrar
+por status**; por padrão, as **canceladas** ficam ocultas. Cada perfil vê apenas as contas que tem permissão para
+ver.
+
+O **detalhe** de uma conta reúne o **resumo** (valor, vencimento, status, responsável e observações), o **cliente
+(pagador)** e a **origem comercial** rastreável — com atalhos para abrir o **pedido**, a **proposta** e a
+**oportunidade** de origem. A tela mostra **apenas dados da conta a receber** — nunca pagamentos, comissões ou
+notas.
+
+### 11.5 Estados da conta a receber
+
+Uma conta a receber pode estar **Em aberto**, **Parcialmente paga**, **Paga**, **Vencida** ou **Cancelada**. Nesta
+versão toda conta nasce **Em aberto**; o registro de pagamentos (e as transições para paga/parcial/vencida) chega
+na próxima etapa da Sprint 5.
+
+---
+
+## 12. Gerenciando cadastros
 
 Os cadastros são as **listas que alimentam os formulários** de todo o sistema — as opções que você
 escolhe nos campos de tipo, motivo, resultado e canal. A partir desta versão, **praticamente todas essas
@@ -897,7 +968,7 @@ alternar.
 
 ---
 
-## 12. Mensagens e validação
+## 13. Mensagens e validação
 
 O FKERP valida o que você digita e mostra mensagens claras, em português:
 
@@ -912,16 +983,16 @@ O FKERP valida o que você digita e mostra mensagens claras, em português:
 
 ---
 
-## 12.1 Atalhos de teclado
+## 13.1 Atalhos de teclado
 
-O menu é organizado em **módulos** claros — **Comercial**, **Reservas**, **Acompanhamento** e **Cadastros** —
-cada um uma seção recolhível na barra lateral, com uma **home própria** (veja a seção 4). Tudo também é
-acessível pelo teclado:
+O menu é organizado em **módulos** claros — **Comercial**, **Reservas**, **Financeiro**, **Acompanhamento** e
+**Cadastros** — cada um uma seção recolhível na barra lateral, com uma **home própria** (veja a seção 4). Tudo
+também é acessível pelo teclado:
 
 - **`Ctrl`/`Cmd` + `K`** — a **paleta de comandos**: busque e vá para qualquer tela ou ação de qualquer lugar.
 - **`?`** — mostra a ajuda completa de atalhos a qualquer momento.
 - **Ir para (tecle `g`, depois uma letra):** `g i` Início · `g l` Leads · `g o` Oportunidades · `g p`
-  Propostas · `g d` Pedidos · `g r` Reservas · `g c` Cadastros.
+  Propostas · `g d` Pedidos · `g r` Reservas · `g f` Financeiro (contas a receber) · `g c` Cadastros.
   **`n`** cria um novo lead.
 - **Em um lead:** `i` registrar interação · `q` qualificar · `o` criar oportunidade · `p` marcar perdido ·
   `r` reatribuir · `Esc` voltar.
@@ -930,17 +1001,18 @@ acessível pelo teclado:
 - **Em uma proposta:** `i` adicionar item · `e` editar dados comerciais · `s` enviar para revisão · `Esc`
   voltar.
 - **Em uma reserva:** `a` registrar tentativa · `Esc` voltar.
+- **Em uma conta a receber (detalhe ou criação):** `Esc` voltar / cancelar.
 
 ---
 
-## 13. Saindo
+## 14. Saindo
 
 Clique em **Sair** no canto superior direito da barra de menu. Você volta para a tela de login e sua
 sessão é encerrada.
 
 ---
 
-## 14. O que vem a seguir
+## 15. O que vem a seguir
 
 Esta edição cobre todo o ciclo de vida de Leads da **Sprint 1** (cadastrar e encontrar Leads, o
 detalhe, atribuição, histórico de interações com a regra de **Em contato**, **qualificação**, fluxo de
@@ -965,14 +1037,17 @@ veículo**, o **registro de falhas com retry**, o **reflexo do status consolidad
 visão de **Reservas pendentes** (seção 10.8) e os **Indicadores de reservas** (seção 10.9), no hub Acompanhamento.
 A entrega foi **validada de ponta a ponta**.
 
-A próxima etapa (**Sprint 5 — Operações Financeiras**) parte dos **pedidos com reserva confirmada**: o Financeiro
-lê o registro já pronto (valor no Pedido; localizadores, datas e fornecedor na reserva) para iniciar o faturamento,
-sem redigitar dados. Reserva e Comercial seguem separados; recebíveis, pagamentos e comissão chegam nesse ciclo.
-Este manual será atualizado a cada lançamento.
+A **Sprint 5 — Operações Financeiras** começou: o módulo **Financeiro** (seção 11) já permite **gerar contas a
+receber** a partir dos **pedidos com reserva confirmada**, com o **Cliente** (pagador) criado automaticamente no
+fechamento, a **lista** e o **detalhe** das contas, tudo com visibilidade por perfil. O Financeiro lê o registro já
+pronto (valor no Pedido; localizadores, datas e fornecedor na reserva) sem redigitar dados, e Reserva e Comercial
+seguem separados. As **próximas etapas** desta Sprint trazem o **registro de pagamentos** (e as transições para
+*Paga* / *Parcialmente paga* / *Vencida*), o reflexo do status financeiro no pedido e a **comissão**. Este manual
+será atualizado a cada lançamento.
 
 ---
 
-*Status do documento: Sprints 1, 2, 3 e 4 concluídas — Sprint 4 (Operações de reserva) encerrada com o módulo
-Reservas (criação, classificação de itens, fila, detalhe, tentativas, confirmação de Pacote e Locação, falhas com
-retry, status consolidado, reflexo no Pedido, pendências e indicadores), validada de ponta a ponta. Próximo ciclo:
-Sprint 5 — Operações Financeiras. Mantido junto com o produto.*
+*Status do documento: Sprints 1, 2, 3 e 4 concluídas e Sprint 5 (Operações Financeiras) iniciada — primeira entrega
+do módulo Financeiro: geração de contas a receber a partir de pedidos com reserva confirmada, o Cliente (pagador)
+materializado no fechamento, a lista e o detalhe das contas, com visibilidade por perfil. Próximas etapas da Sprint
+5: pagamentos e comissão. Mantido junto com o produto.*
