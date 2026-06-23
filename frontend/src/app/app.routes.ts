@@ -147,6 +147,76 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
       },
+      {
+        path: 'cadastros/tipos-atividade',
+        data: { title: 'Tipos de atividade', path: 'opportunity-activity-types' },
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
+      },
+      {
+        path: 'cadastros/resultados-atividade',
+        data: { title: 'Resultados de atividade', path: 'opportunity-activity-results' },
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
+      },
+      {
+        path: 'cadastros/motivos-perda-oportunidade',
+        data: { title: 'Motivos de perda (oportunidade)', path: 'opportunity-loss-reasons' },
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
+      },
+      {
+        path: 'cadastros/motivos-rejeicao',
+        data: { title: 'Motivos de rejeição', path: 'proposal-rejection-reasons', base: 'sales' },
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
+      },
+      {
+        path: 'cadastros/motivos-recusa-cliente',
+        data: { title: 'Motivos de recusa do cliente', path: 'customer-rejection-reasons', base: 'sales' },
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
+      },
+      {
+        path: 'cadastros/canais-envio',
+        data: { title: 'Canais de envio', path: 'sending-channels', base: 'sales' },
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
+      },
+      {
+        path: 'cadastros/tipos-item',
+        data: { title: 'Tipos de item', path: 'proposal-item-types', base: 'sales' },
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
+      },
+      {
+        path: 'cadastros/tipos-tentativa',
+        data: { title: 'Tipos de tentativa', path: 'booking-attempt-types', base: 'booking' },
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
+      },
+      {
+        path: 'cadastros/resultados-tentativa',
+        data: { title: 'Resultados de tentativa', path: 'booking-attempt-results', base: 'booking' },
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
+      },
+      {
+        path: 'cadastros/motivos-falha',
+        data: { title: 'Motivos de falha', path: 'booking-failure-reasons', base: 'booking' },
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
+      },
     ],
   },
   { path: '**', redirectTo: '' },
