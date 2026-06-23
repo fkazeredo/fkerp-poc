@@ -216,6 +216,17 @@ describe('WorkflowEditor', () => {
     expect(comp.hasUnsavedChanges()).toBe(true);
   });
 
+  it('gives the edit panel a contextual title for what is selected', () => {
+    const comp = build();
+    expect(comp['panelTitle']()).toBe('Edição');
+    comp['onNodeClick']({ id: 's_DISCOVERY', label: 'Descoberta', data: { state: detail().states[1] } });
+    expect(comp['panelTitle']()).toBe('Editar estado · Descoberta');
+    comp['openNewRule']();
+    expect(comp['panelTitle']()).toBe('Nova regra de atenção');
+    comp['openRule'](detail().attentionRules[1]);
+    expect(comp['panelTitle']()).toBe('Editar regra de atenção');
+  });
+
   describe('DOM', () => {
     function render() {
       configure();
@@ -237,6 +248,19 @@ describe('WorkflowEditor', () => {
       expect(el.querySelector('ngx-graph')).not.toBeNull();
       expect(el.textContent).toContain('Sem atividade recente');
       expect(el.textContent).toContain('Regra custom');
+    });
+
+    it('shows the counts and the category legend for orientation', () => {
+      const el = render();
+      const counts = el.querySelector('.counts')?.textContent ?? '';
+      expect(counts).toContain('3 estados');
+      expect(counts).toContain('1 transições');
+      expect(counts).toContain('2 regras de atenção');
+      const legend = el.querySelector('.legend');
+      expect(legend).not.toBeNull();
+      expect(legend?.textContent).toContain('Inicial');
+      expect(legend?.textContent).toContain('Terminal');
+      expect(legend?.querySelectorAll('.sw').length).toBeGreaterThanOrEqual(5);
     });
 
     it('hides the delete control for a system rule but shows it for a custom rule', () => {

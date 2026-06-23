@@ -219,13 +219,13 @@ export const routes: Routes = [
           import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
       },
       {
-        path: 'cadastros/workflows',
+        path: 'fluxos',
         canActivate: [workflowManageGuard],
         loadComponent: () =>
           import('./features/workflows/workflow-list/workflow-list').then((m) => m.WorkflowList),
       },
       {
-        path: 'cadastros/workflows/:code',
+        path: 'fluxos/:code',
         canActivate: [workflowManageGuard],
         canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>

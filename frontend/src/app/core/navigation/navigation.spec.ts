@@ -76,12 +76,18 @@ describe('NavigationService', () => {
     expect(build().module('comercial')!.actions).toHaveLength(0);
   });
 
-  it('adds the Workflows destination to Cadastros only with the workflow:manage scope', () => {
-    const links = () => build().module('cadastros')!.items.map((i) => i.link);
-    expect(links()).not.toContain('/cadastros/workflows');
+  it('exposes a standalone "Fluxos de trabalho" module only with the workflow:manage scope', () => {
+    // Without the scope the module is absent (and never lived under Cadastros).
+    expect(build().module('workflows')).toBeUndefined();
+    expect(build().module('cadastros')!.items.map((i) => i.link)).not.toContain('/fluxos');
 
     auth.canManageWorkflows.mockReturnValue(true);
-    expect(links()).toContain('/cadastros/workflows');
+    const wf = build().module('workflows');
+    expect(wf?.title).toBe('Fluxos de trabalho');
+    expect(wf?.home).toBe('/fluxos');
+    expect(wf?.items.map((i) => i.link)).toEqual(['/fluxos']);
+    // Still not under Cadastros.
+    expect(build().module('cadastros')!.items.map((i) => i.link)).not.toContain('/fluxos');
   });
 
   it('shows the Reservas module only when the user can see bookings', () => {

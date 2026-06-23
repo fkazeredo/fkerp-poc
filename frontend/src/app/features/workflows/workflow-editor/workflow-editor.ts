@@ -199,6 +199,23 @@ export class WorkflowEditor implements OnInit, OnDestroy, HasUnsavedChanges {
     return this.conditionOptions().find((c) => c.conditionKey === this.ruleConditionKey);
   }
 
+  /** The contextual title of the edit panel, so the user always knows what they are editing. */
+  protected panelTitle(): string {
+    const sel = this.selection();
+    switch (sel?.kind) {
+      case 'state':
+        return 'Editar estado · ' + (this.selectedState()?.label ?? '');
+      case 'transition':
+        return 'Transição';
+      case 'attention':
+        return 'Editar regra de atenção';
+      case 'attention-new':
+        return 'Nova regra de atenção';
+      default:
+        return 'Edição';
+    }
+  }
+
   /** Whether the given graph node is the currently selected state (for the node highlight). */
   protected isStateSelected(id: string): boolean {
     const sel = this.selection();
@@ -397,7 +414,7 @@ export class WorkflowEditor implements OnInit, OnDestroy, HasUnsavedChanges {
   }
 
   protected back(): void {
-    this.router.navigateByUrl('/cadastros/workflows');
+    this.router.navigateByUrl('/fluxos');
   }
 
   /** Esc closes the open panel (guarded) or returns to the list. */
