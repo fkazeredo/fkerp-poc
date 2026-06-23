@@ -14,8 +14,13 @@
       size="small"
       (onClick)="back()"
     />
-    <h1>{{ wf.label }}</h1>
-    <span class="muted code">{{ wf.code }}</span>
+    <div class="head-text">
+      <h1>{{ wf.label }} <span class="muted code">{{ wf.code }}</span></h1>
+      <p class="muted counts">
+        {{ wf.states.length }} estados · {{ wf.transitions.length }} transições ·
+        {{ wf.attentionRules.length }} regras de atenção
+      </p>
+    </div>
   </header>
 
   <p-card styleClass="graph-card">
@@ -93,15 +98,24 @@
           </ng-template>
         </ngx-graph>
       </div>
+      <div class="legend">
+        <span class="lg"><i class="sw cat-INITIAL"></i> Inicial</span>
+        <span class="lg"><i class="sw cat-INTERMEDIATE"></i> Intermediário</span>
+        <span class="lg"><i class="sw cat-SUCCESS"></i> Sucesso</span>
+        <span class="lg"><i class="sw cat-TERMINAL"></i> Terminal</span>
+        <span class="lg"><i class="sw dashed"></i> Inativo</span>
+      </div>
     }
     <p class="muted hint">
-      Clique num estado para editar seu rótulo, ordem e situação. As transições mostram as regras do fluxo
-      (somente leitura — a topologia é estrutura do sistema).
+      <strong>Clique numa caixa (estado)</strong> para editar o seu rótulo, ordem e situação no painel
+      <em>Edição</em>. As <strong>setas (transições)</strong> são somente leitura — a estrutura do fluxo é
+      definida pelo sistema. Itens marcados como <strong>sistema</strong> podem ser renomeados e
+      ativados/desativados, mas não excluídos.
     </p>
   </p-card>
 
   <div class="panels">
-    <p-card styleClass="panel" header="Edição">
+    <p-card styleClass="panel" [header]="panelTitle()">
       @if (selectedState(); as st) {
         <div class="field">
           <label>Código</label>
@@ -196,7 +210,11 @@
           <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="closePanel()" />
         </div>
       } @else {
-        <p class="muted">Clique num estado no diagrama, ou numa regra de atenção ao lado, para editar.</p>
+        <p class="muted empty-hint">
+          <i class="pi pi-arrow-left"></i>
+          Clique numa <strong>caixa do diagrama</strong> para editar o estado, ou numa
+          <strong>regra de atenção</strong> ao lado, e os campos aparecem aqui.
+        </p>
       }
     </p-card>
 
@@ -211,13 +229,19 @@
           @for (r of wf.attentionRules; track r.id) {
             <li [class.inactive]="!r.active" [class.selected]="selection()?.kind === 'attention' && editingRule()?.id === r.id">
               <button type="button" class="rule-open" (click)="openRule(r)">
-                <span class="rule-label">{{ r.label }}</span>
+                <span class="rule-top">
+                  <span class="rule-label">{{ r.label }}</span>
+                  @if (r.system) {
+                    <p-tag value="sistema" severity="secondary" />
+                  }
+                  @if (!r.active) {
+                    <p-tag value="inativa" severity="warn" />
+                  }
+                </span>
                 <span class="rule-meta muted">
                   {{ r.conditionKey }}
-                  @if (r.thresholdDays != null) { · {{ r.thresholdDays }}d }
+                  @if (r.thresholdDays != null) { · {{ r.thresholdDays }} dias }
                   @if (r.stateValue) { · {{ r.stateValue }} }
-                  @if (r.system) { · sistema }
-                  @if (!r.active) { · inativa }
                 </span>
               </button>
               @if (!r.system) {

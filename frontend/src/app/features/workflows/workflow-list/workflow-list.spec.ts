@@ -52,7 +52,7 @@ describe('WorkflowList', () => {
   it('navigates to the editor on a tile click', () => {
     const { comp } = render();
     comp['open']('opportunity');
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/cadastros/workflows/opportunity');
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/fluxos/opportunity');
   });
 
   it('shows the empty state when there are no workflows', () => {

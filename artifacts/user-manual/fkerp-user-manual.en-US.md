@@ -14,19 +14,28 @@
 
 ## 1. What FKERP is
 
-FKERP is the company's ERP. The first capability available is the **Commercial / CRM**
-area, where the sales team registers and organizes **leads** — people or companies that
-showed initial interest. A lead is only an *interested party*; it is not yet a customer,
-an opportunity, or a sale.
+FKERP is the company's ERP, organised into **modules** that follow the commercial and operational workflow. The
+system covers the **commercial funnel end to end** and the **booking operation**, with **monitoring**,
+**editable support lists** and **configurable workflows**. Each user only sees the modules and actions their
+profile allows.
 
-This release lets you:
+What the system offers today, by module:
 
-- Sign in securely.
-- Register a new lead (with an optional first note and an optional responsible person).
-- See, search and filter the leads you are allowed to work with.
-- Open a lead's detail and qualify it, mark it lost (with a reason), or reassign it.
-- Manage the supporting reference lists (*cadastros*): **Origins**, **Loss reasons**,
-  **Interaction types**, and **Interaction results**.
+- **Comercial** (Commercial) — the funnel in order: **Leads** (interested parties to work) → **Opportunities**
+  (deals in progress) → **Proposals** (the formal offer, with items, totals, discount, validity and approval) →
+  **Orders** (closed deals). It includes qualifying/losing leads, logging interactions and activities, advancing
+  the pipeline, and recording the customer's acceptance/decline. (Sections 5–9.)
+- **Reservas** (Bookings) — the back-office operation that **works the reservations** for the items of a closed
+  order: the work queue, the detail, manual attempts, confirming travel packages and car rentals, recording
+  failures and retrying, and the consolidated status reflected onto the order. (Section 10.)
+- **Acompanhamento** (Monitoring) — funnel-wide monitoring in two hubs: **Pending items** (what needs action)
+  and **Indicators** (the numbers), with per-area tabs according to your profile.
+- **Cadastros** (Reference data) — the **editable support lists** that feed the forms (origins, reasons, types,
+  results, channels, item types…), managed by administration without a new version of the system. (Section 11.)
+- **Fluxos de trabalho** (Workflows) — the administration editor for the system's **configurable workflows**:
+  states, transitions and the **attention rules** that define the pending items. (Section 12.)
+
+All of it with **secure sign-in**, **keyboard navigation**, and **clear validation** of the information.
 
 ---
 
@@ -79,6 +88,10 @@ rules always hold even outside the screen:
   buttons** and no *Novo lead*.
 - Users **without Lead access** don't see the **Leads** menu and are sent back to the home screen,
   which shows a short "no access" notice.
+- The same profile logic applies to the other modules (Opportunities, Proposals, Orders, Bookings): you only
+  see and operate what your profile allows (detailed in the respective sections).
+- **Administration** (the reference-data profile) manages **Cadastros** (section 11) and **Fluxos de trabalho**
+  (section 12); those two modules only appear in the menu for users with that profile.
 
 ---
 
@@ -137,6 +150,8 @@ modules follow the **workflow**:
   Opportunities, Proposals, Orders and **Bookings**). Each hub is a **tabbed** page by area — you see only the
   tabs your profile may see.
 - **Cadastros** (Reference data) — the support lists that feed the workflows (section 11).
+- **Fluxos de trabalho** (Workflows) — the editor for the system's configurable workflows (section 12). This is
+  an **administrators-only** module: users without the administration profile do not see it.
 
 Clicking a card opens that **module's home**, with the shortcuts to its screens.
 
@@ -885,36 +900,69 @@ it is **Active** or **Inactive**. By default only active records are shown; use
   for historical accuracy but **cannot be used on new leads**.
 - For an inactive record, click the **check** icon to **reactivate** it.
 
-### 11.5 The workflow editor (Workflows)
+---
 
-Beyond the simple lists, an administrator can view and adjust the system's **workflows** — the paths a Lead,
-an Opportunity or a Booking follows. Open **Cadastros → Workflows** (shortcut `g` then `w`, or via the command
-palette). This destination only appears for users with the administration profile.
+## 12. Fluxos de trabalho (Workflows)
 
-The list shows one card per workflow (for example **Lead**, **Opportunity**, **Booking**). Opening a workflow
-draws it as a **diagram**: each **state** (situation) is a box and each **transition** (allowed step between
-situations) is an arrow — a visual way to understand how the work advances.
+**Workflows** are the paths a record follows through the system — for example a **Lead**
+(New → Contacted → Qualified / Lost), an **Opportunity** or a **Booking**. This section describes the
+**Fluxos de trabalho** module, where administration **views** these flows and adjusts what is safe to change.
+It is an **administrators-only** module: open it from the **Fluxos de trabalho** entry in the sidebar (shortcut
+`g` then `w`, or via the command palette `Ctrl K`). Users without the administration profile do not see it.
 
-In the editor you can:
+### 12.1 The workflow list
 
-- **Adjust a state** — click a box in the diagram to open the edit panel and change the **label** (the
-  displayed name), the **order**, and whether it is **active**. The internal code and the state's type are
-  fixed.
-- **Inspect a transition** — the arrows show the step and its flow rules read-only; the structure of the
-  process is defined by the system and is not changed here.
-- **Manage the attention rules** — in the side panel, each workflow carries the **rules that explain why a
-  record shows up in the pending-items list** (for example "no recent activity", "next action overdue"). You
-  can **create** a new rule (choosing the condition, a code, a description and — when the condition needs one —
-  a window in days or a reference state), **rename** or **reorder** existing ones, **activate/deactivate**, and
-  **delete** the ones you created. The rules that ship with the system can be renamed and activated/deactivated
-  but not deleted.
+The module's home shows **one card per workflow** (Lead, Opportunity, Booking, and others). Click a card to
+open that workflow's **editor**.
 
-This means **what counts as "pending"** in each area is no longer fixed in the program — it becomes
-configurable by administration, with no version change.
+### 12.2 The diagram
+
+The workflow is drawn as a **diagram**: each **state** (situation) is a **box** and each **transition** (allowed
+step between situations) is an **arrow**. At the top, **counts** summarise the flow (how many states,
+transitions and attention rules). A **legend** explains the box colours:
+
+- **Initial** (blue) — where the record starts.
+- **Intermediate** (grey) — situations along the way.
+- **Success** (green) — a positive conclusion.
+- **Terminal** (red) — a closing state (for example lost/cancelled).
+- **Dashed** — an **inactive** state.
+
+Items marked **"sistema"** (system) ship with the product: they can be **renamed** and **activated/deactivated**
+but **cannot be deleted**.
+
+### 12.3 Editing a state
+
+**Click a box** in the diagram to open the **Edição** (Edit) panel — its title shows which state you are
+editing. You can change the **label** (the displayed name), the **order**, and whether the state is **active**.
+The **internal code** and the **type** (category) are fixed. Click **Salvar estado** (Save state). Renaming a
+state here does not change the operational screens that already show that situation — the editor only handles
+the presentation of the flow.
+
+### 12.4 Inspecting a transition
+
+The **arrows** show the allowed steps and their **flow rules**, **read-only**. The **structure** of the process
+(which steps exist) is defined by the system and is not changed here — this protects the integrity of the
+operation.
+
+### 12.5 Attention rules
+
+Each workflow carries **attention rules**: the **reasons a record shows up in that area's Pending-items list**
+(for example "no recent activity", "next action overdue", "stuck too long in a stage"). In the panel beside the
+diagram you can:
+
+- **Create** a rule — click **Nova regra de atenção** (New attention rule), choose the **condition**, give a
+  **code** and a **description**, and — when the condition needs one — a **window in days** or a **reference
+  state**.
+- **Edit** a rule — click it to change the description, the window, the order, and whether it is **active**.
+- **Delete** a rule you created (system rules cannot be deleted, only renamed/deactivated).
+
+This means **what counts as "pending"** in each area is no longer fixed in the program — it becomes configurable
+by administration, including the windows (days), with no version change. The lists under **Acompanhamento →
+Pendências** then reflect these rules.
 
 ---
 
-## 12. Messages and validation
+## 13. Messages and validation
 
 FKERP validates your input and shows clear, Portuguese-language messages:
 
@@ -928,7 +976,7 @@ FKERP validates your input and shows clear, Portuguese-language messages:
 
 ---
 
-## 12.1 Keyboard shortcuts
+## 13.1 Keyboard shortcuts
 
 The menu is organized into clear **modules** — **Comercial**, **Reservas**, **Acompanhamento** and
 **Cadastros** — each a collapsible section in the sidebar with its own **home** (see section 4). Everything is
@@ -937,8 +985,8 @@ also reachable by keyboard:
 - **`Ctrl`/`Cmd` + `K`** — the **command palette**: search and jump to any screen or action from anywhere.
 - **`?`** — show the full shortcut help at any time.
 - **Go to (press `g`, then a letter):** `g i` Home · `g l` Leads · `g o` Opportunities · `g p` Proposals ·
-  `g d` Orders · `g r` Bookings · `g c` Reference data · `g w` Workflows (administration). **`n`** creates a
-  new lead.
+  `g d` Orders · `g r` Bookings · `g c` Reference data · `g w` Fluxos de trabalho (Workflows, administration).
+  **`n`** creates a new lead.
 - **On a lead:** `i` log interaction · `q` qualify · `o` create opportunity · `p` mark lost · `r` reassign ·
   `Esc` back.
 - **On an opportunity:** `a` log activity · `e` edit details · `s` advance stage · `p` mark lost · `Esc` back.
@@ -947,14 +995,14 @@ also reachable by keyboard:
 
 ---
 
-## 13. Signing out
+## 14. Signing out
 
 Click **Sair** (Sign out) in the top-right of the menu bar. You are returned to the login
 screen and your session is closed.
 
 ---
 
-## 14. What's next
+## 15. What's next
 
 This edition covers the full **Sprint 1** lead lifecycle (registering and finding leads, the lead
 detail, assignment, interaction history with the **Contacted** rule, **qualification**, the **Lost**

@@ -43,6 +43,6 @@ export class WorkflowList implements OnInit {
   }
 
   protected open(code: string): void {
-    this.router.navigateByUrl('/cadastros/workflows/' + code);
+    this.router.navigateByUrl('/fluxos/' + code);
   }
 }

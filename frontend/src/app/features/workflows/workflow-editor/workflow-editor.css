@@ -28,6 +28,73 @@
   margin: 0.5rem 0 0;
 }
 
+.head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.counts {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+/* Diagram legend. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  align-items: center;
+  margin-top: 0.75rem;
+  font-size: 0.82rem;
+  color: var(--p-text-muted-color, #6b7280);
+}
+
+.lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sw {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 2px solid #cbd5e1;
+  background: #fff;
+  display: inline-block;
+}
+
+.sw.cat-INITIAL {
+  border-color: #3b82f6;
+}
+.sw.cat-INTERMEDIATE {
+  border-color: #cbd5e1;
+}
+.sw.cat-SUCCESS {
+  border-color: #16a34a;
+}
+.sw.cat-TERMINAL {
+  border-color: #dc2626;
+}
+.sw.dashed {
+  border-style: dashed;
+  background: #f8fafc;
+}
+
+.empty-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rule-top {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
 .back {
   margin-top: 1rem;
 }
