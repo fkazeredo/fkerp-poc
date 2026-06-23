@@ -23,6 +23,7 @@ import com.fksoft.erp.domain.crm.model.InteractionResult;
 import com.fksoft.erp.domain.crm.model.InteractionType;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadRegistered;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.repository.InteractionResultRepository;
 import com.fksoft.erp.domain.crm.repository.InteractionTypeRepository;
@@ -42,11 +43,6 @@ import com.fksoft.erp.domain.crm.service.data.RecordInteractionCommand;
 import com.fksoft.erp.domain.crm.service.data.RegisterLeadCommand;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
-import com.fksoft.erp.domain.workflow.WorkflowDefinition;
-import com.fksoft.erp.domain.workflow.WorkflowEngine;
-import com.fksoft.erp.domain.workflow.WorkflowState;
-import com.fksoft.erp.domain.workflow.WorkflowStateCategory;
-import com.fksoft.erp.domain.workflow.WorkflowStateRepository;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -104,22 +100,8 @@ class LeadServiceTest {
     @Mock
     private ApplicationEventPublisher events;
 
-    @Mock
-    private WorkflowEngine workflow;
-
-    @Mock
-    private WorkflowStateRepository workflowStates;
-
     @InjectMocks
     private LeadService service;
-
-    private static final WorkflowDefinition WF = WorkflowDefinition.of("lead", "Lead");
-    private static final WorkflowState NEW_STATE =
-            WorkflowState.of(WF, "NEW", "Novo", WorkflowStateCategory.INITIAL, 1);
-    private static final WorkflowState CONTACTED_STATE =
-            WorkflowState.of(WF, "CONTACTED", "Contatado", WorkflowStateCategory.ACTIVE, 2);
-    private static final WorkflowState QUALIFIED_STATE =
-            WorkflowState.of(WF, "QUALIFIED", "Qualificado", WorkflowStateCategory.ACTIVE, 3);
 
     @Test
     void registersLeadAsNewWithNoteAndPublishesEvent() {
@@ -129,7 +111,6 @@ class LeadServiceTest {
         InteractionType noteType = InteractionType.create("INTERNAL_NOTE", "Nota interna", 5);
         when(origins.findById(originId)).thenReturn(Optional.of(origin));
         when(interactionTypes.findByCode("INTERNAL_NOTE")).thenReturn(Optional.of(noteType));
-        when(workflowStates.findByDefinition_CodeAndCode("lead", "NEW")).thenReturn(Optional.of(NEW_STATE));
         RegisterLeadCommand command =
                 new RegisterLeadCommand("Maria", "11999999999", null, null, originId, null, "primeira nota");
 
@@ -139,7 +120,7 @@ class LeadServiceTest {
         ArgumentCaptor<Lead> captor = ArgumentCaptor.forClass(Lead.class);
         verify(leads).save(captor.capture());
         Lead saved = captor.getValue();
-        assertThat(saved.status()).isEqualTo("NEW");
+        assertThat(saved.status()).isEqualTo(LeadStatus.NEW);
         assertThat(saved.interactions()).hasSize(1);
         verify(events).publishEvent(any(LeadRegistered.class));
     }
@@ -174,7 +155,6 @@ class LeadServiceTest {
         Lead existing = Lead.register(
                 new RegisterLeadCommand("Maria", "11999999999", null, null, originId, null, null),
                 origin,
-                NEW_STATE,
                 UUID.randomUUID());
         when(origins.findById(originId)).thenReturn(Optional.of(origin));
         when(leads.findOpenDuplicates(any(), any(), any())).thenReturn(List.of(existing));
@@ -193,12 +173,10 @@ class LeadServiceTest {
         Lead withPhone = Lead.register(
                 new RegisterLeadCommand("Maria", "11999999999", null, null, UUID.randomUUID(), responsibleA, null),
                 origin,
-                NEW_STATE,
                 UUID.randomUUID());
         Lead unassignedEmail = Lead.register(
                 new RegisterLeadCommand("Joao", null, null, "joao@example.com", UUID.randomUUID(), null, null),
                 origin,
-                NEW_STATE,
                 UUID.randomUUID());
         Pageable pageable = PageRequest.of(0, 20);
 
@@ -243,7 +221,6 @@ class LeadServiceTest {
         Lead lead = Lead.register(
                 new RegisterLeadCommand("Maria", "11999999999", null, null, UUID.randomUUID(), null, null),
                 Origin.create("WEBSITE", "Website", 1),
-                NEW_STATE,
                 UUID.randomUUID());
         when(leads.findById(id)).thenReturn(Optional.of(lead));
         when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean(), anyBoolean()))
@@ -273,7 +250,6 @@ class LeadServiceTest {
         Lead lead = Lead.register(
                 new RegisterLeadCommand("Maria", "11999999999", null, null, UUID.randomUUID(), UUID.randomUUID(), null),
                 Origin.create("WEBSITE", "Website", 1),
-                NEW_STATE,
                 UUID.randomUUID());
         when(leads.findById(id)).thenReturn(Optional.of(lead));
         when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean(), anyBoolean()))
@@ -354,7 +330,6 @@ class LeadServiceTest {
                 .thenReturn(Optional.of(InteractionResult.create("CONTACT_MADE", "Contato realizado", 1)));
         when(leads.saveAndFlush(any(Lead.class))).thenAnswer(inv -> inv.getArgument(0));
         when(users.findAllById(any())).thenReturn(List.of());
-        when(workflow.apply(eq("lead"), any(), eq("contact"), any())).thenReturn(CONTACTED_STATE);
         RecordInteractionCommand cmd =
                 new RecordInteractionCommand(typeId, resultId, "Conversamos", Instant.now(), null);
 
@@ -373,7 +348,6 @@ class LeadServiceTest {
         Lead lead = Lead.register(
                 new RegisterLeadCommand("Maria", "11999999999", null, null, UUID.randomUUID(), responsible, null),
                 Origin.create("WEBSITE", "Website", 1),
-                NEW_STATE,
                 UUID.randomUUID());
         lead.recordInteraction(
                 InteractionType.create("PHONE_CALL", "Ligação", 1),
@@ -382,12 +356,12 @@ class LeadServiceTest {
                 Instant.now(),
                 null,
                 responsible);
+        lead.markContacted(responsible); // the service performs this NEW -> CONTACTED move on an effective contact
         when(leads.findById(id)).thenReturn(Optional.of(lead));
         when(accessPolicy.canSee(any(Lead.class), any(), anyBoolean(), anyBoolean()))
                 .thenReturn(true);
         when(leads.saveAndFlush(any(Lead.class))).thenAnswer(inv -> inv.getArgument(0));
         when(users.findAllById(any())).thenReturn(List.of());
-        when(workflow.apply(eq("lead"), any(), eq("qualify"), any())).thenReturn(QUALIFIED_STATE);
 
         LeadDetail detail = service.qualify(id, "Pacote corporativo", "bom perfil", responsible, false, false);
 
@@ -430,7 +404,6 @@ class LeadServiceTest {
         return Lead.register(
                 new RegisterLeadCommand("Maria", "11999999999", null, null, UUID.randomUUID(), null, null),
                 Origin.create("WEBSITE", "Website", 1),
-                NEW_STATE,
                 UUID.randomUUID());
     }
 }

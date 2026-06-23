@@ -44,7 +44,7 @@ public record PendingOpportunity(
                 o.id(),
                 o.leadId(),
                 o.name(),
-                o.stage(),
+                o.stage().name(),
                 o.responsiblePersonId(),
                 responsibleName,
                 o.responsiblePersonId() == null,

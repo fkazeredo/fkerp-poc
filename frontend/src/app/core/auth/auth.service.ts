@@ -145,11 +145,6 @@ export class AuthService {
   canOperateBookings(): boolean {
     return this.hasScope('booking:request:update');
   }
-
-  /** Whether the user may administer the configurable workflows (states, transitions, attention rules). */
-  canManageWorkflows(): boolean {
-    return this.hasScope('workflow:manage');
-  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

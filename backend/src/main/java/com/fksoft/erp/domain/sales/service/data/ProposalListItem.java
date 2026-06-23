@@ -40,7 +40,7 @@ public record ProposalListItem(
                 p.opportunityId(),
                 opportunityName,
                 p.title(),
-                p.status(),
+                p.status().name(),
                 p.responsiblePersonId(),
                 responsibleName,
                 p.responsiblePersonId() == null,

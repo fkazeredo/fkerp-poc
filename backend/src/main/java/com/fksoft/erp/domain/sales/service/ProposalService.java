@@ -16,18 +16,16 @@ import com.fksoft.erp.domain.sales.exception.CustomerRejectionReasonNotAvailable
 import com.fksoft.erp.domain.sales.exception.OpportunityNotReadyForProposalException;
 import com.fksoft.erp.domain.sales.exception.ProposalAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.ProposalAlreadyExistsForOpportunityException;
-import com.fksoft.erp.domain.sales.exception.ProposalNotApprovedException;
-import com.fksoft.erp.domain.sales.exception.ProposalNotEditableException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
-import com.fksoft.erp.domain.sales.exception.ProposalNotSentException;
-import com.fksoft.erp.domain.sales.exception.ProposalNotUnderReviewException;
 import com.fksoft.erp.domain.sales.exception.ProposalRejectionReasonNotAvailableException;
 import com.fksoft.erp.domain.sales.exception.SendingChannelNotAvailableException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
+import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.CustomerRejectionReason;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalCreated;
 import com.fksoft.erp.domain.sales.model.ProposalRejectionReason;
+import com.fksoft.erp.domain.sales.model.ProposalStatus;
 import com.fksoft.erp.domain.sales.model.ProposalStatusChange;
 import com.fksoft.erp.domain.sales.model.SendingChannel;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
@@ -43,11 +41,6 @@ import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalListItem;
 import com.fksoft.erp.domain.sales.service.data.ProposalSearchCriteria;
 import com.fksoft.erp.domain.sales.service.data.UpdateProposalCommand;
-import com.fksoft.erp.domain.workflow.WorkflowContext;
-import com.fksoft.erp.domain.workflow.WorkflowEngine;
-import com.fksoft.erp.domain.workflow.WorkflowState;
-import com.fksoft.erp.domain.workflow.WorkflowStateRepository;
-import com.fksoft.erp.domain.workflow.WorkflowTransitionNotAllowedException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -76,11 +69,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProposalService {
 
     // Statuses for which a Proposal is still "open" — at most one open Proposal per Opportunity.
-    private static final Set<String> OPEN_STATUSES =
-            Set.of("DRAFT", "READY_FOR_REVIEW", "APPROVED", "SENT", "ACCEPTED");
+    private static final Set<ProposalStatus> OPEN_STATUSES = ProposalStatus.open();
 
-    // Status codes for which a Commercial Order is still active — used to surface the Proposal's active Order.
-    private static final Set<String> ACTIVE_ORDER_STATUSES = Set.of("PENDING_BOOKING", "BOOKING_NOT_REQUIRED");
+    // Statuses for which a Commercial Order is still active — used to surface the Proposal's active Order.
+    private static final Set<CommercialOrderStatus> ACTIVE_ORDER_STATUSES = CommercialOrderStatus.active();
 
     private final ProposalRepository proposals;
     private final ProposalAccessPolicy accessPolicy;
@@ -91,15 +83,10 @@ public class ProposalService {
     private final UserRepository users;
     private final CommercialOrderRepository orders;
     private final ApplicationEventPublisher events;
-    private final WorkflowEngine workflow;
-    private final WorkflowStateRepository workflowStates;
     private final ProposalRejectionReasonRepository rejectionReasons;
     private final CustomerRejectionReasonRepository customerRejectionReasons;
     private final SendingChannelRepository sendingChannels;
     private final ProposalItemTypeService itemTypes;
-
-    /** The workflow definition code for the Proposal lifecycle. */
-    private static final String PROPOSAL_WORKFLOW = "proposal";
 
     /**
      * Creates a Proposal from a READY_FOR_PROPOSAL Opportunity the caller is allowed to see. An
@@ -130,7 +117,7 @@ public class ProposalService {
                 opportunity, createdBy, canSeeAllOpportunities, canSeeUnassignedOpportunities)) {
             throw new OpportunityAccessDeniedException();
         }
-        if (!"READY_FOR_PROPOSAL".equals(opportunity.stage())) {
+        if (!opportunity.stage().isReadyForProposal()) {
             throw new OpportunityNotReadyForProposalException();
         }
         proposals
@@ -150,11 +137,7 @@ public class ProposalService {
             // The opportunity's responsible is preserved by default.
             responsibleId = opportunity.responsiblePersonId();
         }
-        WorkflowState initialState = workflowStates
-                .findByDefinition_CodeAndCode(PROPOSAL_WORKFLOW, "DRAFT")
-                .orElseThrow(() -> new IllegalStateException("Missing Proposal workflow initial state"));
-        Proposal proposal =
-                Proposal.createFromOpportunity(opportunity, responsibleId, command, initialState, createdBy);
+        Proposal proposal = Proposal.createFromOpportunity(opportunity, responsibleId, command, createdBy);
         proposals.save(proposal);
         events.publishEvent(
                 new ProposalCreated(proposal.id(), opportunity.id(), opportunity.leadId(), createdBy, responsibleId));
@@ -294,14 +277,7 @@ public class ProposalService {
     @Transactional
     public ProposalDetail submitForReview(UUID proposalId, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
-        WorkflowState target;
-        try {
-            target = workflow.apply(
-                    PROPOSAL_WORKFLOW, proposal.currentState(), "submit", WorkflowContext.of(proposal, userId));
-        } catch (WorkflowTransitionNotAllowedException e) {
-            throw new ProposalNotEditableException();
-        }
-        proposal.applySubmit(target, userId);
+        proposal.applySubmit(userId);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 
@@ -322,14 +298,7 @@ public class ProposalService {
     @Transactional
     public ProposalDetail approve(UUID proposalId, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
-        WorkflowState target;
-        try {
-            target = workflow.apply(
-                    PROPOSAL_WORKFLOW, proposal.currentState(), "approve", WorkflowContext.of(proposal, userId));
-        } catch (WorkflowTransitionNotAllowedException e) {
-            throw new ProposalNotUnderReviewException();
-        }
-        proposal.applyApprove(target, userId);
+        proposal.applyApprove(userId);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 
@@ -359,14 +328,7 @@ public class ProposalService {
                 .findById(reasonId)
                 .filter(ReferenceData::active)
                 .orElseThrow(ProposalRejectionReasonNotAvailableException::new);
-        WorkflowState target;
-        try {
-            target = workflow.apply(
-                    PROPOSAL_WORKFLOW, proposal.currentState(), "reject", WorkflowContext.of(proposal, userId));
-        } catch (WorkflowTransitionNotAllowedException e) {
-            throw new ProposalNotUnderReviewException();
-        }
-        proposal.applyReject(target, userId, reason, note);
+        proposal.applyReject(userId, reason, note);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 
@@ -398,14 +360,7 @@ public class ProposalService {
                         .findById(channelId)
                         .filter(ReferenceData::active)
                         .orElseThrow(SendingChannelNotAvailableException::new);
-        WorkflowState target;
-        try {
-            target = workflow.apply(
-                    PROPOSAL_WORKFLOW, proposal.currentState(), "send", WorkflowContext.of(proposal, userId));
-        } catch (WorkflowTransitionNotAllowedException e) {
-            throw new ProposalNotApprovedException();
-        }
-        proposal.applySend(target, userId, channel);
+        proposal.applySend(userId, channel);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 
@@ -429,14 +384,7 @@ public class ProposalService {
     public ProposalDetail acceptByCustomer(
             UUID proposalId, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Proposal proposal = loadVisible(proposalId, userId, canSeeAll, canSeeUnassigned);
-        WorkflowState target;
-        try {
-            target = workflow.apply(
-                    PROPOSAL_WORKFLOW, proposal.currentState(), "accept", WorkflowContext.of(proposal, userId));
-        } catch (WorkflowTransitionNotAllowedException e) {
-            throw new ProposalNotSentException();
-        }
-        proposal.applyAccept(target, userId, note);
+        proposal.applyAccept(userId, note);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 
@@ -466,14 +414,7 @@ public class ProposalService {
                 .findById(reasonId)
                 .filter(ReferenceData::active)
                 .orElseThrow(CustomerRejectionReasonNotAvailableException::new);
-        WorkflowState target;
-        try {
-            target = workflow.apply(
-                    PROPOSAL_WORKFLOW, proposal.currentState(), "decline", WorkflowContext.of(proposal, userId));
-        } catch (WorkflowTransitionNotAllowedException e) {
-            throw new ProposalNotSentException();
-        }
-        proposal.applyDecline(target, userId, reason, note);
+        proposal.applyDecline(userId, reason, note);
         return toDetail(proposals.saveAndFlush(proposal));
     }
 

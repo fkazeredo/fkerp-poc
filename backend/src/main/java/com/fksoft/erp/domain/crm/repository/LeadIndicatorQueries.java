@@ -2,6 +2,7 @@ package com.fksoft.erp.domain.crm.repository;
 
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadInteraction;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -47,7 +48,7 @@ public class LeadIndicatorQueries {
         q.groupBy(root.get("status"));
         Map<String, Long> result = new LinkedHashMap<>();
         for (Object[] row : em.createQuery(q).getResultList()) {
-            result.put((String) row[0], (Long) row[1]);
+            result.put(((LeadStatus) row[0]).name(), (Long) row[1]);
         }
         return result;
     }
@@ -118,7 +119,7 @@ public class LeadIndicatorQueries {
         q.select(cb.count(root));
         q.where(cb.and(
                 where(cb, root, q, visible, from, to),
-                cb.equal(root.get("status"), "NEW"),
+                cb.equal(root.get("status"), LeadStatus.NEW),
                 cb.not(cb.exists(interactions))));
         return em.createQuery(q).getSingleResult();
     }

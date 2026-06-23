@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fksoft.erp.AbstractIntegrationTest;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
+import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.repository.BookingRequestRepository;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
@@ -108,7 +109,7 @@ class BookingRequestApiIntegrationTest extends AbstractIntegrationTest {
 
         // The saved aggregate preserves the source references and the commercial responsible, and starts PENDING.
         BookingRequest request = bookingRequests.findById(requestId).orElseThrow();
-        assertThat(request.status()).isEqualTo("PENDING");
+        assertThat(request.status()).isEqualTo(BookingRequestStatus.PENDING);
         assertThat(request.commercialOrderId()).isEqualTo(order);
         assertThat(request.proposalId()).isNotNull();
         assertThat(request.opportunityId()).isNotNull();

@@ -1,6 +1,7 @@
 package com.fksoft.erp.domain.crm.repository;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
+import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -50,7 +51,7 @@ public class OpportunityIndicatorQueries {
         q.groupBy(root.get("stage"));
         Map<String, Long> result = new LinkedHashMap<>();
         for (Object[] row : em.createQuery(q).getResultList()) {
-            result.put((String) row[0], (Long) row[1]);
+            result.put(((OpportunityStage) row[0]).name(), (Long) row[1]);
         }
         return result;
     }

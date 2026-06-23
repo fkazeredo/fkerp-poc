@@ -100,7 +100,7 @@ public record BookingRequestDetail(
                 r.id(),
                 r.commercialOrderId(),
                 order.number(),
-                r.status(),
+                r.status().name(),
                 r.bookingOperatorId(),
                 nameOf(names, r.bookingOperatorId()),
                 r.bookingOperatorId() == null,
@@ -115,9 +115,13 @@ public record BookingRequestDetail(
                 nameOf(names, r.createdBy()),
                 items,
                 attempts,
-                new SourceOrder(order.id(), order.number(), order.status()),
-                new SourceProposal(proposal.id(), proposal.title(), proposal.status()),
-                new SourceOpportunity(opportunity.id(), opportunity.name(), opportunity.stage()),
+                new SourceOrder(order.id(), order.number(), order.status().name()),
+                new SourceProposal(
+                        proposal.id(), proposal.title(), proposal.status().name()),
+                new SourceOpportunity(
+                        opportunity.id(),
+                        opportunity.name(),
+                        opportunity.stage().name()),
                 new SourceLead(lead.id(), lead.name()));
     }
 
@@ -191,7 +195,7 @@ public record BookingRequestDetail(
                     i.description(),
                     i.quantity(),
                     i.requiresBooking(),
-                    i.status(),
+                    i.status().name(),
                     confirmation,
                     failure);
         }

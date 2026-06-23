@@ -1,7 +1,9 @@
 package com.fksoft.erp.domain.booking.service;
 
 import com.fksoft.erp.domain.booking.model.BookingItem;
+import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
+import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import com.fksoft.erp.domain.booking.service.data.BookingRequestSearchCriteria;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
@@ -10,7 +12,9 @@ import jakarta.persistence.criteria.Subquery;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 
 /** Dynamic query predicates for the operational Booking Request list. */
@@ -18,8 +22,11 @@ public final class BookingRequestSpecifications {
 
     // The default operational statuses: everything that still needs attention. The terminal CONFIRMED and
     // CANCELLED requests are hidden by default; FAILED stays visible (it needs an operational decision).
-    private static final Set<String> DEFAULT_STATUSES =
-            Set.of("PENDING", "IN_PROGRESS", "PARTIALLY_CONFIRMED", "FAILED");
+    private static final Set<BookingRequestStatus> DEFAULT_STATUSES = Set.of(
+            BookingRequestStatus.PENDING,
+            BookingRequestStatus.IN_PROGRESS,
+            BookingRequestStatus.PARTIALLY_CONFIRMED,
+            BookingRequestStatus.FAILED);
 
     private BookingRequestSpecifications() {}
 
@@ -46,8 +53,20 @@ public final class BookingRequestSpecifications {
             if (statuses == null || statuses.isEmpty()) {
                 return root.get("status").in(DEFAULT_STATUSES);
             }
-            return root.get("status").in(statuses);
+            Set<BookingRequestStatus> parsed = statuses.stream()
+                    .map(BookingRequestSpecifications::toStatus)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            return parsed.isEmpty() ? cb.disjunction() : root.get("status").in(parsed);
         };
+    }
+
+    private static BookingRequestStatus toStatus(String value) {
+        try {
+            return BookingRequestStatus.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private static Specification<BookingRequest> operatorFilter(java.util.UUID operatorId, boolean unassignedOnly) {
@@ -108,7 +127,7 @@ public final class BookingRequestSpecifications {
             Subquery<Integer> sub = query.subquery(Integer.class);
             Root<BookingRequest> parent = sub.correlate(root);
             Join<BookingRequest, BookingItem> items = parent.join("items");
-            sub.select(cb.literal(1)).where(cb.equal(items.get("status"), "FAILED"));
+            sub.select(cb.literal(1)).where(cb.equal(items.get("status"), BookingItemStatus.FAILED));
             return cb.exists(sub);
         };
     }

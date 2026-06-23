@@ -40,25 +40,31 @@ the backend and Angular on the frontend; the base package is `com.fksoft`.
    screen's loading / empty / error / permission-denied / success states), never by gaming the number or
    by explaining it away. No fake/assertion-free/skipped tests. This invariant outranks delivery speed:
    when in doubt, write the test. (Enforced through §3 and §13.)
-8. **Data-driven by default (with the structural-enum exception) — owner mandate.** A value set that is
-   genuinely *reference data* MUST be a **cadastro** (a DB-backed, admin-editable list), not a hardcoded
-   `enum`; a *lifecycle* (states + transitions) MUST be a **configurable workflow** on the engine
-   (`domain.workflow`), not hardcoded transition methods; and the *attention rules* that flag why a record
-   needs action (the pending-items worklists) MUST be configurable `WorkflowAttentionRule`s. Apply **the
-   test** before reaching for an `enum`:
+8. **Reference data is data-driven; lifecycles are enums — owner mandate (revised, supersedes the prior
+   "configurable workflow" reform — owner reverted it).** A value set that is genuinely *reference data* MUST
+   be a **cadastro** (a DB-backed, admin-editable list), not a hardcoded `enum`. A *lifecycle* (states +
+   transitions), by contrast, is a **fixed `enum` state machine with pre-defined transition methods on the
+   entity** — there is **no configurable-workflow engine** (the `domain.workflow` engine, the visual editor
+   and the `workflow:manage` scope were removed; the transitions are structural, not admin-editable, so the
+   abstraction was pure overhead). The *attention rules* that flag why a record needs action (the
+   pending-items worklists) are **hardcoded** in the owning domain (e.g. `PendingLeadReasons`,
+   `BookingRequestPendingReasons` + their mirroring `*PendingSpecifications`), **not** configurable rows.
+   Apply **the cadastro-vs-enum test**:
    - **CADASTRO** when the value is a rótulo/motivo/tipo/canal an admin can **add/rename/deactivate without
      code** and **no logic branches** on the specific value (loss/rejection reasons, activity/attempt
      types & results, channels, failure reasons, **item type**). New such lists → a cadastro in the owning
      domain over the `domain.reference` kernel, id-based contract `{code,label}`, `active`→422.
-   - **ENUM stays** only when the value is **structural/behavioral**: the code `switch`es on it, calculates
-     with it (`DiscountType.amountOf`), maps it structurally (`BookingNeed.toStatus`), anchors a coded flow
-     (`confirmTravelPackage` on `TRAVEL_PACKAGE`), or is a **computed set** the code produces. Adding a
-     value would require programming → it is not reference data. Seeded data referencing such an enum is
-     marked `system` (code immutable, not deletable).
-   - **WORKFLOW** for a state machine, and **a configurable attention rule** for each worklist reason.
-   Hardcoded `enum` is **no longer the default** for those three cases — it is reserved for the genuinely
-   fixed/structural. New features follow this in §2 (Decision protocol) and §3 (Definition of Done). The
-   admin manages cadastros via `reference:manage` and the workflows/attention-rules via `workflow:manage`.
+   - **ENUM** for everything **structural/behavioral**, which now explicitly **includes every lifecycle
+     status/stage** (`LeadStatus`, `OpportunityStage`, `ProposalStatus`, `CommercialOrderStatus`,
+     `BookingRequestStatus`, `BookingItemStatus`): the code `switch`es on it, calculates with it
+     (`DiscountType.amountOf`), maps it structurally (`BookingNeed.toStatus`), anchors a coded flow
+     (`confirmTravelPackage` on `TRAVEL_PACKAGE`), enforces the legal transitions on the entity (qualify
+     needs CONTACTED, the funnel advances one step via `OpportunityStage.next()`), or is a **computed set**
+     the code produces. Adding such a value requires programming → it is not reference data. The status is
+     persisted as the enum name (`@Enumerated(STRING)`, mirrored by a DB `CHECK`), so the JSON contract is
+     the same string.
+   The admin manages **only the cadastros**, via `reference:manage`. New features follow this in §2 (Decision
+   protocol) and §3 (Definition of Done).
 
 ## 2. Decision protocol
 

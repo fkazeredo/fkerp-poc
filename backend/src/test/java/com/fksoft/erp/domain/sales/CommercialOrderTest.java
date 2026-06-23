@@ -6,15 +6,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.crm.model.Opportunity;
+import com.fksoft.erp.domain.crm.model.OpportunityStage;
 import com.fksoft.erp.domain.sales.exception.ProposalNotAcceptedException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
+import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
-import com.fksoft.erp.domain.workflow.WorkflowDefinition;
-import com.fksoft.erp.domain.workflow.WorkflowState;
-import com.fksoft.erp.domain.workflow.WorkflowStateCategory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -28,24 +27,8 @@ class CommercialOrderTest {
     private static final UUID OPP_ID = UUID.randomUUID();
     private static final UUID LEAD_ID = UUID.randomUUID();
 
-    private final WorkflowDefinition wf = WorkflowDefinition.of("proposal", "Proposta");
-    private final WorkflowState draft = WorkflowState.of(wf, "DRAFT", "Rascunho", WorkflowStateCategory.INITIAL, 1);
-    private final WorkflowState readyForReview =
-            WorkflowState.of(wf, "READY_FOR_REVIEW", "Em revisão", WorkflowStateCategory.ACTIVE, 2);
-    private final WorkflowState approved =
-            WorkflowState.of(wf, "APPROVED", "Aprovada", WorkflowStateCategory.ACTIVE, 3);
-    private final WorkflowState sent = WorkflowState.of(wf, "SENT", "Enviada", WorkflowStateCategory.ACTIVE, 4);
-    private final WorkflowState accepted =
-            WorkflowState.of(wf, "ACCEPTED", "Aceita", WorkflowStateCategory.TERMINAL_POSITIVE, 5);
-
-    private final WorkflowDefinition orderWf = WorkflowDefinition.of("order", "Pedido Comercial");
-    private final WorkflowState pendingBooking =
-            WorkflowState.of(orderWf, "PENDING_BOOKING", "Aguardando reserva", WorkflowStateCategory.INITIAL, 1);
-    private final WorkflowState bookingNotRequired = WorkflowState.of(
-            orderWf, "BOOKING_NOT_REQUIRED", "Sem reserva necessária", WorkflowStateCategory.INITIAL, 2);
-
     private CommercialOrder order(Proposal proposal, long number) {
-        return CommercialOrder.createFromProposal(proposal, CREATOR, number, pendingBooking, bookingNotRequired);
+        return CommercialOrder.createFromProposal(proposal, CREATOR, number);
     }
 
     @Test
@@ -73,17 +56,17 @@ class CommercialOrderTest {
     void startsPendingBookingWhenItContainsABookableItem() {
         assertThat(order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L)
                         .status())
-                .isEqualTo("PENDING_BOOKING");
+                .isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
         assertThat(order(acceptedProposalWith(ProposalItemTypeFixtures.CAR_RENTAL), 2L)
                         .status())
-                .isEqualTo("PENDING_BOOKING");
+                .isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
         // A mix that includes a bookable item still requires booking.
         assertThat(order(
                                 acceptedProposalWith(
                                         ProposalItemTypeFixtures.SERVICE_FEE, ProposalItemTypeFixtures.CAR_RENTAL),
                                 3L)
                         .status())
-                .isEqualTo("PENDING_BOOKING");
+                .isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
     }
 
     @Test
@@ -91,18 +74,18 @@ class CommercialOrderTest {
         CommercialOrder order =
                 order(acceptedProposalWith(ProposalItemTypeFixtures.SERVICE_FEE, ProposalItemTypeFixtures.OTHER), 1L);
 
-        assertThat(order.status()).isEqualTo("BOOKING_NOT_REQUIRED");
+        assertThat(order.status()).isEqualTo(CommercialOrderStatus.BOOKING_NOT_REQUIRED);
     }
 
     @Test
     void rejectsCreatingFromANonAcceptedProposal() {
-        Proposal sent = acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE);
+        Proposal accepted = acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE);
         // Build a Proposal that is only SENT (not accepted).
         Proposal onlySent = sentProposal();
 
         assertThatThrownBy(() -> order(onlySent, 1L)).isInstanceOf(ProposalNotAcceptedException.class);
         // Sanity: the accepted one does create an order.
-        assertThat(order(sent, 2L)).isNotNull();
+        assertThat(order(accepted, 2L)).isNotNull();
     }
 
     @Test
@@ -120,7 +103,7 @@ class CommercialOrderTest {
         // Identifiable as ready for Financial Operations, without touching the Order's own lifecycle (Sales-owned,
         // not cancelled — Booking takes no ownership).
         assertThat(order.bookingStatus()).isEqualTo("CONFIRMED");
-        assertThat(order.status()).isEqualTo("PENDING_BOOKING");
+        assertThat(order.status()).isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
         assertThat(order.isActive()).isTrue();
     }
 
@@ -131,8 +114,8 @@ class CommercialOrderTest {
         order.reflectBookingStatus("FAILED");
 
         assertThat(order.bookingStatus()).isEqualTo("FAILED");
-        assertThat(order.status()).isEqualTo("PENDING_BOOKING");
-        assertThat(order.status()).isNotEqualTo("CANCELLED");
+        assertThat(order.status()).isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
+        assertThat(order.status()).isNotEqualTo(CommercialOrderStatus.CANCELLED);
     }
 
     @Test
@@ -147,7 +130,7 @@ class CommercialOrderTest {
 
     private Proposal acceptedProposalWith(ProposalItemType... types) {
         Proposal p = sentProposalWith(types);
-        p.applyAccept(accepted, UUID.randomUUID(), "ok");
+        p.applyAccept(UUID.randomUUID(), "ok");
         return p;
     }
 
@@ -163,19 +146,19 @@ class CommercialOrderTest {
                     new ProposalItemCommand(type.id(), "linha", 1, new BigDecimal("100.00"), null, null),
                     CREATOR);
         }
-        p.applySubmit(readyForReview, CREATOR);
-        p.applyApprove(approved, UUID.randomUUID());
-        p.applySend(sent, UUID.randomUUID(), null);
+        p.applySubmit(CREATOR);
+        p.applyApprove(UUID.randomUUID());
+        p.applySend(UUID.randomUUID(), null);
         return p;
     }
 
     private Proposal readyDraft() {
         Opportunity o = mock(Opportunity.class);
-        when(o.stage()).thenReturn("READY_FOR_PROPOSAL");
+        when(o.stage()).thenReturn(OpportunityStage.READY_FOR_PROPOSAL);
         when(o.id()).thenReturn(OPP_ID);
         when(o.leadId()).thenReturn(LEAD_ID);
         CreateProposalCommand command = new CreateProposalCommand(
                 OPP_ID, RESPONSIBLE, "Proposta corporativa", null, LocalDate.parse("2026-12-31"), "termos");
-        return Proposal.createFromOpportunity(o, RESPONSIBLE, command, draft, CREATOR);
+        return Proposal.createFromOpportunity(o, RESPONSIBLE, command, CREATOR);
     }
 }

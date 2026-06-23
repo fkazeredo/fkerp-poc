@@ -1,7 +1,9 @@
 package com.fksoft.erp.domain.booking.repository;
 
 import com.fksoft.erp.domain.booking.model.BookingItem;
+import com.fksoft.erp.domain.booking.model.BookingItemStatus;
 import com.fksoft.erp.domain.booking.model.BookingRequest;
+import com.fksoft.erp.domain.booking.model.BookingRequestStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -51,7 +53,7 @@ public class BookingIndicatorQueries {
         q.groupBy(root.get("status"));
         Map<String, Long> result = new LinkedHashMap<>();
         for (Object[] row : em.createQuery(q).getResultList()) {
-            result.put((String) row[0], (Long) row[1]);
+            result.put(((BookingRequestStatus) row[0]).name(), (Long) row[1]);
         }
         return result;
     }
@@ -95,7 +97,7 @@ public class BookingIndicatorQueries {
         Join<BookingRequest, BookingItem> items = root.join("items");
         q.select(cb.count(items));
         Predicate base = where(cb, root, q, visible, from, to);
-        q.where(cb.and(base, cb.equal(items.get("status"), "FAILED")));
+        q.where(cb.and(base, cb.equal(items.get("status"), BookingItemStatus.FAILED)));
         return em.createQuery(q).getSingleResult();
     }
 
@@ -115,7 +117,10 @@ public class BookingIndicatorQueries {
         Root<BookingRequest> root = q.from(BookingRequest.class);
         q.multiselect(root.get("createdAt"), root.get("confirmedAt"));
         Predicate base = where(cb, root, q, visible, from, to);
-        q.where(cb.and(base, cb.equal(root.get("status"), "CONFIRMED"), cb.isNotNull(root.get("confirmedAt"))));
+        q.where(cb.and(
+                base,
+                cb.equal(root.get("status"), BookingRequestStatus.CONFIRMED),
+                cb.isNotNull(root.get("confirmedAt"))));
         List<Object[]> rows = em.createQuery(q).getResultList();
         if (rows.isEmpty()) {
             return null;

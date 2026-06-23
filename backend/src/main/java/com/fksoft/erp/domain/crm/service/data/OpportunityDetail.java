@@ -59,8 +59,13 @@ public record OpportunityDetail(
      * @return the detail read model
      */
     public static OpportunityDetail from(Opportunity o, Lead lead, Map<UUID, String> names) {
-        SourceLead sourceLead =
-                new SourceLead(lead.id(), lead.name(), lead.phone(), lead.whatsapp(), lead.email(), lead.status());
+        SourceLead sourceLead = new SourceLead(
+                lead.id(),
+                lead.name(),
+                lead.phone(),
+                lead.whatsapp(),
+                lead.email(),
+                lead.status().name());
         LossInfo loss = o.lostAt() == null
                 ? null
                 : new LossInfo(
@@ -87,7 +92,7 @@ public record OpportunityDetail(
                 o.id(),
                 o.leadId(),
                 o.name(),
-                o.stage(),
+                o.stage().name(),
                 o.responsiblePersonId(),
                 nameOf(names, o.responsiblePersonId()),
                 o.responsiblePersonId() == null,

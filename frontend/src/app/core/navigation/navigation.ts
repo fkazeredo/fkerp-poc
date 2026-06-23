@@ -128,27 +128,11 @@ export class NavigationService {
       link('Motivos de falha', 'pi pi-database', '/cadastros/motivos-falha', false, 'Por que um item de reserva falhou.', 'ref'),
     ];
 
-    // Fluxos de trabalho: a standalone admin-only module that expands into the system's (fixed) workflows, one
-    // sub-item each — like the other modules. Only the administrator (workflow:manage) sees it; a module with no
-    // items is filtered out by modules().
-    const fluxos: NavLink[] = [];
-    if (this.auth.canManageWorkflows()) {
-      fluxos.push(
-        link('Lead', 'pi pi-sitemap', '/fluxos/lead', false, 'O fluxo do Lead: Novo → Contatado → Qualificado.', 'ref'),
-        link('Oportunidade', 'pi pi-sitemap', '/fluxos/opportunity', false, 'O fluxo da Oportunidade no pipeline comercial.', 'ref'),
-        link('Proposta', 'pi pi-sitemap', '/fluxos/proposal', false, 'O fluxo da Proposta comercial.', 'ref'),
-        link('Pedido Comercial', 'pi pi-sitemap', '/fluxos/order', false, 'O fluxo do Pedido Comercial.', 'ref'),
-        link('Reserva', 'pi pi-sitemap', '/fluxos/booking_request', false, 'O fluxo da Reserva (Booking).', 'ref'),
-        link('Item de reserva', 'pi pi-sitemap', '/fluxos/booking_item', false, 'O fluxo do item de reserva.', 'ref'),
-      );
-    }
-
     return [
       module('comercial', 'Comercial', 'pi pi-briefcase', 'leads', '/comercial', 'O funil comercial: leads, oportunidades, propostas e pedidos.', comercial, comercialActions),
       module('reservas', 'Reservas', 'pi pi-bookmark', 'sales', '/reservas', 'As reservas a operar a partir dos pedidos fechados.', reservas, []),
       module('acompanhamento', 'Acompanhamento', 'pi pi-chart-bar', 'indicators', '/acompanhamento', 'Pendências e indicadores de todo o funil.', acompanhamento, []),
       module('cadastros', 'Cadastros', 'pi pi-database', 'ref', '/cadastros', 'As listas que alimentam os fluxos.', cadastros, []),
-      module('workflows', 'Fluxos de trabalho', 'pi pi-sitemap', 'ref', '/fluxos', 'Os fluxos configuráveis do sistema: estados, transições e regras de atenção.', fluxos, []),
     ];
   }
 }

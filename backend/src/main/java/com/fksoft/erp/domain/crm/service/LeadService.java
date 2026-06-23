@@ -5,8 +5,6 @@ import com.fksoft.erp.domain.crm.exception.InteractionResultNotAvailableExceptio
 import com.fksoft.erp.domain.crm.exception.InteractionTypeNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.LeadAccessDeniedException;
 import com.fksoft.erp.domain.crm.exception.LeadAssignmentNotAllowedException;
-import com.fksoft.erp.domain.crm.exception.LeadCannotBeMarkedLostException;
-import com.fksoft.erp.domain.crm.exception.LeadCannotBeQualifiedException;
 import com.fksoft.erp.domain.crm.exception.LeadNotFoundException;
 import com.fksoft.erp.domain.crm.exception.LossReasonNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.OriginNotAvailableException;
@@ -15,6 +13,7 @@ import com.fksoft.erp.domain.crm.model.InteractionResult;
 import com.fksoft.erp.domain.crm.model.InteractionType;
 import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.LeadRegistered;
+import com.fksoft.erp.domain.crm.model.LeadStatus;
 import com.fksoft.erp.domain.crm.model.LossReason;
 import com.fksoft.erp.domain.crm.model.Origin;
 import com.fksoft.erp.domain.crm.model.PendingLeadReasons;
@@ -36,13 +35,6 @@ import com.fksoft.erp.domain.crm.service.data.Responsible;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
 import com.fksoft.erp.domain.reference.ReferenceData;
-import com.fksoft.erp.domain.workflow.WorkflowAttentionRule;
-import com.fksoft.erp.domain.workflow.WorkflowAttentionRuleRepository;
-import com.fksoft.erp.domain.workflow.WorkflowContext;
-import com.fksoft.erp.domain.workflow.WorkflowEngine;
-import com.fksoft.erp.domain.workflow.WorkflowState;
-import com.fksoft.erp.domain.workflow.WorkflowStateRepository;
-import com.fksoft.erp.domain.workflow.WorkflowTransitionNotAllowedException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -81,12 +73,6 @@ public class LeadService {
     private final LeadAssignmentPolicy assignmentPolicy;
     private final LeadIndicatorQueries indicatorQueries;
     private final ApplicationEventPublisher events;
-    private final WorkflowEngine workflow;
-    private final WorkflowStateRepository workflowStates;
-    private final WorkflowAttentionRuleRepository attentionRules;
-
-    /** The workflow definition code for the Lead lifecycle. */
-    private static final String LEAD_WORKFLOW = "lead";
 
     /**
      * Registers a new Lead (status NEW), optionally recording an initial note as the first
@@ -110,10 +96,7 @@ public class LeadService {
             throw new ResponsiblePersonNotFoundException();
         }
         rejectDuplicate(command);
-        WorkflowState initialState = workflowStates
-                .findByDefinition_CodeAndCode(LEAD_WORKFLOW, "NEW")
-                .orElseThrow(() -> new IllegalStateException("Missing Lead workflow initial state NEW"));
-        Lead lead = Lead.register(command, origin, initialState, createdBy);
+        Lead lead = Lead.register(command, origin, createdBy);
         if (command.initialNote() != null && !command.initialNote().isBlank()) {
             InteractionType noteType = interactionTypes
                     .findByCode(InteractionType.INTERNAL_NOTE_CODE)
@@ -194,9 +177,7 @@ public class LeadService {
     public Page<PendingLead> pending(
             Pageable pageable, UUID currentUserId, boolean canSeeAll, boolean canSeeUnassigned) {
         Instant now = Instant.now();
-        List<WorkflowAttentionRule> rules =
-                attentionRules.findByDefinition_CodeAndActiveTrueOrderBySortOrderAsc("lead");
-        Specification<Lead> spec = LeadPendingSpecifications.pending(now, rules)
+        Specification<Lead> spec = LeadPendingSpecifications.pending(now)
                 .and(accessPolicy.visibleTo(currentUserId, canSeeAll, canSeeUnassigned));
         Page<Lead> page = leads.findAll(spec, pageable);
 
@@ -211,7 +192,7 @@ public class LeadService {
         return page.map(lead -> PendingLead.from(
                 lead,
                 nameOf(names, lead.responsiblePersonId()),
-                PendingLeadReasons.of(lead, now, withInteractions.contains(lead.id()), rules)));
+                PendingLeadReasons.of(lead, now, withInteractions.contains(lead.id()))));
     }
 
     /**
@@ -299,13 +280,7 @@ public class LeadService {
     public LeadDetail qualify(
             UUID id, String mainInterest, String note, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         Lead lead = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
-        WorkflowState target;
-        try {
-            target = workflow.apply(LEAD_WORKFLOW, lead.currentState(), "qualify", WorkflowContext.of(lead, userId));
-        } catch (WorkflowTransitionNotAllowedException e) {
-            throw new LeadCannotBeQualifiedException();
-        }
-        lead.applyQualification(target, mainInterest, note, userId);
+        lead.applyQualification(mainInterest, note, userId);
         return toDetail(leads.saveAndFlush(lead));
     }
 
@@ -330,13 +305,7 @@ public class LeadService {
                 .findById(lossReasonId)
                 .filter(ReferenceData::active)
                 .orElseThrow(LossReasonNotAvailableException::new);
-        WorkflowState target;
-        try {
-            target = workflow.apply(LEAD_WORKFLOW, lead.currentState(), "lose", WorkflowContext.of(lead, userId));
-        } catch (WorkflowTransitionNotAllowedException e) {
-            throw new LeadCannotBeMarkedLostException();
-        }
-        lead.applyLoss(target, reason, userId, note);
+        lead.applyLoss(reason, userId, note);
         return toDetail(leads.saveAndFlush(lead));
     }
 
@@ -402,11 +371,9 @@ public class LeadService {
                 .filter(ReferenceData::active)
                 .orElseThrow(InteractionResultNotAvailableException::new);
         lead.recordInteraction(type, result, cmd.description(), cmd.occurredAt(), cmd.nextContactAt(), userId);
-        // An effective contact moves a NEW lead to CONTACTED via the workflow's system "contact" transition.
-        if ("NEW".equals(lead.status()) && result.isEffectiveContact()) {
-            WorkflowState target =
-                    workflow.apply(LEAD_WORKFLOW, lead.currentState(), "contact", WorkflowContext.of(lead, userId));
-            lead.markContacted(target, userId);
+        // An effective contact moves a NEW lead to CONTACTED.
+        if (lead.status() == LeadStatus.NEW && result.isEffectiveContact()) {
+            lead.markContacted(userId);
         }
         return toDetail(leads.saveAndFlush(lead));
     }

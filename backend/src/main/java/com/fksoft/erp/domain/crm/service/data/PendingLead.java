@@ -35,7 +35,7 @@ public record PendingLead(
                 lead.id(),
                 lead.name(),
                 mainContact(lead),
-                lead.status(),
+                lead.status().name(),
                 lead.responsiblePersonId(),
                 responsibleName,
                 lead.responsiblePersonId() == null,
