@@ -73,6 +73,39 @@
   padding: 1rem 0;
 }
 
+.section {
+  display: block;
+  margin-bottom: 1.25rem;
+}
+
+.installments-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.installments-table th {
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--p-text-muted-color, #6b7280);
+  padding: 0 0.5rem 0.4rem;
+}
+
+.installments-table td {
+  padding: 0.45rem 0.5rem;
+  border-top: 1px solid var(--app-border, #e5e7eb);
+}
+
+.installments-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.installments-table .col-num {
+  width: 2.5rem;
+  text-align: center;
+}
+
 .back {
   margin-top: 1rem;
 }

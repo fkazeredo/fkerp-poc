@@ -5,6 +5,7 @@ import com.fksoft.erp.application.api.dto.ReceivableResponse;
 import com.fksoft.erp.domain.financial.service.ReceivableService;
 import com.fksoft.erp.domain.financial.service.data.CreateReceivableCommand;
 import com.fksoft.erp.domain.financial.service.data.EligibleOrder;
+import com.fksoft.erp.domain.financial.service.data.InstallmentInput;
 import com.fksoft.erp.domain.financial.service.data.ReceivableDetail;
 import com.fksoft.erp.domain.financial.service.data.ReceivableListItem;
 import com.fksoft.erp.domain.financial.service.data.ReceivableSearchCriteria;
@@ -51,11 +52,17 @@ public class ReceivableController {
      */
     @PostMapping
     public ResponseEntity<ReceivableResponse> create(@Valid @RequestBody CreateReceivableRequest request) {
+        List<InstallmentInput> installments = request.installments() == null
+                ? List.of()
+                : request.installments().stream()
+                        .map(i -> new InstallmentInput(i.amount(), i.dueDate(), i.paymentNotes()))
+                        .toList();
         CreateReceivableCommand command = new CreateReceivableCommand(
                 request.commercialOrderId(),
                 request.dueDate(),
                 request.paymentNotes(),
-                request.financialResponsiblePersonId());
+                request.financialResponsiblePersonId(),
+                installments);
         UUID id = receivableService.create(
                 command, userContext.currentUserId(), canSeeAllOrders(), canSeeUnassignedOrders());
         return ResponseEntity.created(URI.create("/api/receivables/" + id)).body(new ReceivableResponse(id, "OPEN"));

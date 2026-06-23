@@ -707,8 +707,25 @@ back-office **`financeiro`** user (seed 005) creates + reads all (`financial:rec
 (this intentionally lets Finance read the commercial Order list/detail/indicators, but **never** create or modify an
 Order — it lacks `sales:order:create`/`update`); the commercial **Manager** (001) and the **Board/Director** (004)
 hold `financial:receivable:read:all` (consultation only); Sellers/Representatives and HR/IT have **no** financial
-read tier. The payments lifecycle (registering/reversing a payment, installments, the `OVERDUE`/`PAID` transitions,
-the financial status reflected onto the Order, indicators) and Commission are **later slices**.
+read tier. The payments lifecycle (registering/reversing a payment, the `OVERDUE`/`PAID` transitions, the financial
+status reflected onto the Order, indicators) and Commission are **later slices**.
+
+**Receivable installments (normative — Financial Operations, Sprint 5 Slice 2).** A Receivable is split into one or
+more **installments** (`ReceivableInstallment`, a child collection of the Receivable aggregate —
+`@OneToMany(cascade=ALL, orphanRemoval=true)`, mirroring `ProposalItem`). Each installment has an **`number`**
+(1-based position), an **`amount`** (`@PositiveOrZero`, scale 2), a **`dueDate`** (required), a **`status`** and
+optional **`paymentNotes`**. The installments **always sum to the Receivable's `total`** — every Receivable has
+**at least one installment** (uniform model): the schedule is **defined at creation** (the create request carries an
+optional `installments` list) and **empty/absent ⇒ one full-amount installment** at the receivable's reference
+`dueDate`. When a schedule is supplied it must sum to the total (else `proposal`-style **422**
+`financial.receivable.installment-schedule-invalid`; a negative amount or a missing installment due date is a **400**
+via Bean Validation, re-guarded in the aggregate); installments are numbered 1..n in the given order. The
+`InstallmentStatus` lifecycle (`OPEN`/`PARTIALLY_PAID`/`PAID`/`OVERDUE`/`CANCELLED`) is a **flow** → an enum
+(mirrors `ReceivableStatus`); installments start **`OPEN`** and only `OPEN` is reachable in this slice (the
+transitions are driven by payment behavior, a later slice). Scheduling installments creates **no** Payment,
+Commission, Invoice or tax data; the detail exposes the installment schedule, still **never** Payment/Commission/
+Invoice data. Out of scope: interest, late fee, boleto/Pix generation, recurring billing, tax-invoice schedule,
+commission, and editing the schedule after creation.
 
 **Customer (normative — the commercial graduation of a Lead, in `domain.crm`).** The **Customer** is the company's
 client, materialized from its source **Lead** when a Commercial Order is created (deal closed): a **synchronous,

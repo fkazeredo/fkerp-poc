@@ -888,15 +888,21 @@ No formulário, informe:
 
 - **Pedido** (obrigatório) — a lista oferece apenas os **pedidos elegíveis**: aqueles com **reserva confirmada** e
   que **ainda não têm** uma conta a receber ativa. O valor do pedido aparece como referência.
-- **Vencimento** (obrigatório) — a data única de vencimento.
+- **Vencimento** (obrigatório quando **não** há parcelas) — a data de vencimento da conta.
+- **Parcelas** (opcional) — você pode **dividir a conta em parcelas** (veja abaixo).
 - **Responsável financeiro** (opcional) — quem, no Financeiro, cuida desta conta.
 - **Observações de pagamento** (opcional) — um texto livre (não é um registro de pagamento).
+
+**Parcelamento.** Use **Adicionar parcela** para dividir a conta. Cada parcela tem um **valor**, um **vencimento**
+e, opcionalmente, observações. A **soma das parcelas precisa ser igual ao valor do pedido** — a tela mostra o
+**Restante** em tempo real e só libera o botão **Gerar conta a receber** quando o valor bate. **Sem** parcelas, a
+conta nasce com **uma única parcela** no valor total, no vencimento informado. As parcelas começam **Em aberto**.
 
 A conta a receber **preserva a origem comercial** (pedido, proposta, oportunidade e lead), o **cliente** e o
 **valor total** do pedido, e nasce no estado **Em aberto**. Cada pedido tem **no máximo uma conta a receber ativa**
 — se já houver uma, o sistema avisa. Só pedidos com **reserva confirmada** podem gerar uma conta; um pedido sem essa
-condição é recusado com uma mensagem clara. Gerar a conta **não** cria pagamento, comissão, nota fiscal nem altera o
-pedido.
+condição é recusado com uma mensagem clara. Gerar a conta (e suas parcelas) **não** cria pagamento, comissão, nota
+fiscal nem altera o pedido.
 
 ### 11.4 A lista e o detalhe
 
@@ -906,15 +912,15 @@ por status**; por padrão, as **canceladas** ficam ocultas. Cada perfil vê apen
 ver.
 
 O **detalhe** de uma conta reúne o **resumo** (valor, vencimento, status, responsável e observações), o **cliente
-(pagador)** e a **origem comercial** rastreável — com atalhos para abrir o **pedido**, a **proposta** e a
-**oportunidade** de origem. A tela mostra **apenas dados da conta a receber** — nunca pagamentos, comissões ou
-notas.
+(pagador)**, a **origem comercial** rastreável — com atalhos para abrir o **pedido**, a **proposta** e a
+**oportunidade** de origem — e a **tabela de parcelas** (número, valor, vencimento, status e observações). A tela
+mostra **apenas dados da conta a receber** — nunca pagamentos, comissões ou notas.
 
-### 11.5 Estados da conta a receber
+### 11.5 Estados da conta e das parcelas
 
-Uma conta a receber pode estar **Em aberto**, **Parcialmente paga**, **Paga**, **Vencida** ou **Cancelada**. Nesta
-versão toda conta nasce **Em aberto**; o registro de pagamentos (e as transições para paga/parcial/vencida) chega
-na próxima etapa da Sprint 5.
+Tanto a conta a receber quanto cada **parcela** podem estar **Em aberto**, **Parcialmente paga**, **Paga**,
+**Vencida** ou **Cancelada**. Nesta versão tudo nasce **Em aberto**; o registro de pagamentos (e as transições para
+paga/parcial/vencida) chega na próxima etapa da Sprint 5.
 
 ---
 
@@ -1037,17 +1043,19 @@ veículo**, o **registro de falhas com retry**, o **reflexo do status consolidad
 visão de **Reservas pendentes** (seção 10.8) e os **Indicadores de reservas** (seção 10.9), no hub Acompanhamento.
 A entrega foi **validada de ponta a ponta**.
 
-A **Sprint 5 — Operações Financeiras** começou: o módulo **Financeiro** (seção 11) já permite **gerar contas a
-receber** a partir dos **pedidos com reserva confirmada**, com o **Cliente** (pagador) criado automaticamente no
-fechamento, a **lista** e o **detalhe** das contas, tudo com visibilidade por perfil. O Financeiro lê o registro já
-pronto (valor no Pedido; localizadores, datas e fornecedor na reserva) sem redigitar dados, e Reserva e Comercial
+A **Sprint 5 — Operações Financeiras** está em andamento: o módulo **Financeiro** (seção 11) já permite **gerar
+contas a receber** a partir dos **pedidos com reserva confirmada**, com o **Cliente** (pagador) criado
+automaticamente no fechamento, o **parcelamento** da conta (uma ou várias parcelas, cuja soma é igual ao valor do
+pedido), além da **lista** e do **detalhe** das contas, tudo com visibilidade por perfil. O Financeiro lê o registro
+já pronto (valor no Pedido; localizadores, datas e fornecedor na reserva) sem redigitar dados, e Reserva e Comercial
 seguem separados. As **próximas etapas** desta Sprint trazem o **registro de pagamentos** (e as transições para
 *Paga* / *Parcialmente paga* / *Vencida*), o reflexo do status financeiro no pedido e a **comissão**. Este manual
 será atualizado a cada lançamento.
 
 ---
 
-*Status do documento: Sprints 1, 2, 3 e 4 concluídas e Sprint 5 (Operações Financeiras) iniciada — primeira entrega
-do módulo Financeiro: geração de contas a receber a partir de pedidos com reserva confirmada, o Cliente (pagador)
-materializado no fechamento, a lista e o detalhe das contas, com visibilidade por perfil. Próximas etapas da Sprint
-5: pagamentos e comissão. Mantido junto com o produto.*
+*Status do documento: Sprints 1, 2, 3 e 4 concluídas e Sprint 5 (Operações Financeiras) em andamento — módulo
+Financeiro com geração de contas a receber a partir de pedidos com reserva confirmada, o Cliente (pagador)
+materializado no fechamento, o **parcelamento** da conta (uma ou várias parcelas que somam o valor do pedido), e a
+lista e o detalhe das contas, com visibilidade por perfil. Próximas etapas da Sprint 5: pagamentos e comissão.
+Mantido junto com o produto.*

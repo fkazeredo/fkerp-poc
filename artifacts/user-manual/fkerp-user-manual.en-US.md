@@ -890,15 +890,22 @@ In the form, provide:
 
 - **Order** (required) — the list offers only the **eligible orders**: those with a **confirmed booking** that do
   **not yet** have an active receivable. The order amount is shown for reference.
-- **Due date** (required) — the single due date.
+- **Due date** (required when there are **no** installments) — the receivable's due date.
+- **Installments** (optional) — you may **split the receivable into installments** (see below).
 - **Financial responsible** (optional) — who in Finance owns this receivable.
 - **Payment notes** (optional) — free text (not a payment record).
+
+**Installments.** Use **Adicionar parcela** (Add installment) to split the receivable. Each installment has an
+**amount**, a **due date** and optional notes. The **installments must sum to the order amount** — the screen
+shows the **Remaining** live and only enables **Gerar conta a receber** (Generate receivable) when it matches.
+With **no** installments, the receivable is born with a **single installment** for the full amount at the given
+due date. Installments start **Open**.
 
 The receivable **preserves the commercial origin** (order, proposal, opportunity and lead), the **customer** and
 the order's **total amount**, and is born in the **Open** state. Each order has **at most one active receivable**
 — if one already exists, the system warns you. Only orders with a **confirmed booking** can originate a
-receivable; an order without that condition is rejected with a clear message. Generating the receivable creates
-**no** payment, commission or invoice and never changes the order.
+receivable; an order without that condition is rejected with a clear message. Generating the receivable (and its
+installments) creates **no** payment, commission or invoice and never changes the order.
 
 ### 11.4 The list and the detail
 
@@ -908,15 +915,15 @@ The **Receivables** screen shows, for each receivable: the source **order** (cod
 allowed to see.
 
 The **detail** of a receivable gathers the **summary** (amount, due date, status, responsible and notes), the
-**customer (payer)** and the traceable **commercial origin** — with links to open the source **order**,
-**proposal** and **opportunity**. The screen shows **receivable data only** — never payments, commissions or
-invoices.
+**customer (payer)**, the traceable **commercial origin** — with links to open the source **order**, **proposal**
+and **opportunity** — and the **installments table** (number, amount, due date, status and notes). The screen
+shows **receivable data only** — never payments, commissions or invoices.
 
-### 11.5 Receivable states
+### 11.5 Receivable and installment states
 
-A receivable can be **Open**, **Partially paid**, **Paid**, **Overdue** or **Cancelled**. In this release every
-receivable is born **Open**; registering payments (and the transitions to paid/partial/overdue) arrives in the
-next step of Sprint 5.
+Both the receivable and each **installment** can be **Open**, **Partially paid**, **Paid**, **Overdue** or
+**Cancelled**. In this release everything is born **Open**; registering payments (and the transitions to
+paid/partial/overdue) arrives in the next step of Sprint 5.
 
 ---
 
@@ -1033,17 +1040,18 @@ history**, **confirming** Travel package and Car rental items, **registering fai
 as *ready for Finance* or *having a booking problem* —, the **Pending bookings** view (section 10.8) and the
 **Booking indicators** (section 10.9) in the Acompanhamento hub. The delivery was **validated end to end**.
 
-**Sprint 5 — Financial Operations** has started: the **Financeiro** module (section 11) already lets you
+**Sprint 5 — Financial Operations** is under way: the **Financeiro** module (section 11) already lets you
 **generate receivables** from the **orders with a confirmed booking**, with the **Customer** (payer) created
-automatically at the close, the **list** and the **detail** of the receivables, all with per-profile visibility.
-Finance reads the record that is already in place (the amount on the Order; the locators, dates and supplier on
-the booking) without re-typing data, and Booking and Commercial stay separate. The **next steps** in this Sprint
-bring **registering payments** (and the transitions to *Paid* / *Partially paid* / *Overdue*), the financial
-status reflected onto the order, and **commission**. This manual will be updated as each ships.
+automatically at the close, **installments** (one or several, summing to the order amount), and the **list** and
+the **detail** of the receivables, all with per-profile visibility. Finance reads the record that is already in
+place (the amount on the Order; the locators, dates and supplier on the booking) without re-typing data, and
+Booking and Commercial stay separate. The **next steps** in this Sprint bring **registering payments** (and the
+transitions to *Paid* / *Partially paid* / *Overdue*), the financial status reflected onto the order, and
+**commission**. This manual will be updated as each ships.
 
 ---
 
-*Document status: Sprints 1, 2, 3 and 4 closed and Sprint 5 (Financial Operations) started — first delivery of
-the Finance module: generating receivables from orders with a confirmed booking, the Customer (payer)
-materialized at the close, the list and the detail of the receivables, with per-profile visibility. Next steps in
-Sprint 5: payments and commission. Maintained alongside the product.*
+*Document status: Sprints 1, 2, 3 and 4 closed and Sprint 5 (Financial Operations) under way — the Finance module
+generates receivables from orders with a confirmed booking, with the Customer (payer) materialized at the close,
+**installments** (one or several, summing to the order amount), and the list and detail of the receivables, with
+per-profile visibility. Next steps in Sprint 5: payments and commission. Maintained alongside the product.*
