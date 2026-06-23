@@ -185,8 +185,8 @@ public class BookingRequestController {
             @PathVariable UUID id, @Valid @RequestBody RegisterBookingAttemptRequest request) {
         RecordBookingAttemptCommand command = new RecordBookingAttemptCommand(
                 request.bookingItemId(),
-                request.type(),
-                request.result(),
+                request.typeId(),
+                request.resultId(),
                 request.description(),
                 request.occurredAt(),
                 request.nextActionDate());
@@ -265,7 +265,7 @@ public class BookingRequestController {
     public BookingRequestDetail failBookingItem(
             @PathVariable UUID id, @PathVariable UUID itemId, @Valid @RequestBody FailBookingItemRequest request) {
         FailBookingItemCommand command =
-                new FailBookingItemCommand(request.failureReason(), request.failureNote(), request.failedAt());
+                new FailBookingItemCommand(request.failureReasonId(), request.failureNote(), request.failedAt());
         return bookingService.failBookingItem(
                 id, itemId, command, userContext.currentUserId(), canSeeAllBookings(), canSeeUnassignedBookings());
     }

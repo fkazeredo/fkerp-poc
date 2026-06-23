@@ -1,10 +1,16 @@
 package com.fksoft.erp.domain.booking.service;
 
+import com.fksoft.erp.domain.booking.exception.BookingAttemptResultNotAvailableException;
+import com.fksoft.erp.domain.booking.exception.BookingAttemptTypeNotAvailableException;
+import com.fksoft.erp.domain.booking.exception.BookingFailureReasonNotAvailableException;
 import com.fksoft.erp.domain.booking.exception.BookingOperatorNotFoundException;
 import com.fksoft.erp.domain.booking.exception.BookingRequestAccessDeniedException;
 import com.fksoft.erp.domain.booking.exception.BookingRequestAlreadyExistsException;
 import com.fksoft.erp.domain.booking.exception.BookingRequestNotFoundException;
 import com.fksoft.erp.domain.booking.model.BookingAttempt;
+import com.fksoft.erp.domain.booking.model.BookingAttemptResult;
+import com.fksoft.erp.domain.booking.model.BookingAttemptType;
+import com.fksoft.erp.domain.booking.model.BookingFailureReason;
 import com.fksoft.erp.domain.booking.model.BookingItem;
 import com.fksoft.erp.domain.booking.model.BookingItemConfirmation;
 import com.fksoft.erp.domain.booking.model.BookingItemFailure;
@@ -12,6 +18,9 @@ import com.fksoft.erp.domain.booking.model.BookingRequest;
 import com.fksoft.erp.domain.booking.model.BookingRequestCreated;
 import com.fksoft.erp.domain.booking.model.BookingRequestPendingReasons;
 import com.fksoft.erp.domain.booking.model.BookingStatusConsolidated;
+import com.fksoft.erp.domain.booking.repository.BookingAttemptResultRepository;
+import com.fksoft.erp.domain.booking.repository.BookingAttemptTypeRepository;
+import com.fksoft.erp.domain.booking.repository.BookingFailureReasonRepository;
 import com.fksoft.erp.domain.booking.repository.BookingIndicatorQueries;
 import com.fksoft.erp.domain.booking.repository.BookingItemCountsRow;
 import com.fksoft.erp.domain.booking.repository.BookingPendingItemCountsRow;
@@ -33,6 +42,7 @@ import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
+import com.fksoft.erp.domain.reference.ReferenceData;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderAccessDeniedException;
 import com.fksoft.erp.domain.sales.exception.CommercialOrderNotFoundException;
 import com.fksoft.erp.domain.sales.exception.ProposalNotFoundException;
@@ -83,6 +93,9 @@ public class BookingRequestService {
     private final LeadRepository leads;
     private final UserRepository users;
     private final ApplicationEventPublisher events;
+    private final BookingAttemptTypeRepository attemptTypes;
+    private final BookingAttemptResultRepository attemptResults;
+    private final BookingFailureReasonRepository failureReasons;
 
     /**
      * Creates a Booking Request from a Commercial Order the caller is allowed to see and that is
@@ -325,10 +338,18 @@ public class BookingRequestService {
     public BookingRequestDetail recordAttempt(
             UUID id, RecordBookingAttemptCommand command, UUID userId, boolean canSeeAll, boolean canSeeUnassigned) {
         BookingRequest request = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
+        BookingAttemptType type = attemptTypes
+                .findById(command.typeId())
+                .filter(ReferenceData::active)
+                .orElseThrow(BookingAttemptTypeNotAvailableException::new);
+        BookingAttemptResult result = attemptResults
+                .findById(command.resultId())
+                .filter(ReferenceData::active)
+                .orElseThrow(BookingAttemptResultNotAvailableException::new);
         request.recordAttempt(
                 command.bookingItemId(),
-                command.type(),
-                command.result(),
+                type,
+                result,
                 command.description(),
                 command.occurredAt(),
                 command.nextActionDate(),
@@ -458,8 +479,12 @@ public class BookingRequestService {
             boolean canSeeAll,
             boolean canSeeUnassigned) {
         BookingRequest request = loadVisible(id, userId, canSeeAll, canSeeUnassigned);
+        BookingFailureReason reason = failureReasons
+                .findById(command.failureReasonId())
+                .filter(ReferenceData::active)
+                .orElseThrow(BookingFailureReasonNotAvailableException::new);
         BookingItemFailure failure = BookingItemFailure.builder()
-                .failureReason(command.failureReason())
+                .failureReason(reason)
                 .failureNote(command.failureNote())
                 .failedBy(userId)
                 .failedAt(command.failedAt())

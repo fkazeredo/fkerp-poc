@@ -56,6 +56,12 @@ class BookingRequestTest {
     private final WorkflowState bookingNotRequired = WorkflowState.of(
             orderWf, "BOOKING_NOT_REQUIRED", "Sem reserva necessária", WorkflowStateCategory.INITIAL, 2);
 
+    private final BookingAttemptType internalVerification =
+            BookingAttemptType.create("INTERNAL_VERIFICATION", "Verificação interna", 4);
+    private final BookingAttemptResult started = BookingAttemptResult.create("STARTED", "Iniciado", 1);
+    private final BookingFailureReason noAvailability =
+            BookingFailureReason.create("NO_AVAILABILITY", "Sem disponibilidade", 1);
+
     @Test
     void createsFromPendingBookingOrderPreservingRefsAndClassifyingItems() {
         CommercialOrder order = pendingBookingOrder(ProposalItemType.TRAVEL_PACKAGE, ProposalItemType.SERVICE_FEE);
@@ -155,8 +161,8 @@ class BookingRequestTest {
 
         request.recordAttempt(
                 null,
-                BookingAttemptType.INTERNAL_VERIFICATION,
-                BookingAttemptResult.STARTED,
+                internalVerification,
+                started,
                 "Checando disponibilidade",
                 Instant.parse("2026-06-10T10:00:00Z"),
                 null,
@@ -224,9 +230,9 @@ class BookingRequestTest {
                 .build();
     }
 
-    private static BookingItemFailure failure() {
+    private BookingItemFailure failure() {
         return BookingItemFailure.builder()
-                .failureReason(BookingFailureReason.NO_AVAILABILITY)
+                .failureReason(noAvailability)
                 .failedBy(CREATOR)
                 .failedAt(Instant.parse("2026-06-10T10:00:00Z"))
                 .build();

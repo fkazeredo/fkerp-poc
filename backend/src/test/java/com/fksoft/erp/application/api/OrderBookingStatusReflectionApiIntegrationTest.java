@@ -99,12 +99,14 @@ class OrderBookingStatusReflectionApiIntegrationTest extends AbstractIntegration
         String token = operator();
         UUID request = createRequest(order, token);
 
-        mvc.perform(
-                        post("/api/bookings/" + request + "/attempts")
-                                .header("Authorization", "Bearer " + token)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        "{\"type\":\"INTERNAL_VERIFICATION\",\"result\":\"STARTED\",\"description\":\"Checando\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"))
+        mvc.perform(post("/api/bookings/" + request + "/attempts")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"typeId\":\"%s\",\"resultId\":\"%s\",\"description\":\"Checando\",\"occurredAt\":\"2026-06-10T10:00:00Z\"}"
+                                        .formatted(
+                                                refId("booking_attempt_types", "INTERNAL_VERIFICATION"),
+                                                refId("booking_attempt_results", "STARTED"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
 
@@ -154,7 +156,8 @@ class OrderBookingStatusReflectionApiIntegrationTest extends AbstractIntegration
         mvc.perform(post("/api/bookings/" + request + "/items/" + bookingItemId(request, "TRAVEL_PACKAGE") + "/fail")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"failureReason\":\"NO_AVAILABILITY\",\"failedAt\":\"2026-06-10T10:00:00Z\"}"))
+                        .content("{\"failureReasonId\":\"%s\",\"failedAt\":\"2026-06-10T10:00:00Z\"}"
+                                .formatted(refId("booking_failure_reasons", "NO_AVAILABILITY"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FAILED"));
 
@@ -174,7 +177,8 @@ class OrderBookingStatusReflectionApiIntegrationTest extends AbstractIntegration
         mvc.perform(post("/api/bookings/" + request + "/items/" + item + "/fail")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"failureReason\":\"NO_AVAILABILITY\",\"failedAt\":\"2026-06-10T10:00:00Z\"}"))
+                        .content("{\"failureReasonId\":\"%s\",\"failedAt\":\"2026-06-10T10:00:00Z\"}"
+                                .formatted(refId("booking_failure_reasons", "NO_AVAILABILITY"))))
                 .andExpect(status().isOk());
         assertThat(bookingStatusOf(order, token)).isEqualTo("FAILED");
 
@@ -227,6 +231,11 @@ class OrderBookingStatusReflectionApiIntegrationTest extends AbstractIntegration
                         "sourceProposal",
                         "sourceOpportunity",
                         "sourceLead");
+    }
+
+    private UUID refId(String table, String code) {
+        return UUID.fromString(
+                jdbc.queryForObject("SELECT id::text FROM " + table + " WHERE code = ?", String.class, code));
     }
 
     private UUID createRequest(UUID order, String token) throws Exception {

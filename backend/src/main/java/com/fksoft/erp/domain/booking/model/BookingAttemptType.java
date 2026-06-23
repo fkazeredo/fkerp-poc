@@ -1,15 +1,28 @@
 package com.fksoft.erp.domain.booking.model;
 
-/**
- * The kind of manual booking attempt registered on a {@link BookingRequest} (Sprint 4). A fixed operational
- * set (enum + DB CHECK, not an editable cadastro). It records <b>what the operator did</b> while working the
- * reservation — it is not an external integration and never confirms a booking.
- */
-public enum BookingAttemptType {
-    EXTERNAL_SYSTEM_ACCESS,
-    SUPPLIER_PHONE_CONTACT,
-    SUPPLIER_EMAIL_CONTACT,
-    INTERNAL_VERIFICATION,
-    MANUAL_AVAILABILITY_CHECK,
-    OTHER
+import com.fksoft.erp.domain.reference.ReferenceData;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+/** Reference data: type of a manual booking attempt (managed cadastro). */
+@Entity
+@Table(name = "booking_attempt_types")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class BookingAttemptType extends ReferenceData {
+
+    /**
+     * Creates a new active BookingAttemptType.
+     *
+     * @param code stable code
+     * @param label display label
+     * @param sortOrder sort order
+     * @return the new BookingAttemptType
+     */
+    public static BookingAttemptType create(String code, String label, int sortOrder) {
+        BookingAttemptType value = new BookingAttemptType();
+        value.init(code, label, sortOrder);
+        return value;
+    }
 }

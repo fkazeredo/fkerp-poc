@@ -1,13 +1,13 @@
 package com.fksoft.erp.domain.booking.service.data;
 
-import com.fksoft.erp.domain.booking.model.BookingFailureReason;
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Input to mark a booking item as failed.
  *
- * @param failureReason the failure reason (required)
+ * @param failureReasonId the failure-reason cadastro id
  * @param failureNote an optional note
  * @param failedAt when the failure was determined (operator-supplied)
  */
-public record FailBookingItemCommand(BookingFailureReason failureReason, String failureNote, Instant failedAt) {}
+public record FailBookingItemCommand(UUID failureReasonId, String failureNote, Instant failedAt) {}
