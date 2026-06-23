@@ -127,9 +127,13 @@ export class NavigationService {
       link('Resultados de tentativa', 'pi pi-database', '/cadastros/resultados-tentativa', false, 'Resultados de uma tentativa de reserva.', 'ref'),
       link('Motivos de falha', 'pi pi-database', '/cadastros/motivos-falha', false, 'Por que um item de reserva falhou.', 'ref'),
     ];
+
+    // Fluxos de trabalho: a standalone admin-only module (its home is the workflows list itself). Only the
+    // administrator (workflow:manage) sees it — a module with no items is filtered out by modules().
+    const fluxos: NavLink[] = [];
     if (this.auth.canManageWorkflows()) {
-      cadastros.push(
-        link('Workflows', 'pi pi-sitemap', '/cadastros/workflows', false, 'Os fluxos configuráveis: estados, transições e regras de atenção.', 'ref'),
+      fluxos.push(
+        link('Fluxos de trabalho', 'pi pi-sitemap', '/fluxos', false, 'Os fluxos configuráveis: estados, transições e regras de atenção.', 'ref'),
       );
     }
 
@@ -138,6 +142,7 @@ export class NavigationService {
       module('reservas', 'Reservas', 'pi pi-bookmark', 'sales', '/reservas', 'As reservas a operar a partir dos pedidos fechados.', reservas, []),
       module('acompanhamento', 'Acompanhamento', 'pi pi-chart-bar', 'indicators', '/acompanhamento', 'Pendências e indicadores de todo o funil.', acompanhamento, []),
       module('cadastros', 'Cadastros', 'pi pi-database', 'ref', '/cadastros', 'As listas que alimentam os fluxos.', cadastros, []),
+      module('workflows', 'Fluxos de trabalho', 'pi pi-sitemap', 'ref', '/fluxos', 'Os fluxos configuráveis do sistema: estados, transições e regras de atenção.', fluxos, []),
     ];
   }
 }

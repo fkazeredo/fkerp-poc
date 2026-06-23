@@ -21,14 +21,17 @@ test('the admin edits a workflow state and manages an attention rule through the
 }) => {
   await login(page);
 
-  // Reach the editor from the Cadastros workflows list.
-  await page.goto('/cadastros/workflows');
-  await expect(page.getByRole('heading', { name: 'Workflows' })).toBeVisible();
+  // Reach the editor from the standalone "Fluxos de trabalho" module.
+  await page.goto('/fluxos');
+  await expect(page.getByRole('heading', { name: 'Fluxos de trabalho' })).toBeVisible();
   await page.getByText('Oportunidade', { exact: true }).click();
-  await expect(page).toHaveURL(/\/cadastros\/workflows\/opportunity$/);
+  await expect(page).toHaveURL(/\/fluxos\/opportunity$/);
 
-  // The graph renders the states as nodes (proves ngx-graph draws the dagre layout in the browser).
+  // The graph renders the states as nodes (proves ngx-graph draws the dagre layout in the browser), with the
+  // orientation aids (counts + the category legend).
   await expect(page.locator('ngx-graph')).toBeVisible();
+  await expect(page.locator('.counts')).toContainText('estados');
+  await expect(page.locator('.legend')).toContainText('Inicial');
   await expect(page.locator('g.wf-node').filter({ hasText: 'Nova' })).toBeVisible();
   await expect(page.locator('g.wf-node').filter({ hasText: 'Descoberta' })).toBeVisible();
 
@@ -70,7 +73,7 @@ test('a user without workflow:manage cannot reach the editor', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 
   // The route guard redirects back to the home screen (the editor is never shown).
-  await page.goto('/cadastros/workflows');
+  await page.goto('/fluxos');
   await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Workflows' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Fluxos de trabalho' })).toHaveCount(0);
 });
