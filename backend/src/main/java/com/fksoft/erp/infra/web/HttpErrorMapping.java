@@ -15,6 +15,7 @@ import com.fksoft.erp.domain.booking.exception.BookingRequestAccessDeniedExcepti
 import com.fksoft.erp.domain.booking.exception.BookingRequestAlreadyExistsException;
 import com.fksoft.erp.domain.booking.exception.BookingRequestNotFoundException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
+import com.fksoft.erp.domain.crm.exception.CustomerNotFoundException;
 import com.fksoft.erp.domain.crm.exception.DuplicateLeadException;
 import com.fksoft.erp.domain.crm.exception.InteractionResultNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.InteractionTypeNotAvailableException;
@@ -39,6 +40,12 @@ import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.exception.OriginNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.error.DomainException;
+import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
+import com.fksoft.erp.domain.financial.exception.ReceivableAccessDeniedException;
+import com.fksoft.erp.domain.financial.exception.ReceivableAlreadyExistsException;
+import com.fksoft.erp.domain.financial.exception.ReceivableNotFoundException;
+import com.fksoft.erp.domain.financial.exception.SourceOrderAccessDeniedException;
+import com.fksoft.erp.domain.financial.exception.SourceOrderNotFoundException;
 import com.fksoft.erp.domain.identity.InvalidCredentialsException;
 import com.fksoft.erp.domain.reference.DuplicateReferenceCodeException;
 import com.fksoft.erp.domain.reference.ReferenceNotFoundException;
@@ -142,6 +149,13 @@ public class HttpErrorMapping {
             entry(BookingAttemptTypeNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(BookingAttemptResultNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(BookingFailureReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(CustomerNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(OrderBookingNotConfirmedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(ReceivableAlreadyExistsException.class, HttpStatus.CONFLICT),
+            entry(ReceivableNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(ReceivableAccessDeniedException.class, HttpStatus.FORBIDDEN),
+            entry(SourceOrderNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(SourceOrderAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {

@@ -1,0 +1,71 @@
+@if (loading()) {
+  <p class="loading">Carregando…</p>
+} @else if (error()) {
+  <p-message severity="error" [text]="error()!" />
+  <div class="back">
+    <p-button label="Voltar" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
+  </div>
+} @else if (receivable(); as r) {
+  <header class="head">
+    <div class="head-main">
+      <h1>Conta a receber · {{ orderCode(r.orderNumber) }}</h1>
+      <p-tag [value]="statusLabel(r.status)" [severity]="statusSeverity(r.status)" />
+    </div>
+  </header>
+
+  <div class="grid">
+    <p-card header="Resumo">
+      <dl class="data">
+        <dt>Valor</dt>
+        <dd class="grand">{{ r.totalAmount | currency: 'BRL' }}</dd>
+        <dt>Vencimento</dt>
+        <dd>{{ r.dueDate | date: 'dd/MM/yyyy' }}</dd>
+        <dt>Status</dt>
+        <dd>{{ statusLabel(r.status) }}</dd>
+        <dt>Responsável financeiro</dt>
+        <dd>{{ r.financialResponsibleName ?? '—' }}</dd>
+        @if (r.paymentNotes) {
+          <dt>Observações de pagamento</dt>
+          <dd class="notes">{{ r.paymentNotes }}</dd>
+        }
+        <dt>Criada em</dt>
+        <dd>{{ r.createdAt | date: 'short' }}</dd>
+        <dt>Criada por</dt>
+        <dd>{{ r.createdByName ?? '—' }}</dd>
+      </dl>
+    </p-card>
+
+    <p-card header="Cliente (pagador)">
+      <dl class="data">
+        <dt>Nome</dt>
+        <dd>{{ r.customerName ?? '—' }}</dd>
+      </dl>
+      <div class="trace">
+        <a class="link" [routerLink]="['/leads', r.leadId]">Ver lead de origem</a>
+      </div>
+    </p-card>
+
+    <p-card header="Origem comercial">
+      <dl class="data">
+        <dt>Pedido</dt>
+        <dd>{{ orderCode(r.orderNumber) }}</dd>
+        <dt>Responsável comercial</dt>
+        <dd>{{ r.commercialResponsibleName ?? '—' }}</dd>
+      </dl>
+      <div class="trace">
+        <a class="link" [routerLink]="['/pedidos', r.commercialOrderId]">Ver pedido de origem</a>
+        <a class="link" [routerLink]="['/propostas', r.proposalId]">Ver proposta</a>
+        <a class="link" [routerLink]="['/oportunidades', r.opportunityId]">Ver oportunidade</a>
+      </div>
+    </p-card>
+  </div>
+
+  <div class="back">
+    <p-button
+      label="Voltar para contas a receber"
+      icon="pi pi-arrow-left"
+      [text]="true"
+      (onClick)="back()"
+    />
+  </div>
+}

@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { bookingReadGuard } from './core/auth/booking-read.guard';
 import { crmReadGuard } from './core/auth/crm-read.guard';
+import { financialCreateGuard } from './core/auth/financial-create.guard';
+import { financialReadGuard } from './core/auth/financial-read.guard';
 import { opportunityReadGuard } from './core/auth/opportunity-read.guard';
 import { orderReadGuard } from './core/auth/order-read.guard';
 import { proposalReadGuard } from './core/auth/proposal-read.guard';
@@ -32,6 +34,34 @@ export const routes: Routes = [
         path: 'cadastros',
         data: { module: 'cadastros' },
         loadComponent: () => import('./features/home/module-home').then((m) => m.ModuleHome),
+      },
+      {
+        path: 'financeiro',
+        data: { module: 'financeiro' },
+        loadComponent: () => import('./features/home/module-home').then((m) => m.ModuleHome),
+      },
+      {
+        path: 'financeiro/contas-a-receber',
+        canActivate: [financialReadGuard],
+        loadComponent: () =>
+          import('./features/financial/receivable-list/receivable-list').then((m) => m.ReceivableList),
+      },
+      {
+        path: 'financeiro/contas-a-receber/nova',
+        canActivate: [financialReadGuard, financialCreateGuard],
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/financial/receivable-create/receivable-create').then(
+            (m) => m.ReceivableCreate,
+          ),
+      },
+      {
+        path: 'financeiro/contas-a-receber/:id',
+        canActivate: [financialReadGuard],
+        loadComponent: () =>
+          import('./features/financial/receivable-detail/receivable-detail').then(
+            (m) => m.ReceivableDetailPage,
+          ),
       },
       {
         path: 'reservas',

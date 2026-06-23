@@ -1,0 +1,87 @@
+<header class="page-head">
+  <div>
+    <h1>Contas a receber</h1>
+    <p class="sub muted">O que há a receber dos negócios fechados com reserva confirmada.</p>
+  </div>
+  @if (canCreate) {
+    <a routerLink="/financeiro/contas-a-receber/nova">
+      <p-button label="Nova conta a receber" icon="pi pi-plus" size="small" />
+    </a>
+  }
+</header>
+
+<div class="filters surface pad">
+  <div class="filter">
+    <label>Status</label>
+    <p-multiSelect
+      [options]="statusOptions"
+      optionLabel="label"
+      optionValue="value"
+      [(ngModel)]="status"
+      (ngModelChange)="applyFilters()"
+      placeholder="Ativas"
+      [showClear]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <p-button
+    label="Limpar"
+    icon="pi pi-filter-slash"
+    severity="secondary"
+    [text]="true"
+    size="small"
+    (onClick)="clearFilters()"
+  />
+</div>
+
+@if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+}
+
+<div class="surface table-wrap">
+  <p-table
+    [value]="items()"
+    [lazy]="true"
+    (onLazyLoad)="onLazyLoad($event)"
+    [paginator]="true"
+    [rows]="rows"
+    [totalRecords]="total()"
+    [first]="firstRow"
+    [loading]="loading()"
+    styleClass="p-datatable-sm"
+    [tableStyle]="{ 'min-width': '60rem' }"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Pedido</th>
+        <th>Cliente</th>
+        <th class="num">Valor</th>
+        <th>Vencimento</th>
+        <th>Status</th>
+        <th>Responsável financeiro</th>
+        <th>Criado em</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-r>
+      <tr>
+        <td>
+          <a [routerLink]="['/financeiro/contas-a-receber', r.id]" class="order-link">
+            {{ orderCode(r.orderNumber) }}
+          </a>
+        </td>
+        <td>{{ r.customerName ?? '—' }}</td>
+        <td class="num">{{ r.totalAmount | currency: 'BRL' }}</td>
+        <td>{{ r.dueDate | date: 'dd/MM/yyyy' }}</td>
+        <td><p-tag [value]="statusLabel(r.status)" [severity]="statusSeverity(r.status)" /></td>
+        <td>{{ r.financialResponsibleName ?? '—' }}</td>
+        <td>{{ r.createdAt | date: 'short' }}</td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="7" class="muted empty">Nenhuma conta a receber ainda.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
