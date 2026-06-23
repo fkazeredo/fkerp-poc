@@ -13,11 +13,12 @@ export interface DiagramNode {
   h: number;
 }
 
-/** A positioned transition arrow (an SVG path) with its label pill. */
+/** A positioned transition arrow (an SVG path), its inline arrowhead and its label pill. */
 export interface DiagramEdge {
   id: string;
   transition: WorkflowTransitionView;
   d: string;
+  arrow: string;
   labelX: number;
   labelY: number;
   pillW: number;
@@ -108,12 +109,17 @@ export function buildDiagram(wf: WorkflowDetail | null): Diagram {
   return { nodes, edges, width, height };
 }
 
+const ARROW_LEN = 10;
+const ARROW_W = 5;
+
 function edgeGeometry(t: WorkflowTransitionView, a: DiagramNode, b: DiagramNode): DiagramEdge {
   let sx: number;
   let sy: number;
   let ex: number;
   let ey: number;
-  let d: string;
+  // The bezier's second control point — its direction into the end gives the arrowhead orientation.
+  let c2x: number;
+  let c2y: number;
   let labelX: number;
   let labelY: number;
 
@@ -125,7 +131,8 @@ function edgeGeometry(t: WorkflowTransitionView, a: DiagramNode, b: DiagramNode)
     ex = leftToRight ? b.x : b.x + b.w;
     ey = b.y + b.h / 2;
     const dx = Math.max(28, Math.abs(ex - sx) / 2) * (leftToRight ? 1 : -1);
-    d = `M ${sx} ${sy} C ${sx + dx} ${sy}, ${ex - dx} ${ey}, ${ex} ${ey}`;
+    c2x = ex - dx;
+    c2y = ey;
     labelX = (sx + ex) / 2;
     labelY = sy - 10;
   } else {
@@ -135,18 +142,41 @@ function edgeGeometry(t: WorkflowTransitionView, a: DiagramNode, b: DiagramNode)
     ex = b.x + b.w / 2;
     ey = b.y;
     const dy = Math.max(28, (ey - sy) / 2);
-    d = `M ${sx} ${sy} C ${sx} ${sy + dy}, ${ex} ${ey - dy}, ${ex} ${ey}`;
+    c2x = ex;
+    c2y = ey - dy;
     labelX = (sx + ex) / 2;
     labelY = (sy + ey) / 2;
   }
+
+  // First control point keeps the curve leaving the start smoothly toward the end.
+  const d =
+    a.y === b.y
+      ? `M ${r(sx)} ${r(sy)} C ${r(sx + (ex - sx) / 2)} ${r(sy)}, ${r(c2x)} ${r(c2y)}, ${r(ex)} ${r(ey)}`
+      : `M ${r(sx)} ${r(sy)} C ${r(sx)} ${r(sy + (ey - sy) / 2)}, ${r(c2x)} ${r(c2y)}, ${r(ex)} ${r(ey)}`;
+
+  // Inline arrowhead: a small filled triangle at the end, oriented along the end tangent (end - c2). This
+  // avoids an SVG <marker> + url(#id) reference, which a page-level <base href> would otherwise break.
+  const len = Math.hypot(ex - c2x, ey - c2y) || 1;
+  const ux = (ex - c2x) / len;
+  const uy = (ey - c2y) / len;
+  const bx = ex - ARROW_LEN * ux;
+  const by = ey - ARROW_LEN * uy;
+  const px = -uy;
+  const py = ux;
+  const arrow = `M ${r(ex)} ${r(ey)} L ${r(bx + ARROW_W * px)} ${r(by + ARROW_W * py)} L ${r(bx - ARROW_W * px)} ${r(by - ARROW_W * py)} z`;
 
   return {
     id: t.id,
     transition: t,
     d,
+    arrow,
     labelX,
     labelY,
     pillW: Math.max(30, t.label.length * 6.8 + 14),
     label: t.label,
   };
+}
+
+function r(n: number): number {
+  return Math.round(n * 10) / 10;
 }
