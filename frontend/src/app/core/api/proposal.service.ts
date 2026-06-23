@@ -90,10 +90,14 @@ export type CustomerRejectionReason =
   | 'PRODUCT_MISMATCH'
   | 'OTHER';
 
-/** A single commercial-offer line, with its computed line total. */
+/**
+ * A single commercial-offer line, with its computed line total. {@code type} is the stable item-type code
+ * (anchors the booking confirm flows) and {@code typeLabel} the resolved cadastro label (for display).
+ */
 export interface ProposalItem {
   id: string;
-  type: ProposalItemType;
+  type: string;
+  typeLabel: string;
   description: string;
   quantity: number;
   unitValue: number;
@@ -102,9 +106,9 @@ export interface ProposalItem {
   lineTotal: number;
 }
 
-/** Payload to add or update a Proposal item. */
+/** Payload to add or update a Proposal item (the item-type cadastro id). */
 export interface ProposalItemPayload {
-  type: ProposalItemType;
+  typeId: string;
   description: string;
   quantity: number;
   unitValue: number;
@@ -145,11 +149,11 @@ export interface ProposalDetail {
   sourceOpportunity: ProposalSourceOpportunity;
   sourceLead: ProposalSourceLead;
   statusHistory: ProposalStatusChange[];
-  rejectionReason: ProposalRejectionReason | null;
+  rejectionReason: string | null;
   rejectionNote: string | null;
-  sendingChannel: SendingChannel | null;
+  sendingChannel: string | null;
   acceptanceNote: string | null;
-  customerRejectionReason: CustomerRejectionReason | null;
+  customerRejectionReason: string | null;
   customerRejectionNote: string | null;
   commercialOrderId: string | null;
 }
@@ -268,18 +272,14 @@ export class ProposalService {
     return this.http.post<ProposalDetail>(`/api/proposals/${id}/approve`, {});
   }
 
-  /** Rejects a Proposal under review with a reason (and optional note); returns the detail. */
-  reject(
-    id: string,
-    reason: ProposalRejectionReason,
-    note: string | null,
-  ): Observable<ProposalDetail> {
-    return this.http.post<ProposalDetail>(`/api/proposals/${id}/reject`, { reason, note });
+  /** Rejects a Proposal under review with a reason cadastro id (and optional note); returns the detail. */
+  reject(id: string, reasonId: string, note: string | null): Observable<ProposalDetail> {
+    return this.http.post<ProposalDetail>(`/api/proposals/${id}/reject`, { reasonId, note });
   }
 
-  /** Marks an approved Proposal as sent to the client (Approved → Sent); the channel is optional. */
-  markSent(id: string, channel: SendingChannel | null): Observable<ProposalDetail> {
-    return this.http.post<ProposalDetail>(`/api/proposals/${id}/send`, { channel });
+  /** Marks an approved Proposal as sent to the client (Approved → Sent); the channel id is optional. */
+  markSent(id: string, channelId: string | null): Observable<ProposalDetail> {
+    return this.http.post<ProposalDetail>(`/api/proposals/${id}/send`, { channelId });
   }
 
   /** Registers that the client accepted a sent Proposal (Sent → Accepted); the note is optional. */
@@ -287,13 +287,9 @@ export class ProposalService {
     return this.http.post<ProposalDetail>(`/api/proposals/${id}/accept`, { note });
   }
 
-  /** Registers that the client rejected a sent Proposal (Sent → Rejected) with a reason (+ optional note). */
-  decline(
-    id: string,
-    reason: CustomerRejectionReason,
-    note: string | null,
-  ): Observable<ProposalDetail> {
-    return this.http.post<ProposalDetail>(`/api/proposals/${id}/decline`, { reason, note });
+  /** Registers that the client rejected a sent Proposal (Sent → Rejected) with a reason cadastro id (+ note). */
+  decline(id: string, reasonId: string, note: string | null): Observable<ProposalDetail> {
+    return this.http.post<ProposalDetail>(`/api/proposals/${id}/decline`, { reasonId, note });
   }
 
   /** Adds an item to a Draft Proposal; returns the refreshed detail (with the recomputed total). */

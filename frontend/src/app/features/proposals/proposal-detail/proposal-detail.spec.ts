@@ -7,6 +7,7 @@ import { NEVER, of, throwError } from 'rxjs';
 import { ProposalDetailPage } from './proposal-detail';
 import { ProposalDetail, ProposalItem, ProposalService } from '../../../core/api/proposal.service';
 import { OrderService } from '../../../core/api/order.service';
+import { ReferenceService } from '../../../core/api/reference.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
@@ -32,6 +33,11 @@ describe('ProposalDetailPage', () => {
   const orders = { create: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
   const auth = { canOperateProposal: vi.fn(), canApproveProposal: vi.fn(), canCreateOrder: vi.fn() };
+  const references = { list: vi.fn() };
+  const refItems = [
+    { id: 'TRAVEL_PACKAGE', code: 'TRAVEL_PACKAGE', label: 'Pacote de viagem', active: true, sortOrder: 1 },
+    { id: 'r2', code: 'PRICE_TOO_HIGH', label: 'Preço alto', active: true, sortOrder: 2 },
+  ];
 
   const sample: ProposalDetail = {
     id: 'p1',
@@ -75,6 +81,7 @@ describe('ProposalDetailPage', () => {
   const item: ProposalItem = {
     id: 'i1',
     type: 'TRAVEL_PACKAGE',
+    typeLabel: 'Pacote de viagem',
     description: 'Pacote Caribe',
     quantity: 2,
     unitValue: 1000,
@@ -94,6 +101,7 @@ describe('ProposalDetailPage', () => {
         MessageService,
         ConfirmationService,
         { provide: ProposalService, useValue: proposals },
+        { provide: ReferenceService, useValue: references },
         { provide: OrderService, useValue: orders },
         { provide: Router, useValue: router },
         { provide: AuthService, useValue: auth },
@@ -129,6 +137,8 @@ describe('ProposalDetailPage', () => {
     proposals.accept.mockReset();
     proposals.decline.mockReset();
     orders.create.mockReset();
+    references.list.mockReset();
+    references.list.mockReturnValue(of(refItems));
     auth.canOperateProposal.mockReset();
     auth.canOperateProposal.mockReturnValue(true);
     auth.canApproveProposal.mockReset();
@@ -153,7 +163,16 @@ describe('ProposalDetailPage', () => {
     expect(comp['statusLabel']('ACCEPTED')).toBe('Aceita');
     expect(comp['statusSeverity']('DRAFT')).toBe('secondary');
     expect(comp['stageLabel']('READY_FOR_PROPOSAL')).toBe('Pronta p/ proposta');
-    expect(comp['itemTypeLabel']('TRAVEL_PACKAGE')).toBe('Pacote de viagem');
+  });
+
+  it('loads the item-type / reason / channel options from the cadastros on init', () => {
+    const comp = build();
+    comp.ngOnInit();
+    expect(references.list).toHaveBeenCalledWith('proposal-item-types', false, 'sales');
+    expect(references.list).toHaveBeenCalledWith('proposal-rejection-reasons', false, 'sales');
+    expect(references.list).toHaveBeenCalledWith('sending-channels', false, 'sales');
+    expect(references.list).toHaveBeenCalledWith('customer-rejection-reasons', false, 'sales');
+    expect(comp['itemTypeOptions']().length).toBeGreaterThan(0);
   });
 
   it('shows a permission message on 403', () => {
@@ -201,7 +220,7 @@ describe('ProposalDetailPage', () => {
     comp['confirmItem']();
 
     expect(proposals.addItem).toHaveBeenCalledWith('p1', {
-      type: 'TRAVEL_PACKAGE',
+      typeId: 'TRAVEL_PACKAGE',
       description: 'Pacote Caribe',
       quantity: 2,
       unitValue: 1000,
@@ -768,7 +787,7 @@ describe('ProposalDetailPage', () => {
         of({
           ...withItem,
           status: 'REJECTED',
-          rejectionReason: 'PRICE_TOO_HIGH',
+          rejectionReason: 'Preço muito alto',
           rejectionNote: 'acima do orçamento',
         } as ProposalDetail),
       );
@@ -841,7 +860,7 @@ describe('ProposalDetailPage', () => {
         of({
           ...withItem,
           status: 'REJECTED',
-          customerRejectionReason: 'CHOSE_COMPETITOR',
+          customerRejectionReason: 'Escolheu concorrente',
           customerRejectionNote: 'foi com a concorrência',
         } as ProposalDetail),
       );
