@@ -15,6 +15,7 @@ import {
 import { BookingRequestStatus } from '../../../core/api/booking.service';
 import { OpportunityStage } from '../../../core/api/opportunity.service';
 import { ProposalItemType, ProposalStatus } from '../../../core/api/proposal.service';
+import { AuthService } from '../../../core/auth/auth.service';
 
 const STATUS_LABELS: Record<CommercialOrderStatus, string> = {
   PENDING_BOOKING: 'Pendente de reserva',
@@ -99,6 +100,7 @@ export class OrderDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly orders = inject(OrderService);
+  private readonly auth = inject(AuthService);
 
   protected readonly order = signal<CommercialOrderDetail | null>(null);
   protected readonly loading = signal(true);
@@ -158,6 +160,24 @@ export class OrderDetailPage implements OnInit {
       return 'Reserva não necessária para este pedido.';
     }
     return 'Pedido cancelado.';
+  }
+
+  /**
+   * Whether to offer generating a Receivable from this Order: its booking is CONFIRMED (ready for Financial
+   * Operations) and the user may create Receivables. The button only navigates to the Financeiro create form
+   * pre-selecting this Order — the financial authority and the "no active receivable yet" rule stay on the
+   * backend (the eligible-orders list there excludes Orders that already have one).
+   */
+  protected canGenerateReceivable(): boolean {
+    return this.order()?.bookingStatus === 'CONFIRMED' && this.auth.canCreateReceivable();
+  }
+
+  /** Goes to the Receivable create form with this Order pre-selected. */
+  protected generateReceivable(): void {
+    const o = this.order();
+    if (o) {
+      this.router.navigate(['/financeiro/contas-a-receber/nova'], { queryParams: { order: o.id } });
+    }
   }
 
   protected back(): void {

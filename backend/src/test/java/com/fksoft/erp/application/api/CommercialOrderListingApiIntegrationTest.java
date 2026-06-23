@@ -184,9 +184,10 @@ class CommercialOrderListingApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void financeCannotListOrders() throws Exception {
+    void financeCanListOrdersWithOrderReadAll() throws Exception {
+        // financeiro now holds sales:order:read:all (to see source orders for Receivables, Sprint 5) → may list.
         mvc.perform(get("/api/orders").header("Authorization", "Bearer " + login("financeiro", "financeiro123")))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 
     /** Inserts a lead + opportunity + proposal + order chain; the proposal title is the client-facing summary. */

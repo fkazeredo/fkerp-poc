@@ -1,0 +1,50 @@
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 1.1rem;
+}
+
+.filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 11rem;
+}
+
+.filter > label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--app-muted);
+}
+
+.table-wrap {
+  overflow: hidden;
+}
+
+.order-link {
+  font-weight: 600;
+  color: var(--p-primary-color, #4f46e5);
+  text-decoration: none;
+}
+
+.order-link:hover {
+  text-decoration: underline;
+}
+
+.empty {
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+
+.num {
+  text-align: right;
+}

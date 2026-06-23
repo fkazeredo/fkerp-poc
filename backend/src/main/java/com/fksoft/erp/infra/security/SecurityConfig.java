@@ -62,6 +62,12 @@ public class SecurityConfig {
         "SCOPE_booking:request:read", "SCOPE_booking:request:read:unassigned", "SCOPE_booking:request:read:all"
     };
 
+    // Two-tier read model for Receivables (Financial Operations); ReceivableAccessPolicy narrows WHICH are
+    // visible (own = financial responsible / all). Any read tier passes the GET gate.
+    private static final String[] FINANCIAL_READ_SCOPES = {
+        "SCOPE_financial:receivable:read", "SCOPE_financial:receivable:read:all"
+    };
+
     private final SecurityProperties props;
 
     @Bean
@@ -162,6 +168,10 @@ public class SecurityConfig {
                         .hasAuthority("SCOPE_booking:request:update")
                         .requestMatchers(HttpMethod.GET, "/api/bookings", "/api/bookings/**")
                         .hasAnyAuthority(BOOKING_READ_SCOPES)
+                        .requestMatchers(HttpMethod.POST, "/api/receivables")
+                        .hasAuthority("SCOPE_financial:receivable:create")
+                        .requestMatchers(HttpMethod.GET, "/api/receivables", "/api/receivables/**")
+                        .hasAnyAuthority(FINANCIAL_READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/responsibles")
                         .hasAnyAuthority(READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/**")

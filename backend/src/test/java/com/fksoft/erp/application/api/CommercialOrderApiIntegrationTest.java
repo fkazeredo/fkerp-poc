@@ -231,7 +231,7 @@ class CommercialOrderApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void financeCannotCreateOrReadOrders() throws Exception {
+    void financeCanReadButCannotCreateOrders() throws Exception {
         String mgr = manager();
         UUID lead = insertLead("Fin", MANAGER);
         UUID opp = insertOpportunity("Fin", lead);
@@ -247,6 +247,7 @@ class CommercialOrderApiIntegrationTest extends AbstractIntegrationTest {
                 .getContentAsString();
         String orderId = JsonPath.read(created, "$.id");
 
+        // financeiro holds sales:order:read:all (to originate Receivables, Sprint 5) but NOT sales:order:create.
         String fin = login("financeiro", "financeiro123");
         mvc.perform(post("/api/orders")
                         .header("Authorization", "Bearer " + fin)
@@ -254,7 +255,7 @@ class CommercialOrderApiIntegrationTest extends AbstractIntegrationTest {
                         .content("{\"proposalId\":\"%s\"}".formatted(proposal)))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/api/orders/" + orderId).header("Authorization", "Bearer " + fin))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 
     @Test

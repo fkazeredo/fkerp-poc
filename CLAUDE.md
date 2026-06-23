@@ -675,6 +675,51 @@ monetary data**, so the two contexts **remain separated**), and the **Booking Re
 evidence (locators / systems / dates). No write crosses the boundary in the handoff; Finance only reads, and the
 Order stays owned by Sales.
 
+**Receivable authorization model (normative — Financial Operations, Sprint 5 Slice 1).** The **Financial
+Operations** bounded context lives in `domain.financial` (same layout as the other contexts:
+`model`/`repository`/`service`/`service.data`/`exception`) and owns the **Receivable** — the amount the company
+has to receive from a client for a closed deal whose Booking is `CONFIRMED`. Its scopes use the **`financial:`**
+prefix (the first non-`crm:`/`sales:`/`booking:` context). It mirrors the read-tier + operation model: two
+escalating read tiers — `financial:receivable:read` (own only = the financial responsible) → `financial:receivable:read:all`
+(all); any read tier passes the GET gate and **`ReceivableAccessPolicy`** (a query Specification on
+`financialResponsiblePersonId`) narrows the list, the single-record detail applying the same `canSee` check (**404**
+`financial.receivable.not-found` if absent, **403** `financial.receivable.access-denied` if not visible). Operation
+`financial:receivable:create` gates creating a Receivable **from a Commercial Order whose `booking_status` is
+`CONFIRMED`** (`POST /api/receivables`); the creator must also be allowed to **see the source Order**, reusing the
+Order read tiers (`sales:order:read` / `:read:unassigned` / `:read:all`) — a caller who cannot see it gets
+`financial.receivable.order-access-denied` (**403**), an unknown Order is `financial.receivable.order-not-found`
+(**404**), and a non-`CONFIRMED` booking is `financial.receivable.order-not-confirmed` (**422**). A Commercial Order
+has **at most one active Receivable** (the service returns a friendly **409** `financial.receivable.already-exists`
+with the existing id; a partial unique index `WHERE status <> 'CANCELLED'` is the last-resort guard; a new one is
+allowed once the previous is `CANCELLED`). A Receivable **preserves** its source `commercialOrderId` (never
+modified), the source `proposalId` / `opportunityId` / `leadId`, the **payer** (`customerId`, see Customer below),
+the commercial `responsiblePersonId` (snapshot) and the **commercial total** (snapshot of `order.total()`), takes a
+single **required `dueDate`**, an optional `financialResponsiblePersonId` and optional descriptive `paymentNotes`
+(free text — **never** a Payment/Receipt record), and starts **`OPEN`**. The `ReceivableStatus` lifecycle
+(`OPEN`/`PARTIALLY_PAID`/`PAID`/`OVERDUE`/`CANCELLED`) is a **flow** → it stays an enum (the *payment method*, a
+future payment slice, is **reference data** → a cadastro, not an enum). Creating a Receivable registers **no**
+Payment and creates **no** Commission, Invoice, Booking or Customer Care data, and never modifies the Order, Lead or
+Customer (it only reads them). The list/detail and `GET /api/receivables/eligible-orders` (the confirmed Orders
+without an active Receivable, visible to the caller — feeds the create selector) expose **receivable +
+commercial-origin data only — never Payment, Commission or Invoice data**. **Persona → scopes (Sprint 5):** the
+back-office **`financeiro`** user (seed 005) creates + reads all (`financial:receivable:create` +
+`financial:receivable:read:all`) and additionally holds **`sales:order:read:all`** so it can see the source Order
+(this intentionally lets Finance read the commercial Order list/detail/indicators, but **never** create or modify an
+Order — it lacks `sales:order:create`/`update`); the commercial **Manager** (001) and the **Board/Director** (004)
+hold `financial:receivable:read:all` (consultation only); Sellers/Representatives and HR/IT have **no** financial
+read tier. The payments lifecycle (registering/reversing a payment, installments, the `OVERDUE`/`PAID` transitions,
+the financial status reflected onto the Order, indicators) and Commission are **later slices**.
+
+**Customer (normative — the commercial graduation of a Lead, in `domain.crm`).** The **Customer** is the company's
+client, materialized from its source **Lead** when a Commercial Order is created (deal closed): a **synchronous,
+idempotent** `@EventListener` on `CommercialOrderCreated` (`CustomerMaterializationListener`, same transaction as
+the Order creation — purely additive, the Order creation is unchanged) snapshots the Lead's name and contacts into a
+`Customer` (relation **1:1**, `lead_id` unique). It lives in **`domain.crm`** (next to the Lead, its origin), **not**
+in `domain.financial` — it is the **commercial** graduation of the Lead, and Financial Operations only **reads** it
+(cross-context read) to resolve the **payer** of a Receivable; it is **not** financial data. The document (CPF/CNPJ)
+and billing address are optional placeholders filled by a later slice. There is **no Customer CRUD UI** in this slice
+(it is materialized automatically). Customer Care remains out of scope.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

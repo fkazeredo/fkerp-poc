@@ -43,9 +43,10 @@ test('a director consults a lead read-only — no actions, no Novo lead', async 
 test('a finance user has no access to the Lead module', async ({ page }) => {
   await login(page, 'financeiro', 'financeiro123');
 
-  // No Comercial module: no module card on the home and no Leads link in the sidebar.
-  await expect(page.getByRole('link', { name: 'Comercial', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Leads' })).toHaveCount(0);
+  // Finance now sees the Comercial module (it gained sales:order:read:all to originate Receivables, so the
+  // Pedidos destination shows), but it has NO Leads access: no Leads destination link (exact, so the Comercial
+  // card's description mentioning "leads" does not count).
+  await expect(page.getByRole('link', { name: 'Leads', exact: true })).toHaveCount(0);
 
   // Navigating to /leads is blocked by the guard (redirected back to the system home).
   await page.goto('/leads');

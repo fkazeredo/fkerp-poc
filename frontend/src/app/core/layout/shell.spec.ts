@@ -17,6 +17,7 @@ describe('Shell keyboard shortcuts', () => {
     canSeeProposals: vi.fn(() => false),
     canSeeOrders: vi.fn(() => false),
     canSeeBookings: vi.fn(() => false),
+    canSeeReceivables: vi.fn(() => false),
   };
 
   function build(): Shell {
@@ -79,6 +80,13 @@ describe('Shell keyboard shortcuts', () => {
     shell['onKeydown'](key({ key: 'g' }));
     shell['onKeydown'](key({ key: 'r' }));
     expect(router.navigateByUrl).toHaveBeenCalledWith('/reservas');
+  });
+
+  it('navigates to the contas a receber list on "g" then "f"', () => {
+    const shell = build();
+    shell['onKeydown'](key({ key: 'g' }));
+    shell['onKeydown'](key({ key: 'f' }));
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/financeiro/contas-a-receber');
   });
 
   it('navigates to the Cadastros module home on "g" then "c"', () => {
@@ -151,6 +159,14 @@ describe('Shell keyboard shortcuts', () => {
     const labels = build()['commands']().map((c) => c.label);
     expect(labels).toContain('Reservas');
     auth.canSeeBookings.mockReturnValue(false);
+  });
+
+  it('lists the Financeiro destination in the command palette when receivables are visible', () => {
+    auth.canSeeReceivables.mockReturnValue(true);
+    const labels = build()['commands']().map((c) => c.label);
+    expect(labels).toContain('Financeiro');
+    expect(labels).toContain('Contas a receber');
+    auth.canSeeReceivables.mockReturnValue(false);
   });
 
   it('runs a command and closes the palette', () => {

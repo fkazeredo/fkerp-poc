@@ -1,0 +1,44 @@
+.receivable-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  max-width: 38rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.field > label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--app-muted);
+}
+
+.req {
+  color: var(--p-red-500, #ef4444);
+}
+
+.order-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: -0.4rem;
+}
+
+.error {
+  color: var(--p-red-500, #ef4444);
+  font-size: 0.78rem;
+}
+
+.form-banner {
+  margin-bottom: 1rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}

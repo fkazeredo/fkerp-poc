@@ -145,6 +145,16 @@ export class AuthService {
   canOperateBookings(): boolean {
     return this.hasScope('booking:request:update');
   }
+
+  /** Any Receivable read tier (own / all) grants access to the Receivable list and detail (Financial Operations). */
+  canSeeReceivables(): boolean {
+    return this.hasScope('financial:receivable:read') || this.hasScope('financial:receivable:read:all');
+  }
+
+  /** Whether the user may create a Receivable from a Commercial Order with a confirmed booking. */
+  canCreateReceivable(): boolean {
+    return this.hasScope('financial:receivable:create');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

@@ -5,6 +5,7 @@ import { providePrimeNG } from 'primeng/config';
 import { NEVER, of, throwError } from 'rxjs';
 import { OrderDetailPage } from './order-detail';
 import { CommercialOrderDetail, OrderService } from '../../../core/api/order.service';
+import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
   observe() {}
@@ -14,7 +15,8 @@ import { CommercialOrderDetail, OrderService } from '../../../core/api/order.ser
 
 describe('OrderDetailPage', () => {
   const orders = { detail: vi.fn() };
-  const router = { navigateByUrl: vi.fn() };
+  const router = { navigateByUrl: vi.fn(), navigate: vi.fn() };
+  const auth = { canCreateReceivable: vi.fn() };
 
   const sample: CommercialOrderDetail = {
     id: 'ord1',
@@ -72,6 +74,7 @@ describe('OrderDetailPage', () => {
         providePrimeNG(),
         { provide: OrderService, useValue: orders },
         { provide: Router, useValue: router },
+        { provide: AuthService, useValue: auth },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'ord1' } } } },
       ],
     });
@@ -93,6 +96,8 @@ describe('OrderDetailPage', () => {
   beforeEach(() => {
     orders.detail.mockReset();
     router.navigateByUrl.mockReset();
+    router.navigate.mockReset();
+    auth.canCreateReceivable.mockReset().mockReturnValue(false);
     orders.detail.mockReturnValue(of(sample));
   });
 
@@ -178,6 +183,44 @@ describe('OrderDetailPage', () => {
       const el = render();
       expect(el.textContent).toContain('Status da reserva');
       expect(el.textContent).toContain('Reserva ainda não iniciada');
+    });
+  });
+
+  describe('generate-receivable handoff', () => {
+    it('offers the receivable action only when the booking is confirmed and the user may create one', () => {
+      auth.canCreateReceivable.mockReturnValue(true);
+      orders.detail.mockReturnValue(of({ ...sample, bookingStatus: 'CONFIRMED' } satisfies CommercialOrderDetail));
+      const comp = build();
+      comp.ngOnInit();
+      expect(comp['canGenerateReceivable']()).toBe(true);
+
+      // No create scope → no offer, even when confirmed.
+      auth.canCreateReceivable.mockReturnValue(false);
+      expect(comp['canGenerateReceivable']()).toBe(false);
+    });
+
+    it('does not offer the action when the booking is not confirmed', () => {
+      auth.canCreateReceivable.mockReturnValue(true);
+      orders.detail.mockReturnValue(of({ ...sample, bookingStatus: 'FAILED' } satisfies CommercialOrderDetail));
+      const comp = build();
+      comp.ngOnInit();
+      expect(comp['canGenerateReceivable']()).toBe(false);
+    });
+
+    it('navigates to the receivable create form with the order pre-selected', () => {
+      orders.detail.mockReturnValue(of({ ...sample, bookingStatus: 'CONFIRMED' } satisfies CommercialOrderDetail));
+      const comp = build();
+      comp.ngOnInit();
+      comp['generateReceivable']();
+      expect(router.navigate).toHaveBeenCalledWith(['/financeiro/contas-a-receber/nova'], {
+        queryParams: { order: 'ord1' },
+      });
+    });
+
+    it('renders the "Gerar conta a receber" button when confirmed and permitted (DOM)', () => {
+      auth.canCreateReceivable.mockReturnValue(true);
+      orders.detail.mockReturnValue(of({ ...sample, bookingStatus: 'CONFIRMED' } satisfies CommercialOrderDetail));
+      expect(render().textContent).toContain('Gerar conta a receber');
     });
   });
 

@@ -201,10 +201,11 @@ class ProposalSprint3JourneyApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stage").value("WON"));
 
-        // Visibility holds: finance cannot read the Order; the manager can.
+        // Finance now reads the Order (it holds sales:order:read:all to originate Receivables from confirmed
+        // bookings, Sprint 5) — but it cannot create or modify it; the manager reads it too.
         String finance = login("financeiro", "financeiro123");
         mvc.perform(get("/api/orders/" + orderId).header("Authorization", "Bearer " + finance))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
         mvc.perform(get("/api/orders/" + orderId).header("Authorization", "Bearer " + manager))
                 .andExpect(status().isOk());
     }
