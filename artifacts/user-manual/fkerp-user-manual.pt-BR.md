@@ -911,19 +911,21 @@ Os **fluxos de trabalho** são os caminhos que um registro percorre no sistema �
 
 ### 12.1 A lista de fluxos
 
-A tela inicial do módulo mostra um **cartão por fluxo** (Lead, Oportunidade, Reserva e outros). Clique num
-cartão para abrir o **editor** daquele fluxo.
+No **menu lateral**, o módulo **Fluxos de trabalho** abre como um acordeão com **um item por fluxo** (Lead,
+Oportunidade, Proposta, Pedido Comercial, Reserva, Item de reserva) — clicar num item abre direto o **editor**
+daquele fluxo. A **tela inicial do módulo** também mostra um **cartão por fluxo**, com o mesmo destino.
 
 ### 12.2 O diagrama
 
-O fluxo é desenhado como um **diagrama**: cada **estado** (situação) é uma **caixa** e cada **transição**
-(passo permitido entre situações) é uma **seta**. No topo, os **contadores** resumem o fluxo (quantos
-estados, transições e regras de atenção). Uma **legenda** explica as cores das caixas:
+O fluxo é desenhado como um **diagrama** (um fluxograma da esquerda para a direita): cada **estado** (situação) é
+uma **caixa** e cada **transição** (passo permitido entre situações) é uma **seta** com o seu rótulo. O caminho
+principal fica na linha de cima e os **estados de encerramento** numa linha abaixo. No topo, os **contadores**
+resumem o fluxo (quantos estados, transições e regras de atenção). Uma **legenda** explica as cores das caixas:
 
 - **Inicial** (azul) — onde o registro começa.
-- **Intermediário** (cinza) — situações no meio do caminho.
-- **Sucesso** (verde) — conclusão positiva.
-- **Terminal** (vermelho) — encerramento (por exemplo, perdido/cancelado).
+- **Em andamento** (índigo) — situações no meio do caminho.
+- **Sucesso** (verde) — encerramento positivo (por exemplo, ganho/aceito).
+- **Encerrado** (vermelho) — encerramento negativo (por exemplo, perdido/cancelado).
 - **Tracejado** — estado **inativo**.
 
 Itens marcados como **"sistema"** acompanham o produto: podem ser **renomeados** e **ativados/desativados**,

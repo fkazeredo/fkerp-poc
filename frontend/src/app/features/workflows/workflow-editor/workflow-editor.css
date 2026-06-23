@@ -67,15 +67,19 @@
 
 .sw.cat-INITIAL {
   border-color: #3b82f6;
+  background: #eff6ff;
 }
-.sw.cat-INTERMEDIATE {
-  border-color: #cbd5e1;
+.sw.cat-ACTIVE {
+  border-color: #6366f1;
+  background: #eef2ff;
 }
-.sw.cat-SUCCESS {
+.sw.cat-TERMINAL_POSITIVE {
   border-color: #16a34a;
+  background: #f0fdf4;
 }
-.sw.cat-TERMINAL {
+.sw.cat-TERMINAL_NEGATIVE {
   border-color: #dc2626;
+  background: #fef2f2;
 }
 .sw.dashed {
   border-style: dashed;
@@ -103,91 +107,112 @@
   padding: 0.5rem 1rem 1rem;
 }
 
+/* Hand-rolled SVG flowchart. The viewBox scales the diagram to the container width; max-height keeps tall
+   workflows reasonable. */
 .chart-wrap {
   width: 100%;
-  height: 460px;
+  overflow-x: auto;
 }
 
-.chart {
-  width: 100%;
-  height: 100%;
+.wf-diagram {
   display: block;
+  width: 100%;
+  max-height: 520px;
 }
 
-/* Graph nodes (SVG). The clickable group uses a unique class so it never collides with ngx-graph's own
-   internal `g.node` wrappers (which would otherwise capture the click). */
+/* Nodes. */
 .wf-node {
   cursor: pointer;
 }
 
-.node-box {
+.wf-node-box {
   fill: #fff;
   stroke: #cbd5e1;
   stroke-width: 1.5;
-  transition: stroke 0.15s;
+  transition:
+    stroke 0.15s,
+    filter 0.15s;
 }
 
-.wf-node:hover .node-box {
-  stroke: #6366f1;
+.wf-node:hover .wf-node-box {
+  filter: drop-shadow(0 2px 6px rgb(99 102 241 / 0.18));
 }
 
-.wf-node.selected .node-box {
+.wf-node.selected .wf-node-box {
   stroke: #4f46e5;
-  stroke-width: 2.5;
+  stroke-width: 3;
 }
 
-.wf-node.inactive .node-box {
+.wf-node.inactive .wf-node-box {
   fill: #f8fafc;
-  stroke-dasharray: 4 3;
+  stroke-dasharray: 5 3;
 }
 
-.node-box.cat-INITIAL {
+.wf-node-box.cat-INITIAL {
   stroke: #3b82f6;
+  fill: #eff6ff;
 }
-.node-box.cat-SUCCESS {
+.wf-node-box.cat-ACTIVE {
+  stroke: #6366f1;
+  fill: #eef2ff;
+}
+.wf-node-box.cat-TERMINAL_POSITIVE {
   stroke: #16a34a;
+  fill: #f0fdf4;
 }
-.node-box.cat-TERMINAL {
+.wf-node-box.cat-TERMINAL_NEGATIVE {
   stroke: #dc2626;
+  fill: #fef2f2;
 }
 
-.node-label {
+.wf-node-label {
   font-size: 14px;
   font-weight: 600;
   fill: #1f2937;
 }
 
-.node-cat {
+.wf-node-cat {
   font-size: 11px;
-  fill: #6b7280;
+  fill: #64748b;
 }
 
-.wf-node.inactive .node-label {
+.wf-node.inactive .wf-node-label {
   fill: #9ca3af;
 }
 
-/* Graph edges (SVG). */
-.wf-edge .line {
-  fill: none;
-  stroke: #94a3b8;
-  stroke-width: 2;
+/* Edges. */
+.wf-edge {
   cursor: pointer;
 }
 
-.wf-edge:hover .line {
-  stroke: #6366f1;
+.wf-edge-line {
+  fill: none;
+  stroke: #94a3b8;
+  stroke-width: 1.75;
+  transition: stroke 0.15s;
 }
 
-.arrow-head {
+.wf-edge:hover .wf-edge-line {
+  stroke: #6366f1;
+  stroke-width: 2.25;
+}
+
+.wf-arrow-head {
   fill: #94a3b8;
 }
 
-.edge-label {
-  font-size: 12px;
-  fill: #475569;
+.wf-edge:hover .wf-arrow-head {
+  fill: #6366f1;
 }
 
-.text-path {
+.wf-edge-label rect {
+  fill: #fff;
+  stroke: #e2e8f0;
+  stroke-width: 1;
+}
+
+.wf-edge-label text {
+  font-size: 11px;
   fill: #475569;
 }
 
