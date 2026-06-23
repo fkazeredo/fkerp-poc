@@ -40,6 +40,25 @@ the backend and Angular on the frontend; the base package is `com.fksoft`.
    screen's loading / empty / error / permission-denied / success states), never by gaming the number or
    by explaining it away. No fake/assertion-free/skipped tests. This invariant outranks delivery speed:
    when in doubt, write the test. (Enforced through §3 and §13.)
+8. **Data-driven by default (with the structural-enum exception) — owner mandate.** A value set that is
+   genuinely *reference data* MUST be a **cadastro** (a DB-backed, admin-editable list), not a hardcoded
+   `enum`; a *lifecycle* (states + transitions) MUST be a **configurable workflow** on the engine
+   (`domain.workflow`), not hardcoded transition methods; and the *attention rules* that flag why a record
+   needs action (the pending-items worklists) MUST be configurable `WorkflowAttentionRule`s. Apply **the
+   test** before reaching for an `enum`:
+   - **CADASTRO** when the value is a rótulo/motivo/tipo/canal an admin can **add/rename/deactivate without
+     code** and **no logic branches** on the specific value (loss/rejection reasons, activity/attempt
+     types & results, channels, failure reasons, **item type**). New such lists → a cadastro in the owning
+     domain over the `domain.reference` kernel, id-based contract `{code,label}`, `active`→422.
+   - **ENUM stays** only when the value is **structural/behavioral**: the code `switch`es on it, calculates
+     with it (`DiscountType.amountOf`), maps it structurally (`BookingNeed.toStatus`), anchors a coded flow
+     (`confirmTravelPackage` on `TRAVEL_PACKAGE`), or is a **computed set** the code produces. Adding a
+     value would require programming → it is not reference data. Seeded data referencing such an enum is
+     marked `system` (code immutable, not deletable).
+   - **WORKFLOW** for a state machine, and **a configurable attention rule** for each worklist reason.
+   Hardcoded `enum` is **no longer the default** for those three cases — it is reserved for the genuinely
+   fixed/structural. New features follow this in §2 (Decision protocol) and §3 (Definition of Done). The
+   admin manages cadastros via `reference:manage` and the workflows/attention-rules via `workflow:manage`.
 
 ## 2. Decision protocol
 
