@@ -23,6 +23,7 @@ import com.fksoft.erp.domain.identity.UserRepository;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -119,18 +120,21 @@ public class ReceivableService {
                 ReceivableSpecifications.matching(criteria).and(accessPolicy.visibleTo(userId, canSeeAll));
         Page<Receivable> page = receivables.findAll(spec, pageable);
 
+        LocalDate today = LocalDate.now();
         Map<UUID, Long> orderNumbers =
                 resolveOrderNumbers(page.getContent().stream().map(Receivable::commercialOrderId));
         Map<UUID, String> customerNames =
                 resolveCustomerNames(page.getContent().stream().map(Receivable::customerId));
-        Map<UUID, String> names =
-                resolveNames(page.getContent().stream().map(Receivable::financialResponsiblePersonId));
+        Map<UUID, String> names = resolveNames(page.getContent().stream()
+                .flatMap(r -> Stream.of(r.commercialResponsiblePersonId(), r.financialResponsiblePersonId())));
 
         return page.map(r -> ReceivableListItem.from(
                 r,
                 orderNumbers.getOrDefault(r.commercialOrderId(), 0L),
                 customerNames.get(r.customerId()),
-                nameOrNull(names, r.financialResponsiblePersonId())));
+                nameOrNull(names, r.commercialResponsiblePersonId()),
+                nameOrNull(names, r.financialResponsiblePersonId()),
+                today));
     }
 
     /**

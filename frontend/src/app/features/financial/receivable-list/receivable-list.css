@@ -26,8 +26,24 @@
   color: var(--app-muted);
 }
 
+.filter-sm {
+  min-width: 8rem;
+}
+
+.filter-toggle {
+  min-width: 8rem;
+}
+
 .table-wrap {
-  overflow: hidden;
+  overflow: auto;
+}
+
+.overdue-row td {
+  background: var(--p-red-50, #fef2f2);
+}
+
+:host ::ng-deep .overdue-tag {
+  margin-left: 0.4rem;
 }
 
 .order-link {

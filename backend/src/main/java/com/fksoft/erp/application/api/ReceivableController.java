@@ -1,6 +1,7 @@
 package com.fksoft.erp.application.api;
 
 import com.fksoft.erp.application.api.dto.CreateReceivableRequest;
+import com.fksoft.erp.application.api.dto.ReceivableListParams;
 import com.fksoft.erp.application.api.dto.ReceivableResponse;
 import com.fksoft.erp.domain.financial.service.ReceivableService;
 import com.fksoft.erp.domain.financial.service.data.CreateReceivableCommand;
@@ -13,8 +14,10 @@ import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -26,7 +29,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -69,21 +71,34 @@ public class ReceivableController {
     }
 
     /**
-     * Operational, paginated Receivable list visible to the caller, with optional filters. The CANCELLED
-     * Receivables are excluded unless the {@code status} filter includes them. The contract carries receivable
-     * data only — never Payment, Commission or Invoice data.
+     * Operational, paginated Receivable list visible to the caller, with optional filters — the receivables that
+     * require financial follow-up. The settled {@code PAID} and {@code CANCELLED} receivables are excluded unless
+     * the {@code status} filter includes them; overdue receivables stay visible as operational problems. The
+     * contract carries receivable + commercial-origin data only — never Payment, Commission, Invoice or
+     * bank-reconciliation data.
      *
-     * @param status optional status codes to include (empty ⇒ active only)
-     * @param order optional source Commercial Order id to restrict to
+     * @param params the optional filters (see {@link ReceivableListParams})
      * @param pageable page, size and sort (default: createdAt desc, size 20)
      * @return a page of Receivable list items
      */
     @GetMapping
     public PageResponse<ReceivableListItem> list(
-            @RequestParam(required = false) Set<String> status,
-            @RequestParam(required = false) UUID order,
+            ReceivableListParams params,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        ReceivableSearchCriteria criteria = new ReceivableSearchCriteria(status, order);
+        ReceivableSearchCriteria criteria = new ReceivableSearchCriteria(
+                params.status(),
+                params.order(),
+                params.orderNumber(),
+                params.payer(),
+                params.dueFrom(),
+                params.dueTo(),
+                toStartOfDayUtc(params.createdFrom()),
+                toStartOfDayUtc(params.createdTo() != null ? params.createdTo().plusDays(1) : null),
+                params.commercialResponsible(),
+                params.financialResponsible(),
+                params.amountMin(),
+                params.amountMax(),
+                params.overdueOnly() != null && params.overdueOnly());
         return PageResponse.from(
                 receivableService.list(criteria, pageable, userContext.currentUserId(), canSeeAllReceivables()),
                 item -> item);
@@ -125,5 +140,11 @@ public class ReceivableController {
     // Receivable listing/detail use the Financial read tiers.
     private boolean canSeeAllReceivables() {
         return userContext.hasScope("financial:receivable:read:all");
+    }
+
+    // The creation period is given as calendar dates; createdAt is an instant, so anchor at UTC midnight (the
+    // upper bound is pre-incremented by a day, making the range [from, to) exclusive).
+    private static Instant toStartOfDayUtc(LocalDate date) {
+        return date != null ? date.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
     }
 }
