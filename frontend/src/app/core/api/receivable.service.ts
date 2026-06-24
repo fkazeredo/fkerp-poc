@@ -9,13 +9,47 @@ export type ReceivableStatus = 'OPEN' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 
 /** The lifecycle status of a single Receivable installment (mirrors the Receivable status). */
 export type InstallmentStatus = 'OPEN' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 
-/** One installment of a Receivable's schedule. Installment data only — never Payment/Commission/Invoice data. */
+/** One installment of a Receivable's schedule. Installment data only — never Commission/Invoice data. */
 export interface ReceivableInstallment {
+  id: string;
   number: number;
   amount: number;
   dueDate: string;
   status: InstallmentStatus;
   paymentNotes: string | null;
+}
+
+/** A payment registered against a Receivable installment. Payment data only — never Commission/Invoice data. */
+export interface Payment {
+  id: string;
+  installmentId: string;
+  installmentNumber: number;
+  amount: number;
+  paymentDate: string;
+  paymentMethodId: string;
+  paymentMethodCode: string;
+  paymentMethodLabel: string;
+  note: string | null;
+  registeredById: string | null;
+  registeredByName: string | null;
+  registeredAt: string;
+}
+
+/** A selectable payment method (the active values of the cadastro). */
+export interface PaymentMethodOption {
+  id: string;
+  code: string;
+  label: string;
+  active: boolean;
+  sortOrder: number;
+}
+
+/** Payload to register a full payment for a Receivable installment (the amount must equal the installment). */
+export interface RegisterPayment {
+  paymentMethodId: string;
+  amount: number;
+  paymentDate: string;
+  note?: string | null;
 }
 
 /**
@@ -46,7 +80,7 @@ export interface ReceivableListItem {
  * Full Receivable detail — keeps the commercial origin (Order / Proposal / Opportunity / Lead / Customer)
  * traceable and exposes the payment standing (paid / outstanding / overdue) and the installment schedule.
  * Carries receivable data only — never Commission, bank-reconciliation or tax-invoice data. {@code amountPaid}
- * is zero and the payment history is empty until the payment slice.
+ * is the sum of the registered payments; {@code payments} is the payment history.
  */
 export interface ReceivableDetail {
   id: string;
@@ -71,6 +105,7 @@ export interface ReceivableDetail {
   paymentNotes: string | null;
   status: ReceivableStatus;
   installments: ReceivableInstallment[];
+  payments: Payment[];
   createdAt: string;
   createdByName: string | null;
 }
@@ -145,6 +180,26 @@ export class ReceivableService {
 
   detail(id: string): Observable<ReceivableDetail> {
     return this.http.get<ReceivableDetail>(`/api/receivables/${id}`);
+  }
+
+  /** The active payment methods (the cadastro values) for the payment dialog's method selector. */
+  paymentMethods(): Observable<PaymentMethodOption[]> {
+    return this.http.get<PaymentMethodOption[]>('/api/financial/payment-methods');
+  }
+
+  /**
+   * Registers a full payment for one installment of a Receivable; returns the refreshed detail (installment +
+   * receivable status consolidated, the new payment in the history).
+   */
+  registerPayment(
+    receivableId: string,
+    installmentId: string,
+    payload: RegisterPayment,
+  ): Observable<ReceivableDetail> {
+    return this.http.post<ReceivableDetail>(
+      `/api/receivables/${receivableId}/installments/${installmentId}/payments`,
+      payload,
+    );
   }
 
   /** The Commercial Orders eligible to originate a Receivable, visible to the caller (for the create selector). */

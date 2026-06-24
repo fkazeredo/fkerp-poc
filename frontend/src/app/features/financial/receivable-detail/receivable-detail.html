@@ -85,10 +85,11 @@
           <th>Vencimento</th>
           <th>Status</th>
           <th>Observações</th>
+          <th class="col-action"></th>
         </tr>
       </thead>
       <tbody>
-        @for (i of r.installments; track i.number) {
+        @for (i of r.installments; track i.id) {
           <tr [class.overdue-row]="installmentOverdue(i)">
             <td class="col-num">{{ i.number }}</td>
             <td class="num">{{ i.amount | currency: 'BRL' }}</td>
@@ -105,18 +106,52 @@
               />
             </td>
             <td>{{ i.paymentNotes ?? '—' }}</td>
+            <td class="col-action">
+              @if (canPay(i)) {
+                <p-button
+                  label="Registrar pagamento"
+                  icon="pi pi-dollar"
+                  size="small"
+                  [text]="true"
+                  (onClick)="openPayment(i)"
+                />
+              }
+            </td>
           </tr>
         }
       </tbody>
     </table>
   </p-card>
 
-  <p-card header="Pagamentos e estornos" styleClass="section">
-    <!-- Payment + reversal history. None yet — registering payments (and reversals) is the next slice; a
-         reversed payment will stay listed here as part of the history. -->
-    <p class="muted empty">
-      Nenhum pagamento registrado ainda. O registro de pagamentos e estornos chega na próxima etapa.
-    </p>
+  <p-card header="Pagamentos" styleClass="section">
+    @if (r.payments.length === 0) {
+      <p class="muted empty">Nenhum pagamento registrado ainda.</p>
+    } @else {
+      <table class="payments-table">
+        <thead>
+          <tr>
+            <th class="col-num">Parcela</th>
+            <th class="num">Valor</th>
+            <th>Data</th>
+            <th>Forma</th>
+            <th>Registrado por</th>
+            <th>Observações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of r.payments; track p.id) {
+            <tr>
+              <td class="col-num">{{ p.installmentNumber }}</td>
+              <td class="num">{{ p.amount | currency: 'BRL' }}</td>
+              <td>{{ p.paymentDate | date: 'dd/MM/yyyy' }}</td>
+              <td>{{ p.paymentMethodLabel }}</td>
+              <td>{{ p.registeredByName ?? '—' }}</td>
+              <td>{{ p.note ?? '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
   </p-card>
 
   <div class="back">
@@ -127,4 +162,83 @@
       (onClick)="back()"
     />
   </div>
+
+  <p-dialog
+    header="Registrar pagamento"
+    [visible]="paymentDialogOpen()"
+    (visibleChange)="$event ? null : closePayment()"
+    [modal]="true"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
+    [style]="{ width: '32rem' }"
+  >
+    @if (targetInstallment(); as i) {
+      <form class="payment-form" [formGroup]="paymentForm" (ngSubmit)="submitPayment()">
+        <p class="muted">
+          Parcela {{ i.number }} · vencimento {{ i.dueDate | date: 'dd/MM/yyyy' }}. O pagamento registra o
+          valor integral da parcela.
+        </p>
+
+        <label class="field">
+          <span>Valor</span>
+          <strong class="amount">{{ i.amount | currency: 'BRL' }}</strong>
+        </label>
+
+        <label class="field">
+          <span>Forma de pagamento *</span>
+          <p-select
+            formControlName="paymentMethodId"
+            [options]="paymentMethods()"
+            optionLabel="label"
+            optionValue="id"
+            placeholder="Selecione a forma de pagamento"
+            appendTo="body"
+          />
+        </label>
+
+        <label class="field">
+          <span>Data do pagamento *</span>
+          <p-datepicker
+            formControlName="paymentDate"
+            dateFormat="dd/mm/yy"
+            [maxDate]="today"
+            [showIcon]="true"
+            appendTo="body"
+          />
+        </label>
+
+        <label class="field">
+          <span>Observações</span>
+          <textarea
+            pTextarea
+            formControlName="note"
+            rows="2"
+            maxlength="2000"
+            placeholder="Referência / observação (opcional)"
+          ></textarea>
+        </label>
+
+        @if (paymentError()) {
+          <p-message severity="error" [text]="paymentError()!" />
+        }
+
+        <div class="dialog-actions">
+          <p-button
+            label="Cancelar"
+            severity="secondary"
+            [text]="true"
+            type="button"
+            (onClick)="closePayment()"
+          />
+          <p-button
+            label="Registrar pagamento"
+            icon="pi pi-check"
+            type="submit"
+            [loading]="saving()"
+            [disabled]="paymentForm.invalid"
+          />
+        </div>
+      </form>
+    }
+  </p-dialog>
 }

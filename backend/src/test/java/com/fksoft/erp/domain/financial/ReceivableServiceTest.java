@@ -16,19 +16,24 @@ import com.fksoft.erp.domain.crm.repository.CustomerRepository;
 import com.fksoft.erp.domain.crm.service.CustomerService;
 import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
+import com.fksoft.erp.domain.financial.exception.PaymentMethodNotAvailableException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAccessDeniedException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAlreadyExistsException;
 import com.fksoft.erp.domain.financial.exception.ReceivableNotFoundException;
 import com.fksoft.erp.domain.financial.exception.SourceOrderAccessDeniedException;
 import com.fksoft.erp.domain.financial.exception.SourceOrderNotFoundException;
+import com.fksoft.erp.domain.financial.model.PaymentMethod;
 import com.fksoft.erp.domain.financial.model.Receivable;
 import com.fksoft.erp.domain.financial.model.ReceivableCreated;
 import com.fksoft.erp.domain.financial.model.ReceivableStatus;
+import com.fksoft.erp.domain.financial.repository.PaymentMethodRepository;
 import com.fksoft.erp.domain.financial.repository.ReceivableRepository;
 import com.fksoft.erp.domain.financial.service.ReceivableAccessPolicy;
 import com.fksoft.erp.domain.financial.service.ReceivableService;
 import com.fksoft.erp.domain.financial.service.data.CreateReceivableCommand;
 import com.fksoft.erp.domain.financial.service.data.InstallmentInput;
+import com.fksoft.erp.domain.financial.service.data.ReceivableDetail;
+import com.fksoft.erp.domain.financial.service.data.RegisterPaymentCommand;
 import com.fksoft.erp.domain.identity.UserRepository;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
@@ -51,6 +56,9 @@ class ReceivableServiceTest {
 
     @Mock
     private ReceivableRepository receivables;
+
+    @Mock
+    private PaymentMethodRepository paymentMethods;
 
     @Mock
     private ReceivableAccessPolicy accessPolicy;
@@ -247,5 +255,86 @@ class ReceivableServiceTest {
         when(accessPolicy.canSee(receivable, userId, false)).thenReturn(false);
 
         assertThatThrownBy(() -> service.detail(id, userId, false)).isInstanceOf(ReceivableAccessDeniedException.class);
+    }
+
+    private Customer mockCustomer() {
+        Customer customer = mock(Customer.class);
+        lenient().when(customer.id()).thenReturn(UUID.randomUUID());
+        return customer;
+    }
+
+    private Receivable openReceivable() {
+        return Receivable.createFromOrder(
+                confirmedOrder(), mockCustomer(), LocalDate.of(2026, 7, 15), null, null, List.of(), userId);
+    }
+
+    @Test
+    void registerPaymentSettlesTheInstallmentAndReturnsTheDetail() {
+        Receivable receivable = openReceivable();
+        UUID installmentId = receivable.installments().get(0).id();
+        when(receivables.findById(receivable.id())).thenReturn(Optional.of(receivable));
+        when(accessPolicy.canSee(receivable, userId, true)).thenReturn(true);
+        UUID methodId = UUID.randomUUID();
+        PaymentMethod method = mock(PaymentMethod.class);
+        lenient().when(method.id()).thenReturn(methodId);
+        lenient().when(method.code()).thenReturn("PIX");
+        lenient().when(method.label()).thenReturn("Pix");
+        when(method.active()).thenReturn(true);
+        when(paymentMethods.findById(methodId)).thenReturn(Optional.of(method));
+        when(receivables.save(any(Receivable.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        RegisterPaymentCommand cmd =
+                new RegisterPaymentCommand(methodId, new BigDecimal("1500.00"), LocalDate.of(2026, 6, 20), "pix");
+        ReceivableDetail detail = service.registerPayment(receivable.id(), installmentId, cmd, userId, true);
+
+        assertThat(detail.status()).isEqualTo("PAID");
+        assertThat(detail.amountPaid()).isEqualByComparingTo("1500.00");
+        assertThat(detail.outstandingAmount()).isEqualByComparingTo("0.00");
+        assertThat(detail.payments()).hasSize(1);
+        assertThat(detail.payments().get(0).paymentMethodLabel()).isEqualTo("Pix");
+        assertThat(detail.payments().get(0).installmentNumber()).isEqualTo(1);
+        verify(receivables).save(receivable);
+    }
+
+    @Test
+    void registerPaymentThrowsNotFoundWhenReceivableAbsent() {
+        UUID id = UUID.randomUUID();
+        when(receivables.findById(id)).thenReturn(Optional.empty());
+
+        RegisterPaymentCommand cmd =
+                new RegisterPaymentCommand(UUID.randomUUID(), new BigDecimal("10.00"), LocalDate.of(2026, 6, 20), null);
+        assertThatThrownBy(() -> service.registerPayment(id, UUID.randomUUID(), cmd, userId, true))
+                .isInstanceOf(ReceivableNotFoundException.class);
+        verify(receivables, never()).save(any());
+    }
+
+    @Test
+    void registerPaymentThrowsAccessDeniedWhenNotVisible() {
+        UUID id = UUID.randomUUID();
+        Receivable receivable = mock(Receivable.class);
+        when(receivables.findById(id)).thenReturn(Optional.of(receivable));
+        when(accessPolicy.canSee(receivable, userId, false)).thenReturn(false);
+
+        RegisterPaymentCommand cmd =
+                new RegisterPaymentCommand(UUID.randomUUID(), new BigDecimal("10.00"), LocalDate.of(2026, 6, 20), null);
+        assertThatThrownBy(() -> service.registerPayment(id, UUID.randomUUID(), cmd, userId, false))
+                .isInstanceOf(ReceivableAccessDeniedException.class);
+        verify(paymentMethods, never()).findById(any());
+    }
+
+    @Test
+    void registerPaymentThrowsWhenPaymentMethodUnknownOrInactive() {
+        Receivable receivable = openReceivable();
+        when(receivables.findById(receivable.id())).thenReturn(Optional.of(receivable));
+        when(accessPolicy.canSee(receivable, userId, true)).thenReturn(true);
+        UUID methodId = UUID.randomUUID();
+        when(paymentMethods.findById(methodId)).thenReturn(Optional.empty());
+
+        RegisterPaymentCommand cmd =
+                new RegisterPaymentCommand(methodId, new BigDecimal("1500.00"), LocalDate.of(2026, 6, 20), null);
+        assertThatThrownBy(() -> service.registerPayment(
+                        receivable.id(), receivable.installments().get(0).id(), cmd, userId, true))
+                .isInstanceOf(PaymentMethodNotAvailableException.class);
+        verify(receivables, never()).save(any());
     }
 }

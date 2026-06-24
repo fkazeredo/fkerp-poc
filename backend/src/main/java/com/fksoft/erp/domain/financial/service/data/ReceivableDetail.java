@@ -2,6 +2,7 @@ package com.fksoft.erp.domain.financial.service.data;
 
 import com.fksoft.erp.domain.financial.model.Receivable;
 import com.fksoft.erp.domain.financial.model.ReceivableInstallment;
+import com.fksoft.erp.domain.financial.model.ReceivablePayment;
 import com.fksoft.erp.domain.financial.model.ReceivableStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -10,13 +11,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Full detail of a Receivable, for consultation: its summary, the traceable commercial origin (Order / Proposal
- * / Opportunity / Lead / Customer), the installment schedule and the payment standing (paid / outstanding /
- * overdue). Carries receivable data only — never Commission, bank-reconciliation or tax-invoice data. The
- * {@code amountPaid} / {@code outstandingAmount} fields reflect the current (no-payment) state — zero / full
- * total — and the payment + reversal history become available with the payment slice.
+ * / Opportunity / Lead / Customer), the installment schedule, the payment history and the payment standing
+ * (paid / outstanding / overdue). Carries receivable data only — never Commission, bank-reconciliation or
+ * tax-invoice data. {@code amountPaid} is the sum of the registered payments and {@code outstandingAmount} is the
+ * total minus the amount paid.
  */
 public record ReceivableDetail(
         UUID id,
@@ -41,20 +43,21 @@ public record ReceivableDetail(
         String paymentNotes,
         String status,
         List<InstallmentView> installments,
+        List<PaymentView> payments,
         Instant createdAt,
         String createdByName) {
 
     /**
-     * Builds the detail from the entity and the resolved cross-aggregate data. {@code amountPaid} is zero and
-     * the payment history is empty until the payment slice; {@code overdue} is computed from the due date and the
-     * status (settled receivables are never overdue).
+     * Builds the detail from the entity and the resolved cross-aggregate data. {@code amountPaid} is the sum of
+     * the registered payments; {@code overdue} is computed from the due date and the status (settled receivables
+     * are never overdue).
      *
      * @param r the receivable entity
      * @param orderNumber the resolved source order number
      * @param customerName the resolved payer name
      * @param proposalReference the resolved source Proposal title (commercial reference), or {@code null}
      * @param opportunityReference the resolved source Opportunity name (commercial reference), or {@code null}
-     * @param names a map of user id to username (for the responsibles and the creator)
+     * @param names a map of user id to username (for the responsibles, the creator and the payment registrants)
      * @param today the current date, for the overdue computation
      * @return the detail read model
      */
@@ -66,7 +69,9 @@ public record ReceivableDetail(
             String opportunityReference,
             Map<UUID, String> names,
             LocalDate today) {
-        BigDecimal amountPaid = BigDecimal.ZERO; // no payments yet (payment slice)
+        BigDecimal amountPaid = r.amountPaid();
+        Map<UUID, Integer> installmentNumbers = r.installments().stream()
+                .collect(Collectors.toMap(ReceivableInstallment::id, ReceivableInstallment::number));
         return new ReceivableDetail(
                 r.id(),
                 r.commercialOrderId(),
@@ -92,6 +97,14 @@ public record ReceivableDetail(
                 r.installments().stream()
                         .sorted(Comparator.comparingInt(ReceivableInstallment::number))
                         .map(InstallmentView::from)
+                        .toList(),
+                r.payments().stream()
+                        .sorted(Comparator.comparing(ReceivablePayment::paymentDate)
+                                .thenComparing(ReceivablePayment::registeredAt))
+                        .map(p -> PaymentView.from(
+                                p,
+                                installmentNumbers.getOrDefault(p.installmentId(), 0),
+                                nameOf(names, p.registeredBy())))
                         .toList(),
                 r.createdAt(),
                 nameOf(names, r.createdBy()));

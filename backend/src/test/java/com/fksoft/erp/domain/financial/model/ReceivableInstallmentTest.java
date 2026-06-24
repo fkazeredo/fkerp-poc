@@ -3,6 +3,7 @@ package com.fksoft.erp.domain.financial.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fksoft.erp.domain.financial.exception.InstallmentNotPayableException;
 import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -49,5 +50,22 @@ class ReceivableInstallmentTest {
     void ofRejectsANullDueDate() {
         assertThatThrownBy(() -> ReceivableInstallment.of(1, new BigDecimal("10.00"), null, null))
                 .isInstanceOf(InstallmentScheduleInvalidException.class);
+    }
+
+    @Test
+    void markPaidMovesAnOpenInstallmentToPaid() {
+        ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("10.00"), DUE, null);
+
+        installment.markPaid();
+
+        assertThat(installment.status()).isEqualTo(InstallmentStatus.PAID);
+    }
+
+    @Test
+    void markPaidRejectsAnAlreadyPaidInstallment() {
+        ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("10.00"), DUE, null);
+        installment.markPaid();
+
+        assertThatThrownBy(installment::markPaid).isInstanceOf(InstallmentNotPayableException.class);
     }
 }

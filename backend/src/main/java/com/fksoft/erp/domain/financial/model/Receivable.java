@@ -1,8 +1,11 @@
 package com.fksoft.erp.domain.financial.model;
 
 import com.fksoft.erp.domain.crm.model.Customer;
+import com.fksoft.erp.domain.financial.exception.InstallmentNotPayableException;
 import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
+import com.fksoft.erp.domain.financial.exception.PaymentAmountMismatchException;
+import com.fksoft.erp.domain.financial.exception.PaymentInstallmentNotFoundException;
 import com.fksoft.erp.domain.financial.service.data.InstallmentInput;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import jakarta.persistence.CascadeType;
@@ -107,6 +110,20 @@ public class Receivable {
     @JoinColumn(name = "receivable_id", nullable = false)
     private List<ReceivableInstallment> installments = new ArrayList<>();
 
+    // The payment history (part of the aggregate): the payments received against the installments. Append-only.
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "receivable_id", nullable = false)
+    private List<ReceivablePayment> payments = new ArrayList<>();
+
+    // Denormalized payment standing, maintained on every payment: the total received and the latest payment date.
+    @NotNull
+    @PositiveOrZero
+    @Column(name = "amount_paid", nullable = false)
+    private BigDecimal amountPaid = BigDecimal.ZERO;
+
+    @Column(name = "last_payment_date")
+    private LocalDate lastPaymentDate;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -195,6 +212,79 @@ public class Receivable {
         int number = 1;
         for (InstallmentInput input : inputs) {
             installments.add(ReceivableInstallment.of(number++, input.amount(), input.dueDate(), input.paymentNotes()));
+        }
+    }
+
+    /**
+     * Registers a full payment for one of this Receivable's installments. The payment amount must equal the
+     * installment's amount (this slice registers full payments only; partial payments are a later slice). The
+     * installment becomes {@code PAID}, the payment is recorded in the aggregate's history, the paid total and the
+     * latest payment date are updated, and the Receivable status is consolidated ({@code PAID} when every
+     * installment is paid, otherwise {@code PARTIALLY_PAID}). Creates no Commission, Invoice or
+     * bank-reconciliation data and never touches the source Order, Lead or Customer.
+     *
+     * @param installmentId the target installment (must belong to this Receivable and be {@code OPEN})
+     * @param amount the payment amount (must equal the installment's amount)
+     * @param paymentDate the date the payment was received
+     * @param method the payment method (an active cadastro value)
+     * @param note optional free-text reference/note
+     * @param registeredBy id of the user registering the payment
+     * @return the registered payment
+     * @throws PaymentInstallmentNotFoundException if the installment is not part of this Receivable
+     * @throws InstallmentNotPayableException if the installment is already paid or cancelled
+     * @throws PaymentAmountMismatchException if the amount does not equal the installment amount (full payment)
+     */
+    public ReceivablePayment registerFullPayment(
+            UUID installmentId,
+            BigDecimal amount,
+            LocalDate paymentDate,
+            PaymentMethod method,
+            String note,
+            UUID registeredBy) {
+        ReceivableInstallment installment = installments.stream()
+                .filter(i -> i.id().equals(installmentId))
+                .findFirst()
+                .orElseThrow(PaymentInstallmentNotFoundException::new);
+        if (installment.status() != InstallmentStatus.OPEN) {
+            throw new InstallmentNotPayableException();
+        }
+        if (amount == null || amount.compareTo(installment.amount()) != 0) {
+            throw new PaymentAmountMismatchException();
+        }
+        installment.markPaid();
+        ReceivablePayment payment =
+                ReceivablePayment.of(installmentId, amount, paymentDate, method, note, registeredBy);
+        payments.add(payment);
+        amountPaid = amountPaid.add(payment.amount());
+        if (lastPaymentDate == null || paymentDate.isAfter(lastPaymentDate)) {
+            lastPaymentDate = paymentDate;
+        }
+        consolidateStatus();
+        updatedBy = registeredBy;
+        return payment;
+    }
+
+    /**
+     * Consolidates the Receivable status from its installments after a payment: {@code PAID} when every
+     * (non-cancelled) installment is paid, {@code PARTIALLY_PAID} when at least one (but not all) is paid,
+     * otherwise unchanged ({@code OPEN}). Never overrides an explicit {@code CANCELLED}.
+     */
+    private void consolidateStatus() {
+        if (status == ReceivableStatus.CANCELLED) {
+            return;
+        }
+        List<ReceivableInstallment> active = installments.stream()
+                .filter(i -> i.status() != InstallmentStatus.CANCELLED)
+                .toList();
+        long paid = active.stream()
+                .filter(i -> i.status() == InstallmentStatus.PAID)
+                .count();
+        if (!active.isEmpty() && paid == active.size()) {
+            status = ReceivableStatus.PAID;
+        } else if (paid > 0) {
+            status = ReceivableStatus.PARTIALLY_PAID;
+        } else {
+            status = ReceivableStatus.OPEN;
         }
     }
 

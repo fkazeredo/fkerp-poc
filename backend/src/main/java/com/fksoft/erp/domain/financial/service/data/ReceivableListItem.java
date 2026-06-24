@@ -9,17 +9,17 @@ import java.util.UUID;
 
 /**
  * Operational list item of a Receivable — the information a financial user needs to prioritize collection.
- * Carries receivable + commercial-origin data only — never Payment, Commission, Invoice or bank-reconciliation
- * data. Built from the entity via {@link #from} with the resolved order number, payer name and responsible
- * names. The {@code amountPaid} / {@code outstandingAmount} / {@code lastPaymentDate} fields reflect the current
- * (no-payment) state — zero / full total / none — and become real with the payment slice.
+ * Carries receivable + commercial-origin data only — never Commission, Invoice or bank-reconciliation data.
+ * Built from the entity via {@link #from} with the resolved order number, payer name and responsible names. The
+ * {@code amountPaid} / {@code outstandingAmount} / {@code lastPaymentDate} fields reflect the registered payments
+ * (denormalized on the Receivable).
  *
  * @param id the receivable id
  * @param commercialOrderId the source order id
  * @param orderNumber the human-friendly source order number (PC-000n)
  * @param customerName the payer (billing party) name
  * @param totalAmount the total amount to receive
- * @param amountPaid the amount already received (zero until the payment slice)
+ * @param amountPaid the amount already received
  * @param outstandingAmount the amount still to receive ({@code totalAmount − amountPaid})
  * @param status the receivable status name
  * @param dueDate the next due date
@@ -29,7 +29,7 @@ import java.util.UUID;
  * @param financialResponsibleId the financial responsible id, or {@code null}
  * @param financialResponsibleName the financial responsible name, or {@code null}
  * @param createdAt when the receivable was created
- * @param lastPaymentDate when the last payment was registered (none until the payment slice)
+ * @param lastPaymentDate the date of the latest registered payment, or {@code null} when none yet
  */
 public record ReceivableListItem(
         UUID id,
@@ -47,11 +47,11 @@ public record ReceivableListItem(
         UUID financialResponsibleId,
         String financialResponsibleName,
         Instant createdAt,
-        Instant lastPaymentDate) {
+        LocalDate lastPaymentDate) {
 
     /**
-     * Builds the list item from the entity and the resolved cross-aggregate names. {@code amountPaid} is zero and
-     * {@code lastPaymentDate} is {@code null} until the payment slice; {@code overdue} is computed from the due
+     * Builds the list item from the entity and the resolved cross-aggregate names. {@code amountPaid} and
+     * {@code lastPaymentDate} read the denormalized payment standing; {@code overdue} is computed from the due
      * date and the status (settled receivables are never overdue).
      *
      * @param r the receivable entity
@@ -69,7 +69,7 @@ public record ReceivableListItem(
             String commercialResponsibleName,
             String financialResponsibleName,
             LocalDate today) {
-        BigDecimal amountPaid = BigDecimal.ZERO; // no payments yet (payment slice)
+        BigDecimal amountPaid = r.amountPaid();
         return new ReceivableListItem(
                 r.id(),
                 r.commercialOrderId(),
@@ -86,7 +86,7 @@ public record ReceivableListItem(
                 r.financialResponsiblePersonId(),
                 financialResponsibleName,
                 r.createdAt(),
-                null); // last payment date — none until the payment slice
+                r.lastPaymentDate());
     }
 
     // Overdue = past the (next) due date and still requiring follow-up (not PAID, not CANCELLED).

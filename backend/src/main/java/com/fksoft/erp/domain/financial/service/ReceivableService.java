@@ -5,23 +5,32 @@ import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.repository.CustomerRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.CustomerService;
+import com.fksoft.erp.domain.financial.exception.InstallmentNotPayableException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
+import com.fksoft.erp.domain.financial.exception.PaymentAmountMismatchException;
+import com.fksoft.erp.domain.financial.exception.PaymentInstallmentNotFoundException;
+import com.fksoft.erp.domain.financial.exception.PaymentMethodNotAvailableException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAccessDeniedException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAlreadyExistsException;
 import com.fksoft.erp.domain.financial.exception.ReceivableNotFoundException;
 import com.fksoft.erp.domain.financial.exception.SourceOrderAccessDeniedException;
 import com.fksoft.erp.domain.financial.exception.SourceOrderNotFoundException;
+import com.fksoft.erp.domain.financial.model.PaymentMethod;
 import com.fksoft.erp.domain.financial.model.Receivable;
 import com.fksoft.erp.domain.financial.model.ReceivableCreated;
+import com.fksoft.erp.domain.financial.model.ReceivablePayment;
 import com.fksoft.erp.domain.financial.model.ReceivableStatus;
+import com.fksoft.erp.domain.financial.repository.PaymentMethodRepository;
 import com.fksoft.erp.domain.financial.repository.ReceivableRepository;
 import com.fksoft.erp.domain.financial.service.data.CreateReceivableCommand;
 import com.fksoft.erp.domain.financial.service.data.EligibleOrder;
 import com.fksoft.erp.domain.financial.service.data.ReceivableDetail;
 import com.fksoft.erp.domain.financial.service.data.ReceivableListItem;
 import com.fksoft.erp.domain.financial.service.data.ReceivableSearchCriteria;
+import com.fksoft.erp.domain.financial.service.data.RegisterPaymentCommand;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
+import com.fksoft.erp.domain.reference.ReferenceData;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
@@ -55,6 +64,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReceivableService {
 
     private final ReceivableRepository receivables;
+    private final PaymentMethodRepository paymentMethods;
     private final ReceivableAccessPolicy accessPolicy;
     private final CommercialOrderRepository orders;
     private final OrderAccessPolicy orderAccessPolicy;
@@ -159,6 +169,48 @@ public class ReceivableService {
         if (!accessPolicy.canSee(receivable, userId, canSeeAll)) {
             throw new ReceivableAccessDeniedException();
         }
+        return toDetail(receivable);
+    }
+
+    /**
+     * Registers a full payment for one installment of a Receivable the caller may see. The payment amount must
+     * equal the installment's amount (this slice registers full payments only). The installment becomes PAID and,
+     * when every installment is paid, the Receivable becomes PAID (otherwise PARTIALLY_PAID). Records no
+     * Commission, Invoice or bank-reconciliation data and never touches the source Order, Lead or Customer.
+     *
+     * @param receivableId the receivable id
+     * @param installmentId the target installment id
+     * @param cmd the payment data (method, amount, date, optional note)
+     * @param userId the authenticated financial user registering the payment
+     * @param canSeeAll whether the caller may see every Receivable
+     * @return the refreshed Receivable detail
+     * @throws ReceivableNotFoundException if the Receivable does not exist
+     * @throws ReceivableAccessDeniedException if the caller may not see it
+     * @throws PaymentMethodNotAvailableException if the payment method is unknown or inactive
+     * @throws PaymentInstallmentNotFoundException if the installment is not part of the Receivable
+     * @throws InstallmentNotPayableException if the installment is already paid or cancelled
+     * @throws PaymentAmountMismatchException if the amount does not equal the installment amount
+     */
+    @Transactional
+    public ReceivableDetail registerPayment(
+            UUID receivableId, UUID installmentId, RegisterPaymentCommand cmd, UUID userId, boolean canSeeAll) {
+        Receivable receivable = receivables.findById(receivableId).orElseThrow(ReceivableNotFoundException::new);
+        if (!accessPolicy.canSee(receivable, userId, canSeeAll)) {
+            throw new ReceivableAccessDeniedException();
+        }
+        PaymentMethod method = paymentMethods
+                .findById(cmd.paymentMethodId())
+                .filter(ReferenceData::active)
+                .orElseThrow(PaymentMethodNotAvailableException::new);
+        receivable.registerFullPayment(installmentId, cmd.amount(), cmd.paymentDate(), method, cmd.note(), userId);
+        receivables.save(receivable);
+        return toDetail(receivable);
+    }
+
+    // Assembles the detail read model: resolves the order number, payer/commercial references and the
+    // responsible / creator / payment-registrant names, then maps the aggregate. Called by detail() and
+    // registerPayment() (both inside a transaction so the installments and payments are loaded).
+    private ReceivableDetail toDetail(Receivable receivable) {
         long orderNumber = orders.findById(receivable.commercialOrderId())
                 .map(CommercialOrder::number)
                 .orElse(0L);
@@ -170,10 +222,12 @@ public class ReceivableService {
                 .findById(receivable.opportunityId())
                 .map(Opportunity::name)
                 .orElse(null);
-        Map<UUID, String> names = resolveNames(Stream.of(
-                receivable.commercialResponsiblePersonId(),
-                receivable.financialResponsiblePersonId(),
-                receivable.createdBy()));
+        Map<UUID, String> names = resolveNames(Stream.concat(
+                Stream.of(
+                        receivable.commercialResponsiblePersonId(),
+                        receivable.financialResponsiblePersonId(),
+                        receivable.createdBy()),
+                receivable.payments().stream().map(ReceivablePayment::registeredBy)));
         return ReceivableDetail.from(
                 receivable, orderNumber, customerName, proposalReference, opportunityReference, names, LocalDate.now());
     }
