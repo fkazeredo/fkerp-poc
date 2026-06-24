@@ -5,6 +5,7 @@ import { PageResponse, Responsible } from './lead.service';
 import { BookingRequestStatus } from './booking.service';
 import { OpportunityStage } from './opportunity.service';
 import { DiscountType, ProposalItemType, ProposalStatus } from './proposal.service';
+import { ReceivableStatus } from './receivable.service';
 
 /** The Commercial Order lifecycle status (Sprint 3). */
 export type CommercialOrderStatus = 'PENDING_BOOKING' | 'BOOKING_NOT_REQUIRED' | 'CANCELLED';
@@ -70,6 +71,7 @@ export interface CommercialOrderListItem {
   total: number;
   requiresBooking: boolean;
   bookingStatus: BookingRequestStatus | null;
+  financialStatus: ReceivableStatus | null;
   createdAt: string;
 }
 
@@ -99,6 +101,7 @@ export interface CommercialOrderDetail {
   status: CommercialOrderStatus;
   requiresBooking: boolean;
   bookingStatus: BookingRequestStatus | null;
+  financialStatus: ReceivableStatus | null;
   responsibleId: string | null;
   responsibleName: string | null;
   unassigned: boolean;

@@ -106,4 +106,22 @@ class ReceivableInstallmentTest {
         assertThatThrownBy(() -> installment.applyPayment(new BigDecimal("1.00")))
                 .isInstanceOf(InstallmentNotPayableException.class);
     }
+
+    @Test
+    void isPastDueOnlyWhenUnpaidAndPastTheDueDate() {
+        ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("100.00"), DUE, null);
+
+        assertThat(installment.isPastDue(DUE.plusDays(1))).isTrue(); // OPEN + past due
+        assertThat(installment.isPastDue(DUE.minusDays(1))).isFalse(); // not yet due
+        assertThat(installment.isPastDue(DUE)).isFalse(); // due today, not before
+
+        // A partially paid installment is still past due when overdue with a balance.
+        ReceivableInstallment partial = ReceivableInstallment.of(2, new BigDecimal("100.00"), DUE, null);
+        partial.applyPayment(new BigDecimal("40.00"));
+        assertThat(partial.isPastDue(DUE.plusDays(1))).isTrue();
+
+        // A fully paid installment is never past due.
+        installment.applyPayment(new BigDecimal("100.00"));
+        assertThat(installment.isPastDue(DUE.plusDays(10))).isFalse();
+    }
 }

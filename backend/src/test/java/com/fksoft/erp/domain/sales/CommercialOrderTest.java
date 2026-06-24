@@ -119,6 +119,34 @@ class CommercialOrderTest {
     }
 
     @Test
+    void startsWithNoReflectedFinancialStatus() {
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L);
+        assertThat(order.financialStatus()).isNull();
+    }
+
+    @Test
+    void reflectsTheFinancialStatusWithoutChangingTheLifecycle() {
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L);
+
+        order.reflectFinancialStatus("PAID");
+
+        // Identifiable as ready for Commission Management, without touching the Order's own lifecycle (Sales-owned).
+        assertThat(order.financialStatus()).isEqualTo("PAID");
+        assertThat(order.status()).isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
+        assertThat(order.isActive()).isTrue();
+    }
+
+    @Test
+    void anOverdueFinancialReflectionDoesNotCancelTheOrder() {
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L);
+
+        order.reflectFinancialStatus("OVERDUE");
+
+        assertThat(order.financialStatus()).isEqualTo("OVERDUE");
+        assertThat(order.status()).isNotEqualTo(CommercialOrderStatus.CANCELLED);
+    }
+
+    @Test
     void reflectingANewStatusReplacesThePreviousReflection() {
         CommercialOrder order = order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L);
 

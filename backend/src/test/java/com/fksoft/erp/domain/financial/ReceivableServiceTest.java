@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,6 +28,7 @@ import com.fksoft.erp.domain.financial.model.PaymentMethod;
 import com.fksoft.erp.domain.financial.model.Receivable;
 import com.fksoft.erp.domain.financial.model.ReceivableCreated;
 import com.fksoft.erp.domain.financial.model.ReceivableStatus;
+import com.fksoft.erp.domain.financial.model.ReceivableStatusChanged;
 import com.fksoft.erp.domain.financial.repository.PaymentMethodRepository;
 import com.fksoft.erp.domain.financial.repository.ReceivableRepository;
 import com.fksoft.erp.domain.financial.service.ReceivableAccessPolicy;
@@ -116,7 +118,7 @@ class ReceivableServiceTest {
     }
 
     @Test
-    void createBuildsAnOpenReceivableAndPublishesTheEvent() {
+    void createBuildsAnOpenReceivableAndPublishesTheEvents() {
         CommercialOrder order = confirmedOrder();
         when(orders.findById(orderId)).thenReturn(Optional.of(order));
         when(orderAccessPolicy.canSee(order, userId, true, false)).thenReturn(true);
@@ -140,10 +142,24 @@ class ReceivableServiceTest {
         assertThat(saved.getValue().installments().get(0).amount()).isEqualByComparingTo("1500.00");
         assertThat(result).isEqualTo(saved.getValue().id());
 
-        ArgumentCaptor<ReceivableCreated> event = ArgumentCaptor.forClass(ReceivableCreated.class);
-        verify(events).publishEvent(event.capture());
-        assertThat(event.getValue().commercialOrderId()).isEqualTo(orderId);
-        assertThat(event.getValue().customerId()).isEqualTo(customerId);
+        // Two facts are published: ReceivableCreated (for Commission Management) and ReceivableStatusChanged
+        // (OPEN — reflected onto the Commercial Order).
+        ArgumentCaptor<Object> published = ArgumentCaptor.forClass(Object.class);
+        verify(events, times(2)).publishEvent(published.capture());
+        ReceivableCreated created = published.getAllValues().stream()
+                .filter(ReceivableCreated.class::isInstance)
+                .map(ReceivableCreated.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertThat(created.commercialOrderId()).isEqualTo(orderId);
+        assertThat(created.customerId()).isEqualTo(customerId);
+        ReceivableStatusChanged reflected = published.getAllValues().stream()
+                .filter(ReceivableStatusChanged.class::isInstance)
+                .map(ReceivableStatusChanged.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertThat(reflected.status()).isEqualTo("OPEN");
+        assertThat(reflected.commercialOrderId()).isEqualTo(orderId);
     }
 
     @Test
@@ -295,6 +311,11 @@ class ReceivableServiceTest {
         assertThat(detail.payments().get(0).paymentMethodLabel()).isEqualTo("Pix");
         assertThat(detail.payments().get(0).installmentNumber()).isEqualTo(1);
         verify(receivables).save(receivable);
+        // The consolidated status (PAID) is reflected onto the Commercial Order.
+        ArgumentCaptor<ReceivableStatusChanged> reflected = ArgumentCaptor.forClass(ReceivableStatusChanged.class);
+        verify(events).publishEvent(reflected.capture());
+        assertThat(reflected.getValue().status()).isEqualTo("PAID");
+        assertThat(reflected.getValue().commercialOrderId()).isEqualTo(receivable.commercialOrderId());
     }
 
     @Test

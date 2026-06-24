@@ -32,6 +32,7 @@ describe('OrderList', () => {
     total: 2500,
     requiresBooking: true,
     bookingStatus: null,
+    financialStatus: null,
     createdAt: '2026-06-20T10:00:00Z',
   };
   const pageOf = (content: CommercialOrderListItem[]) => ({
@@ -170,6 +171,13 @@ describe('OrderList', () => {
       orders.list.mockReturnValue(of(pageOf([{ ...item, bookingStatus: 'CONFIRMED' }])));
       const el = render();
       expect(el.textContent).toContain('Confirmada');
+    });
+
+    it('renders the reflected financial status column and tag', () => {
+      orders.list.mockReturnValue(of(pageOf([{ ...item, financialStatus: 'PAID' }])));
+      const el = render();
+      expect(el.textContent).toContain('Status financeiro'); // column header
+      expect(el.textContent).toContain('Paga'); // financial-status tag
     });
 
     it('renders the filter controls (status, booking need, responsible, search)', () => {
