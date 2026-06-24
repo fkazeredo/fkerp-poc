@@ -882,6 +882,27 @@ in `domain.financial` — it is the **commercial** graduation of the Lead, and F
 and billing address are optional placeholders filled by a later slice. There is **no Customer CRUD UI** in this slice
 (it is materialized automatically). Customer Care remains out of scope.
 
+**Handoff to Commission Management (Sprint 6) (normative — Sprint 5 is closed).** A **Paid Receivable** is the
+trigger that **may** make a **Commercial Order eligible for Commission Management in Sprint 6** — the readiness signal
+is the Order's reflected **`financial_status = PAID`** (mirrored from the Receivable, §reflection above; surfaced on
+the Order list/detail and counted by the indicators' `readyForCommission`). But Sprint 5 implements **no Commission**:
+it creates **no** Commission record/calculation/approval/payment, **no** Accounts Payable, **no** refund, **no**
+Customer Care, **no** tax invoice and **no** bank reconciliation. The Paid financial data **preserves the full handoff
+so Sprint 6 starts without recapturing basic financial data**, split across the two (separate) contexts that own each
+piece — the **Commercial Order** (owned by Sales) keeps `financial_status = PAID` (the readiness signal), the
+**commercial total**, the items and the **customer** (payer), plus the source Proposal/Opportunity/Lead and the
+**commercial responsible**; the **Receivable** (owned by Financial Operations) keeps the source **Commercial Order /
+Proposal / Opportunity / Lead** references, the **payer** (`customerId`), the **commercial responsible** (snapshot),
+the **total** (snapshot of `order.total()`), the **installment schedule**, the **payments** — each with its **amount,
+payment date, payment method and registered-by user** — including any **reversed** payments (kept in history with the
+reason + who/when), the denormalized **amount paid** / **outstanding amount**, and the **final Receivable status**
+(`PAID`). Sprint 6 Commission Management will **read**: the **Order** for the readiness signal + money + customer, and
+the **Receivable** for the payment evidence (the amounts received, dates, methods and the final status). **No write
+crosses the boundary in the handoff** — Commission only reads, and the **Commercial Order, Booking Request, Receivable
+and Payment remain separated** (distinct aggregates/contexts; the Receivable references the Order read-only). Adding
+Commission (the `Expected → Eligible → Approved → Paid` commission lifecycle, its calculation, approval and payment)
+is **Sprint 6** and MUST NOT be started here.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

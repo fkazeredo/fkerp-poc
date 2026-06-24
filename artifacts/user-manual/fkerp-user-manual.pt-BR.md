@@ -1145,24 +1145,27 @@ veículo**, o **registro de falhas com retry**, o **reflexo do status consolidad
 visão de **Reservas pendentes** (seção 10.8) e os **Indicadores de reservas** (seção 10.9), no hub Acompanhamento.
 A entrega foi **validada de ponta a ponta**.
 
-A **Sprint 5 — Operações Financeiras** está em andamento: o módulo **Financeiro** (seção 11) já permite **gerar
-contas a receber** a partir dos **pedidos com reserva confirmada**, com o **Cliente** (pagador) criado
-automaticamente no fechamento, o **parcelamento** da conta (uma ou várias parcelas, cuja soma é igual ao valor do
-pedido), a **lista operacional** das contas a acompanhar — com colunas de **pago / em aberto**, destaque de
-**vencidas** e um conjunto completo de **filtros** (status, cliente, pedido, períodos de vencimento e criação,
-responsáveis, faixa de valor e somente vencidas) — e o **detalhe de consulta** de cada conta (origem comercial com
-referências, parcelas com atraso em destaque, pago/em aberto e a seção de pagamentos pronta para a próxima etapa),
-tudo com visibilidade por perfil. O Financeiro lê o registro já
-pronto (valor no Pedido; localizadores, datas e fornecedor na reserva) sem redigitar dados, e Reserva e Comercial
-seguem separados. As **próximas etapas** desta Sprint trazem o **registro de pagamentos** (e as transições para
-*Paga* / *Parcialmente paga* / *Vencida*), o reflexo do status financeiro no pedido e a **comissão**. Este manual
-será atualizado a cada lançamento.
+A **Sprint 5 — Operações Financeiras** está **concluída**: o módulo **Financeiro** (seção 11) entrega o ciclo
+completo de **contas a receber e pagamentos** a partir dos **pedidos com reserva confirmada** — a **geração** da
+conta a receber (com o **Cliente** pagador criado automaticamente no fechamento), o **parcelamento**, a **lista
+operacional** e o **detalhe** da conta, o **registro de pagamentos** integrais e parciais (com forma, data, valor e
+quem registrou), a **atualização automática do status** (*Em aberto* / *Parcialmente paga* / *Paga* / *Vencida*) e o
+seu **reflexo no Pedido Comercial**, a **identificação de contas vencidas** pela verificação diária, o **estorno de
+pagamentos** preservando o histórico, a **visão operacional de Recebimentos** e os **indicadores financeiros
+mínimos**. A entrega foi **validada de ponta a ponta**. Uma conta **Paga** deixa o pedido **identificável como pronto
+para a Gestão de Comissão** (próximo ciclo): o registro necessário já fica pronto, **sem redigitação** — o **Pedido**
+guarda o valor, o cliente e o sinal de pronto; a **conta a receber** guarda as origens comerciais, o responsável, o
+total, as parcelas e os pagamentos (inclusive estornos). Pedido, Reserva, Conta a Receber e Pagamento seguem
+**separados**.
+
+A continuidade prevista é a **Sprint 6 — Gestão de Comissão** (cálculo, aprovação e pagamento de comissão), que
+**parte das contas a receber pagas** e apenas **lê** o registro já pronto. Este manual será atualizado a cada
+lançamento.
 
 ---
 
-*Status do documento: Sprints 1, 2, 3 e 4 concluídas e Sprint 5 (Operações Financeiras) em andamento — módulo
-Financeiro com geração de contas a receber a partir de pedidos com reserva confirmada, o Cliente (pagador)
-materializado no fechamento, o **parcelamento** da conta, a **lista operacional** das contas a acompanhar (pago /
-em aberto, vencidas em destaque, filtros completos) e o **detalhe de consulta** da conta (origem, parcelas, pago/em
-aberto e a seção de pagamentos pronta), com visibilidade por perfil. Próximas etapas da Sprint 5: pagamentos e
-comissão. Mantido junto com o produto.*
+*Status do documento: Sprints 1, 2, 3, 4 e 5 concluídas — módulo Financeiro com o ciclo completo de contas a receber
+e pagamentos (geração, parcelamento, lista, detalhe, pagamentos integrais e parciais, status e reflexo no pedido,
+vencidas, estorno, visão de Recebimentos e indicadores mínimos), validado de ponta a ponta e com a conta **Paga**
+deixando o pedido pronto para a Gestão de Comissão (Sprint 6). Próxima etapa: comissão. Mantido junto com o
+produto.*

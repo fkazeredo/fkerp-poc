@@ -1144,24 +1144,26 @@ history**, **confirming** Travel package and Car rental items, **registering fai
 as *ready for Finance* or *having a booking problem* —, the **Pending bookings** view (section 10.8) and the
 **Booking indicators** (section 10.9) in the Acompanhamento hub. The delivery was **validated end to end**.
 
-**Sprint 5 — Financial Operations** is under way: the **Financeiro** module (section 11) already lets you
-**generate receivables** from the **orders with a confirmed booking**, with the **Customer** (payer) created
-automatically at the close, **installments** (one or several, summing to the order amount), the **operational
-list** of receivables to follow up — with **paid / outstanding** columns, an **overdue** highlight and a full set of
-**filters** (status, payer, order, due/creation periods, responsibles, amount range and overdue-only) — and the
-**consultation detail** of each receivable (commercial origin with references, overdue-highlighted installments,
-paid/outstanding and the payments section ready for the next step), all with per-profile visibility. Finance reads
-the record that is already in place (the amount on the Order; the locators,
-dates and supplier on the booking) without re-typing data, and Booking and Commercial stay separate. The **next
-steps** in this Sprint bring **registering payments** (and the transitions to *Paid* / *Partially paid* /
-*Overdue*), the financial status reflected onto the order, and **commission**. This manual will be updated as each
-ships.
+**Sprint 5 — Financial Operations** is **complete**: the **Financeiro** module (section 11) delivers the full
+**receivables and payments** cycle from the **orders with a confirmed booking** — **generating** the receivable
+(with the **Customer** payer created automatically at the close), **installments**, the **operational list** and the
+**detail** of each receivable, **registering payments** (full and partial, with method, date, amount and the user
+who registered them), the **automatic status update** (*Open* / *Partially paid* / *Paid* / *Overdue*) and its
+**reflection onto the Commercial Order**, the **identification of overdue receivables** by the daily check, the
+**reversal of payments** preserving the history, the **operational Recebimentos view** and the **minimum financial
+indicators**. The delivery was **validated end to end**. A **Paid** receivable makes the order **identifiable as
+ready for Commission Management** (next cycle): the record is already in place, **without re-typing** — the **Order**
+keeps the amount, the customer and the ready signal; the **receivable** keeps the commercial origin, the responsible,
+the total, the installments and the payments (including reversals). Order, Booking, Receivable and Payment stay
+**separate**.
+
+The next planned step is **Sprint 6 — Commission Management** (commission calculation, approval and payment), which
+**starts from the paid receivables** and only **reads** the record already in place. This manual will be updated as
+each ships.
 
 ---
 
-*Document status: Sprints 1, 2, 3 and 4 closed and Sprint 5 (Financial Operations) under way — the Finance module
-generates receivables from orders with a confirmed booking, with the Customer (payer) materialized at the close,
-**installments**, the **operational list** of receivables to follow up (paid / outstanding, overdue highlight,
-full filters) and the **consultation detail** of each receivable (origin, installments, paid / outstanding and the
-payments section ready), with per-profile visibility. Next steps in Sprint 5: payments and commission. Maintained alongside
-the product.*
+*Document status: Sprints 1, 2, 3, 4 and 5 closed — the Finance module delivers the full receivables-and-payments
+cycle (generation, installments, list, detail, full and partial payments, status and order reflection, overdue,
+reversal, the Recebimentos view and minimum indicators), validated end to end, with a **Paid** receivable leaving the
+order ready for Commission Management (Sprint 6). Next step: commission. Maintained alongside the product.*
