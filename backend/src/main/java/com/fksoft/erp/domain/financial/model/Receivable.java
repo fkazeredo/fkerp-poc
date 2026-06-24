@@ -6,6 +6,7 @@ import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidExcep
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
 import com.fksoft.erp.domain.financial.exception.PaymentExceedsOutstandingException;
 import com.fksoft.erp.domain.financial.exception.PaymentInstallmentNotFoundException;
+import com.fksoft.erp.domain.financial.exception.PaymentNotFoundException;
 import com.fksoft.erp.domain.financial.service.data.InstallmentInput;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import jakarta.persistence.CascadeType;
@@ -26,6 +27,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -257,6 +259,44 @@ public class Receivable {
         }
         consolidateStatus();
         updatedBy = registeredBy;
+        return payment;
+    }
+
+    /**
+     * Reverses a registered payment of this Receivable (a payment-entry correction). The payment is marked
+     * reversed (kept in history, never deleted), the settled installment's paid amount and status are re-derived,
+     * the Receivable's paid total and latest payment date are recomputed from the remaining (non-reversed)
+     * payments, and the Receivable status is consolidated — a previously {@code PAID} receivable returns to
+     * {@code PARTIALLY_PAID} or {@code OPEN} per the remaining paid amount. Creates no refund, Commission or
+     * Customer Care data and never touches the source Order, Lead or Customer.
+     *
+     * @param paymentId the payment to reverse (must belong to this Receivable and not already be reversed)
+     * @param reason the reason for the reversal (required at the request boundary)
+     * @param reversedBy id of the user reversing the payment
+     * @param reversedAt when the reversal happens
+     * @return the reversed payment
+     * @throws PaymentNotFoundException if the payment is not part of this Receivable
+     * @throws PaymentAlreadyReversedException if the payment has already been reversed
+     */
+    public ReceivablePayment reversePayment(UUID paymentId, String reason, UUID reversedBy, Instant reversedAt) {
+        ReceivablePayment payment = payments.stream()
+                .filter(p -> p.id().equals(paymentId))
+                .findFirst()
+                .orElseThrow(PaymentNotFoundException::new);
+        payment.reverse(reason, reversedBy, reversedAt);
+        ReceivableInstallment installment = installments.stream()
+                .filter(i -> i.id().equals(payment.installmentId()))
+                .findFirst()
+                .orElseThrow(PaymentNotFoundException::new);
+        installment.reverseAmount(payment.amount());
+        amountPaid = amountPaid.subtract(payment.amount());
+        lastPaymentDate = payments.stream()
+                .filter(p -> !p.reversed())
+                .map(ReceivablePayment::paymentDate)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+        consolidateStatus();
+        updatedBy = reversedBy;
         return payment;
     }
 

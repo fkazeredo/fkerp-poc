@@ -172,6 +172,8 @@ public class SecurityConfig {
                         .hasAuthority("SCOPE_financial:receivable:create")
                         .requestMatchers(HttpMethod.POST, "/api/receivables/*/installments/*/payments")
                         .hasAuthority("SCOPE_financial:payment:register")
+                        .requestMatchers(HttpMethod.POST, "/api/receivables/*/payments/*/reversals")
+                        .hasAuthority("SCOPE_financial:payment:reverse")
                         .requestMatchers(HttpMethod.GET, "/api/receivables", "/api/receivables/**")
                         .hasAnyAuthority(FINANCIAL_READ_SCOPES)
                         .requestMatchers(HttpMethod.GET, "/api/crm/responsibles")

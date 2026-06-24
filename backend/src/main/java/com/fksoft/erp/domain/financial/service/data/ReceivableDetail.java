@@ -106,7 +106,8 @@ public record ReceivableDetail(
                         .map(p -> PaymentView.from(
                                 p,
                                 installmentNumbers.getOrDefault(p.installmentId(), 0),
-                                nameOf(names, p.registeredBy())))
+                                nameOf(names, p.registeredBy()),
+                                nameOf(names, p.reversedBy())))
                         .toList(),
                 r.createdAt(),
                 nameOf(names, r.createdBy()));

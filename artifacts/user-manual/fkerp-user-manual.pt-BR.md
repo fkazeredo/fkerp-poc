@@ -970,7 +970,27 @@ Ao confirmar: se o valor **quita o saldo** da parcela, ela fica **Paga**; se cob
 **não** cria comissão, nota fiscal, recibo nem faz conciliação bancária, e **não** altera o pedido, o lead ou o
 cliente.
 
-### 11.6 Estados da conta e das parcelas · Vencidas
+### 11.6 Estornar um pagamento
+
+Um pagamento lançado por engano pode ser **estornado** — sem apagar o histórico. Quem tem o perfil **financeiro** vê
+uma ação **Estornar** ao lado de cada pagamento **registrado**, na seção **Pagamentos** do detalhe da conta. O estorno
+exige um **motivo** (obrigatório); o sistema registra **quem** estornou e **quando**.
+
+O que acontece no estorno:
+
+- O pagamento **permanece no histórico**, agora marcado como **Estornado** (com o motivo, o usuário e a data). Ele
+  **nunca é excluído**, preservando o registro da correção.
+- Os valores **pago** e **em aberto** (da conta e da parcela afetada) são **recalculados** como se aquele pagamento não
+  tivesse sido contabilizado. A parcela volta a **Em aberto** (sem outro pagamento) ou **Parcialmente paga** (resta
+  outro pagamento), e a conta é reavaliada da mesma forma — uma conta **Paga** pode voltar a **Parcialmente paga** ou
+  **Em aberto**.
+
+Só um pagamento **registrado** pode ser estornado: um pagamento **já estornado** não pode ser estornado novamente. Os
+perfis **Gerente** e **Diretoria** mantêm apenas consulta e **não** podem estornar. O estorno **não** gera reembolso,
+chargeback bancário nem notificação ao cliente, e **não** cria ajuste de comissão — é apenas uma correção do registro
+financeiro.
+
+### 11.7 Estados da conta e das parcelas · Vencidas
 
 Tanto a conta a receber quanto cada **parcela** podem estar **Em aberto**, **Parcialmente paga**, **Paga**,
 **Vencida** ou **Cancelada**. Toda conta nasce **Em aberto**; ao registrar pagamentos, a parcela passa a

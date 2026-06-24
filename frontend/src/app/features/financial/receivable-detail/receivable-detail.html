@@ -140,17 +140,44 @@
             <th>Forma</th>
             <th>Registrado por</th>
             <th>Observações</th>
+            <th>Situação</th>
+            <th class="col-action"></th>
           </tr>
         </thead>
         <tbody>
           @for (p of r.payments; track p.id) {
-            <tr>
+            <tr [class.reversed-row]="p.reversed">
               <td class="col-num">{{ p.installmentNumber }}</td>
               <td class="num">{{ p.amount | currency: 'BRL' }}</td>
               <td>{{ p.paymentDate | date: 'dd/MM/yyyy' }}</td>
               <td>{{ p.paymentMethodLabel }}</td>
               <td>{{ p.registeredByName ?? '—' }}</td>
               <td>{{ p.note ?? '—' }}</td>
+              <td>
+                @if (p.reversed) {
+                  <p-tag value="Estornado" severity="danger" />
+                  <div class="reversal-meta">
+                    {{ p.reversalReason }}
+                    <span class="muted">
+                      · {{ p.reversedByName ?? '—' }} · {{ p.reversedAt | date: 'dd/MM/yyyy' }}
+                    </span>
+                  </div>
+                } @else {
+                  <p-tag value="Registrado" severity="success" />
+                }
+              </td>
+              <td class="col-action">
+                @if (canReverse(p)) {
+                  <p-button
+                    label="Estornar"
+                    icon="pi pi-undo"
+                    size="small"
+                    severity="danger"
+                    [text]="true"
+                    (onClick)="openReversal(p)"
+                  />
+                }
+              </td>
             </tr>
           }
         </tbody>
@@ -251,6 +278,59 @@
             type="submit"
             [loading]="saving()"
             [disabled]="paymentForm.invalid || (paymentForm.controls.amount.value ?? 0) > i.outstanding"
+          />
+        </div>
+      </form>
+    }
+  </p-dialog>
+
+  <p-dialog
+    header="Estornar pagamento"
+    [visible]="reversalDialogOpen()"
+    (visibleChange)="$event ? null : closeReversal()"
+    [modal]="true"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
+    [style]="{ width: '32rem' }"
+  >
+    @if (targetPayment(); as p) {
+      <form class="payment-form" [formGroup]="reversalForm" (ngSubmit)="submitReversal()">
+        <p class="muted">
+          Estornar o pagamento de {{ p.amount | currency: 'BRL' }} (parcela {{ p.installmentNumber }} ·
+          {{ p.paymentDate | date: 'dd/MM/yyyy' }}). O pagamento permanece no histórico marcado como estornado e os
+          valores pago / em aberto são recalculados.
+        </p>
+
+        <label class="field">
+          <span>Motivo do estorno *</span>
+          <textarea
+            pTextarea
+            formControlName="reason"
+            rows="3"
+            maxlength="2000"
+            placeholder="Descreva o motivo do estorno"
+          ></textarea>
+        </label>
+
+        @if (reversalError()) {
+          <p-message severity="error" [text]="reversalError()!" />
+        }
+
+        <div class="dialog-actions">
+          <p-button
+            label="Cancelar"
+            severity="secondary"
+            [text]="true"
+            type="button"
+            (onClick)="closeReversal()"
+          />
+          <p-button
+            label="Estornar pagamento"
+            icon="pi pi-undo"
+            severity="danger"
+            type="submit"
+            [loading]="reversing()"
+            [disabled]="reversalForm.invalid"
           />
         </div>
       </form>

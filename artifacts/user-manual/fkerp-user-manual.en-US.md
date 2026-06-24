@@ -973,7 +973,27 @@ payment appears in the **Payments** section and the **paid** / **outstanding** f
 installment) update. Registering a payment creates **no** commission, invoice or receipt and performs **no** bank
 reconciliation, and it never changes the order, lead or customer.
 
-### 11.6 Receivable and installment states · Overdue
+### 11.6 Reversing a payment
+
+A payment entered by mistake can be **reversed** — without erasing the audit trail. Users with the **Finance**
+profile see an **Reverse** action next to each **registered** payment in the **Payments** section of the receivable
+detail. Reversing requires a **reason** (mandatory); the system records **who** reversed it and **when**.
+
+What happens on reversal:
+
+- The payment **stays in the history**, now marked **Reversed** (with the reason, the user and the date). It is
+  **never deleted**, so the record of the correction is preserved.
+- The **paid** and **outstanding** amounts (of the receivable and the affected installment) are **recalculated** as
+  if that payment had not been counted. The installment returns to **Open** (nothing else paid) or **Partially paid**
+  (another payment remains), and the receivable is re-evaluated the same way — a **Paid** receivable can go back to
+  **Partially paid** or **Open**.
+
+Only a **registered** payment can be reversed: a payment that was **already reversed** cannot be reversed again. The
+**Manager** and **Board/Director** profiles keep read-only consultation and **cannot** reverse a payment. A reversal
+issues **no** refund, bank chargeback or customer notification, and creates **no** commission adjustment — it is
+purely a correction of the financial record.
+
+### 11.7 Receivable and installment states · Overdue
 
 Both the receivable and each **installment** can be **Open**, **Partially paid**, **Paid**, **Overdue** or
 **Cancelled**. Every receivable is born **Open**; as payments are registered, the installment becomes **Partially

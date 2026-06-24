@@ -793,6 +793,31 @@ receipt-PDF generation. In the frontend, the Receivable detail offers **Registra
 installment (shortcut <kbd>p</kbd>) behind `canRegisterPayment()` with an **editable amount** defaulting to the
 outstanding, and the **Formas de pagamento** cadastro lives in the **Cadastros** module.
 
+**Payment reversal (normative — Financial Operations, Sprint 5 Slice 9).** An authorized financial user **reverses a
+registered payment** to **correct a payment-entry mistake** while **preserving the audit history**: `POST
+/api/receivables/{id}/payments/{paymentId}/reversals`, gated by the operation scope **`financial:payment:reverse`**
+(a sensitive correction, granular scope) plus the Receivable read tiers for visibility (the caller must be able to see
+the Receivable, else **403**). A reversal **requires a reason** (`@NotBlank` → **400** when blank) and **records
+who/when** (`reversedBy` = the authenticated user, `reversedAt` = now). Only a **registered (non-reversed)** payment is
+reversible — a second reversal is **422** `financial.payment.already-reversed`; a payment outside the Receivable is
+**404** `financial.payment.not-found`. The reversal **never deletes** the payment: it **mutates it into a reversed
+state** (`reversal_reason`, `reversed_by`, `reversed_at`) and the payment **stays visible in the history** marked
+reversed. The denormalized `amount_paid` (installment **and** Receivable) is the sum of the **non-reversed** payments,
+so the reversal **decrements** it (`Receivable.reversePayment` → `installment.reverseAmount` → `consolidateStatus`),
+**re-derives the installment status** (paid 0 → `OPEN`, < amount → `PARTIALLY_PAID`, == amount → `PAID`),
+**recomputes** `last_payment_date` from the remaining payments, and **re-consolidates** the Receivable — a reversal
+**from `PAID` may return it to `PARTIALLY_PAID`/`OPEN`** per the remaining paid amount (never overriding `CANCELLED`).
+The `ReceivableStatusChanged` reflection onto the Order's `financial_status` is **republished**, so e.g. a `PAID`
+order that is no longer fully paid stops being identifiable as ready for Commission. Reversing a payment creates **no**
+refund, bank chargeback, gateway reversal, customer notification, Commission clawback or accounting-ledger entry, and
+never touches the Order, Lead or Customer. **Persona → scopes:** only the back-office **`financeiro`** (005) holds
+`financial:payment:reverse`; the **Manager** (001) and **Board/Director** (004) keep read-only consultation (no
+reversal). In the frontend, the Receivable detail's **Pagamentos** table gains a **Situação** column (Registrado /
+**Estornado** with reason · who · when) and an **Estornar** action (reversal dialog, required *motivo*) per
+non-reversed payment behind `canReversePayment()`; reversed rows stay visible but de-emphasised. Out of scope (later
+slices): partial reversal of a single payment (a reversal is all-or-nothing for the chosen payment), editing a reversed
+payment, refund/chargeback processing, and Commission clawback.
+
 **Reflecting the financial status onto the Commercial Order (normative — Financial Operations, Sprint 5 Slice 7).**
 The Commercial Order **shows** the Receivable's financial status while **staying owned by Sales & Proposals** —
 Financial Operations **never** takes ownership of (or writes) the Order. This mirrors the Sprint-4 booking-status

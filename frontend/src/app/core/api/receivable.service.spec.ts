@@ -98,6 +98,14 @@ describe('ReceivableService', () => {
     req.flush({});
   });
 
+  it('posts a payment reversal with the reason to the reversals path', () => {
+    service.reversePayment('r1', 'pay1', { reason: 'lançamento duplicado' }).subscribe();
+    const req = http.expectOne('/api/receivables/r1/payments/pay1/reversals');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ reason: 'lançamento duplicado' });
+    req.flush({});
+  });
+
   it('builds list query params from the filters (repeated status, order, paging)', () => {
     service.list({ status: ['OPEN', 'OVERDUE'], order: 'ord1' }, 2, 10).subscribe();
     const req = http.expectOne((r) => r.url === '/api/receivables');
