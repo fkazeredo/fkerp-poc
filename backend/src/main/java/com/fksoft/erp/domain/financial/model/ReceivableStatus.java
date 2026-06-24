@@ -28,4 +28,14 @@ public enum ReceivableStatus {
     public static Set<ReceivableStatus> active() {
         return EnumSet.complementOf(EnumSet.of(CANCELLED));
     }
+
+    /**
+     * The statuses that still require financial follow-up — shown in the default operational list and the only
+     * ones that can be flagged overdue. Excludes the settled outcomes ({@code PAID}, {@code CANCELLED}).
+     *
+     * @return the operational statuses ({@code OPEN}, {@code PARTIALLY_PAID}, {@code OVERDUE})
+     */
+    public static Set<ReceivableStatus> operational() {
+        return EnumSet.of(OPEN, PARTIALLY_PAID, OVERDUE);
+    }
 }

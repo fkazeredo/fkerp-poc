@@ -29,11 +29,17 @@ export interface ReceivableListItem {
   orderNumber: number;
   customerName: string | null;
   totalAmount: number;
-  dueDate: string;
+  amountPaid: number;
+  outstandingAmount: number;
   status: ReceivableStatus;
+  dueDate: string;
+  overdue: boolean;
+  commercialResponsibleId: string | null;
+  commercialResponsibleName: string | null;
   financialResponsibleId: string | null;
   financialResponsibleName: string | null;
   createdAt: string;
+  lastPaymentDate: string | null;
 }
 
 /**
@@ -71,12 +77,23 @@ export interface EligibleOrder {
 }
 
 /**
- * Operational Receivable-list filters. Empty {@code status} excludes the CANCELLED Receivables; include it to
- * see cancelled ones. {@code order} restricts to a single source Commercial Order.
+ * Operational Receivable-list filters. Empty {@code status} shows the operational receivables (excludes the
+ * settled PAID and CANCELLED); include them explicitly to see them. Dates are ISO {@code yyyy-MM-dd}.
  */
 export interface ReceivableFilters {
   status?: ReceivableStatus[];
   order?: string | null;
+  orderNumber?: number | null;
+  payer?: string | null;
+  dueFrom?: string | null;
+  dueTo?: string | null;
+  createdFrom?: string | null;
+  createdTo?: string | null;
+  commercialResponsible?: string | null;
+  financialResponsible?: string | null;
+  amountMin?: number | null;
+  amountMax?: number | null;
+  overdueOnly?: boolean | null;
 }
 
 /** One installment supplied when creating a Receivable (amount + due date + optional notes). */
@@ -136,6 +153,39 @@ export class ReceivableService {
     }
     if (filters.order) {
       params = params.set('order', filters.order);
+    }
+    if (filters.orderNumber != null) {
+      params = params.set('orderNumber', filters.orderNumber);
+    }
+    if (filters.payer && filters.payer.trim().length > 0) {
+      params = params.set('payer', filters.payer.trim());
+    }
+    if (filters.dueFrom) {
+      params = params.set('dueFrom', filters.dueFrom);
+    }
+    if (filters.dueTo) {
+      params = params.set('dueTo', filters.dueTo);
+    }
+    if (filters.createdFrom) {
+      params = params.set('createdFrom', filters.createdFrom);
+    }
+    if (filters.createdTo) {
+      params = params.set('createdTo', filters.createdTo);
+    }
+    if (filters.commercialResponsible) {
+      params = params.set('commercialResponsible', filters.commercialResponsible);
+    }
+    if (filters.financialResponsible) {
+      params = params.set('financialResponsible', filters.financialResponsible);
+    }
+    if (filters.amountMin != null) {
+      params = params.set('amountMin', filters.amountMin);
+    }
+    if (filters.amountMax != null) {
+      params = params.set('amountMax', filters.amountMax);
+    }
+    if (filters.overdueOnly) {
+      params = params.set('overdueOnly', true);
     }
     return this.http.get<PageResponse<ReceivableListItem>>('/api/receivables', { params });
   }

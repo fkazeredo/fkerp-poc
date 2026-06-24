@@ -24,7 +24,12 @@ test('finance reaches the receivables list and the create form (empty stack: no 
 
   await page.goto('/financeiro/contas-a-receber');
   await expect(page.getByRole('heading', { name: 'Contas a receber' })).toBeVisible();
-  await expect(page.getByText('Nenhuma conta a receber ainda.')).toBeVisible();
+  await expect(page.getByText('Nenhuma conta a receber para acompanhar.')).toBeVisible();
+
+  // The operational list exposes its follow-up columns and filters (next due date, overdue-only, payer).
+  await expect(page.getByText('Próx. vencimento')).toBeVisible();
+  await expect(page.getByText('Somente vencidas')).toBeVisible();
+  await expect(page.getByText('Cliente (pagador)')).toBeVisible();
 
   // Finance may create one; the form opens and, on the empty stack, offers no eligible order.
   await page.getByRole('link', { name: 'Nova conta a receber' }).click();

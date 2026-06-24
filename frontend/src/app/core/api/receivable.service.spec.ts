@@ -90,11 +90,48 @@ describe('ReceivableService', () => {
     });
   });
 
-  it('omits the status param when no status is chosen (defaults to active on the backend)', () => {
+  it('omits the status param when no status is chosen (defaults to operational on the backend)', () => {
     service.list({}, 0, 20).subscribe();
     const req = http.expectOne((r) => r.url === '/api/receivables');
     expect(req.request.params.has('status')).toBe(false);
     expect(req.request.params.has('order')).toBe(false);
+    expect(req.request.params.has('overdueOnly')).toBe(false);
+    req.flush({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0, first: true, last: true });
+  });
+
+  it('builds the operational filter params (payer, source order, periods, responsibles, amount, overdue)', () => {
+    service
+      .list(
+        {
+          payer: '  maria ',
+          orderNumber: 7,
+          dueFrom: '2026-07-01',
+          dueTo: '2026-07-31',
+          createdFrom: '2026-06-01',
+          createdTo: '2026-06-30',
+          commercialResponsible: 'u1',
+          financialResponsible: 'u5',
+          amountMin: 100,
+          amountMax: 5000,
+          overdueOnly: true,
+        },
+        0,
+        20,
+      )
+      .subscribe();
+    const req = http.expectOne((r) => r.url === '/api/receivables');
+    const params = req.request.params;
+    expect(params.get('payer')).toBe('maria');
+    expect(params.get('orderNumber')).toBe('7');
+    expect(params.get('dueFrom')).toBe('2026-07-01');
+    expect(params.get('dueTo')).toBe('2026-07-31');
+    expect(params.get('createdFrom')).toBe('2026-06-01');
+    expect(params.get('createdTo')).toBe('2026-06-30');
+    expect(params.get('commercialResponsible')).toBe('u1');
+    expect(params.get('financialResponsible')).toBe('u5');
+    expect(params.get('amountMin')).toBe('100');
+    expect(params.get('amountMax')).toBe('5000');
+    expect(params.get('overdueOnly')).toBe('true');
     req.flush({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0, first: true, last: true });
   });
 });

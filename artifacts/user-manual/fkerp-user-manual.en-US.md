@@ -909,10 +909,20 @@ installments) creates **no** payment, commission or invoice and never changes th
 
 ### 11.4 The list and the detail
 
-The **Receivables** screen shows, for each receivable: the source **order** (code PC-000n), the **customer**, the
-**amount**, the **due date**, the **status**, the **financial responsible** and the creation date. You can
-**filter by status**; by default, the **cancelled** ones are hidden. Each profile sees only the receivables it is
-allowed to see.
+The **Receivables** screen is the **operational list** — the receivables that need financial follow-up, so you can
+**prioritize collection**. For each receivable it shows: the source **order** (code PC-000n), the **customer
+(payer)**, the **total amount**, the **amount paid**, the **outstanding amount**, the **status**, the **next due
+date** (with an **Overdue** highlight when the receivable is past due), the **commercial** and **financial
+responsible**, the **creation** date and the **last payment** date. In this release *paid* is always zero,
+*outstanding* is the full total and *last payment* is empty — those figures become real once payment registration
+ships.
+
+**By default**, the list shows the receivables **under follow-up** (Open, Partially paid, Overdue) and **hides the
+Paid and Cancelled** ones — select those statuses in the filter to see them. **Overdue receivables stay visible** as
+operational problems. You can **filter** by **status**, **customer (payer)**, **order number**, **due-date period**,
+**creation period**, **commercial responsible**, **financial responsible**, **amount range** and **overdue only**.
+Each profile sees only the receivables it is allowed to see — **representatives do not see** the financial detail.
+The list shows **no commission** and **no bank-reconciliation** data.
 
 The **detail** of a receivable gathers the **summary** (amount, due date, status, responsible and notes), the
 **customer (payer)**, the traceable **commercial origin** — with links to open the source **order**, **proposal**
@@ -1042,16 +1052,19 @@ as *ready for Finance* or *having a booking problem* —, the **Pending bookings
 
 **Sprint 5 — Financial Operations** is under way: the **Financeiro** module (section 11) already lets you
 **generate receivables** from the **orders with a confirmed booking**, with the **Customer** (payer) created
-automatically at the close, **installments** (one or several, summing to the order amount), and the **list** and
-the **detail** of the receivables, all with per-profile visibility. Finance reads the record that is already in
-place (the amount on the Order; the locators, dates and supplier on the booking) without re-typing data, and
-Booking and Commercial stay separate. The **next steps** in this Sprint bring **registering payments** (and the
-transitions to *Paid* / *Partially paid* / *Overdue*), the financial status reflected onto the order, and
-**commission**. This manual will be updated as each ships.
+automatically at the close, **installments** (one or several, summing to the order amount), and the **operational
+list** of receivables to follow up — with **paid / outstanding** columns, an **overdue** highlight and a full set of
+**filters** (status, payer, order, due/creation periods, responsibles, amount range and overdue-only) — all with
+per-profile visibility. Finance reads the record that is already in place (the amount on the Order; the locators,
+dates and supplier on the booking) without re-typing data, and Booking and Commercial stay separate. The **next
+steps** in this Sprint bring **registering payments** (and the transitions to *Paid* / *Partially paid* /
+*Overdue*), the financial status reflected onto the order, and **commission**. This manual will be updated as each
+ships.
 
 ---
 
 *Document status: Sprints 1, 2, 3 and 4 closed and Sprint 5 (Financial Operations) under way — the Finance module
 generates receivables from orders with a confirmed booking, with the Customer (payer) materialized at the close,
-**installments** (one or several, summing to the order amount), and the list and detail of the receivables, with
-per-profile visibility. Next steps in Sprint 5: payments and commission. Maintained alongside the product.*
+**installments**, and the **operational list** of receivables to follow up (paid / outstanding, overdue highlight,
+full filters), with per-profile visibility. Next steps in Sprint 5: payments and commission. Maintained alongside
+the product.*
