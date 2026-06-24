@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 import { NEVER, of, throwError } from 'rxjs';
 import { ReceivableDetailPage } from './receivable-detail';
-import { ReceivableDetail, ReceivableService } from '../../../core/api/receivable.service';
+import { Payment, ReceivableDetail, ReceivableService } from '../../../core/api/receivable.service';
+import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
   observe() {}
@@ -13,8 +15,28 @@ import { ReceivableDetail, ReceivableService } from '../../../core/api/receivabl
 };
 
 describe('ReceivableDetailPage', () => {
-  const receivables = { detail: vi.fn() };
+  const receivables = {
+    detail: vi.fn(),
+    paymentMethods: vi.fn(),
+    registerPayment: vi.fn(),
+  };
   const router = { navigateByUrl: vi.fn() };
+  const auth = { canRegisterPayment: vi.fn() };
+
+  const samplePayment: Payment = {
+    id: 'pay1',
+    installmentId: 'i1',
+    installmentNumber: 1,
+    amount: 600,
+    paymentDate: '2026-06-01',
+    paymentMethodId: 'm1',
+    paymentMethodCode: 'PIX',
+    paymentMethodLabel: 'Pix',
+    note: 'recebido',
+    registeredById: 'u5',
+    registeredByName: 'financeiro',
+    registeredAt: '2026-06-01T12:00:00Z',
+  };
 
   const sample: ReceivableDetail = {
     id: 'r1',
@@ -39,9 +61,10 @@ describe('ReceivableDetailPage', () => {
     paymentNotes: 'Boleto à vista',
     status: 'OPEN',
     installments: [
-      { number: 1, amount: 600, dueDate: '2026-07-15', status: 'OPEN', paymentNotes: 'entrada' },
-      { number: 2, amount: 900, dueDate: '2026-08-15', status: 'OPEN', paymentNotes: null },
+      { id: 'i1', number: 1, amount: 600, dueDate: '2026-07-15', status: 'OPEN', paymentNotes: 'entrada' },
+      { id: 'i2', number: 2, amount: 900, dueDate: '2026-08-15', status: 'OPEN', paymentNotes: null },
     ],
+    payments: [],
     createdAt: '2026-06-20T10:00:00Z',
     createdByName: 'financeiro',
   };
@@ -54,6 +77,9 @@ describe('ReceivableDetailPage', () => {
         providePrimeNG(),
         { provide: ReceivableService, useValue: receivables },
         { provide: Router, useValue: router },
+        { provide: AuthService, useValue: auth },
+        { provide: MessageService, useValue: { add: vi.fn() } },
+        { provide: ConfirmationService, useValue: { confirm: vi.fn() } },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'r1' } } } },
       ],
     });
@@ -74,8 +100,13 @@ describe('ReceivableDetailPage', () => {
 
   beforeEach(() => {
     receivables.detail.mockReset();
+    receivables.paymentMethods.mockReset();
+    receivables.registerPayment.mockReset();
     router.navigateByUrl.mockReset();
+    auth.canRegisterPayment.mockReset();
+    auth.canRegisterPayment.mockReturnValue(false);
     receivables.detail.mockReturnValue(of(sample));
+    receivables.paymentMethods.mockReturnValue(of([{ id: 'm1', code: 'PIX', label: 'Pix', active: true, sortOrder: 3 }]));
   });
 
   it('loads the receivable on init', () => {
@@ -84,6 +115,20 @@ describe('ReceivableDetailPage', () => {
     expect(receivables.detail).toHaveBeenCalledWith('r1');
     expect(comp['receivable']()).toEqual(sample);
     expect(comp['loading']()).toBe(false);
+  });
+
+  it('does not load the payment methods for a read-only user', () => {
+    const comp = build();
+    comp.ngOnInit();
+    expect(receivables.paymentMethods).not.toHaveBeenCalled();
+  });
+
+  it('loads the payment methods when the user may register payments', () => {
+    auth.canRegisterPayment.mockReturnValue(true);
+    const comp = build();
+    comp.ngOnInit();
+    expect(receivables.paymentMethods).toHaveBeenCalled();
+    expect(comp['paymentMethods']()).toHaveLength(1);
   });
 
   it('maps the status label and severity to pt-BR', () => {
@@ -97,15 +142,26 @@ describe('ReceivableDetailPage', () => {
     const comp = build();
     const past = '2020-01-01';
     const future = '2999-12-31';
-    expect(comp['installmentOverdue']({ number: 1, amount: 1, dueDate: past, status: 'OPEN', paymentNotes: null })).toBe(
-      true,
-    );
     expect(
-      comp['installmentOverdue']({ number: 1, amount: 1, dueDate: future, status: 'OPEN', paymentNotes: null }),
+      comp['installmentOverdue']({ id: 'x', number: 1, amount: 1, dueDate: past, status: 'OPEN', paymentNotes: null }),
+    ).toBe(true);
+    expect(
+      comp['installmentOverdue']({ id: 'x', number: 1, amount: 1, dueDate: future, status: 'OPEN', paymentNotes: null }),
     ).toBe(false);
-    expect(comp['installmentOverdue']({ number: 1, amount: 1, dueDate: past, status: 'PAID', paymentNotes: null })).toBe(
-      false,
-    );
+    expect(
+      comp['installmentOverdue']({ id: 'x', number: 1, amount: 1, dueDate: past, status: 'PAID', paymentNotes: null }),
+    ).toBe(false);
+  });
+
+  it('only allows paying an OPEN installment, and only when authorized', () => {
+    const comp = build();
+    const open = { id: 'x', number: 1, amount: 1, dueDate: '2026-07-15', status: 'OPEN' as const, paymentNotes: null };
+    const paid = { ...open, status: 'PAID' as const };
+    auth.canRegisterPayment.mockReturnValue(false);
+    expect(comp['canPay'](open)).toBe(false);
+    auth.canRegisterPayment.mockReturnValue(true);
+    expect(comp['canPay'](open)).toBe(true);
+    expect(comp['canPay'](paid)).toBe(false);
   });
 
   it('computes whole days overdue (positive for the past, zero for the future)', () => {
@@ -135,6 +191,75 @@ describe('ReceivableDetailPage', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/financeiro/contas-a-receber');
   });
 
+  describe('register payment', () => {
+    beforeEach(() => auth.canRegisterPayment.mockReturnValue(true));
+
+    it('opens the dialog for the targeted installment with a defaulted payment date', () => {
+      const comp = build();
+      comp.ngOnInit();
+      comp['openPayment'](sample.installments[0]);
+      expect(comp['paymentDialogOpen']()).toBe(true);
+      expect(comp['targetInstallment']()?.id).toBe('i1');
+      expect(comp['paymentForm'].controls.paymentDate.value).toBeInstanceOf(Date);
+    });
+
+    it('registers the full payment and refreshes the detail from the response', () => {
+      const settled: ReceivableDetail = {
+        ...sample,
+        status: 'PARTIALLY_PAID',
+        amountPaid: 600,
+        outstandingAmount: 900,
+        installments: [
+          { ...sample.installments[0], status: 'PAID' },
+          sample.installments[1],
+        ],
+        payments: [samplePayment],
+      };
+      receivables.registerPayment.mockReturnValue(of(settled));
+      const comp = build();
+      comp.ngOnInit();
+      comp['openPayment'](sample.installments[0]);
+      comp['paymentForm'].controls.paymentMethodId.setValue('m1');
+      comp['submitPayment']();
+
+      expect(receivables.registerPayment).toHaveBeenCalledWith(
+        'r1',
+        'i1',
+        expect.objectContaining({ paymentMethodId: 'm1', amount: 600 }),
+      );
+      expect(comp['receivable']()?.status).toBe('PARTIALLY_PAID');
+      expect(comp['paymentDialogOpen']()).toBe(false);
+      expect(comp['saving']()).toBe(false);
+    });
+
+    it('does not submit without a payment method (form invalid)', () => {
+      const comp = build();
+      comp.ngOnInit();
+      comp['openPayment'](sample.installments[0]);
+      comp['submitPayment']();
+      expect(receivables.registerPayment).not.toHaveBeenCalled();
+    });
+
+    it('surfaces a 422 business error from the payment endpoint', () => {
+      receivables.registerPayment.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 422,
+              error: { code: 'financial.payment.amount-mismatch', message: 'Valor diferente da parcela' },
+            }),
+        ),
+      );
+      const comp = build();
+      comp.ngOnInit();
+      comp['openPayment'](sample.installments[0]);
+      comp['paymentForm'].controls.paymentMethodId.setValue('m1');
+      comp['submitPayment']();
+      expect(comp['paymentError']()).toContain('Valor diferente da parcela');
+      expect(comp['paymentDialogOpen']()).toBe(true);
+    });
+  });
+
   describe('DOM rendering', () => {
     it('renders the loading state while the detail is in flight', () => {
       receivables.detail.mockReturnValue(NEVER);
@@ -162,8 +287,31 @@ describe('ReceivableDetailPage', () => {
     it('renders the payment-history section with an empty state (no payments yet)', () => {
       receivables.detail.mockReturnValue(of(sample));
       const el = render();
-      expect(el.textContent).toContain('Pagamentos e estornos');
+      expect(el.textContent).toContain('Pagamentos');
       expect(el.textContent).toContain('Nenhum pagamento registrado ainda.');
+    });
+
+    it('renders the payment history table when payments exist', () => {
+      receivables.detail.mockReturnValue(of({ ...sample, amountPaid: 600, payments: [samplePayment] }));
+      const el = render();
+      const rows = el.querySelectorAll('.payments-table tbody tr');
+      expect(rows.length).toBe(1);
+      expect(el.textContent).toContain('Pix'); // method label
+      expect(el.textContent).toContain('recebido'); // note
+    });
+
+    it('shows the "Registrar pagamento" action for open installments when authorized', () => {
+      auth.canRegisterPayment.mockReturnValue(true);
+      receivables.detail.mockReturnValue(of(sample));
+      const el = render();
+      expect(el.textContent).toContain('Registrar pagamento');
+    });
+
+    it('hides the payment action for a read-only user', () => {
+      auth.canRegisterPayment.mockReturnValue(false);
+      receivables.detail.mockReturnValue(of(sample));
+      const el = render();
+      expect(el.querySelector('.col-action p-button')).toBeNull();
     });
 
     it('shows the overdue marker and the days-overdue note when the receivable is past due', () => {

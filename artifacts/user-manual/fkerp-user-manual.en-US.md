@@ -88,8 +88,9 @@ rules always hold even outside the screen:
   which shows a short "no access" notice.
 - The same profile logic applies to the other modules (Opportunities, Proposals, Orders, Bookings, Finance):
   you only see and operate what your profile allows (detailed in the respective sections).
-- In **Finance** (section 11), the *financeiro* profile creates and sees all **receivables** (and gains
-  read access to the commercial orders to locate the origin), while the **Manager** and the **Board** consult.
+- In **Finance** (section 11), the *financeiro* profile creates and sees all **receivables** and **registers
+  payments** (and gains read access to the commercial orders to locate the origin), while the **Manager** and the
+  **Board** only consult.
 - **Administration** (the reference-data profile) manages **Cadastros** (section 12); that module only appears
   in the menu for users with that profile.
 
@@ -856,17 +857,18 @@ booking access does not see these indicators. It is an **operational** view, not
 
 ## 11. Financial operations — receivables (the *Financeiro* module)
 
-The **Financeiro** (Finance) module starts the **financial operations** from deals that are already closed. In
-this release it delivers **receivables**: the amount the company has to receive from a client for an order whose
-**booking is confirmed**. It is the first billing step — **still with no payments, commissions or invoices**,
-which arrive in later releases.
+The **Financeiro** (Finance) module starts the **financial operations** from deals that are already closed. It
+delivers **receivables**: the amount the company has to receive from a client for an order whose **booking is
+confirmed**. From this release you can also **register the full payment** of an installment, settling the
+receivable. **Commissions, invoices, partial payments and reversals** arrive in later releases.
 
 ### 11.1 Profiles and access
 
-- **Finance** (the *financeiro* profile) **creates and sees all** receivables. To locate the source order, this
-  profile also gains **read access to the commercial orders** (read-only — it neither creates nor changes
-  orders).
-- The **Commercial Manager** and the **Board/Director** **consult** receivables (read-only), for monitoring.
+- **Finance** (the *financeiro* profile) **creates and sees all** receivables and **registers payments**. To locate
+  the source order, this profile also gains **read access to the commercial orders** (read-only — it neither creates
+  nor changes orders).
+- The **Commercial Manager** and the **Board/Director** **consult** receivables (read-only, **without registering
+  payments**), for monitoring.
 - **Sellers, representatives** and **HR/IT** do **not** see the Finance module.
 
 As everywhere, **the server is the authority**: the screen only hides what your profile may not do.
@@ -913,9 +915,8 @@ The **Receivables** screen is the **operational list** — the receivables that 
 **prioritize collection**. For each receivable it shows: the source **order** (code PC-000n), the **customer
 (payer)**, the **total amount**, the **amount paid**, the **outstanding amount**, the **status**, the **next due
 date** (with an **Overdue** highlight when the receivable is past due), the **commercial** and **financial
-responsible**, the **creation** date and the **last payment** date. In this release *paid* is always zero,
-*outstanding* is the full total and *last payment* is empty — those figures become real once payment registration
-ships.
+responsible**, the **creation** date and the **last payment** date. The **paid**, **outstanding** and **last
+payment** figures reflect the payments already registered on the receivable.
 
 **By default**, the list shows the receivables **under follow-up** (Open, Partially paid, Overdue) and **hides the
 Paid and Cancelled** ones — select those statuses in the filter to see them. **Overdue receivables stay visible** as
@@ -934,18 +935,36 @@ payments and outstanding balance**. The detail gathers:
 - the traceable **commercial origin** — the **order** (PC-000n) and the **references** of the source **proposal**
   and **opportunity** (with links to open them, plus the lead) and the **commercial responsible**;
 - the **installments table** (number, amount, due date, status and notes), with **overdue installments
-  highlighted**;
-- the **Payments and reversals** section — empty for now (*no payment registered yet*); registering payments and
-  their reversals arrives in the next step, and a reversed payment will remain visible in the history.
+  highlighted** and, for authorized users, a **Register payment** button on each open installment;
+- the **Payments** section — the **history of registered payments** (installment, amount, date, payment method, who
+  registered it and notes); empty while there are no payments.
 
-The screen shows **receivable data only** — never **commission**, **bank reconciliation** or **tax invoice** data.
-You can only open the detail of receivables you are allowed to see.
+The screen shows **receivable data and its payments only** — never **commission**, **bank reconciliation** or **tax
+invoice** data. You can only open the detail of receivables you are allowed to see.
 
-### 11.5 Receivable and installment states
+### 11.5 Registering a payment
+
+Users with the **Finance** profile can **register the full payment** of an **Open** installment. On the receivable
+detail, click **Register payment** on the installment (or use the **`p`** shortcut, which opens the dialog for the
+first open installment). Provide:
+
+- **Payment method** (required) — choose from the registered methods (Cash, Bank transfer, Pix, Credit card, Debit
+  card, Invoice payment, Other). The administrator manages this list under **Reference data → Payment methods**.
+- **Payment date** (required) — when the amount was received; it **cannot be in the future**.
+- **Notes** (optional) — a reference or free remark.
+
+The **amount is the installment's** (this release registers the **full payment** — there is no partial payment).
+On confirmation, the **installment becomes Paid**; when **all installments** are paid, the **receivable becomes
+Paid**; if open installments remain, it becomes **Partially paid**. The payment appears in the **Payments** section
+and the **paid** / **outstanding** figures update. Registering a payment creates **no** commission, invoice or
+receipt and performs **no** bank reconciliation, and it never changes the order, lead or customer.
+
+### 11.6 Receivable and installment states
 
 Both the receivable and each **installment** can be **Open**, **Partially paid**, **Paid**, **Overdue** or
-**Cancelled**. In this release everything is born **Open**; registering payments (and the transitions to
-paid/partial/overdue) arrives in the next step of Sprint 5.
+**Cancelled**. Every receivable is born **Open**; as payments are registered, the installment becomes **Paid** and
+the receivable **Partially paid** or **Paid**. The automatic transition to **Overdue** and **partial payments**
+arrive in later steps.
 
 ---
 
@@ -964,6 +983,7 @@ They are all managed the same way, organised by area:
 | **Opportunities** | Activity types · Activity results · Loss reasons (opportunity) |
 | **Proposals** | Rejection reasons · Customer-rejection reasons · Sending channels · Item types |
 | **Bookings** | Attempt types · Attempt results · Failure reasons |
+| **Finance** | Payment methods |
 
 When you rename an option, the new label appears on the operational screens immediately; when you
 **deactivate** an option, it is no longer offered on new records but stays visible on the older records that
@@ -1027,7 +1047,7 @@ is also reachable by keyboard:
 - **On an opportunity:** `a` log activity · `e` edit details · `s` advance stage · `p` mark lost · `Esc` back.
 - **On a proposal:** `i` add item · `e` edit commercial details · `s` submit for review · `Esc` back.
 - **On a booking:** `a` register attempt · `Esc` back.
-- **On a receivable (detail or creation):** `Esc` back / cancel.
+- **On a receivable:** `p` register payment (first open installment) · `Esc` back / cancel.
 
 ---
 

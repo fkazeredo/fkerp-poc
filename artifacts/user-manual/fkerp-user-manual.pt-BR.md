@@ -87,8 +87,9 @@ valem sempre, mesmo fora da tela:
   mostra um aviso curto de "sem acesso".
 - A mesma lógica de perfis vale para os demais módulos (Oportunidades, Propostas, Pedidos, Reservas,
   Financeiro): você só vê e opera o que o seu perfil permite (detalhado nas respectivas seções).
-- No **Financeiro** (seção 11), o perfil **financeiro** cria e vê todas as **contas a receber** (e passa a
-  consultar os pedidos comerciais para localizar a origem), enquanto **Gerente** e **Diretoria** consultam.
+- No **Financeiro** (seção 11), o perfil **financeiro** cria e vê todas as **contas a receber**, **registra os
+  pagamentos** (e passa a consultar os pedidos comerciais para localizar a origem), enquanto **Gerente** e
+  **Diretoria** apenas consultam.
 - A **administração** (perfil de cadastros) gerencia os **Cadastros** (seção 12); esse módulo só aparece no
   menu para quem tem esse perfil.
 
@@ -853,18 +854,18 @@ dados financeiros, de pagamento, de comissão ou de integração externa (integr
 
 ## 11. Operações financeiras — contas a receber (módulo Financeiro)
 
-O módulo **Financeiro** inicia as **operações financeiras** a partir dos negócios já fechados. Nesta versão ele
-entrega as **contas a receber**: o valor que a empresa tem a receber de um cliente por um pedido cuja **reserva
-está confirmada**. É o primeiro passo do faturamento — **ainda sem registrar pagamentos, comissões ou notas
-fiscais**, que chegam nas próximas versões.
+O módulo **Financeiro** inicia as **operações financeiras** a partir dos negócios já fechados. Ele entrega as
+**contas a receber**: o valor que a empresa tem a receber de um cliente por um pedido cuja **reserva está
+confirmada**. A partir desta versão já é possível **registrar o pagamento integral** de uma parcela, dando baixa na
+conta. **Comissões, notas fiscais, pagamentos parciais e estornos** chegam nas próximas versões.
 
 ### 11.1 Perfis e acesso
 
-- O **Financeiro** (perfil financeiro) **cria e vê todas** as contas a receber. Para localizar o pedido de
-  origem, esse perfil também passa a **consultar os pedidos comerciais** (apenas leitura — ele não cria nem
-  altera pedidos).
-- O **Gerente comercial** e a **Diretoria** **consultam** as contas a receber (somente leitura), para
-  acompanhamento.
+- O **Financeiro** (perfil financeiro) **cria e vê todas** as contas a receber e **registra os pagamentos**. Para
+  localizar o pedido de origem, esse perfil também passa a **consultar os pedidos comerciais** (apenas leitura —
+  ele não cria nem altera pedidos).
+- O **Gerente comercial** e a **Diretoria** **consultam** as contas a receber (somente leitura, **sem registrar
+  pagamentos**), para acompanhamento.
 - **Vendedores, representantes** e as áreas de **RH/TI** **não** veem o módulo Financeiro.
 
 Como em todo o sistema, **o servidor é a autoridade**: a tela apenas esconde o que o seu perfil não pode fazer.
@@ -910,8 +911,8 @@ A tela **Contas a receber** é a **lista operacional** — as contas que precisa
 **priorizar a cobrança**. Para cada conta ela mostra: o **pedido** de origem (código PC-000n), o **cliente
 (pagador)**, o **valor total**, o **valor pago**, o **valor em aberto**, o **status**, o **próximo vencimento**
 (com um destaque **Vencida** quando a conta está atrasada), o **responsável comercial** e o **financeiro**, a data
-de **criação** e o **último pagamento**. Nesta versão, *pago* é sempre zero, *em aberto* é o total e *último
-pagamento* fica vazio — esses números passam a valer quando o registro de pagamentos chegar.
+de **criação** e o **último pagamento**. Os valores **pago**, **em aberto** e **último pagamento** refletem os
+pagamentos já registrados na conta.
 
 **Por padrão**, a lista mostra as contas **em acompanhamento** (Em aberto, Parcialmente paga, Vencida) e **omite as
 Pagas e Canceladas** — selecione esses status no filtro para vê-las. As **vencidas continuam visíveis** como
@@ -930,18 +931,37 @@ pagamentos e o saldo em aberto**. O detalhe reúne:
 - a **origem comercial** rastreável — o **pedido** (PC-000n) e as **referências** da **proposta** e da
   **oportunidade** de origem (com atalhos para abri-los, além do lead) e o **responsável comercial**;
 - a **tabela de parcelas** (número, valor, vencimento, status e observações), com as parcelas **vencidas em
-  destaque**;
-- a seção **Pagamentos e estornos** — por enquanto vazia (*nenhum pagamento registrado ainda*); o registro de
-  pagamentos e seus estornos chega na próxima etapa, e um pagamento estornado permanecerá visível no histórico.
+  destaque** e, para quem pode, o botão **Registrar pagamento** em cada parcela em aberto;
+- a seção **Pagamentos** — o **histórico dos pagamentos registrados** (parcela, valor, data, forma de pagamento,
+  quem registrou e observações); fica vazia enquanto não houver pagamentos.
 
-A tela mostra **apenas dados da conta a receber** — nunca **comissão**, **conciliação bancária** ou **nota fiscal**.
-Você só abre o detalhe das contas que tem permissão para ver.
+A tela mostra **apenas dados da conta a receber e seus pagamentos** — nunca **comissão**, **conciliação bancária**
+ou **nota fiscal**. Você só abre o detalhe das contas que tem permissão para ver.
 
-### 11.5 Estados da conta e das parcelas
+### 11.5 Registrando um pagamento
+
+Quem tem o perfil **financeiro** pode **registrar o pagamento integral** de uma parcela **Em aberto**. No detalhe da
+conta, clique em **Registrar pagamento** na parcela desejada (ou use o atalho **`p`**, que abre o registro para a
+primeira parcela em aberto). Informe:
+
+- **Forma de pagamento** (obrigatória) — escolha entre as formas cadastradas (Dinheiro, Transferência bancária, Pix,
+  Cartão de crédito, Cartão de débito, Pagamento de fatura, Outro). O administrador gerencia essa lista em
+  **Cadastros → Formas de pagamento**.
+- **Data do pagamento** (obrigatória) — quando o valor foi recebido; **não pode ser futura**.
+- **Observações** (opcional) — uma referência ou anotação livre.
+
+O **valor é o da parcela** (nesta versão registra-se o **pagamento integral** — não há pagamento parcial). Ao
+confirmar, a **parcela fica Paga**; quando **todas as parcelas** estão pagas, a **conta fica Paga**; se ainda houver
+parcelas em aberto, a conta fica **Parcialmente paga**. O pagamento aparece na seção **Pagamentos** e os valores
+**pago** / **em aberto** se atualizam. Registrar um pagamento **não** cria comissão, nota fiscal, recibo nem faz
+conciliação bancária, e **não** altera o pedido, o lead ou o cliente.
+
+### 11.6 Estados da conta e das parcelas
 
 Tanto a conta a receber quanto cada **parcela** podem estar **Em aberto**, **Parcialmente paga**, **Paga**,
-**Vencida** ou **Cancelada**. Nesta versão tudo nasce **Em aberto**; o registro de pagamentos (e as transições para
-paga/parcial/vencida) chega na próxima etapa da Sprint 5.
+**Vencida** ou **Cancelada**. Toda conta nasce **Em aberto**; ao registrar pagamentos, a parcela passa a **Paga** e a
+conta a **Parcialmente paga** ou **Paga**. As transições automáticas para **Vencida** e o **pagamento parcial** chegam
+em etapas futuras.
 
 ---
 
@@ -961,6 +981,7 @@ São gerenciadas do mesmo jeito, organizadas por área:
 | **Oportunidades** | Tipos de atividade · Resultados de atividade · Motivos de perda (oportunidade) |
 | **Propostas** | Motivos de rejeição · Motivos de recusa do cliente · Canais de envio · Tipos de item |
 | **Reservas** | Tipos de tentativa · Resultados de tentativa · Motivos de falha |
+| **Financeiro** | Formas de pagamento |
 
 Quando você renomeia uma opção, o novo rótulo passa a aparecer nas telas operacionais imediatamente; quando
 você **desativa** uma opção, ela deixa de ser oferecida em novos registros, mas continua visível nos
@@ -1028,7 +1049,7 @@ também é acessível pelo teclado:
 - **Em uma proposta:** `i` adicionar item · `e` editar dados comerciais · `s` enviar para revisão · `Esc`
   voltar.
 - **Em uma reserva:** `a` registrar tentativa · `Esc` voltar.
-- **Em uma conta a receber (detalhe ou criação):** `Esc` voltar / cancelar.
+- **Em uma conta a receber:** `p` registrar pagamento (primeira parcela em aberto) · `Esc` voltar / cancelar.
 
 ---
 

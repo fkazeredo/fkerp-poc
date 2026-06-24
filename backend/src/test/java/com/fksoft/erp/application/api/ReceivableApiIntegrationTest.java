@@ -111,12 +111,14 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.overdue").value(false)) // due date is in the future
                 .andExpect(jsonPath("$.proposalReference").value("Proposta Conf"))
                 .andExpect(jsonPath("$.opportunityReference").value("Conf"))
-                // No explicit schedule → one full-amount installment, OPEN.
+                // No explicit schedule → one full-amount installment, OPEN, and no payments yet.
                 .andExpect(jsonPath("$.installments.length()").value(1))
+                .andExpect(jsonPath("$.installments[0].id").exists())
                 .andExpect(jsonPath("$.installments[0].number").value(1))
                 .andExpect(jsonPath("$.installments[0].amount").value(500.00))
                 .andExpect(jsonPath("$.installments[0].dueDate").value("2026-07-15"))
                 .andExpect(jsonPath("$.installments[0].status").value("OPEN"))
+                .andExpect(jsonPath("$.payments.length()").value(0))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -148,6 +150,7 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
                         "paymentNotes",
                         "status",
                         "installments",
+                        "payments",
                         "createdAt",
                         "createdByName");
         assertThat(body.toLowerCase()).doesNotContain("commission").doesNotContain("reconcil");
@@ -401,6 +404,268 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(get("/api/receivables/eligible-orders").header("Authorization", "Bearer " + fin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void financeRegistersAFullPaymentSettlingTheReceivable() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("Pay", "CONFIRMED"));
+        String installmentId = firstInstallmentId(fin, receivableId);
+        String pix = paymentMethodId("PIX");
+
+        String body = mvc.perform(
+                        post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, installmentId))
+                                .header("Authorization", "Bearer " + fin)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"paymentMethodId\":\"%s\",\"amount\":500.00,\"paymentDate\":\"2026-06-01\",\"note\":\"pix recebido\"}"
+                                                .formatted(pix)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PAID"))
+                .andExpect(jsonPath("$.amountPaid").value(500.00))
+                .andExpect(jsonPath("$.outstandingAmount").value(0))
+                .andExpect(jsonPath("$.installments[0].status").value("PAID"))
+                .andExpect(jsonPath("$.payments.length()").value(1))
+                .andExpect(jsonPath("$.payments[0].amount").value(500.00))
+                .andExpect(jsonPath("$.payments[0].paymentDate").value("2026-06-01"))
+                .andExpect(jsonPath("$.payments[0].paymentMethodCode").value("PIX"))
+                .andExpect(jsonPath("$.payments[0].paymentMethodLabel").value("Pix"))
+                .andExpect(jsonPath("$.payments[0].installmentNumber").value(1))
+                .andExpect(jsonPath("$.payments[0].note").value("pix recebido"))
+                .andExpect(jsonPath("$.payments[0].registeredByName").value("financeiro"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        // Still receivable + commercial-origin data only — never Commission or bank-reconciliation data.
+        assertThat(body.toLowerCase()).doesNotContain("commission").doesNotContain("reconcil");
+
+        // The list reflects the denormalized payment standing.
+        mvc.perform(get("/api/receivables?status=PAID").header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].amountPaid").value(500.00))
+                .andExpect(jsonPath("$.content[0].outstandingAmount").value(0))
+                .andExpect(jsonPath("$.content[0].lastPaymentDate").value("2026-06-01"));
+
+        // Exactly one Payment row; no Booking/Commission created by registering it.
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM receivable_payments", Integer.class))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM booking_requests", Integer.class))
+                .isZero();
+    }
+
+    @Test
+    void registeringEachInstallmentMovesPartiallyPaidThenPaid() throws Exception {
+        String fin = finance();
+        UUID order = confirmedOrder("Multi2", "CONFIRMED");
+        String created = mvc.perform(post("/api/receivables")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                """
+                                {"commercialOrderId":"%s","dueDate":"2026-07-15","installments":[
+                                  {"amount":200.00,"dueDate":"2026-07-15"},
+                                  {"amount":300.00,"dueDate":"2026-08-15"}
+                                ]}"""
+                                        .formatted(order)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String receivableId = JsonPath.read(created, "$.id");
+        String cash = paymentMethodId("CASH");
+        String detail = mvc.perform(get("/api/receivables/" + receivableId).header("Authorization", "Bearer " + fin))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String first = JsonPath.read(detail, "$.installments[0].id");
+        String second = JsonPath.read(detail, "$.installments[1].id");
+
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, first))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":200.00,\"paymentDate\":\"2026-06-01\"}"
+                                .formatted(cash)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PARTIALLY_PAID"))
+                .andExpect(jsonPath("$.amountPaid").value(200.00))
+                .andExpect(jsonPath("$.outstandingAmount").value(300.00));
+
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, second))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":300.00,\"paymentDate\":\"2026-06-02\"}"
+                                .formatted(cash)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PAID"))
+                .andExpect(jsonPath("$.amountPaid").value(500.00))
+                .andExpect(jsonPath("$.outstandingAmount").value(0))
+                .andExpect(jsonPath("$.payments.length()").value(2));
+    }
+
+    @Test
+    void rejectsAPaymentAmountThatDoesNotMatchTheInstallment() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("Mismatch2", "CONFIRMED"));
+        String installmentId = firstInstallmentId(fin, receivableId);
+
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, installmentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":600.00,\"paymentDate\":\"2026-06-01\"}"
+                                .formatted(paymentMethodId("PIX"))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("financial.payment.amount-mismatch"));
+    }
+
+    @Test
+    void rejectsAPaymentForAnUnknownInstallment() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("Unknown", "CONFIRMED"));
+
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, UUID.randomUUID()))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":500.00,\"paymentDate\":\"2026-06-01\"}"
+                                .formatted(paymentMethodId("PIX"))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("financial.payment.installment-not-found"));
+    }
+
+    @Test
+    void rejectsASecondPaymentForAnAlreadyPaidInstallment() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("Twice", "CONFIRMED"));
+        String installmentId = firstInstallmentId(fin, receivableId);
+        String pix = paymentMethodId("PIX");
+        String payment = "{\"paymentMethodId\":\"%s\",\"amount\":500.00,\"paymentDate\":\"2026-06-01\"}".formatted(pix);
+
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, installmentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payment))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, installmentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payment))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("financial.payment.installment-not-payable"));
+    }
+
+    @Test
+    void rejectsAPaymentWithAnUnknownMethod() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("NoMethod", "CONFIRMED"));
+        String installmentId = firstInstallmentId(fin, receivableId);
+
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, installmentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":500.00,\"paymentDate\":\"2026-06-01\"}"
+                                .formatted(UUID.randomUUID())))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("financial.payment.method-not-available"));
+    }
+
+    @Test
+    void rejectsAPaymentWithAnInactiveMethod() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("Inactive", "CONFIRMED"));
+        String installmentId = firstInstallmentId(fin, receivableId);
+        UUID inactive = UUID.randomUUID();
+        jdbc.update(
+                "INSERT INTO payment_methods (id, code, label, active, sort_order) "
+                        + "VALUES (cast(? as uuid), ?, ?, FALSE, 99)",
+                inactive.toString(),
+                "TEMP_INACTIVE_" + phoneSeq,
+                "Inativa");
+
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, installmentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":500.00,\"paymentDate\":\"2026-06-01\"}"
+                                .formatted(inactive)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("financial.payment.method-not-available"));
+        jdbc.update("DELETE FROM payment_methods WHERE id = cast(? as uuid)", inactive.toString());
+    }
+
+    @Test
+    void rejectsAFuturePaymentDate() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("Future", "CONFIRMED"));
+        String installmentId = firstInstallmentId(fin, receivableId);
+
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, installmentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":500.00,\"paymentDate\":\"2999-01-01\"}"
+                                .formatted(paymentMethodId("PIX"))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rejectsANonPositivePaymentAmount() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("Zero", "CONFIRMED"));
+        String installmentId = firstInstallmentId(fin, receivableId);
+
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, installmentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":0,\"paymentDate\":\"2026-06-01\"}"
+                                .formatted(paymentMethodId("PIX"))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void theManagerCannotRegisterAPayment() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("MgrPay", "CONFIRMED"));
+        String installmentId = firstInstallmentId(fin, receivableId);
+
+        // The commercial manager holds financial:receivable:read:all (consultation) but not payment:register.
+        String manager = login("comercial", "comercial123");
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, installmentId))
+                        .header("Authorization", "Bearer " + manager)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":500.00,\"paymentDate\":\"2026-06-01\"}"
+                                .formatted(paymentMethodId("PIX"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rejectsAnUnauthenticatedPayment() throws Exception {
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(UUID.randomUUID(), UUID.randomUUID()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":500.00,\"paymentDate\":\"2026-06-01\"}"
+                                .formatted(UUID.randomUUID())))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private String createReceivable(String token, UUID order) throws Exception {
+        String created = mvc.perform(post("/api/receivables")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"commercialOrderId\":\"%s\",\"dueDate\":\"2026-07-15\"}".formatted(order)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return JsonPath.read(created, "$.id");
+    }
+
+    private String firstInstallmentId(String token, String receivableId) throws Exception {
+        String detail = mvc.perform(get("/api/receivables/" + receivableId).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return JsonPath.read(detail, "$.installments[0].id");
+    }
+
+    private String paymentMethodId(String code) {
+        return jdbc.queryForObject("SELECT id FROM payment_methods WHERE code = ?", String.class, code);
     }
 
     /** Seeds an Order with the given booking status (responsible = the manager), inserting its commercial chain. */

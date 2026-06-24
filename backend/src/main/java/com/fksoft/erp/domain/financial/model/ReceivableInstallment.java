@@ -1,5 +1,6 @@
 package com.fksoft.erp.domain.financial.model;
 
+import com.fksoft.erp.domain.financial.exception.InstallmentNotPayableException;
 import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -88,6 +89,19 @@ public class ReceivableInstallment {
         installment.paymentNotes = emptyToNull(paymentNotes);
         installment.status = InstallmentStatus.OPEN;
         return installment;
+    }
+
+    /**
+     * Marks this installment fully paid (its full amount was received). Only an {@code OPEN} installment can be
+     * paid; a paid or cancelled installment rejects the transition.
+     *
+     * @throws InstallmentNotPayableException if the installment is not {@code OPEN}
+     */
+    void markPaid() {
+        if (status != InstallmentStatus.OPEN) {
+            throw new InstallmentNotPayableException();
+        }
+        this.status = InstallmentStatus.PAID;
     }
 
     private static String emptyToNull(String value) {

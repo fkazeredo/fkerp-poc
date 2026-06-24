@@ -40,8 +40,12 @@ import com.fksoft.erp.domain.crm.exception.OpportunityStageTransitionException;
 import com.fksoft.erp.domain.crm.exception.OriginNotAvailableException;
 import com.fksoft.erp.domain.crm.exception.ResponsiblePersonNotFoundException;
 import com.fksoft.erp.domain.error.DomainException;
+import com.fksoft.erp.domain.financial.exception.InstallmentNotPayableException;
 import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
+import com.fksoft.erp.domain.financial.exception.PaymentAmountMismatchException;
+import com.fksoft.erp.domain.financial.exception.PaymentInstallmentNotFoundException;
+import com.fksoft.erp.domain.financial.exception.PaymentMethodNotAvailableException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAccessDeniedException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAlreadyExistsException;
 import com.fksoft.erp.domain.financial.exception.ReceivableNotFoundException;
@@ -158,6 +162,10 @@ public class HttpErrorMapping {
             entry(ReceivableAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(SourceOrderNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(SourceOrderAccessDeniedException.class, HttpStatus.FORBIDDEN),
+            entry(PaymentMethodNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(PaymentInstallmentNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(InstallmentNotPayableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(PaymentAmountMismatchException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {

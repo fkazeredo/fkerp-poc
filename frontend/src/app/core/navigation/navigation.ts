@@ -135,6 +135,7 @@ export class NavigationService {
       link('Tipos de tentativa', 'pi pi-database', '/cadastros/tipos-tentativa', false, 'Tipos de tentativa manual de reserva.', 'ref'),
       link('Resultados de tentativa', 'pi pi-database', '/cadastros/resultados-tentativa', false, 'Resultados de uma tentativa de reserva.', 'ref'),
       link('Motivos de falha', 'pi pi-database', '/cadastros/motivos-falha', false, 'Por que um item de reserva falhou.', 'ref'),
+      link('Formas de pagamento', 'pi pi-database', '/cadastros/formas-pagamento', false, 'Como os pagamentos são recebidos.', 'ref'),
     ];
 
     return [
