@@ -1005,25 +1005,28 @@ overdue). **Overdue receivables stay visible by default** in the list (as a prob
 filter **overdue only**; in the detail, each **overdue installment** is flagged. **Identifying overdue items
 applies no interest or late fee, sends no notification and opens no customer-care ticket** in this release.
 
-### 11.8 Operational view: received payments and collection
+### 11.8 Operational indicators: receivables and received payments
 
-The **Recebimentos** screen is a **simple operational view** to understand, at a glance, **what is open, what is
-overdue and what was received**. It is reachable in two places: as **Recebimentos** in the **Finance** module, and
-as the **Finance** tab of **Monitoring → Indicators**. It is **operational, not an executive report** — and it is
-**not** bank reconciliation, accounts payable or accounting.
+The **Recebimentos** screen is a **minimal operational view** for financial managers — what was billed and collected
+in a period and the current standing. It is reachable in two places: as **Recebimentos** in the **Finance** module,
+and as the **Finance** tab of **Monitoring → Indicators**. It is **operational, not an executive report** — and it is
+**not** bank reconciliation, accounts payable, cash flow or accounting.
 
-It is organized in two parts:
+You choose a **period** (default: the current month) and it shows two parts:
 
-- **Current snapshot** (the picture of today, regardless of the period): how many receivables are **Open**,
-  **Partially paid** and **Overdue**, and the total **outstanding amount** still to receive.
-- **Received in the period** (chosen by **payment date**, defaulting to the current month): the **amount received**,
-  the number of **payments registered**, how many receivables were **settled** in the period, and a **received by
-  payment method** breakdown (Cash, Pix, Bank transfer, …). A **reversed** payment does **not** count as received.
+- **In the period**: how many receivables were **created** and their total **amount to receive**; the **amount
+  received** and the number of **payments registered**; how many receivables were **settled**; the **average days to
+  payment**; and a **received by payment method** breakdown (Cash, Pix, Bank transfer, …). A **reversed** payment does
+  **not** count as received.
+- **Current standing** (regardless of the period): the **receivables by status** (Open / Partially paid / Paid /
+  Overdue / Cancelled), the total **outstanding amount** and **overdue amount** still to receive, and how many
+  receivables are **ready for Commission Management** (the fully paid ones — a readiness count, **not** a commission
+  calculation).
 
 The numbers respect your **visibility**: a financial user and the consultation profiles (manager, board) see the
-operational figures; **sellers and representatives do not have access** to this global financial view. The screen
-shows **receivable and received-payment figures only** — never commission, accounts payable or bank-reconciliation
-data.
+indicators; **sellers and representatives do not have access** to this global financial view. The screen shows
+**receivable and received-payment figures only** — never commission calculation, accounts payable or
+bank-reconciliation data.
 
 ---
 

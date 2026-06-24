@@ -186,21 +186,35 @@ export interface MethodTotal {
   amount: number;
 }
 
+/** Current receivable count for a lifecycle status code. */
+export interface StatusCount {
+  status: ReceivableStatus;
+  count: number;
+}
+
 /**
- * Operational Financial indicators — a received-payments & collection view. A current snapshot (open / partially
- * paid / overdue counts + outstanding) plus the period volume by payment date (receivables settled, payments
- * registered, received amount, payments by method). Operational, not executive — never Commission, Payables or
- * bank-reconciliation data.
+ * Minimum functional Financial Operations indicators — a manager's minimal view of receivables and received
+ * payments. Volume in the period (receivables created, amount to receive, amount received, payments by method,
+ * receivables settled, average days to payment) plus a current snapshot (receivables by status, outstanding and
+ * overdue amounts, receivables ready for Commission Management). Operational, not executive — never Commission
+ * calculation, Accounts Payable or bank-reconciliation data.
  */
 export interface ReceivableIndicators {
-  openCount: number;
-  partiallyPaidCount: number;
-  overdueCount: number;
-  outstandingAmount: number;
-  paidReceivablesInPeriod: number;
-  paymentsRegistered: number;
+  // Volume in the selected period.
+  totalReceivablesInPeriod: number;
+  totalToReceive: number;
   receivedAmount: number;
+  paymentsRegistered: number;
   paymentsByMethod: MethodTotal[];
+  paidReceivablesInPeriod: number;
+  /** Average days from creation to settlement over receivables settled in the period; null when none. */
+  avgDaysToPayment: number | null;
+  // Current snapshot.
+  byStatus: StatusCount[];
+  outstandingAmount: number;
+  overdueAmount: number;
+  /** Current count of PAID receivables — identifiable as ready for Commission Management (Sprint 6). */
+  readyForCommission: number;
 }
 
 /** API client for the Receivable endpoints (Financial Operations). */
@@ -263,19 +277,16 @@ export class ReceivableService {
   }
 
   /**
-   * The operational Financial indicators visible to the caller: a current snapshot plus the period volume (by
-   * payment date). Empty period bounds widen to all-time. Operational, never Commission/Payables data.
+   * The minimum Financial Operations indicators visible to the caller: the period volume plus a current snapshot.
+   * Empty period bounds widen to all-time. Operational, never Commission/Payables data.
    */
-  indicators(
-    paidFrom?: string | null,
-    paidTo?: string | null,
-  ): Observable<ReceivableIndicators> {
+  indicators(from?: string | null, to?: string | null): Observable<ReceivableIndicators> {
     let params = new HttpParams();
-    if (paidFrom) {
-      params = params.set('paidFrom', paidFrom);
+    if (from) {
+      params = params.set('from', from);
     }
-    if (paidTo) {
-      params = params.set('paidTo', paidTo);
+    if (to) {
+      params = params.set('to', to);
     }
     return this.http.get<ReceivableIndicators>('/api/receivables/indicators', { params });
   }
