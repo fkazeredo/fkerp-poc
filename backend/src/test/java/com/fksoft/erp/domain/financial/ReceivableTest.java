@@ -316,6 +316,35 @@ class ReceivableTest {
     }
 
     @Test
+    void registerFullPaymentKeepsTheLatestPaymentDateForOutOfOrderPayments() {
+        List<InstallmentInput> schedule = List.of(
+                new InstallmentInput(new BigDecimal("200.00"), LocalDate.of(2026, 7, 1), null),
+                new InstallmentInput(new BigDecimal("300.00"), LocalDate.of(2026, 8, 1), null));
+        Receivable receivable = receivableWithSchedule(new BigDecimal("500.00"), schedule);
+
+        // Pay the first installment with a LATER date, then the second with an EARLIER one: the denormalized
+        // last payment date must keep the latest (the earlier, out-of-order payment must not move it back).
+        receivable.registerFullPayment(
+                receivable.installments().get(0).id(),
+                new BigDecimal("200.00"),
+                LocalDate.of(2026, 6, 20),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+        receivable.registerFullPayment(
+                receivable.installments().get(1).id(),
+                new BigDecimal("300.00"),
+                LocalDate.of(2026, 6, 10),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+
+        assertThat(receivable.lastPaymentDate()).isEqualTo(LocalDate.of(2026, 6, 20));
+        assertThat(receivable.amountPaid()).isEqualByComparingTo("500.00");
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.PAID);
+    }
+
+    @Test
     void activeStatusesExcludeOnlyCancelled() {
         assertThat(ReceivableStatus.active())
                 .containsExactlyInAnyOrder(
