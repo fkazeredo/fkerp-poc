@@ -51,6 +51,17 @@
   font-size: 1.15rem;
 }
 
+.overdue-note {
+  color: var(--p-red-500, #ef4444);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.empty {
+  padding: 0.4rem 0;
+  margin: 0;
+}
+
 .trace {
   margin-top: 0.9rem;
   display: flex;
@@ -104,6 +115,14 @@
 .installments-table .col-num {
   width: 2.5rem;
   text-align: center;
+}
+
+.installments-table tr.overdue-row td {
+  background: var(--p-red-50, #fef2f2);
+}
+
+:host ::ng-deep .overdue-tag {
+  margin-left: 0.4rem;
 }
 
 .back {

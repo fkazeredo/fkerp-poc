@@ -68,6 +68,12 @@ class ReceivableServiceTest {
     private CustomerRepository customers;
 
     @Mock
+    private com.fksoft.erp.domain.sales.repository.ProposalRepository proposals;
+
+    @Mock
+    private com.fksoft.erp.domain.crm.repository.OpportunityRepository opportunities;
+
+    @Mock
     private UserRepository users;
 
     @Mock

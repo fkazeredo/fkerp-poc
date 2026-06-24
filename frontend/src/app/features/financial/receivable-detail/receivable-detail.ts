@@ -9,6 +9,7 @@ import { MessageModule } from 'primeng/message';
 import {
   InstallmentStatus,
   ReceivableDetail,
+  ReceivableInstallment,
   ReceivableService,
   ReceivableStatus,
 } from '../../../core/api/receivable.service';
@@ -75,6 +76,24 @@ export class ReceivableDetailPage implements OnInit {
     return STATUS_SEVERITY[status];
   }
 
+  /** Whether an installment is past due and still requires follow-up (not paid/cancelled). */
+  protected installmentOverdue(installment: ReceivableInstallment): boolean {
+    return (
+      installment.status !== 'PAID' &&
+      installment.status !== 'CANCELLED' &&
+      isBeforeToday(installment.dueDate)
+    );
+  }
+
+  /** Whole days the receivable is past due (for the overdue note); 0 when not overdue. */
+  protected daysOverdue(dueDate: string): number {
+    const due = new Date(dueDate + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = today.getTime() - due.getTime();
+    return diff > 0 ? Math.floor(diff / 86400000) : 0;
+  }
+
   /** The human-friendly source order code (PC-000n). */
   protected orderCode(n: number): string {
     return 'PC-' + String(n).padStart(4, '0');
@@ -112,4 +131,11 @@ export class ReceivableDetailPage implements OnInit {
       },
     });
   }
+}
+
+function isBeforeToday(isoDate: string): boolean {
+  const due = new Date(isoDate + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return due.getTime() < today.getTime();
 }

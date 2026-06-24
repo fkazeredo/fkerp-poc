@@ -21,7 +21,9 @@ describe('ReceivableDetailPage', () => {
     commercialOrderId: 'ord1',
     orderNumber: 7,
     proposalId: 'p1',
+    proposalReference: 'Proposta Aurora',
     opportunityId: 'o1',
+    opportunityReference: 'Oportunidade Aurora',
     leadId: 'l1',
     customerId: 'c1',
     customerName: 'Maria Silva',
@@ -30,7 +32,10 @@ describe('ReceivableDetailPage', () => {
     financialResponsibleId: null,
     financialResponsibleName: null,
     totalAmount: 1500,
+    amountPaid: 0,
+    outstandingAmount: 1500,
     dueDate: '2026-07-15',
+    overdue: false,
     paymentNotes: 'Boleto à vista',
     status: 'OPEN',
     installments: [
@@ -88,6 +93,27 @@ describe('ReceivableDetailPage', () => {
     expect(comp['orderCode'](7)).toBe('PC-0007');
   });
 
+  it('flags a past-due open installment as overdue, but not a future or settled one', () => {
+    const comp = build();
+    const past = '2020-01-01';
+    const future = '2999-12-31';
+    expect(comp['installmentOverdue']({ number: 1, amount: 1, dueDate: past, status: 'OPEN', paymentNotes: null })).toBe(
+      true,
+    );
+    expect(
+      comp['installmentOverdue']({ number: 1, amount: 1, dueDate: future, status: 'OPEN', paymentNotes: null }),
+    ).toBe(false);
+    expect(comp['installmentOverdue']({ number: 1, amount: 1, dueDate: past, status: 'PAID', paymentNotes: null })).toBe(
+      false,
+    );
+  });
+
+  it('computes whole days overdue (positive for the past, zero for the future)', () => {
+    const comp = build();
+    expect(comp['daysOverdue']('2020-01-01')).toBeGreaterThan(0);
+    expect(comp['daysOverdue']('2999-12-31')).toBe(0);
+  });
+
   it('shows a permission message on 403', () => {
     receivables.detail.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
     const comp = build();
@@ -115,19 +141,38 @@ describe('ReceivableDetailPage', () => {
       expect(render().textContent).toContain('Carregando');
     });
 
-    it('renders the receivable record: value, payer, status and traceable origin links', () => {
+    it('renders the receivable record: paid/outstanding, references, status and traceable origin links', () => {
       receivables.detail.mockReturnValue(of(sample));
       const el = render();
       expect(el.querySelector('h1')?.textContent).toContain('Conta a receber · PC-0007');
-      expect(el.textContent).toContain('Em aberto'); // status
+      expect(el.textContent).toContain('Em aberto'); // status + outstanding label
+      expect(el.textContent).toContain('Valor pago');
       expect(el.textContent).toContain('Maria Silva'); // payer
-      expect(el.textContent).toContain('Boleto à vista'); // payment notes
+      expect(el.textContent).toContain('Boleto à vista'); // financial notes
+      expect(el.textContent).toContain('Proposta Aurora'); // proposal reference
+      expect(el.textContent).toContain('Oportunidade Aurora'); // opportunity reference
       expect(el.textContent).toContain('Ver pedido de origem');
       expect(el.textContent).toContain('Ver proposta');
       expect(el.textContent).toContain('Ver lead de origem');
-      // The contract carries no Payment/Commission/Invoice labels.
+      // The contract carries no Commission / bank-reconciliation labels.
       expect(el.textContent).not.toContain('Comissão');
-      expect(el.textContent).not.toContain('Pagamento registrado');
+      expect(el.textContent).not.toContain('Conciliação');
+    });
+
+    it('renders the payment-history section with an empty state (no payments yet)', () => {
+      receivables.detail.mockReturnValue(of(sample));
+      const el = render();
+      expect(el.textContent).toContain('Pagamentos e estornos');
+      expect(el.textContent).toContain('Nenhum pagamento registrado ainda.');
+    });
+
+    it('shows the overdue marker and the days-overdue note when the receivable is past due', () => {
+      receivables.detail.mockReturnValue(
+        of({ ...sample, overdue: true, dueDate: '2020-01-01' } satisfies ReceivableDetail),
+      );
+      const el = render();
+      expect(el.textContent).toContain('Vencida');
+      expect(el.textContent).toMatch(/vencida há \d+ dia/);
     });
 
     it('renders the installment schedule (numbers, amounts and status)', () => {

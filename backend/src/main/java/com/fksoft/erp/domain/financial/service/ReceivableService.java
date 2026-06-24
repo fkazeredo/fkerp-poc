@@ -1,7 +1,9 @@
 package com.fksoft.erp.domain.financial.service;
 
 import com.fksoft.erp.domain.crm.model.Customer;
+import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.repository.CustomerRepository;
+import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.CustomerService;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAccessDeniedException;
@@ -21,7 +23,9 @@ import com.fksoft.erp.domain.financial.service.data.ReceivableSearchCriteria;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
+import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
+import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -56,6 +60,8 @@ public class ReceivableService {
     private final OrderAccessPolicy orderAccessPolicy;
     private final CustomerService customerService;
     private final CustomerRepository customers;
+    private final ProposalRepository proposals;
+    private final OpportunityRepository opportunities;
     private final UserRepository users;
     private final ApplicationEventPublisher events;
 
@@ -158,11 +164,18 @@ public class ReceivableService {
                 .orElse(0L);
         String customerName =
                 customers.findById(receivable.customerId()).map(Customer::name).orElse(null);
+        String proposalReference =
+                proposals.findById(receivable.proposalId()).map(Proposal::title).orElse(null);
+        String opportunityReference = opportunities
+                .findById(receivable.opportunityId())
+                .map(Opportunity::name)
+                .orElse(null);
         Map<UUID, String> names = resolveNames(Stream.of(
                 receivable.commercialResponsiblePersonId(),
                 receivable.financialResponsiblePersonId(),
                 receivable.createdBy()));
-        return ReceivableDetail.from(receivable, orderNumber, customerName, names);
+        return ReceivableDetail.from(
+                receivable, orderNumber, customerName, proposalReference, opportunityReference, names, LocalDate.now());
     }
 
     /**
