@@ -82,9 +82,11 @@ test('finance opens the Recebimentos operational view from the Financeiro module
 
   await page.goto('/financeiro/recebimentos');
   await expect(page.getByRole('heading', { name: 'Recebimentos' })).toBeVisible();
-  // The two-part operational view: the current snapshot and the received-in-period section.
+  // The minimum indicator set: period volume + current snapshot (by status, outstanding, overdue, ready-for-commission).
+  await expect(page.getByText('A receber (período)')).toBeVisible();
   await expect(page.getByText('Em aberto (R$)')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Recebido no período' })).toBeVisible();
+  await expect(page.getByText('Prontas p/ comissão')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Por status (retrato de hoje)' })).toBeVisible();
   // The isolated e2e stack has no payments → the by-method breakdown shows its empty state.
   await expect(page.getByText('Nenhum pagamento recebido no período.')).toBeVisible();
 });
@@ -97,7 +99,7 @@ test('finance reaches the same view via the Financeiro tab of the Indicadores hu
   await expect(financeiroTab).toBeVisible();
   await financeiroTab.click();
   await expect(page.getByRole('heading', { name: 'Recebimentos' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Recebido no período' })).toBeVisible();
+  await expect(page.getByText('A receber (período)')).toBeVisible();
 });
 
 test('a seller without a financial read tier cannot reach the receivables routes', async ({ page }) => {

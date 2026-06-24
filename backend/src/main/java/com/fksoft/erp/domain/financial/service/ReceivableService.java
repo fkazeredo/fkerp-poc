@@ -42,6 +42,7 @@ import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -319,16 +320,29 @@ public class ReceivableService {
     @Transactional(readOnly = true)
     public ReceivableIndicators indicators(UUID userId, boolean canSeeAll, LocalDate from, LocalDate to) {
         Specification<Receivable> visible = accessPolicy.visibleTo(userId, canSeeAll);
-        Map<String, Long> byStatus = indicatorQueries.countByStatus(visible);
+        // The receivable-volume figures are by creation date (Instant) — anchor the calendar window at UTC midnight
+        // (upper bound pre-incremented by a day → the range [from, to+1) is exclusive). The payment-based figures
+        // use the LocalDate window directly (payment_date / last_payment_date are LocalDate columns).
+        Instant createdFrom =
+                from == null ? null : from.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant createdTo =
+                to == null ? null : to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        Map<String, Long> counts = indicatorQueries.countByStatus(visible);
+        List<ReceivableIndicators.StatusCount> byStatus = counts.entrySet().stream()
+                .map(e -> new ReceivableIndicators.StatusCount(e.getKey(), e.getValue()))
+                .toList();
         return new ReceivableIndicators(
-                byStatus.getOrDefault(ReceivableStatus.OPEN.name(), 0L),
-                byStatus.getOrDefault(ReceivableStatus.PARTIALLY_PAID.name(), 0L),
-                byStatus.getOrDefault(ReceivableStatus.OVERDUE.name(), 0L),
-                indicatorQueries.sumOutstanding(visible),
-                indicatorQueries.countPaidReceivablesInPeriod(visible, from, to),
-                indicatorQueries.countPayments(visible, from, to),
+                indicatorQueries.countCreatedInPeriod(visible, createdFrom, createdTo),
+                indicatorQueries.sumTotalToReceiveCreatedInPeriod(visible, createdFrom, createdTo),
                 indicatorQueries.sumReceived(visible, from, to),
-                indicatorQueries.paymentsByMethod(visible, from, to));
+                indicatorQueries.countPayments(visible, from, to),
+                indicatorQueries.paymentsByMethod(visible, from, to),
+                indicatorQueries.countPaidReceivablesInPeriod(visible, from, to),
+                indicatorQueries.avgDaysToPayment(visible, from, to),
+                byStatus,
+                indicatorQueries.sumOutstanding(visible),
+                indicatorQueries.sumOverdue(visible),
+                counts.getOrDefault(ReceivableStatus.PAID.name(), 0L));
     }
 
     private Map<UUID, Long> resolveOrderNumbers(Stream<UUID> orderIds) {

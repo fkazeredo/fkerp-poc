@@ -12,7 +12,10 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -81,6 +84,99 @@ public class ReceivableIndicatorQueries {
         q.where(cb.and(predicates.toArray(Predicate[]::new)));
         BigDecimal sum = em.createQuery(q).getSingleResult();
         return sum == null ? zero() : sum.setScale(SCALE, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * The current amount still to receive over the visible {@code OVERDUE} Receivables (a snapshot — ignores any
+     * period).
+     *
+     * @param visible the visibility predicate
+     * @return the overdue amount (scale 2, never {@code null})
+     */
+    public BigDecimal sumOverdue(Specification<Receivable> visible) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<BigDecimal> q = cb.createQuery(BigDecimal.class);
+        Root<Receivable> root = q.from(Receivable.class);
+        q.select(cb.sum(cb.diff(root.get("totalAmount"), root.get("amountPaid"))));
+        List<Predicate> predicates = new ArrayList<>();
+        Predicate visibility = visible.toPredicate(root, q, cb);
+        if (visibility != null) {
+            predicates.add(visibility);
+        }
+        predicates.add(cb.equal(root.get("status"), ReceivableStatus.OVERDUE));
+        q.where(cb.and(predicates.toArray(Predicate[]::new)));
+        BigDecimal sum = em.createQuery(q).getSingleResult();
+        return sum == null ? zero() : sum.setScale(SCALE, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * How many Receivables were created in the period (by {@code createdAt}).
+     *
+     * @param visible the visibility predicate
+     * @param from inclusive lower bound on creation (or {@code null})
+     * @param to exclusive upper bound on creation (or {@code null})
+     * @return the created-in-period count
+     */
+    public long countCreatedInPeriod(Specification<Receivable> visible, Instant from, Instant to) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Long> q = cb.createQuery(Long.class);
+        Root<Receivable> root = q.from(Receivable.class);
+        q.select(cb.count(root));
+        q.where(createdWhere(cb, root, q, visible, from, to));
+        return em.createQuery(q).getSingleResult();
+    }
+
+    /**
+     * The gross value (Σ {@code total_amount}) of the Receivables created in the period.
+     *
+     * @param visible the visibility predicate
+     * @param from inclusive lower bound on creation (or {@code null})
+     * @param to exclusive upper bound on creation (or {@code null})
+     * @return the total-to-receive of the period (scale 2, never {@code null})
+     */
+    public BigDecimal sumTotalToReceiveCreatedInPeriod(Specification<Receivable> visible, Instant from, Instant to) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<BigDecimal> q = cb.createQuery(BigDecimal.class);
+        Root<Receivable> root = q.from(Receivable.class);
+        q.select(cb.sum(root.get("totalAmount")));
+        q.where(createdWhere(cb, root, q, visible, from, to));
+        BigDecimal sum = em.createQuery(q).getSingleResult();
+        return sum == null ? zero() : sum.setScale(SCALE, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * The average number of days from creation to settlement over the visible Receivables that became {@code PAID}
+     * with their last payment date in the period. Computed in Java over the bounded settled-in-period set.
+     *
+     * @param visible the visibility predicate
+     * @param from inclusive lower bound on the last payment date (or {@code null})
+     * @param to inclusive upper bound on the last payment date (or {@code null})
+     * @return the average creation→settlement time in days, or {@code null} when nothing was settled in the period
+     */
+    public Long avgDaysToPayment(Specification<Receivable> visible, LocalDate from, LocalDate to) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Object[]> q = cb.createQuery(Object[].class);
+        Root<Receivable> root = q.from(Receivable.class);
+        q.multiselect(root.get("createdAt"), root.get("lastPaymentDate"));
+        List<Predicate> predicates = new ArrayList<>();
+        Predicate visibility = visible.toPredicate(root, q, cb);
+        if (visibility != null) {
+            predicates.add(visibility);
+        }
+        predicates.add(cb.equal(root.get("status"), ReceivableStatus.PAID));
+        predicates.add(cb.isNotNull(root.get("lastPaymentDate")));
+        addDatePeriod(cb, predicates, root.get("lastPaymentDate"), from, to);
+        q.where(cb.and(predicates.toArray(Predicate[]::new)));
+        List<Object[]> rows = em.createQuery(q).getResultList();
+        if (rows.isEmpty()) {
+            return null;
+        }
+        long totalDays = 0;
+        for (Object[] row : rows) {
+            LocalDate created = ((Instant) row[0]).atZone(ZoneOffset.UTC).toLocalDate();
+            totalDays += ChronoUnit.DAYS.between(created, (LocalDate) row[1]);
+        }
+        return totalDays / rows.size();
     }
 
     /**
@@ -191,6 +287,29 @@ public class ReceivableIndicatorQueries {
         }
         predicates.add(cb.isNull(payments.get("reversedAt")));
         addDatePeriod(cb, predicates, payments.get("paymentDate"), from, to);
+        return cb.and(predicates.toArray(Predicate[]::new));
+    }
+
+    // The common WHERE for the creation-based queries: visibility (on the Receivable) + the createdAt in the
+    // period (the upper bound is exclusive — it is the start of the day after the window).
+    private Predicate createdWhere(
+            CriteriaBuilder cb,
+            Root<Receivable> root,
+            CriteriaQuery<?> query,
+            Specification<Receivable> visible,
+            Instant from,
+            Instant to) {
+        List<Predicate> predicates = new ArrayList<>();
+        Predicate visibility = visible.toPredicate(root, query, cb);
+        if (visibility != null) {
+            predicates.add(visibility);
+        }
+        if (from != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.<Instant>get("createdAt"), from));
+        }
+        if (to != null) {
+            predicates.add(cb.lessThan(root.<Instant>get("createdAt"), to));
+        }
         return cb.and(predicates.toArray(Predicate[]::new));
     }
 

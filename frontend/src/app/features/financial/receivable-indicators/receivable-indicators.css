@@ -62,17 +62,11 @@
   font-size: 0.85rem;
 }
 
-.kpi.open {
-  border-left-color: #3b82f6;
-}
-.kpi.partial {
-  border-left-color: #f59e0b;
-}
-.kpi.overdue {
-  border-left-color: #ef4444;
-}
-.kpi.outstanding {
+.kpi.total {
   border-left-color: #6366f1;
+}
+.kpi.toreceive {
+  border-left-color: #3b82f6;
 }
 .kpi.received {
   border-left-color: #22c55e;
@@ -80,8 +74,26 @@
 .kpi.payments {
   border-left-color: #14b8a6;
 }
-.kpi.paid {
+.kpi.settled {
   border-left-color: #a855f7;
+}
+.kpi.avg {
+  border-left-color: #8b5cf6;
+}
+.kpi.outstanding {
+  border-left-color: #3b82f6;
+}
+.kpi.overdue {
+  border-left-color: #ef4444;
+}
+.kpi.commission {
+  border-left-color: #22c55e;
+}
+
+.breakdowns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: 1.1rem;
 }
 
 .breakdown {
@@ -125,9 +137,13 @@
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: #22c55e;
+  background: #6366f1;
   min-width: 2px;
   transition: width 0.25s ease;
+}
+
+.bar-fill.paid {
+  background: #22c55e;
 }
 
 .bar-count {

@@ -894,7 +894,7 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void financeReadsTheOperationalIndicatorsSnapshotAndPeriodFigures() throws Exception {
+    void financeReadsTheMinimumFinancialIndicators() throws Exception {
         String fin = finance();
         // A: open, no payment (future due) → OPEN, outstanding 500.
         createReceivable(fin, confirmedOrder("IndOpen", "CONFIRMED"));
@@ -913,27 +913,31 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isCreated());
         overdueJob.markOverdue(LocalDate.now());
 
-        String body = mvc.perform(get("/api/receivables/indicators?paidFrom=2026-06-01&paidTo=2026-06-30")
+        String body = mvc.perform(get("/api/receivables/indicators?from=2026-06-01&to=2026-06-30")
                         .header("Authorization", "Bearer " + fin))
                 .andExpect(status().isOk())
-                // Current snapshot (ignores the period).
-                .andExpect(jsonPath("$.openCount").value(1))
-                .andExpect(jsonPath("$.partiallyPaidCount").value(1))
-                .andExpect(jsonPath("$.overdueCount").value(1))
-                .andExpect(jsonPath("$.outstandingAmount").value(1300.00)) // 500 + 300 + 0 + 500
-                // Volume in the period (by payment date).
-                .andExpect(jsonPath("$.paidReceivablesInPeriod").value(1)) // C
-                .andExpect(jsonPath("$.paymentsRegistered").value(2)) // B + C
+                // Volume in the period — the four receivables were created now (within June).
+                .andExpect(jsonPath("$.totalReceivablesInPeriod").value(4))
+                .andExpect(jsonPath("$.totalToReceive").value(2000.00)) // 4 × 500
                 .andExpect(jsonPath("$.receivedAmount").value(700.00)) // 200 + 500
+                .andExpect(jsonPath("$.paymentsRegistered").value(2)) // B + C
                 .andExpect(jsonPath("$.paymentsByMethod.length()").value(2)) // Pix + Cash
+                .andExpect(jsonPath("$.paidReceivablesInPeriod").value(1)) // C
+                .andExpect(jsonPath("$.avgDaysToPayment").isNumber()) // C settled in the period
+                // Current snapshot.
+                .andExpect(jsonPath("$.byStatus.length()").value(4))
+                .andExpect(jsonPath("$.outstandingAmount").value(1300.00)) // 500 + 300 + 0 + 500
+                .andExpect(jsonPath("$.overdueAmount").value(500.00)) // D
+                .andExpect(jsonPath("$.readyForCommission").value(1)) // C is PAID → ready for Commission Mgmt
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        // Operational figures only — never Commission, Payables or bank-reconciliation data.
-        assertThat(body.toLowerCase())
-                .doesNotContain("commission")
-                .doesNotContain("payable")
-                .doesNotContain("reconcil");
+        // Receivables by status carries every bucket present.
+        java.util.List<String> statuses = JsonPath.read(body, "$.byStatus[*].status");
+        assertThat(statuses).containsExactlyInAnyOrder("OPEN", "PARTIALLY_PAID", "PAID", "OVERDUE");
+        // Receivable + received-payment figures only — never Payables or bank-reconciliation data (the
+        // ready-for-Commission readiness count is a receivable count, not a Commission calculation).
+        assertThat(body.toLowerCase()).doesNotContain("payable").doesNotContain("reconcil");
     }
 
     @Test
@@ -942,13 +946,14 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
         String r = createReceivable(fin, confirmedOrder("IndRev", "CONFIRMED"));
         String paymentId = registerFullPayment(fin, r, firstInstallmentId(fin, r)); // 500 on 2026-06-01 → PAID
 
-        // Before reversal: the payment counts as received and the receivable is paid in the period.
-        mvc.perform(get("/api/receivables/indicators?paidFrom=2026-06-01&paidTo=2026-06-30")
+        // Before reversal: the payment counts as received and the receivable is paid in the period / ready for
+        // Commission.
+        mvc.perform(get("/api/receivables/indicators?from=2026-06-01&to=2026-06-30")
                         .header("Authorization", "Bearer " + fin))
                 .andExpect(jsonPath("$.receivedAmount").value(500.00))
                 .andExpect(jsonPath("$.paymentsRegistered").value(1))
                 .andExpect(jsonPath("$.paidReceivablesInPeriod").value(1))
-                .andExpect(jsonPath("$.openCount").value(0));
+                .andExpect(jsonPath("$.readyForCommission").value(1));
 
         mvc.perform(post("/api/receivables/%s/payments/%s/reversals".formatted(r, paymentId))
                         .header("Authorization", "Bearer " + fin)
@@ -956,13 +961,14 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
                         .content("{\"reason\":\"estorno\"}"))
                 .andExpect(status().isOk());
 
-        // After reversal: the reversed payment no longer counts; the receivable is back to OPEN.
-        mvc.perform(get("/api/receivables/indicators?paidFrom=2026-06-01&paidTo=2026-06-30")
+        // After reversal: the reversed payment no longer counts; the receivable is back to OPEN (outstanding full).
+        mvc.perform(get("/api/receivables/indicators?from=2026-06-01&to=2026-06-30")
                         .header("Authorization", "Bearer " + fin))
                 .andExpect(jsonPath("$.receivedAmount").value(0))
                 .andExpect(jsonPath("$.paymentsRegistered").value(0))
                 .andExpect(jsonPath("$.paidReceivablesInPeriod").value(0))
-                .andExpect(jsonPath("$.openCount").value(1))
+                .andExpect(jsonPath("$.readyForCommission").value(0))
+                .andExpect(jsonPath("$.outstandingAmount").value(500.00))
                 .andExpect(jsonPath("$.paymentsByMethod.length()").value(0));
     }
 
@@ -976,7 +982,7 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
         payInstallment(fin, june, firstInstallmentId(fin, june), "500.00", "2026-06-20", paymentMethodId("PIX"));
 
         // June-only window → only the June (Pix) payment.
-        mvc.perform(get("/api/receivables/indicators?paidFrom=2026-06-01&paidTo=2026-06-30")
+        mvc.perform(get("/api/receivables/indicators?from=2026-06-01&to=2026-06-30")
                         .header("Authorization", "Bearer " + fin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paymentsRegistered").value(1))
@@ -1000,7 +1006,22 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
         String manager = login("comercial", "comercial123");
         mvc.perform(get("/api/receivables/indicators").header("Authorization", "Bearer " + manager))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.openCount").value(1));
+                .andExpect(jsonPath("$.totalReceivablesInPeriod").value(1))
+                .andExpect(jsonPath("$.byStatus.length()").value(1));
+    }
+
+    @Test
+    void avgDaysToPaymentIsNullWhenNothingWasSettledInThePeriod() throws Exception {
+        String fin = finance();
+        String r = createReceivable(fin, confirmedOrder("IndAvgNull", "CONFIRMED"));
+        payInstallment(fin, r, firstInstallmentId(fin, r), "500.00", "2026-06-15", paymentMethodId("PIX"));
+
+        // A far-past window with no settlements → no average to compute.
+        mvc.perform(get("/api/receivables/indicators?from=2020-01-01&to=2020-12-31")
+                        .header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paidReceivablesInPeriod").value(0))
+                .andExpect(jsonPath("$.avgDaysToPayment").value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test
