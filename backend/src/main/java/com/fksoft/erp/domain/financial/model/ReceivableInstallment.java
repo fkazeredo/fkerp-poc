@@ -140,6 +140,25 @@ public class ReceivableInstallment {
         status = amountPaid.compareTo(amount) >= 0 ? InstallmentStatus.PAID : InstallmentStatus.PARTIALLY_PAID;
     }
 
+    /**
+     * Reverses {@code amount} of paid value off this installment (a payment was reversed): decreases the paid
+     * amount and re-derives the status — {@code OPEN} when nothing remains paid, {@code PAID} when still fully
+     * covered, otherwise {@code PARTIALLY_PAID}. The inverse of {@link #applyPayment}; the caller guarantees the
+     * amount was previously applied (so the paid amount never goes negative).
+     *
+     * @param amount the previously-applied amount to remove (positive)
+     */
+    void reverseAmount(BigDecimal amount) {
+        amountPaid = amountPaid.subtract(amount).setScale(SCALE, RoundingMode.HALF_UP);
+        if (amountPaid.signum() <= 0) {
+            status = InstallmentStatus.OPEN;
+        } else if (amountPaid.compareTo(this.amount) >= 0) {
+            status = InstallmentStatus.PAID;
+        } else {
+            status = InstallmentStatus.PARTIALLY_PAID;
+        }
+    }
+
     private static String emptyToNull(String value) {
         return value == null || value.isBlank() ? null : value;
     }

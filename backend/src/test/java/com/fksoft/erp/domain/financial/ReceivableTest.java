@@ -442,6 +442,101 @@ class ReceivableTest {
     }
 
     @Test
+    void reversePaymentOfTheOnlyPaymentReturnsTheReceivableToOpenAndKeepsTheHistory() {
+        Receivable receivable = receivableWithSchedule(new BigDecimal("1500.00"), List.of());
+        UUID installmentId = receivable.installments().get(0).id();
+        ReceivablePayment payment = receivable.registerPayment(
+                installmentId,
+                new BigDecimal("1500.00"),
+                LocalDate.of(2026, 6, 20),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.PAID);
+
+        UUID reverser = UUID.randomUUID();
+        ReceivablePayment reversed =
+                receivable.reversePayment(payment.id(), "lançamento incorreto", reverser, java.time.Instant.now());
+
+        assertThat(reversed.id()).isEqualTo(payment.id());
+        assertThat(reversed.reversed()).isTrue();
+        assertThat(reversed.reversalReason()).isEqualTo("lançamento incorreto");
+        assertThat(reversed.reversedBy()).isEqualTo(reverser);
+        // The payment stays in history (never deleted).
+        assertThat(receivable.payments()).hasSize(1);
+        assertThat(receivable.installments().get(0).status()).isEqualTo(InstallmentStatus.OPEN);
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.OPEN);
+        assertThat(receivable.amountPaid()).isEqualByComparingTo("0.00");
+        assertThat(receivable.lastPaymentDate()).isNull();
+        assertThat(receivable.updatedBy()).isEqualTo(reverser);
+    }
+
+    @Test
+    void reversingOneOfTwoPaymentsReturnsTheReceivableToPartiallyPaidAndRecomputesLastPaymentDate() {
+        Receivable receivable = receivableWithSchedule(new BigDecimal("500.00"), List.of());
+        UUID installmentId = receivable.installments().get(0).id();
+        ReceivablePayment first = receivable.registerPayment(
+                installmentId,
+                new BigDecimal("200.00"),
+                LocalDate.of(2026, 6, 20),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+        receivable.registerPayment(
+                installmentId,
+                new BigDecimal("300.00"),
+                LocalDate.of(2026, 6, 25),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.PAID);
+        assertThat(receivable.lastPaymentDate()).isEqualTo(LocalDate.of(2026, 6, 25));
+
+        // Reverse the SECOND (latest) payment: last payment date falls back to the first.
+        ReceivablePayment latest = receivable.payments().stream()
+                .filter(p -> p.paymentDate().equals(LocalDate.of(2026, 6, 25)))
+                .findFirst()
+                .orElseThrow();
+        receivable.reversePayment(latest.id(), "estorno", UUID.randomUUID(), java.time.Instant.now());
+
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.PARTIALLY_PAID);
+        assertThat(receivable.amountPaid()).isEqualByComparingTo("200.00");
+        assertThat(receivable.installments().get(0).status()).isEqualTo(InstallmentStatus.PARTIALLY_PAID);
+        assertThat(receivable.lastPaymentDate()).isEqualTo(LocalDate.of(2026, 6, 20));
+        assertThat(receivable.payments()).hasSize(2); // both kept; one reversed
+        assertThat(first.reversed()).isFalse();
+    }
+
+    @Test
+    void reversePaymentRejectsAnUnknownPayment() {
+        Receivable receivable = receivableWithSchedule(new BigDecimal("100.00"), List.of());
+
+        assertThatThrownBy(() ->
+                        receivable.reversePayment(UUID.randomUUID(), "x", UUID.randomUUID(), java.time.Instant.now()))
+                .isInstanceOf(com.fksoft.erp.domain.financial.exception.PaymentNotFoundException.class);
+    }
+
+    @Test
+    void reversePaymentRejectsAnAlreadyReversedPayment() {
+        Receivable receivable = receivableWithSchedule(new BigDecimal("100.00"), List.of());
+        ReceivablePayment payment = receivable.registerPayment(
+                receivable.installments().get(0).id(),
+                new BigDecimal("100.00"),
+                LocalDate.of(2026, 6, 20),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+        receivable.reversePayment(payment.id(), "primeiro estorno", UUID.randomUUID(), java.time.Instant.now());
+
+        assertThatThrownBy(() -> receivable.reversePayment(
+                        payment.id(), "segundo estorno", UUID.randomUUID(), java.time.Instant.now()))
+                .isInstanceOf(com.fksoft.erp.domain.financial.exception.PaymentAlreadyReversedException.class);
+        // The receivable stays as the first reversal left it.
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.OPEN);
+        assertThat(receivable.amountPaid()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
     void activeStatusesExcludeOnlyCancelled() {
         assertThat(ReceivableStatus.active())
                 .containsExactlyInAnyOrder(

@@ -738,6 +738,197 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void financeReversesAPaymentReturningTheReceivableToOpenKeepingTheHistory() throws Exception {
+        String fin = finance();
+        UUID order = confirmedOrder("Reverse", "CONFIRMED");
+        String receivableId = createReceivable(fin, order);
+        String installmentId = firstInstallmentId(fin, receivableId);
+        String paymentId = registerFullPayment(fin, receivableId, installmentId);
+
+        // The booking-confirmed order reflected PAID after the full payment; reversing returns it to OPEN.
+        assertThat(orderFinancialStatus(order)).isEqualTo("PAID");
+
+        String body = mvc.perform(post("/api/receivables/%s/payments/%s/reversals".formatted(receivableId, paymentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"lançamento duplicado\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("OPEN"))
+                .andExpect(jsonPath("$.amountPaid").value(0))
+                .andExpect(jsonPath("$.outstandingAmount").value(500.00))
+                .andExpect(jsonPath("$.installments[0].status").value("OPEN"))
+                // The payment stays in history, marked reversed with its reason and who/when.
+                .andExpect(jsonPath("$.payments.length()").value(1))
+                .andExpect(jsonPath("$.payments[0].reversed").value(true))
+                .andExpect(jsonPath("$.payments[0].reversalReason").value("lançamento duplicado"))
+                .andExpect(jsonPath("$.payments[0].reversedByName").value("financeiro"))
+                .andExpect(jsonPath("$.payments[0].reversedAt").exists())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        // Reversing creates no Commission/bank-reconciliation data; the order reflection is back to OPEN.
+        assertThat(body.toLowerCase()).doesNotContain("commission").doesNotContain("reconcil");
+        assertThat(orderFinancialStatus(order)).isEqualTo("OPEN");
+
+        // The payment row is kept (not deleted), now carrying the reversal stamp.
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM receivable_payments", Integer.class))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                        "SELECT count(*) FROM receivable_payments WHERE reversed_at IS NOT NULL", Integer.class))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void reversingOneOfTwoPaymentsReturnsTheReceivableToPartiallyPaid() throws Exception {
+        String fin = finance();
+        UUID order = confirmedOrder("RevPartial", "CONFIRMED");
+        String created = mvc.perform(post("/api/receivables")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                """
+                                {"commercialOrderId":"%s","dueDate":"2026-07-15","installments":[
+                                  {"amount":200.00,"dueDate":"2026-07-15"},
+                                  {"amount":300.00,"dueDate":"2026-08-15"}
+                                ]}"""
+                                        .formatted(order)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String receivableId = JsonPath.read(created, "$.id");
+        String detail = mvc.perform(get("/api/receivables/" + receivableId).header("Authorization", "Bearer " + fin))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String first = JsonPath.read(detail, "$.installments[0].id");
+        String second = JsonPath.read(detail, "$.installments[1].id");
+        String pix = paymentMethodId("PIX");
+        payInstallment(fin, receivableId, first, "200.00", "2026-06-01", pix);
+        String secondPaymentBody = payInstallment(fin, receivableId, second, "300.00", "2026-06-02", pix);
+        assertThat(JsonPath.read(secondPaymentBody, "$.status").toString()).isEqualTo("PAID");
+        String secondPaymentId = paymentIdForInstallment(secondPaymentBody, second);
+
+        mvc.perform(post("/api/receivables/%s/payments/%s/reversals".formatted(receivableId, secondPaymentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"estorno parcela 2\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PARTIALLY_PAID"))
+                .andExpect(jsonPath("$.amountPaid").value(200.00))
+                .andExpect(jsonPath("$.outstandingAmount").value(300.00))
+                .andExpect(jsonPath("$.installments[1].status").value("OPEN"))
+                .andExpect(jsonPath("$.payments.length()").value(2)); // both kept; one reversed
+    }
+
+    @Test
+    void reversingAnAlreadyReversedPaymentIsRejected() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("RevTwice", "CONFIRMED"));
+        String installmentId = firstInstallmentId(fin, receivableId);
+        String paymentId = registerFullPayment(fin, receivableId, installmentId);
+
+        mvc.perform(post("/api/receivables/%s/payments/%s/reversals".formatted(receivableId, paymentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"primeiro estorno\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/receivables/%s/payments/%s/reversals".formatted(receivableId, paymentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"segundo estorno\"}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("financial.payment.already-reversed"));
+    }
+
+    @Test
+    void rejectsAReversalOfAnUnknownPayment() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("RevUnknown", "CONFIRMED"));
+
+        mvc.perform(post("/api/receivables/%s/payments/%s/reversals".formatted(receivableId, UUID.randomUUID()))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"estorno\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("financial.payment.not-found"));
+    }
+
+    @Test
+    void rejectsAReversalWithoutAReason() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("RevNoReason", "CONFIRMED"));
+        String installmentId = firstInstallmentId(fin, receivableId);
+        String paymentId = registerFullPayment(fin, receivableId, installmentId);
+
+        mvc.perform(post("/api/receivables/%s/payments/%s/reversals".formatted(receivableId, paymentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"  \"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void theManagerCannotReverseAPayment() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("RevMgr", "CONFIRMED"));
+        String installmentId = firstInstallmentId(fin, receivableId);
+        String paymentId = registerFullPayment(fin, receivableId, installmentId);
+
+        // The commercial manager holds financial:receivable:read:all (consultation) but not payment:reverse.
+        String manager = login("comercial", "comercial123");
+        mvc.perform(post("/api/receivables/%s/payments/%s/reversals".formatted(receivableId, paymentId))
+                        .header("Authorization", "Bearer " + manager)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"estorno\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rejectsAnUnauthenticatedReversal() throws Exception {
+        mvc.perform(post("/api/receivables/%s/payments/%s/reversals".formatted(UUID.randomUUID(), UUID.randomUUID()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"estorno\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private String registerFullPayment(String token, String receivableId, String installmentId) throws Exception {
+        String body =
+                payInstallment(token, receivableId, installmentId, "500.00", "2026-06-01", paymentMethodId("PIX"));
+        return JsonPath.read(body, "$.payments[0].id");
+    }
+
+    private String payInstallment(
+            String token, String receivableId, String installmentId, String amount, String date, String methodId)
+            throws Exception {
+        return mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, installmentId))
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":%s,\"paymentDate\":\"%s\"}"
+                                .formatted(methodId, amount, date)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+    }
+
+    private String paymentIdForInstallment(String detailBody, String installmentId) {
+        java.util.List<Map<String, Object>> payments = JsonPath.read(detailBody, "$.payments");
+        return payments.stream()
+                .filter(p -> installmentId.equals(p.get("installmentId")))
+                .map(p -> (String) p.get("id"))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private String orderFinancialStatus(UUID orderId) {
+        return jdbc.queryForObject(
+                "SELECT financial_status FROM commercial_orders WHERE id = cast(? as uuid)",
+                String.class,
+                orderId.toString());
+    }
+
     private String createReceivable(String token, UUID order) throws Exception {
         String created = mvc.perform(post("/api/receivables")
                         .header("Authorization", "Bearer " + token)

@@ -16,6 +16,7 @@ import { MessageService } from 'primeng/api';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
   InstallmentStatus,
+  Payment,
   PaymentMethodOption,
   ReceivableDetail,
   ReceivableInstallment,
@@ -98,11 +99,20 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     note: [''],
   });
 
+  // Reversal dialog state (a payment-entry correction): the targeted payment + the required reason.
+  protected readonly reversalDialogOpen = signal(false);
+  protected readonly targetPayment = signal<Payment | null>(null);
+  protected readonly reversing = signal(false);
+  protected readonly reversalError = signal<string | null>(null);
+  protected readonly reversalForm = this.fb.nonNullable.group({
+    reason: ['', [Validators.required, Validators.maxLength(2000)]],
+  });
+
   private receivableId = '';
 
   constructor() {
-    // Keep the global unsaved flag (tab-close warning) in sync with the payment dialog state.
-    effect(() => this.unsaved.set(this.paymentDialogOpen()));
+    // Keep the global unsaved flag (tab-close warning) in sync with the open dialogs.
+    effect(() => this.unsaved.set(this.paymentDialogOpen() || this.reversalDialogOpen()));
   }
 
   ngOnInit(): void {
@@ -119,9 +129,12 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     this.unsaved.set(false);
   }
 
-  /** Whether the payment dialog is open with modified fields (route guard + tab-close warning). */
+  /** Whether a dialog is open with modified fields (route guard + tab-close warning). */
   hasUnsavedChanges(): boolean {
-    return this.paymentDialogOpen() && this.paymentForm.dirty;
+    return (
+      (this.paymentDialogOpen() && this.paymentForm.dirty) ||
+      (this.reversalDialogOpen() && this.reversalForm.dirty)
+    );
   }
 
   protected statusLabel(status: ReceivableStatus): string {
@@ -220,6 +233,57 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
       });
   }
 
+  /** Whether the given payment can be reversed (still registered, and the user is authorized). */
+  protected canReverse(payment: Payment): boolean {
+    return this.auth.canReversePayment() && !payment.reversed;
+  }
+
+  /** Opens the reversal dialog for the given payment (the reason is required). */
+  protected openReversal(payment: Payment): void {
+    this.targetPayment.set(payment);
+    this.reversalError.set(null);
+    this.reversalForm.reset({ reason: '' });
+    this.reversalDialogOpen.set(true);
+  }
+
+  /** Closes the reversal dialog: if the form was changed, confirms before discarding. */
+  protected async closeReversal(): Promise<void> {
+    if (this.reversalForm.dirty && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
+    this.reversalDialogOpen.set(false);
+  }
+
+  /** Reverses the targeted payment, then refreshes the detail. */
+  protected submitReversal(): void {
+    const payment = this.targetPayment();
+    if (!payment || this.reversalForm.invalid || this.reversing()) {
+      this.reversalForm.markAllAsTouched();
+      return;
+    }
+    this.reversing.set(true);
+    this.reversalError.set(null);
+    this.receivables
+      .reversePayment(this.receivableId, payment.id, { reason: this.reversalForm.getRawValue().reason.trim() })
+      .subscribe({
+        next: (detail) => {
+          this.reversing.set(false);
+          this.receivable.set(detail);
+          this.reversalForm.markAsPristine();
+          this.reversalDialogOpen.set(false);
+          this.messages.add({
+            severity: 'success',
+            summary: 'Pagamento estornado',
+            detail: 'O pagamento foi estornado com sucesso.',
+          });
+        },
+        error: (err: HttpErrorResponse) => {
+          this.reversing.set(false);
+          this.reversalError.set(this.reversalErrorMessage(err));
+        },
+      });
+  }
+
   protected back(): void {
     this.router.navigateByUrl('/financeiro/contas-a-receber');
   }
@@ -235,7 +299,9 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
       if (document.querySelector('.p-select-overlay, .p-datepicker-panel')) {
         return;
       }
-      if (this.paymentDialogOpen()) {
+      if (this.reversalDialogOpen()) {
+        void this.closeReversal();
+      } else if (this.paymentDialogOpen()) {
         void this.closePayment();
       } else {
         this.back();
@@ -246,7 +312,14 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     const typing =
       !!target &&
       (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
-    if (typing || event.ctrlKey || event.metaKey || event.altKey || this.paymentDialogOpen()) {
+    if (
+      typing ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      this.paymentDialogOpen() ||
+      this.reversalDialogOpen()
+    ) {
       return;
     }
     if (event.key === 'p' && this.auth.canRegisterPayment()) {
@@ -272,6 +345,20 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
       return body?.message ?? 'Não foi possível registrar o pagamento com estes dados.';
     }
     return body?.message ?? 'Não foi possível registrar o pagamento.';
+  }
+
+  private reversalErrorMessage(err: HttpErrorResponse): string {
+    const body = err.error as { message?: string } | null;
+    if (err.status === 403) {
+      return 'Você não tem permissão para estornar pagamentos.';
+    }
+    if (err.status === 404) {
+      return 'Pagamento ou conta a receber não encontrada.';
+    }
+    if (err.status === 422 || err.status === 400) {
+      return body?.message ?? 'Não foi possível estornar o pagamento com estes dados.';
+    }
+    return body?.message ?? 'Não foi possível estornar o pagamento.';
   }
 
   private load(): void {

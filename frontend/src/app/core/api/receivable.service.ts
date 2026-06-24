@@ -37,6 +37,12 @@ export interface Payment {
   registeredById: string | null;
   registeredByName: string | null;
   registeredAt: string;
+  /** Reversal state: when true the payment was reversed (kept in history, no longer counted as paid). */
+  reversed: boolean;
+  reversalReason: string | null;
+  reversedById: string | null;
+  reversedByName: string | null;
+  reversedAt: string | null;
 }
 
 /** A selectable payment method (the active values of the cadastro). */
@@ -54,6 +60,11 @@ export interface RegisterPayment {
   amount: number;
   paymentDate: string;
   note?: string | null;
+}
+
+/** Payload to reverse a registered payment (a payment-entry correction). The reason is required. */
+export interface ReversePayment {
+  reason: string;
 }
 
 /**
@@ -202,6 +213,21 @@ export class ReceivableService {
   ): Observable<ReceivableDetail> {
     return this.http.post<ReceivableDetail>(
       `/api/receivables/${receivableId}/installments/${installmentId}/payments`,
+      payload,
+    );
+  }
+
+  /**
+   * Reverses a registered payment (a payment-entry correction); returns the refreshed detail (the payment stays
+   * in history marked reversed, the installment + receivable status and paid amount re-consolidated).
+   */
+  reversePayment(
+    receivableId: string,
+    paymentId: string,
+    payload: ReversePayment,
+  ): Observable<ReceivableDetail> {
+    return this.http.post<ReceivableDetail>(
+      `/api/receivables/${receivableId}/payments/${paymentId}/reversals`,
       payload,
     );
   }

@@ -160,6 +160,11 @@ export class AuthService {
   canRegisterPayment(): boolean {
     return this.hasScope('financial:payment:register');
   }
+
+  /** Whether the user may reverse a registered payment (a payment-entry correction; the financial operator). */
+  canReversePayment(): boolean {
+    return this.hasScope('financial:payment:reverse');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

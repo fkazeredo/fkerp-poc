@@ -43,9 +43,11 @@ import com.fksoft.erp.domain.error.DomainException;
 import com.fksoft.erp.domain.financial.exception.InstallmentNotPayableException;
 import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
+import com.fksoft.erp.domain.financial.exception.PaymentAlreadyReversedException;
 import com.fksoft.erp.domain.financial.exception.PaymentExceedsOutstandingException;
 import com.fksoft.erp.domain.financial.exception.PaymentInstallmentNotFoundException;
 import com.fksoft.erp.domain.financial.exception.PaymentMethodNotAvailableException;
+import com.fksoft.erp.domain.financial.exception.PaymentNotFoundException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAccessDeniedException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAlreadyExistsException;
 import com.fksoft.erp.domain.financial.exception.ReceivableNotFoundException;
@@ -166,6 +168,8 @@ public class HttpErrorMapping {
             entry(PaymentInstallmentNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(InstallmentNotPayableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(PaymentExceedsOutstandingException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(PaymentNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(PaymentAlreadyReversedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {
