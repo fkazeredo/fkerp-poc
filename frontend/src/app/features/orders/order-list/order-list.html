@@ -145,6 +145,7 @@
         <th>Status</th>
         <th>Reserva</th>
         <th>Status da reserva</th>
+        <th>Status financeiro</th>
         <th>Criado em</th>
       </tr>
     </ng-template>
@@ -185,12 +186,22 @@
             <span class="muted">Não iniciada</span>
           }
         </td>
+        <td>
+          @if (o.financialStatus) {
+            <p-tag
+              [value]="financialStatusLabel(o.financialStatus)"
+              [severity]="financialStatusSeverity(o.financialStatus)"
+            />
+          } @else {
+            <span class="muted">Sem conta</span>
+          }
+        </td>
         <td>{{ o.createdAt | date: 'short' }}</td>
       </tr>
     </ng-template>
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="9" class="muted empty">Nenhum pedido ainda.</td>
+        <td colspan="10" class="muted empty">Nenhum pedido ainda.</td>
       </tr>
     </ng-template>
   </p-table>

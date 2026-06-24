@@ -382,6 +382,66 @@ class ReceivableTest {
     }
 
     @Test
+    void markOverdueIfPastDueFlagsAnOperationalPastDueReceivable() {
+        Receivable receivable = receivableWithSchedule(new BigDecimal("500.00"), List.of()); // single installment, DUE
+        LocalDate pastDue = DUE.plusDays(1);
+
+        assertThat(receivable.markOverdueIfPastDue(DUE.minusDays(1))).isFalse(); // not yet due
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.OPEN);
+
+        assertThat(receivable.markOverdueIfPastDue(pastDue)).isTrue();
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.OVERDUE);
+
+        // Idempotent — already OVERDUE returns false and stays OVERDUE.
+        assertThat(receivable.markOverdueIfPastDue(pastDue)).isFalse();
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.OVERDUE);
+    }
+
+    @Test
+    void markOverdueIfPastDueLeavesAFullyPaidReceivableAlone() {
+        Receivable receivable = receivableWithSchedule(new BigDecimal("500.00"), List.of());
+        receivable.registerPayment(
+                receivable.installments().get(0).id(),
+                new BigDecimal("500.00"),
+                LocalDate.of(2026, 6, 20),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+
+        assertThat(receivable.markOverdueIfPastDue(DUE.plusDays(30))).isFalse();
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.PAID);
+    }
+
+    @Test
+    void aPartialPaymentKeepsAnOverdueReceivableOverdueUntilFullySettled() {
+        Receivable receivable = receivableWithSchedule(new BigDecimal("500.00"), List.of());
+        receivable.markOverdueIfPastDue(DUE.plusDays(1));
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.OVERDUE);
+
+        // A partial payment does not "un-overdue" a still-outstanding receivable.
+        receivable.registerPayment(
+                receivable.installments().get(0).id(),
+                new BigDecimal("200.00"),
+                LocalDate.of(2026, 8, 2),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.OVERDUE);
+        assertThat(receivable.amountPaid()).isEqualByComparingTo("200.00");
+        assertThat(receivable.installments().get(0).status()).isEqualTo(InstallmentStatus.PARTIALLY_PAID);
+
+        // Settling the balance moves it to PAID.
+        receivable.registerPayment(
+                receivable.installments().get(0).id(),
+                new BigDecimal("300.00"),
+                LocalDate.of(2026, 8, 3),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.PAID);
+    }
+
+    @Test
     void activeStatusesExcludeOnlyCancelled() {
         assertThat(ReceivableStatus.active())
                 .containsExactlyInAnyOrder(

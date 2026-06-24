@@ -27,6 +27,7 @@ describe('OrderDetailPage', () => {
     status: 'PENDING_BOOKING',
     requiresBooking: true,
     bookingStatus: null,
+    financialStatus: null,
     responsibleId: 'u1',
     responsibleName: 'comercial',
     unassigned: false,
@@ -183,6 +184,27 @@ describe('OrderDetailPage', () => {
       const el = render();
       expect(el.textContent).toContain('Status da reserva');
       expect(el.textContent).toContain('Reserva ainda não iniciada');
+    });
+  });
+
+  describe('financial reflection', () => {
+    it('renders the financial status tag and the ready-for-commission hint when PAID', () => {
+      orders.detail.mockReturnValue(of({ ...sample, financialStatus: 'PAID' } satisfies CommercialOrderDetail));
+      const el = render();
+      expect(el.textContent).toContain('Paga');
+      expect(el.textContent).toContain('Comissionamento');
+    });
+
+    it('renders the financial-problem hint when OVERDUE', () => {
+      orders.detail.mockReturnValue(of({ ...sample, financialStatus: 'OVERDUE' } satisfies CommercialOrderDetail));
+      const el = render();
+      expect(el.textContent).toContain('Vencida');
+      expect(el.textContent).toContain('problema financeiro');
+    });
+
+    it('shows the no-receivable hint when there is no reflected financial status', () => {
+      orders.detail.mockReturnValue(of(sample));
+      expect(render().textContent).toContain('Sem conta a receber ainda');
     });
   });
 

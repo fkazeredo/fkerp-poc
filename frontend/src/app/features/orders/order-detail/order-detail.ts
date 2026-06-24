@@ -15,6 +15,7 @@ import {
 import { BookingRequestStatus } from '../../../core/api/booking.service';
 import { OpportunityStage } from '../../../core/api/opportunity.service';
 import { ProposalItemType, ProposalStatus } from '../../../core/api/proposal.service';
+import { ReceivableStatus } from '../../../core/api/receivable.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 const STATUS_LABELS: Record<CommercialOrderStatus, string> = {
@@ -85,6 +86,30 @@ const BOOKING_STATUS_HINTS: Record<BookingRequestStatus, string> = {
   CANCELLED: 'Reserva cancelada.',
 };
 
+const FINANCIAL_STATUS_LABELS: Record<ReceivableStatus, string> = {
+  OPEN: 'Em aberto',
+  PARTIALLY_PAID: 'Parcialmente paga',
+  PAID: 'Paga',
+  OVERDUE: 'Vencida',
+  CANCELLED: 'Cancelada',
+};
+
+const FINANCIAL_STATUS_SEVERITY: Record<ReceivableStatus, TagSeverity> = {
+  OPEN: 'info',
+  PARTIALLY_PAID: 'warn',
+  PAID: 'success',
+  OVERDUE: 'danger',
+  CANCELLED: 'secondary',
+};
+
+const FINANCIAL_STATUS_HINTS: Record<ReceivableStatus, string> = {
+  OPEN: 'Conta a receber em aberto — aguardando pagamento.',
+  PARTIALLY_PAID: 'Parcialmente paga — ainda há saldo a receber.',
+  PAID: 'Paga — o pedido está pronto para o Comissionamento (Sprint 6).',
+  OVERDUE: 'Vencida — problema financeiro a tratar.',
+  CANCELLED: 'Conta a receber cancelada.',
+};
+
 /**
  * Commercial Order detail page (Sales & Proposals): the formal, read-only record of the closed deal — its
  * status, the snapshot of the sold items and total, and the source Proposal / Opportunity / Lead kept
@@ -144,6 +169,19 @@ export class OrderDetailPage implements OnInit {
   /** A human hint about the booking reflection (CONFIRMED → ready for finance, FAILED → problem, etc.). */
   protected bookingHint(status: BookingRequestStatus | null): string {
     return status ? BOOKING_STATUS_HINTS[status] : 'Reserva ainda não iniciada.';
+  }
+
+  protected financialStatusLabel(status: ReceivableStatus): string {
+    return FINANCIAL_STATUS_LABELS[status];
+  }
+
+  protected financialStatusSeverity(status: ReceivableStatus): TagSeverity {
+    return FINANCIAL_STATUS_SEVERITY[status];
+  }
+
+  /** A human hint about the financial reflection (PAID → ready for commission, OVERDUE → problem, etc.). */
+  protected financialHint(status: ReceivableStatus | null): string {
+    return status ? FINANCIAL_STATUS_HINTS[status] : 'Sem conta a receber ainda.';
   }
 
   /** The human-friendly order code (PC-000n). */

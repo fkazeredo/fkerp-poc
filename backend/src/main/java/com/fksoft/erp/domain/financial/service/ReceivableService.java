@@ -20,6 +20,7 @@ import com.fksoft.erp.domain.financial.model.Receivable;
 import com.fksoft.erp.domain.financial.model.ReceivableCreated;
 import com.fksoft.erp.domain.financial.model.ReceivablePayment;
 import com.fksoft.erp.domain.financial.model.ReceivableStatus;
+import com.fksoft.erp.domain.financial.model.ReceivableStatusChanged;
 import com.fksoft.erp.domain.financial.repository.PaymentMethodRepository;
 import com.fksoft.erp.domain.financial.repository.ReceivableRepository;
 import com.fksoft.erp.domain.financial.service.data.CreateReceivableCommand;
@@ -117,6 +118,8 @@ public class ReceivableService {
                 userId);
         receivables.save(receivable);
         events.publishEvent(new ReceivableCreated(receivable.id(), order.id(), customer.id(), userId));
+        events.publishEvent(new ReceivableStatusChanged(
+                receivable.id(), order.id(), receivable.status().name()));
         return receivable.id();
     }
 
@@ -204,6 +207,10 @@ public class ReceivableService {
                 .orElseThrow(PaymentMethodNotAvailableException::new);
         receivable.registerPayment(installmentId, cmd.amount(), cmd.paymentDate(), method, cmd.note(), userId);
         receivables.save(receivable);
+        events.publishEvent(new ReceivableStatusChanged(
+                receivable.id(),
+                receivable.commercialOrderId(),
+                receivable.status().name()));
         return toDetail(receivable);
     }
 

@@ -657,8 +657,16 @@ O detalhe traz ainda o **Status da reserva** — o reflexo do andamento das oper
 uma orientação clara: quando a reserva está **Confirmada**, o pedido fica **pronto para seguir ao Financeiro**;
 quando **Falhou**, o pedido aparece com um **problema na reserva** que precisa de atenção. Esse status é apenas
 um **reflexo de leitura**: ele **não** altera a situação do pedido (que continua sob a área Comercial), **não**
-cancela o pedido e **não** cria nada de financeiro. A lista e o detalhe mostram **dados do pedido + esse reflexo
-da reserva** — nunca financeiro, pagamento ou comissão.
+cancela o pedido e **não** cria nada de financeiro.
+
+O detalhe (e a lista) mostram também o **Status financeiro** — o reflexo da **conta a receber** ligada ao pedido
+(seção 11): **Em aberto** / **Parcialmente paga** / **Paga** / **Vencida** (ou vazio, quando ainda não há conta a
+receber). Quando **Paga**, o pedido fica **pronto para o Comissionamento** (etapa futura); quando **Vencida**, ele
+aparece como **problema financeiro** a tratar; **Parcialmente paga** não é tratado como pago. Assim como o reflexo
+da reserva, o status financeiro é apenas **leitura**: o pedido **continua sob a área Comercial** (o Financeiro
+nunca assume o pedido), e refleti-lo **não** cria comissão. O status **Vencida** é marcado por uma **verificação
+diária** que sinaliza as contas vencidas com saldo em aberto. A lista e o detalhe mostram **dados do pedido + os
+reflexos de reserva e financeiro** — nunca pagamento ou comissão.
 
 > A partir de um pedido **Pendente de reserva**, as **operações de reserva** já estão disponíveis no módulo
 > **Reservas** (seção 10); conforme a reserva é confirmada ou falha por lá, o **Status da reserva** do pedido se

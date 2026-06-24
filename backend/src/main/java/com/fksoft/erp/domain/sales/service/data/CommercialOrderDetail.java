@@ -17,14 +17,17 @@ import java.util.UUID;
 /**
  * Full Commercial Order detail (read model): the formal record of the closed deal, assembled from the Order
  * (with its item snapshot) plus its source Proposal, Opportunity and Lead (kept traceable) and a map of user
- * id → display name. Exposes commercial-order data only — never Booking, Receivable, Payment, Commission or
- * Customer Care data.
+ * id → display name. Exposes commercial-order data plus the booking and financial status reflections only —
+ * never Receivable, Payment, Commission or Customer Care detail.
  *
  * @param requiresBooking whether the Order still needs a reservation (the explicit booking-need indicator;
  *     {@code true} when the status is PENDING_BOOKING) — what Sprint 4 Booking Operations keys off
  * @param bookingStatus the consolidated booking status reflected from Booking Operations, or {@code null} when
  *     no Booking Request exists yet; {@code CONFIRMED} marks the Order ready for Financial Operations and
  *     {@code FAILED} marks a booking problem (a read-only reflection — it never drives the Order's own status)
+ * @param financialStatus the Receivable status reflected from Financial Operations, or {@code null} when no
+ *     Receivable exists yet; {@code PAID} marks the Order ready for Commission Management (Sprint 6) and
+ *     {@code OVERDUE} marks a financial problem (a read-only reflection — it never drives the Order's own status)
  * @param items the order lines (snapshot of the Proposal's items), each with its computed line total
  * @param subtotal the items subtotal (snapshot from the Proposal)
  * @param total the order total (snapshot from the Proposal)
@@ -42,6 +45,7 @@ public record CommercialOrderDetail(
         String status,
         boolean requiresBooking,
         String bookingStatus,
+        String financialStatus,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,
@@ -79,6 +83,7 @@ public record CommercialOrderDetail(
                 o.status().name(),
                 "PENDING_BOOKING".equals(o.status().name()),
                 o.bookingStatus(),
+                o.financialStatus(),
                 o.responsiblePersonId(),
                 nameOf(names, o.responsiblePersonId()),
                 o.responsiblePersonId() == null,

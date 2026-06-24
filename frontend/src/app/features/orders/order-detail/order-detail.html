@@ -16,6 +16,12 @@
           [severity]="bookingStatusSeverity(o.bookingStatus)"
         />
       }
+      @if (o.financialStatus) {
+        <p-tag
+          [value]="'Financeiro: ' + financialStatusLabel(o.financialStatus)"
+          [severity]="financialStatusSeverity(o.financialStatus)"
+        />
+      }
     </div>
     @if (canGenerateReceivable()) {
       <p-button
@@ -47,6 +53,16 @@
             />
           }
           <span class="hint muted">{{ bookingHint(o.bookingStatus) }}</span>
+        </dd>
+        <dt>Status financeiro</dt>
+        <dd class="financial-status">
+          @if (o.financialStatus) {
+            <p-tag
+              [value]="financialStatusLabel(o.financialStatus)"
+              [severity]="financialStatusSeverity(o.financialStatus)"
+            />
+          }
+          <span class="hint muted">{{ financialHint(o.financialStatus) }}</span>
         </dd>
         <dt>Próximo passo</dt>
         <dd class="next-step">{{ nextStep(o.status) }}</dd>

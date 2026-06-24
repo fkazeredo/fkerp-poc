@@ -100,7 +100,9 @@ public record ReceivableDetail(
                         .toList(),
                 r.payments().stream()
                         .sorted(Comparator.comparing(ReceivablePayment::paymentDate)
-                                .thenComparing(ReceivablePayment::registeredAt))
+                                .thenComparing(
+                                        ReceivablePayment::registeredAt,
+                                        Comparator.nullsLast(Comparator.naturalOrder())))
                         .map(p -> PaymentView.from(
                                 p,
                                 installmentNumbers.getOrDefault(p.installmentId(), 0),

@@ -263,20 +263,47 @@ public class Receivable {
     /**
      * Consolidates the Receivable status from the paid total after a payment: {@code PAID} when nothing is
      * outstanding, {@code PARTIALLY_PAID} when something has been received but a balance remains, otherwise
-     * {@code OPEN} (no payment yet). Never overrides an explicit {@code CANCELLED}. Equivalent to rolling up the
-     * installment statuses, since the installments' paid amounts sum to the Receivable's.
+     * {@code OPEN} (no payment yet). A still-outstanding {@code OVERDUE} receivable stays {@code OVERDUE} (a
+     * payment never "un-overdues" a past-due receivable; the OPEN/PARTIALLY_PAID → OVERDUE transition is owned by
+     * {@link #markOverdueIfPastDue}). Never overrides an explicit {@code CANCELLED}.
      */
     private void consolidateStatus() {
         if (status == ReceivableStatus.CANCELLED) {
             return;
         }
-        if (amountPaid.signum() == 0) {
-            status = ReceivableStatus.OPEN;
-        } else if (totalAmount.subtract(amountPaid).signum() <= 0) {
+        if (totalAmount.subtract(amountPaid).signum() <= 0) {
             status = ReceivableStatus.PAID;
-        } else {
+        } else if (status == ReceivableStatus.OVERDUE) {
+            // Still outstanding and already past due — a partial payment keeps it OVERDUE.
+            return;
+        } else if (amountPaid.signum() > 0) {
             status = ReceivableStatus.PARTIALLY_PAID;
+        } else {
+            status = ReceivableStatus.OPEN;
         }
+    }
+
+    /**
+     * Transitions an operational ({@code OPEN}/{@code PARTIALLY_PAID}) Receivable to {@code OVERDUE} when it has a
+     * balance remaining and at least one of its installments is past due as of {@code today}. Idempotent — a
+     * {@code PAID}/{@code CANCELLED}/already-{@code OVERDUE} receivable is left untouched. Owned by the daily
+     * overdue check (a Receivable is never "un-overdued"; a payment that settles it moves it to {@code PAID}).
+     *
+     * @param today the reference (current) date
+     * @return {@code true} if the status transitioned to {@code OVERDUE}
+     */
+    public boolean markOverdueIfPastDue(LocalDate today) {
+        if (status != ReceivableStatus.OPEN && status != ReceivableStatus.PARTIALLY_PAID) {
+            return false;
+        }
+        if (totalAmount.subtract(amountPaid).signum() <= 0) {
+            return false;
+        }
+        if (installments.stream().noneMatch(i -> i.isPastDue(today))) {
+            return false;
+        }
+        status = ReceivableStatus.OVERDUE;
+        return true;
     }
 
     private static String emptyToNull(String value) {
