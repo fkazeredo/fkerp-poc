@@ -44,14 +44,18 @@ export interface ReceivableListItem {
 
 /**
  * Full Receivable detail — keeps the commercial origin (Order / Proposal / Opportunity / Lead / Customer)
- * traceable. Carries receivable data only — never Payment, Commission or Invoice data.
+ * traceable and exposes the payment standing (paid / outstanding / overdue) and the installment schedule.
+ * Carries receivable data only — never Commission, bank-reconciliation or tax-invoice data. {@code amountPaid}
+ * is zero and the payment history is empty until the payment slice.
  */
 export interface ReceivableDetail {
   id: string;
   commercialOrderId: string;
   orderNumber: number;
   proposalId: string;
+  proposalReference: string | null;
   opportunityId: string;
+  opportunityReference: string | null;
   leadId: string;
   customerId: string;
   customerName: string | null;
@@ -60,7 +64,10 @@ export interface ReceivableDetail {
   financialResponsibleId: string | null;
   financialResponsibleName: string | null;
   totalAmount: number;
+  amountPaid: number;
+  outstandingAmount: number;
   dueDate: string;
+  overdue: boolean;
   paymentNotes: string | null;
   status: ReceivableStatus;
   installments: ReceivableInstallment[];

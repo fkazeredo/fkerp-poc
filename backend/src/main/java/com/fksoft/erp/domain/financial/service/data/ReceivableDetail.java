@@ -2,6 +2,7 @@ package com.fksoft.erp.domain.financial.service.data;
 
 import com.fksoft.erp.domain.financial.model.Receivable;
 import com.fksoft.erp.domain.financial.model.ReceivableInstallment;
+import com.fksoft.erp.domain.financial.model.ReceivableStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -11,16 +12,20 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Full detail of a Receivable, keeping the commercial origin (Order / Proposal / Opportunity / Lead /
- * Customer) traceable and exposing its installment schedule. Carries receivable data only — never Payment,
- * Commission or Invoice data.
+ * Full detail of a Receivable, for consultation: its summary, the traceable commercial origin (Order / Proposal
+ * / Opportunity / Lead / Customer), the installment schedule and the payment standing (paid / outstanding /
+ * overdue). Carries receivable data only — never Commission, bank-reconciliation or tax-invoice data. The
+ * {@code amountPaid} / {@code outstandingAmount} fields reflect the current (no-payment) state — zero / full
+ * total — and the payment + reversal history become available with the payment slice.
  */
 public record ReceivableDetail(
         UUID id,
         UUID commercialOrderId,
         long orderNumber,
         UUID proposalId,
+        String proposalReference,
         UUID opportunityId,
+        String opportunityReference,
         UUID leadId,
         UUID customerId,
         String customerName,
@@ -29,7 +34,10 @@ public record ReceivableDetail(
         UUID financialResponsibleId,
         String financialResponsibleName,
         BigDecimal totalAmount,
+        BigDecimal amountPaid,
+        BigDecimal outstandingAmount,
         LocalDate dueDate,
+        boolean overdue,
         String paymentNotes,
         String status,
         List<InstallmentView> installments,
@@ -37,21 +45,36 @@ public record ReceivableDetail(
         String createdByName) {
 
     /**
-     * Builds the detail from the entity and the resolved cross-aggregate data.
+     * Builds the detail from the entity and the resolved cross-aggregate data. {@code amountPaid} is zero and
+     * the payment history is empty until the payment slice; {@code overdue} is computed from the due date and the
+     * status (settled receivables are never overdue).
      *
      * @param r the receivable entity
      * @param orderNumber the resolved source order number
      * @param customerName the resolved payer name
+     * @param proposalReference the resolved source Proposal title (commercial reference), or {@code null}
+     * @param opportunityReference the resolved source Opportunity name (commercial reference), or {@code null}
      * @param names a map of user id to username (for the responsibles and the creator)
+     * @param today the current date, for the overdue computation
      * @return the detail read model
      */
-    public static ReceivableDetail from(Receivable r, long orderNumber, String customerName, Map<UUID, String> names) {
+    public static ReceivableDetail from(
+            Receivable r,
+            long orderNumber,
+            String customerName,
+            String proposalReference,
+            String opportunityReference,
+            Map<UUID, String> names,
+            LocalDate today) {
+        BigDecimal amountPaid = BigDecimal.ZERO; // no payments yet (payment slice)
         return new ReceivableDetail(
                 r.id(),
                 r.commercialOrderId(),
                 orderNumber,
                 r.proposalId(),
+                proposalReference,
                 r.opportunityId(),
+                opportunityReference,
                 r.leadId(),
                 r.customerId(),
                 customerName,
@@ -60,7 +83,10 @@ public record ReceivableDetail(
                 r.financialResponsiblePersonId(),
                 nameOf(names, r.financialResponsiblePersonId()),
                 r.totalAmount(),
+                amountPaid,
+                r.totalAmount().subtract(amountPaid),
                 r.dueDate(),
+                isOverdue(r, today),
                 r.paymentNotes(),
                 r.status().name(),
                 r.installments().stream()
@@ -69,6 +95,14 @@ public record ReceivableDetail(
                         .toList(),
                 r.createdAt(),
                 nameOf(names, r.createdBy()));
+    }
+
+    // Overdue = past the (next) due date and still requiring follow-up (not PAID, not CANCELLED).
+    private static boolean isOverdue(Receivable r, LocalDate today) {
+        return r.dueDate() != null
+                && r.dueDate().isBefore(today)
+                && r.status() != ReceivableStatus.PAID
+                && r.status() != ReceivableStatus.CANCELLED;
     }
 
     private static String nameOf(Map<UUID, String> names, UUID id) {

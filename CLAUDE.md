@@ -726,6 +726,21 @@ total / none) and become real with the payment slice. Filters: `status`, `payer`
 `financialResponsible`, amount range and `overdueOnly`. The list creates nothing and never shows Commission, bank
 reconciliation, tax-invoice or cash-flow data (those are out of scope).
 
+**Receivable detail consultation (normative — Financial Operations, Sprint 5 Slice 4).** `GET /api/receivables/{id}`
+is the read-only **detail** a financial user opens to understand a receivable's origin, installments, payment
+standing and outstanding balance. It is gated by the read tiers and `ReceivableAccessPolicy.canSee` (**404**
+`financial.receivable.not-found` if absent, **403** `financial.receivable.access-denied` if not visible — only
+receivables the caller may see). It exposes: the **summary** + **financial notes** (`paymentNotes`); the **traceable
+commercial origin** — source **Commercial Order** (`PC-000n`, kept traceable), the **Proposal** and **Opportunity**
+**commercial references** (the resolved `proposalReference` title and `opportunityReference` name, plus the ids/Lead
+for linking); the **payer** (Customer); **`totalAmount`** / **`amountPaid`** / **`outstandingAmount`** (`total −
+paid`) and the **`overdue`** flag (computed: next due date past + status operational); the **installment list**; and
+the **commercial + financial responsible**. The **payment history and reversal history** become available with the
+payment slice — until then the detail's payment section is an honest empty state (no payments yet); a **reversed
+payment will stay historically visible** there. `amountPaid` is zero / `outstanding` is the full total until
+payments exist. The detail carries **receivable + commercial-origin data only — never Commission, bank-reconciliation
+or tax-invoice data**, and creates nothing.
+
 **Receivable installments (normative — Financial Operations, Sprint 5 Slice 2).** A Receivable is split into one or
 more **installments** (`ReceivableInstallment`, a child collection of the Receivable aggregate —
 `@OneToMany(cascade=ALL, orphanRemoval=true)`, mirroring `ProposalItem`). Each installment has an **`number`**
