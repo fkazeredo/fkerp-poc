@@ -7,7 +7,7 @@ import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.CustomerService;
 import com.fksoft.erp.domain.financial.exception.InstallmentNotPayableException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
-import com.fksoft.erp.domain.financial.exception.PaymentAmountMismatchException;
+import com.fksoft.erp.domain.financial.exception.PaymentExceedsOutstandingException;
 import com.fksoft.erp.domain.financial.exception.PaymentInstallmentNotFoundException;
 import com.fksoft.erp.domain.financial.exception.PaymentMethodNotAvailableException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAccessDeniedException;
@@ -189,7 +189,7 @@ public class ReceivableService {
      * @throws PaymentMethodNotAvailableException if the payment method is unknown or inactive
      * @throws PaymentInstallmentNotFoundException if the installment is not part of the Receivable
      * @throws InstallmentNotPayableException if the installment is already paid or cancelled
-     * @throws PaymentAmountMismatchException if the amount does not equal the installment amount
+     * @throws PaymentExceedsOutstandingException if the amount exceeds the installment's outstanding amount
      */
     @Transactional
     public ReceivableDetail registerPayment(
@@ -202,7 +202,7 @@ public class ReceivableService {
                 .findById(cmd.paymentMethodId())
                 .filter(ReferenceData::active)
                 .orElseThrow(PaymentMethodNotAvailableException::new);
-        receivable.registerFullPayment(installmentId, cmd.amount(), cmd.paymentDate(), method, cmd.note(), userId);
+        receivable.registerPayment(installmentId, cmd.amount(), cmd.paymentDate(), method, cmd.note(), userId);
         receivables.save(receivable);
         return toDetail(receivable);
     }

@@ -758,8 +758,8 @@ Commission, Invoice or tax data; the detail exposes the installment schedule, st
 Invoice data. Out of scope: interest, late fee, boleto/Pix generation, recurring billing, tax-invoice schedule,
 commission, and editing the schedule after creation.
 
-**Payment registration (normative — Financial Operations, Sprint 5 Slice 5).** An authorized financial user
-**registers a full payment** against one **installment** of a Receivable: `POST
+**Payment registration (normative — Financial Operations, Sprint 5 Slices 5–6).** An authorized financial user
+**registers a payment** (full or partial) against one **installment** of a Receivable: `POST
 /api/receivables/{id}/installments/{installmentId}/payments`, gated by the operation scope
 **`financial:payment:register`** and the same Receivable read tiers for visibility (the caller must be able to see
 the Receivable, else **403**). A **payment** (`ReceivablePayment`, an append-only child of the Receivable aggregate
@@ -768,23 +768,29 @@ the Receivable, else **403**). A **payment** (`ReceivablePayment`, an append-onl
 user + instant. The **payment method is a cadastro** (reference data, **not** an enum — §1 invariant 8):
 `PaymentMethod extends ReferenceData` in `domain.financial`, managed via `reference:manage` at `GET/POST/PUT/DELETE
 /api/financial/payment-methods`, seeded with Cash / Bank transfer / Pix / Credit card / Debit card / Invoice
-payment / Other; an unknown/inactive method is **422** `financial.payment.method-not-available`. This slice
-registers **full payments only**: the amount **must equal the installment amount** (else **422**
-`financial.payment.amount-mismatch`); only an **`OPEN`** installment can be paid (else **422**
+payment / Other; an unknown/inactive method is **422** `financial.payment.method-not-available`. The payment is
+**amount-driven**: `0 < amount ≤ the installment's outstanding` (`amount − amountPaid`) — it may settle the
+installment **fully** (amount == outstanding) **or partially**; **overpayment is out of scope**, so an amount
+exceeding the outstanding is **422** `financial.payment.exceeds-outstanding`. A **payable** installment is one not
+already resolved — `OPEN` **or `PARTIALLY_PAID`** (an already `PAID`/`CANCELLED` installment is **422**
 `financial.payment.installment-not-payable`); an installment outside the Receivable is **404**
-`financial.payment.installment-not-found`. A full payment moves the installment to **`PAID`** and the aggregate
-**consolidates** the Receivable status (`Receivable.registerFullPayment` → `consolidateStatus`): every installment
-paid → **`PAID`**, ≥1 (not all) paid → **`PARTIALLY_PAID`**, never overriding `CANCELLED`. The Receivable
+`financial.payment.installment-not-found`. The installment **denormalizes its own `amount_paid`** and moves to
+**`PARTIALLY_PAID`** (0 < paid < amount) or **`PAID`** (paid == amount); **multiple partial payments** may be
+registered until it is settled. The aggregate then **consolidates** the Receivable status
+(`Receivable.registerPayment` → `consolidateStatus`, amount-driven): no payment → `OPEN`; outstanding == 0 →
+**`PAID`**; else (≥1 payment, balance remains) → **`PARTIALLY_PAID`**, never overriding `CANCELLED`. The Receivable
 **denormalizes** `amount_paid` (sum of payments) and `last_payment_date` (latest payment date), so the list/detail
-serve `amountPaid` / `outstandingAmount` / `lastPaymentDate` without an N+1; the detail exposes the **payment
-history** alongside the schedule. Registering a payment creates **no** Commission, Invoice, receipt/voucher or
-bank-reconciliation data, performs **no** Pix/card/gateway capture, and never touches the Order, Lead or Customer.
-**Persona → scopes (Sprint 5):** only the back-office **`financeiro`** (005) holds `financial:payment:register`;
-the **Manager** (001) and **Board/Director** (004) keep read-only consultation (no payment register). Out of scope
-(later slices): partial payments, payment reversal, the `OVERDUE` automatic transition, the financial status
-reflected onto the Order, financial indicators, Commission, and receipt-PDF generation. In the frontend, the
-Receivable detail offers **Registrar pagamento** per open installment (shortcut <kbd>p</kbd>) behind
-`canRegisterPayment()`, and the **Formas de pagamento** cadastro lives in the **Cadastros** module.
+serve `amountPaid` / `outstandingAmount` / `lastPaymentDate` without an N+1; the **detail** exposes the **payment
+history** and the **per-installment** `amountPaid` / `outstanding` alongside the schedule. Registering a payment
+creates **no** Commission, Invoice, receipt/voucher or bank-reconciliation data, performs **no** Pix/card/gateway
+capture, and never touches the Order, Lead or Customer. **Persona → scopes:** only the back-office **`financeiro`**
+(005) holds `financial:payment:register`; the **Manager** (001) and **Board/Director** (004) keep read-only
+consultation (no payment register). Out of scope (later slices): **overpayment**, cross-installment /
+Receivable-level auto-allocation, payment reversal, the `OVERDUE` automatic transition, the financial status
+reflected onto the Order, financial indicators, interest/late fee, Commission, and receipt-PDF generation. In the
+frontend, the Receivable detail offers **Registrar pagamento** per **payable** installment (shortcut <kbd>p</kbd>)
+behind `canRegisterPayment()` with an **editable amount** defaulting to the outstanding, and the **Formas de
+pagamento** cadastro lives in the **Cadastros** module.
 
 **Customer (normative — the commercial graduation of a Lead, in `domain.crm`).** The **Customer** is the company's
 client, materialized from its source **Lead** when a Commercial Order is created (deal closed): a **synchronous,

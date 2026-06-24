@@ -70,8 +70,8 @@ public class ReceivablePayment {
     private Instant registeredAt;
 
     /**
-     * Builds a payment for an installment (the amount is normalized to scale 2). The full-payment / payable-state
-     * checks live on {@link Receivable#registerFullPayment}.
+     * Builds a payment for an installment (the amount is normalized to scale 2). The amount / payable-state
+     * checks live on {@link Receivable#registerPayment}.
      *
      * @param installmentId the settled installment id
      * @param amount the payment amount (positive)

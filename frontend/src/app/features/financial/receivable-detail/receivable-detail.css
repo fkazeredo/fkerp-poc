@@ -185,6 +185,11 @@
   font-size: 1.15rem;
 }
 
+.payment-form .field-error {
+  color: var(--p-red-500, #ef4444);
+  font-size: 0.8rem;
+}
+
 .payment-form p-select,
 .payment-form p-datepicker {
   width: 100%;

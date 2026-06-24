@@ -10,6 +10,7 @@ import { MessageModule } from 'primeng/message';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
 import { DatePickerModule } from 'primeng/datepicker';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { TextareaModule } from 'primeng/textarea';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -62,6 +63,7 @@ const STATUS_SEVERITY: Record<ReceivableStatus, TagSeverity> = {
     DialogModule,
     SelectModule,
     DatePickerModule,
+    InputNumberModule,
     TextareaModule,
   ],
   templateUrl: './receivable-detail.html',
@@ -91,6 +93,7 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
 
   protected readonly paymentForm = this.fb.nonNullable.group({
     paymentMethodId: ['', Validators.required],
+    amount: [null as number | null, [Validators.required, Validators.min(0.01)]],
     paymentDate: [null as Date | null, Validators.required],
     note: [''],
   });
@@ -147,9 +150,12 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     );
   }
 
-  /** Whether the installment can receive a payment (OPEN) and the user is authorized. */
+  /** Whether the installment can receive a payment (still has a balance) and the user is authorized. */
   protected canPay(installment: ReceivableInstallment): boolean {
-    return this.auth.canRegisterPayment() && installment.status === 'OPEN';
+    return (
+      this.auth.canRegisterPayment() &&
+      (installment.status === 'OPEN' || installment.status === 'PARTIALLY_PAID')
+    );
   }
 
   /** Whole days the receivable is past due (for the overdue note); 0 when not overdue. */
@@ -166,11 +172,16 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     return 'PC-' + String(n).padStart(4, '0');
   }
 
-  /** Opens the payment dialog for the given installment (full payment of its exact amount). */
+  /** Opens the payment dialog for the given installment, defaulting the amount to its outstanding balance. */
   protected openPayment(installment: ReceivableInstallment): void {
     this.targetInstallment.set(installment);
     this.paymentError.set(null);
-    this.paymentForm.reset({ paymentMethodId: '', paymentDate: new Date(), note: '' });
+    this.paymentForm.reset({
+      paymentMethodId: '',
+      amount: installment.outstanding,
+      paymentDate: new Date(),
+      note: '',
+    });
     this.paymentDialogOpen.set(true);
   }
 
@@ -182,7 +193,7 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     this.paymentDialogOpen.set(false);
   }
 
-  /** Registers the full payment for the targeted installment, then refreshes the detail from the response. */
+  /** Registers the payment (full or partial) for the targeted installment, then refreshes the detail. */
   protected submitPayment(): void {
     const installment = this.targetInstallment();
     if (!installment || this.paymentForm.invalid || this.saving()) {
@@ -195,7 +206,7 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     this.receivables
       .registerPayment(this.receivableId, installment.id, {
         paymentMethodId: v.paymentMethodId,
-        amount: installment.amount,
+        amount: v.amount!,
         paymentDate: toIsoDate(v.paymentDate)!,
         note: emptyToNull(v.note),
       })
@@ -223,7 +234,7 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
   }
 
   /**
-   * Keyboard: <kbd>p</kbd> opens the payment dialog for the first open installment (when authorized);
+   * Keyboard: <kbd>p</kbd> opens the payment dialog for the first payable installment (when authorized);
    * <kbd>Esc</kbd> closes the dialog (guarded) or, when none is open, returns to the list. While a PrimeNG
    * overlay (select/datepicker) is open, Esc closes that first.
    */
@@ -248,7 +259,9 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
       return;
     }
     if (event.key === 'p' && this.auth.canRegisterPayment()) {
-      const payable = this.receivable()?.installments.find((i) => i.status === 'OPEN');
+      const payable = this.receivable()?.installments.find(
+        (i) => i.status === 'OPEN' || i.status === 'PARTIALLY_PAID',
+      );
       if (payable) {
         event.preventDefault();
         this.openPayment(payable);

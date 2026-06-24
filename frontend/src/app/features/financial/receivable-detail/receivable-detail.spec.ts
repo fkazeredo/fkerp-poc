@@ -61,8 +61,26 @@ describe('ReceivableDetailPage', () => {
     paymentNotes: 'Boleto à vista',
     status: 'OPEN',
     installments: [
-      { id: 'i1', number: 1, amount: 600, dueDate: '2026-07-15', status: 'OPEN', paymentNotes: 'entrada' },
-      { id: 'i2', number: 2, amount: 900, dueDate: '2026-08-15', status: 'OPEN', paymentNotes: null },
+      {
+        id: 'i1',
+        number: 1,
+        amount: 600,
+        amountPaid: 0,
+        outstanding: 600,
+        dueDate: '2026-07-15',
+        status: 'OPEN',
+        paymentNotes: 'entrada',
+      },
+      {
+        id: 'i2',
+        number: 2,
+        amount: 900,
+        amountPaid: 0,
+        outstanding: 900,
+        dueDate: '2026-08-15',
+        status: 'OPEN',
+        paymentNotes: null,
+      },
     ],
     payments: [],
     createdAt: '2026-06-20T10:00:00Z',
@@ -140,27 +158,31 @@ describe('ReceivableDetailPage', () => {
 
   it('flags a past-due open installment as overdue, but not a future or settled one', () => {
     const comp = build();
-    const past = '2020-01-01';
-    const future = '2999-12-31';
-    expect(
-      comp['installmentOverdue']({ id: 'x', number: 1, amount: 1, dueDate: past, status: 'OPEN', paymentNotes: null }),
-    ).toBe(true);
-    expect(
-      comp['installmentOverdue']({ id: 'x', number: 1, amount: 1, dueDate: future, status: 'OPEN', paymentNotes: null }),
-    ).toBe(false);
-    expect(
-      comp['installmentOverdue']({ id: 'x', number: 1, amount: 1, dueDate: past, status: 'PAID', paymentNotes: null }),
-    ).toBe(false);
+    const base = { id: 'x', number: 1, amount: 1, amountPaid: 0, outstanding: 1, paymentNotes: null };
+    expect(comp['installmentOverdue']({ ...base, dueDate: '2020-01-01', status: 'OPEN' })).toBe(true);
+    expect(comp['installmentOverdue']({ ...base, dueDate: '2999-12-31', status: 'OPEN' })).toBe(false);
+    expect(comp['installmentOverdue']({ ...base, dueDate: '2020-01-01', status: 'PAID' })).toBe(false);
   });
 
-  it('only allows paying an OPEN installment, and only when authorized', () => {
+  it('allows paying an OPEN or PARTIALLY_PAID installment when authorized, never a settled one', () => {
     const comp = build();
-    const open = { id: 'x', number: 1, amount: 1, dueDate: '2026-07-15', status: 'OPEN' as const, paymentNotes: null };
-    const paid = { ...open, status: 'PAID' as const };
+    const open = {
+      id: 'x',
+      number: 1,
+      amount: 100,
+      amountPaid: 0,
+      outstanding: 100,
+      dueDate: '2026-07-15',
+      status: 'OPEN' as const,
+      paymentNotes: null,
+    };
+    const partial = { ...open, status: 'PARTIALLY_PAID' as const, amountPaid: 40, outstanding: 60 };
+    const paid = { ...open, status: 'PAID' as const, amountPaid: 100, outstanding: 0 };
     auth.canRegisterPayment.mockReturnValue(false);
     expect(comp['canPay'](open)).toBe(false);
     auth.canRegisterPayment.mockReturnValue(true);
     expect(comp['canPay'](open)).toBe(true);
+    expect(comp['canPay'](partial)).toBe(true);
     expect(comp['canPay'](paid)).toBe(false);
   });
 
@@ -194,13 +216,44 @@ describe('ReceivableDetailPage', () => {
   describe('register payment', () => {
     beforeEach(() => auth.canRegisterPayment.mockReturnValue(true));
 
-    it('opens the dialog for the targeted installment with a defaulted payment date', () => {
+    it('opens the dialog defaulting the amount to the outstanding and the date to today', () => {
       const comp = build();
       comp.ngOnInit();
       comp['openPayment'](sample.installments[0]);
       expect(comp['paymentDialogOpen']()).toBe(true);
       expect(comp['targetInstallment']()?.id).toBe('i1');
+      expect(comp['paymentForm'].controls.amount.value).toBe(600); // the installment's outstanding
       expect(comp['paymentForm'].controls.paymentDate.value).toBeInstanceOf(Date);
+    });
+
+    it('registers a partial payment and refreshes the detail from the response', () => {
+      const partiallyPaid: ReceivableDetail = {
+        ...sample,
+        status: 'PARTIALLY_PAID',
+        amountPaid: 200,
+        outstandingAmount: 1300,
+        installments: [
+          { ...sample.installments[0], status: 'PARTIALLY_PAID', amountPaid: 200, outstanding: 400 },
+          sample.installments[1],
+        ],
+        payments: [{ ...samplePayment, amount: 200 }],
+      };
+      receivables.registerPayment.mockReturnValue(of(partiallyPaid));
+      const comp = build();
+      comp.ngOnInit();
+      comp['openPayment'](sample.installments[0]);
+      comp['paymentForm'].controls.paymentMethodId.setValue('m1');
+      comp['paymentForm'].controls.amount.setValue(200);
+      comp['submitPayment']();
+
+      expect(receivables.registerPayment).toHaveBeenCalledWith(
+        'r1',
+        'i1',
+        expect.objectContaining({ paymentMethodId: 'm1', amount: 200 }),
+      );
+      expect(comp['receivable']()?.status).toBe('PARTIALLY_PAID');
+      expect(comp['receivable']()?.installments[0].outstanding).toBe(400);
+      expect(comp['paymentDialogOpen']()).toBe(false);
     });
 
     it('registers the full payment and refreshes the detail from the response', () => {
@@ -246,7 +299,10 @@ describe('ReceivableDetailPage', () => {
           () =>
             new HttpErrorResponse({
               status: 422,
-              error: { code: 'financial.payment.amount-mismatch', message: 'Valor diferente da parcela' },
+              error: {
+                code: 'financial.payment.exceeds-outstanding',
+                message: 'O valor do pagamento não pode exceder o saldo em aberto da parcela',
+              },
             }),
         ),
       );
@@ -255,7 +311,7 @@ describe('ReceivableDetailPage', () => {
       comp['openPayment'](sample.installments[0]);
       comp['paymentForm'].controls.paymentMethodId.setValue('m1');
       comp['submitPayment']();
-      expect(comp['paymentError']()).toContain('Valor diferente da parcela');
+      expect(comp['paymentError']()).toContain('exceder o saldo em aberto');
       expect(comp['paymentDialogOpen']()).toBe(true);
     });
   });
@@ -323,12 +379,25 @@ describe('ReceivableDetailPage', () => {
       expect(el.textContent).toMatch(/vencida há \d+ dia/);
     });
 
-    it('renders the installment schedule (numbers, amounts and status)', () => {
-      receivables.detail.mockReturnValue(of(sample));
+    it('renders the installment schedule (numbers, amounts, paid/outstanding and status)', () => {
+      receivables.detail.mockReturnValue(
+        of({
+          ...sample,
+          status: 'PARTIALLY_PAID',
+          installments: [
+            { ...sample.installments[0], status: 'PARTIALLY_PAID', amountPaid: 250, outstanding: 350 },
+            sample.installments[1],
+          ],
+        } satisfies ReceivableDetail),
+      );
       const el = render();
       expect(el.textContent).toContain('Parcelas');
       expect(el.textContent).toContain('entrada'); // installment 1 notes
       expect(el.textContent).toContain('R$'); // currency-formatted amounts
+      // The schedule exposes the Pago / Em aberto columns and the partial status.
+      expect(el.textContent).toContain('Pago');
+      expect(el.textContent).toContain('Em aberto');
+      expect(el.textContent).toContain('Parcialmente paga');
       // Two installment rows are rendered (number column shows 1 and 2).
       const rows = el.querySelectorAll('.installments-table tbody tr');
       expect(rows.length).toBe(2);
