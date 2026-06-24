@@ -715,8 +715,9 @@ status reflected onto the Order, indicators) and Commission are **later slices**
 by the same read tiers and narrowed by `ReceivableAccessPolicy` (so no filter can surface a receivable the caller may
 not see). The **default** list shows the **operational** statuses (`OPEN`/`PARTIALLY_PAID`/`OVERDUE`) and **excludes
 the settled `PAID` and `CANCELLED`** (pass them in the `status` filter to see them); **overdue receivables stay
-visible** as operational problems. A receivable is **`overdue`** (a computed read-model flag, and the `overdueOnly`
-filter) when its (next) `dueDate` is in the past and its status is still operational. The list item carries the
+visible** as operational problems. A receivable is **`overdue`** — the read-model flag **and** the `overdueOnly`
+filter — exactly when its stored **`status == OVERDUE`** (the single source of truth; the daily overdue check flags
+past-due receivables with a balance, per-installment-precise — §Slice 8). The list item carries the
 operational fields — id, source Order (`PC-000n`), payer (Customer), `totalAmount`, `amountPaid`,
 `outstandingAmount` (`total − paid`), status, next `dueDate`, `overdue`, commercial + financial responsible names,
 `createdAt`, `lastPaymentDate` — **receivable + commercial-origin data only, never Commission or bank-reconciliation
@@ -734,8 +735,9 @@ receivables the caller may see). It exposes: the **summary** + **financial notes
 commercial origin** — source **Commercial Order** (`PC-000n`, kept traceable), the **Proposal** and **Opportunity**
 **commercial references** (the resolved `proposalReference` title and `opportunityReference` name, plus the ids/Lead
 for linking); the **payer** (Customer); **`totalAmount`** / **`amountPaid`** / **`outstandingAmount`** (`total −
-paid`) and the **`overdue`** flag (computed: next due date past + status operational); the **installment list**; and
-the **commercial + financial responsible**. The **payment history and reversal history** become available with the
+paid`) and the **`overdue`** flag (the stored `status == OVERDUE`); the **installment list** — each installment
+carrying its own read-time **`overdue`** flag (`OPEN`/`PARTIALLY_PAID` and past its due date; paid/cancelled
+installments are never overdue); and the **commercial + financial responsible**. The **payment history and reversal history** become available with the
 payment slice — until then the detail's payment section is an honest empty state (no payments yet); a **reversed
 payment will stay historically visible** there. `amountPaid` is zero / `outstanding` is the full total until
 payments exist. The detail carries **receivable + commercial-origin data only — never Commission, bank-reconciliation
@@ -809,6 +811,16 @@ has passed with a balance (`Receivable.markOverdueIfPastDue`, idempotent) and re
 payment **never "un-overdues"** a still-outstanding Receivable (`consolidateStatus` preserves `OVERDUE`); settling
 it moves it to `PAID`. Reflecting the status **must not** create Commission now, performs no notification, and the
 Order stays owned by Sales.
+
+**Identifying overdue Receivables (normative — Financial Operations, Sprint 5 Slice 8).** Overdue identification
+keys off the **stored `OVERDUE` status** (the single source of truth, set by the Slice-7 daily check
+per-installment-precisely): the receivable-level **`overdue`** flag (list + detail) and the **`overdueOnly`** list
+filter are exactly `status == OVERDUE` — so a multi-installment receivable with a paid first installment and a
+not-yet-due second is **not** falsely flagged, and overdue receivables stay visible by default (`operational()`
+includes `OVERDUE`). The **detail** additionally exposes a **per-installment `overdue`** flag (read-time:
+`ReceivableInstallment.isPastDue(today)` — `OPEN`/`PARTIALLY_PAID` and past its due date; **paid and cancelled
+installments are never overdue**), so the specific overdue installments are identifiable. Overdue detection
+applies **no interest or late fee**, sends **no notification**, and creates **no** Customer Care ticket.
 
 **Customer (normative — the commercial graduation of a Lead, in `domain.crm`).** The **Customer** is the company's
 client, materialized from its source **Lead** when a Commercial Order is created (deal closed): a **synchronous,

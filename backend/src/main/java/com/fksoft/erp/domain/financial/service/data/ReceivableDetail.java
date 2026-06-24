@@ -49,8 +49,8 @@ public record ReceivableDetail(
 
     /**
      * Builds the detail from the entity and the resolved cross-aggregate data. {@code amountPaid} is the sum of
-     * the registered payments; {@code overdue} is computed from the due date and the status (settled receivables
-     * are never overdue).
+     * the registered payments; {@code overdue} is the stored OVERDUE status (set by the daily overdue check), and
+     * each installment carries its own read-time {@code overdue} flag.
      *
      * @param r the receivable entity
      * @param orderNumber the resolved source order number
@@ -91,12 +91,12 @@ public record ReceivableDetail(
                 amountPaid,
                 r.totalAmount().subtract(amountPaid),
                 r.dueDate(),
-                isOverdue(r, today),
+                isOverdue(r),
                 r.paymentNotes(),
                 r.status().name(),
                 r.installments().stream()
                         .sorted(Comparator.comparingInt(ReceivableInstallment::number))
-                        .map(InstallmentView::from)
+                        .map(i -> InstallmentView.from(i, today))
                         .toList(),
                 r.payments().stream()
                         .sorted(Comparator.comparing(ReceivablePayment::paymentDate)
@@ -112,12 +112,10 @@ public record ReceivableDetail(
                 nameOf(names, r.createdBy()));
     }
 
-    // Overdue = past the (next) due date and still requiring follow-up (not PAID, not CANCELLED).
-    private static boolean isOverdue(Receivable r, LocalDate today) {
-        return r.dueDate() != null
-                && r.dueDate().isBefore(today)
-                && r.status() != ReceivableStatus.PAID
-                && r.status() != ReceivableStatus.CANCELLED;
+    // Overdue is the stored OVERDUE status — the single source of truth, set by the daily overdue check
+    // (past due with a balance, per-installment-precise). The per-installment overdue lives on InstallmentView.
+    private static boolean isOverdue(Receivable r) {
+        return r.status() == ReceivableStatus.OVERDUE;
     }
 
     private static String nameOf(Map<UUID, String> names, UUID id) {

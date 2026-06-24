@@ -938,8 +938,9 @@ pagamentos e o saldo em aberto**. O detalhe reúne:
 - o **cliente (pagador)**;
 - a **origem comercial** rastreável — o **pedido** (PC-000n) e as **referências** da **proposta** e da
   **oportunidade** de origem (com atalhos para abri-los, além do lead) e o **responsável comercial**;
-- a **tabela de parcelas** (número, valor, **pago**, **em aberto**, vencimento, status e observações), com as
-  parcelas **vencidas em destaque** e, para quem pode, o botão **Registrar pagamento** em cada parcela com saldo;
+- a **tabela de parcelas** (número, valor, **pago**, **em aberto**, vencimento, status e observações), com cada
+  **parcela vencida** (não paga e com vencimento passado) **em destaque** e, para quem pode, o botão **Registrar
+  pagamento** em cada parcela com saldo;
 - a seção **Pagamentos** — o **histórico dos pagamentos registrados** (parcela, valor, data, forma de pagamento,
   quem registrou e observações); fica vazia enquanto não houver pagamentos.
 
@@ -969,12 +970,17 @@ Ao confirmar: se o valor **quita o saldo** da parcela, ela fica **Paga**; se cob
 **não** cria comissão, nota fiscal, recibo nem faz conciliação bancária, e **não** altera o pedido, o lead ou o
 cliente.
 
-### 11.6 Estados da conta e das parcelas
+### 11.6 Estados da conta e das parcelas · Vencidas
 
 Tanto a conta a receber quanto cada **parcela** podem estar **Em aberto**, **Parcialmente paga**, **Paga**,
 **Vencida** ou **Cancelada**. Toda conta nasce **Em aberto**; ao registrar pagamentos, a parcela passa a
-**Parcialmente paga** (pagamento parcial) ou **Paga** (quitada), e a conta a **Parcialmente paga** ou **Paga**. A
-transição automática para **Vencida** chega em uma etapa futura.
+**Parcialmente paga** (pagamento parcial) ou **Paga** (quitada), e a conta a **Parcialmente paga** ou **Paga**.
+
+Uma conta torna-se **Vencida** quando o vencimento passou e ainda há **saldo em aberto** — uma **verificação
+diária** marca automaticamente essas contas como **Vencida** (parcelas **pagas** ou **canceladas** nunca ficam
+vencidas). As contas **Vencidas continuam visíveis por padrão** na lista (como problema a priorizar) e você pode
+filtrar **somente vencidas**; no detalhe, cada **parcela vencida** aparece sinalizada. **Identificar o atraso não
+aplica juros nem multa, não envia notificação e não abre atendimento ao cliente** nesta versão.
 
 ---
 

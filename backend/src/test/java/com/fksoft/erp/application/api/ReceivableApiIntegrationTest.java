@@ -10,9 +10,11 @@ import com.fksoft.erp.AbstractIntegrationTest;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
+import com.fksoft.erp.domain.financial.service.ReceivableOverdueJob;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.jayway.jsonpath.JsonPath;
+import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -48,6 +50,9 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private OriginRepository origins;
+
+    @Autowired
+    private ReceivableOverdueJob overdueJob;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -161,7 +166,7 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void theDetailFlagsAPastDueReceivableAsOverdue() throws Exception {
+    void theDailyCheckFlagsAPastDueReceivableAsOverdueInDetail() throws Exception {
         UUID order = confirmedOrder("Past", "CONFIRMED");
         String fin = finance();
         String created = mvc.perform(post("/api/receivables")
@@ -174,11 +179,62 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
                 .getContentAsString();
         String receivableId = JsonPath.read(created, "$.id");
 
+        // Created OPEN — not overdue until the daily check flags it (even though the due date is in the past).
         mvc.perform(get("/api/receivables/" + receivableId).header("Authorization", "Bearer " + fin))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("OPEN"))
+                .andExpect(jsonPath("$.overdue").value(false))
+                // The installment itself is identifiable as overdue (past due, unpaid) right away.
+                .andExpect(jsonPath("$.installments[0].overdue").value(true));
+
+        overdueJob.markOverdue(LocalDate.now());
+
+        // After the check: the stored status is OVERDUE and the receivable is identifiable as overdue.
+        mvc.perform(get("/api/receivables/" + receivableId).header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("OVERDUE"))
                 .andExpect(jsonPath("$.overdue").value(true))
                 .andExpect(jsonPath("$.dueDate").value("2020-01-01"))
-                .andExpect(jsonPath("$.outstandingAmount").value(500.00));
+                .andExpect(jsonPath("$.outstandingAmount").value(500.00))
+                .andExpect(jsonPath("$.installments[0].overdue").value(true));
+    }
+
+    @Test
+    void aPaidInstallmentIsNotOverdueWhileAnUnpaidPastDueOneIs() throws Exception {
+        String fin = finance();
+        UUID order = confirmedOrder("MixedDue", "CONFIRMED");
+        // Two installments, both due in the past.
+        String created = mvc.perform(post("/api/receivables")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                """
+                                {"commercialOrderId":"%s","dueDate":"2020-01-01","installments":[
+                                  {"amount":200.00,"dueDate":"2020-01-01"},
+                                  {"amount":300.00,"dueDate":"2020-02-01"}
+                                ]}"""
+                                        .formatted(order)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String receivableId = JsonPath.read(created, "$.id");
+        String firstInstallment = firstInstallmentId(fin, receivableId);
+
+        // Pay the first installment in full → PAID; the second stays unpaid and past due.
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, firstInstallment))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":200.00,\"paymentDate\":\"2026-06-01\"}"
+                                .formatted(paymentMethodId("PIX"))))
+                .andExpect(status().isOk());
+
+        mvc.perform(get("/api/receivables/" + receivableId).header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.installments[0].status").value("PAID"))
+                .andExpect(jsonPath("$.installments[0].overdue").value(false)) // paid → never overdue
+                .andExpect(jsonPath("$.installments[1].status").value("OPEN"))
+                .andExpect(jsonPath("$.installments[1].overdue").value(true)); // unpaid + past due
     }
 
     @Test

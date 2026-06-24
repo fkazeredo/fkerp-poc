@@ -141,15 +141,6 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     return STATUS_SEVERITY[status];
   }
 
-  /** Whether an installment is past due and still requires follow-up (not paid/cancelled). */
-  protected installmentOverdue(installment: ReceivableInstallment): boolean {
-    return (
-      installment.status !== 'PAID' &&
-      installment.status !== 'CANCELLED' &&
-      isBeforeToday(installment.dueDate)
-    );
-  }
-
   /** Whether the installment can receive a payment (still has a balance) and the user is authorized. */
   protected canPay(installment: ReceivableInstallment): boolean {
     return (
@@ -303,13 +294,6 @@ export class ReceivableDetailPage implements OnInit, OnDestroy, HasUnsavedChange
       },
     });
   }
-}
-
-function isBeforeToday(isoDate: string): boolean {
-  const due = new Date(isoDate + 'T00:00:00');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return due.getTime() < today.getTime();
 }
 
 function emptyToNull(value: string): string | null {
