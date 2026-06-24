@@ -105,6 +105,12 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.dueDate").value("2026-07-15"))
                 .andExpect(jsonPath("$.paymentNotes").value("boleto"))
                 .andExpect(jsonPath("$.customerName").value("Lead Conf"))
+                // The consultation fields: paid / outstanding / overdue and the readable commercial references.
+                .andExpect(jsonPath("$.amountPaid").value(0))
+                .andExpect(jsonPath("$.outstandingAmount").value(500.00))
+                .andExpect(jsonPath("$.overdue").value(false)) // due date is in the future
+                .andExpect(jsonPath("$.proposalReference").value("Proposta Conf"))
+                .andExpect(jsonPath("$.opportunityReference").value("Conf"))
                 // No explicit schedule → one full-amount installment, OPEN.
                 .andExpect(jsonPath("$.installments.length()").value(1))
                 .andExpect(jsonPath("$.installments[0].number").value(1))
@@ -115,7 +121,8 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
                 .getResponse()
                 .getContentAsString();
 
-        // The contract exposes receivable + commercial-origin data only — never Payment, Commission or Invoice data.
+        // The contract exposes receivable + commercial-origin data only — never Commission, bank-reconciliation
+        // or tax-invoice data.
         Map<String, Object> detail = JsonPath.read(body, "$");
         assertThat(detail.keySet())
                 .containsExactlyInAnyOrder(
@@ -123,7 +130,9 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
                         "commercialOrderId",
                         "orderNumber",
                         "proposalId",
+                        "proposalReference",
                         "opportunityId",
+                        "opportunityReference",
                         "leadId",
                         "customerId",
                         "customerName",
@@ -132,16 +141,41 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
                         "financialResponsibleId",
                         "financialResponsibleName",
                         "totalAmount",
+                        "amountPaid",
+                        "outstandingAmount",
                         "dueDate",
+                        "overdue",
                         "paymentNotes",
                         "status",
                         "installments",
                         "createdAt",
                         "createdByName");
+        assertThat(body.toLowerCase()).doesNotContain("commission").doesNotContain("reconcil");
 
         // No Payment, Commission or Booking row was created by originating the Receivable.
         assertThat(jdbc.queryForObject("SELECT count(*) FROM booking_requests", Integer.class))
                 .isZero();
+    }
+
+    @Test
+    void theDetailFlagsAPastDueReceivableAsOverdue() throws Exception {
+        UUID order = confirmedOrder("Past", "CONFIRMED");
+        String fin = finance();
+        String created = mvc.perform(post("/api/receivables")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"commercialOrderId\":\"%s\",\"dueDate\":\"2020-01-01\"}".formatted(order)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String receivableId = JsonPath.read(created, "$.id");
+
+        mvc.perform(get("/api/receivables/" + receivableId).header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overdue").value(true))
+                .andExpect(jsonPath("$.dueDate").value("2020-01-01"))
+                .andExpect(jsonPath("$.outstandingAmount").value(500.00));
     }
 
     @Test

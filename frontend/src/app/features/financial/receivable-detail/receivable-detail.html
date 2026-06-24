@@ -10,22 +10,34 @@
     <div class="head-main">
       <h1>Conta a receber · {{ orderCode(r.orderNumber) }}</h1>
       <p-tag [value]="statusLabel(r.status)" [severity]="statusSeverity(r.status)" />
+      @if (r.overdue) {
+        <p-tag value="Vencida" severity="danger" />
+      }
     </div>
   </header>
 
   <div class="grid">
     <p-card header="Resumo">
       <dl class="data">
-        <dt>Valor</dt>
+        <dt>Valor total</dt>
         <dd class="grand">{{ r.totalAmount | currency: 'BRL' }}</dd>
-        <dt>Vencimento</dt>
-        <dd>{{ r.dueDate | date: 'dd/MM/yyyy' }}</dd>
+        <dt>Valor pago</dt>
+        <dd>{{ r.amountPaid | currency: 'BRL' }}</dd>
+        <dt>Em aberto</dt>
+        <dd class="grand">{{ r.outstandingAmount | currency: 'BRL' }}</dd>
+        <dt>Próximo vencimento</dt>
+        <dd>
+          {{ r.dueDate | date: 'dd/MM/yyyy' }}
+          @if (r.overdue) {
+            <span class="overdue-note">· vencida há {{ daysOverdue(r.dueDate) }} dia(s)</span>
+          }
+        </dd>
         <dt>Status</dt>
         <dd>{{ statusLabel(r.status) }}</dd>
         <dt>Responsável financeiro</dt>
         <dd>{{ r.financialResponsibleName ?? '—' }}</dd>
         @if (r.paymentNotes) {
-          <dt>Observações de pagamento</dt>
+          <dt>Observações financeiras</dt>
           <dd class="notes">{{ r.paymentNotes }}</dd>
         }
         <dt>Criada em</dt>
@@ -49,6 +61,10 @@
       <dl class="data">
         <dt>Pedido</dt>
         <dd>{{ orderCode(r.orderNumber) }}</dd>
+        <dt>Proposta</dt>
+        <dd>{{ r.proposalReference ?? '—' }}</dd>
+        <dt>Oportunidade</dt>
+        <dd>{{ r.opportunityReference ?? '—' }}</dd>
         <dt>Responsável comercial</dt>
         <dd>{{ r.commercialResponsibleName ?? '—' }}</dd>
       </dl>
@@ -73,10 +89,15 @@
       </thead>
       <tbody>
         @for (i of r.installments; track i.number) {
-          <tr>
+          <tr [class.overdue-row]="installmentOverdue(i)">
             <td class="col-num">{{ i.number }}</td>
             <td class="num">{{ i.amount | currency: 'BRL' }}</td>
-            <td>{{ i.dueDate | date: 'dd/MM/yyyy' }}</td>
+            <td>
+              {{ i.dueDate | date: 'dd/MM/yyyy' }}
+              @if (installmentOverdue(i)) {
+                <p-tag value="Vencida" severity="danger" styleClass="overdue-tag" />
+              }
+            </td>
             <td>
               <p-tag
                 [value]="installmentStatusLabel(i.status)"
@@ -88,6 +109,14 @@
         }
       </tbody>
     </table>
+  </p-card>
+
+  <p-card header="Pagamentos e estornos" styleClass="section">
+    <!-- Payment + reversal history. None yet — registering payments (and reversals) is the next slice; a
+         reversed payment will stay listed here as part of the history. -->
+    <p class="muted empty">
+      Nenhum pagamento registrado ainda. O registro de pagamentos e estornos chega na próxima etapa.
+    </p>
   </p-card>
 
   <div class="back">

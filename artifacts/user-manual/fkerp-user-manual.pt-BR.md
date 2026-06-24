@@ -920,10 +920,22 @@ vencimento**, **período de criação**, **responsável comercial**, **responsá
 **somente vencidas**. Cada perfil vê apenas as contas que tem permissão para ver — **representantes não veem** o
 detalhe financeiro. A lista **não** mostra dados de **comissão** nem de **conciliação bancária**.
 
-O **detalhe** de uma conta reúne o **resumo** (valor, vencimento, status, responsável e observações), o **cliente
-(pagador)**, a **origem comercial** rastreável — com atalhos para abrir o **pedido**, a **proposta** e a
-**oportunidade** de origem — e a **tabela de parcelas** (número, valor, vencimento, status e observações). A tela
-mostra **apenas dados da conta a receber** — nunca pagamentos, comissões ou notas.
+Clique em uma conta para abrir o seu **detalhe** — a consulta completa para entender a **origem, as parcelas, os
+pagamentos e o saldo em aberto**. O detalhe reúne:
+
+- o **resumo**: **valor total**, **valor pago**, **valor em aberto**, **próximo vencimento** (com a marca
+  **Vencida** e "vencida há N dias" quando atrasada), o **status**, o **responsável financeiro** e as **observações
+  financeiras**;
+- o **cliente (pagador)**;
+- a **origem comercial** rastreável — o **pedido** (PC-000n) e as **referências** da **proposta** e da
+  **oportunidade** de origem (com atalhos para abri-los, além do lead) e o **responsável comercial**;
+- a **tabela de parcelas** (número, valor, vencimento, status e observações), com as parcelas **vencidas em
+  destaque**;
+- a seção **Pagamentos e estornos** — por enquanto vazia (*nenhum pagamento registrado ainda*); o registro de
+  pagamentos e seus estornos chega na próxima etapa, e um pagamento estornado permanecerá visível no histórico.
+
+A tela mostra **apenas dados da conta a receber** — nunca **comissão**, **conciliação bancária** ou **nota fiscal**.
+Você só abre o detalhe das contas que tem permissão para ver.
 
 ### 11.5 Estados da conta e das parcelas
 
@@ -1055,9 +1067,11 @@ A entrega foi **validada de ponta a ponta**.
 A **Sprint 5 — Operações Financeiras** está em andamento: o módulo **Financeiro** (seção 11) já permite **gerar
 contas a receber** a partir dos **pedidos com reserva confirmada**, com o **Cliente** (pagador) criado
 automaticamente no fechamento, o **parcelamento** da conta (uma ou várias parcelas, cuja soma é igual ao valor do
-pedido), e a **lista operacional** das contas a acompanhar — com colunas de **pago / em aberto**, destaque de
+pedido), a **lista operacional** das contas a acompanhar — com colunas de **pago / em aberto**, destaque de
 **vencidas** e um conjunto completo de **filtros** (status, cliente, pedido, períodos de vencimento e criação,
-responsáveis, faixa de valor e somente vencidas) —, tudo com visibilidade por perfil. O Financeiro lê o registro já
+responsáveis, faixa de valor e somente vencidas) — e o **detalhe de consulta** de cada conta (origem comercial com
+referências, parcelas com atraso em destaque, pago/em aberto e a seção de pagamentos pronta para a próxima etapa),
+tudo com visibilidade por perfil. O Financeiro lê o registro já
 pronto (valor no Pedido; localizadores, datas e fornecedor na reserva) sem redigitar dados, e Reserva e Comercial
 seguem separados. As **próximas etapas** desta Sprint trazem o **registro de pagamentos** (e as transições para
 *Paga* / *Parcialmente paga* / *Vencida*), o reflexo do status financeiro no pedido e a **comissão**. Este manual
@@ -1067,6 +1081,7 @@ será atualizado a cada lançamento.
 
 *Status do documento: Sprints 1, 2, 3 e 4 concluídas e Sprint 5 (Operações Financeiras) em andamento — módulo
 Financeiro com geração de contas a receber a partir de pedidos com reserva confirmada, o Cliente (pagador)
-materializado no fechamento, o **parcelamento** da conta, e a **lista operacional** das contas a acompanhar (pago /
-em aberto, vencidas em destaque, filtros completos), com visibilidade por perfil. Próximas etapas da Sprint 5:
-pagamentos e comissão. Mantido junto com o produto.*
+materializado no fechamento, o **parcelamento** da conta, a **lista operacional** das contas a acompanhar (pago /
+em aberto, vencidas em destaque, filtros completos) e o **detalhe de consulta** da conta (origem, parcelas, pago/em
+aberto e a seção de pagamentos pronta), com visibilidade por perfil. Próximas etapas da Sprint 5: pagamentos e
+comissão. Mantido junto com o produto.*
