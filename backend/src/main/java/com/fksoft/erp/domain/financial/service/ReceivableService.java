@@ -23,10 +23,12 @@ import com.fksoft.erp.domain.financial.model.ReceivableCreated;
 import com.fksoft.erp.domain.financial.model.ReceivableStatus;
 import com.fksoft.erp.domain.financial.model.ReceivableStatusChanged;
 import com.fksoft.erp.domain.financial.repository.PaymentMethodRepository;
+import com.fksoft.erp.domain.financial.repository.ReceivableIndicatorQueries;
 import com.fksoft.erp.domain.financial.repository.ReceivableRepository;
 import com.fksoft.erp.domain.financial.service.data.CreateReceivableCommand;
 import com.fksoft.erp.domain.financial.service.data.EligibleOrder;
 import com.fksoft.erp.domain.financial.service.data.ReceivableDetail;
+import com.fksoft.erp.domain.financial.service.data.ReceivableIndicators;
 import com.fksoft.erp.domain.financial.service.data.ReceivableListItem;
 import com.fksoft.erp.domain.financial.service.data.ReceivableSearchCriteria;
 import com.fksoft.erp.domain.financial.service.data.RegisterPaymentCommand;
@@ -67,6 +69,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReceivableService {
 
     private final ReceivableRepository receivables;
+    private final ReceivableIndicatorQueries indicatorQueries;
     private final PaymentMethodRepository paymentMethods;
     private final ReceivableAccessPolicy accessPolicy;
     private final CommercialOrderRepository orders;
@@ -297,6 +300,35 @@ public class ReceivableService {
                 .map(order ->
                         new EligibleOrder(order.id(), order.number(), customerNames.get(order.leadId()), order.total()))
                 .toList();
+    }
+
+    /**
+     * Minimum Financial Operations indicators over the Receivables visible to the caller (an operational
+     * received-payments &amp; collection view): the current snapshot (open / partially-paid / overdue counts and the
+     * outstanding total) plus the volume in the requested period by payment date (receivables settled, payments
+     * registered, received amount and the received payments grouped by method — non-reversed only). The visibility
+     * Specification narrows the figures so they never include Receivables the caller cannot see. Exposes receivable
+     * + received-payment figures only — never Commission, Payables, bank-reconciliation, accounting or fiscal data.
+     *
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every Receivable
+     * @param from inclusive lower bound on the payment date (or {@code null} for all-time)
+     * @param to inclusive upper bound on the payment date (or {@code null} for all-time)
+     * @return the indicators
+     */
+    @Transactional(readOnly = true)
+    public ReceivableIndicators indicators(UUID userId, boolean canSeeAll, LocalDate from, LocalDate to) {
+        Specification<Receivable> visible = accessPolicy.visibleTo(userId, canSeeAll);
+        Map<String, Long> byStatus = indicatorQueries.countByStatus(visible);
+        return new ReceivableIndicators(
+                byStatus.getOrDefault(ReceivableStatus.OPEN.name(), 0L),
+                byStatus.getOrDefault(ReceivableStatus.PARTIALLY_PAID.name(), 0L),
+                byStatus.getOrDefault(ReceivableStatus.OVERDUE.name(), 0L),
+                indicatorQueries.sumOutstanding(visible),
+                indicatorQueries.countPaidReceivablesInPeriod(visible, from, to),
+                indicatorQueries.countPayments(visible, from, to),
+                indicatorQueries.sumReceived(visible, from, to),
+                indicatorQueries.paymentsByMethod(visible, from, to));
     }
 
     private Map<UUID, Long> resolveOrderNumbers(Stream<UUID> orderIds) {

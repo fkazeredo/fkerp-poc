@@ -178,6 +178,31 @@ export interface ReceivableCreated {
   status: ReceivableStatus;
 }
 
+/** Received total + count for one payment method over the period (non-reversed payments). */
+export interface MethodTotal {
+  method: string;
+  methodLabel: string;
+  count: number;
+  amount: number;
+}
+
+/**
+ * Operational Financial indicators — a received-payments & collection view. A current snapshot (open / partially
+ * paid / overdue counts + outstanding) plus the period volume by payment date (receivables settled, payments
+ * registered, received amount, payments by method). Operational, not executive — never Commission, Payables or
+ * bank-reconciliation data.
+ */
+export interface ReceivableIndicators {
+  openCount: number;
+  partiallyPaidCount: number;
+  overdueCount: number;
+  outstandingAmount: number;
+  paidReceivablesInPeriod: number;
+  paymentsRegistered: number;
+  receivedAmount: number;
+  paymentsByMethod: MethodTotal[];
+}
+
 /** API client for the Receivable endpoints (Financial Operations). */
 @Injectable({ providedIn: 'root' })
 export class ReceivableService {
@@ -235,6 +260,24 @@ export class ReceivableService {
   /** The Commercial Orders eligible to originate a Receivable, visible to the caller (for the create selector). */
   eligibleOrders(): Observable<EligibleOrder[]> {
     return this.http.get<EligibleOrder[]>('/api/receivables/eligible-orders');
+  }
+
+  /**
+   * The operational Financial indicators visible to the caller: a current snapshot plus the period volume (by
+   * payment date). Empty period bounds widen to all-time. Operational, never Commission/Payables data.
+   */
+  indicators(
+    paidFrom?: string | null,
+    paidTo?: string | null,
+  ): Observable<ReceivableIndicators> {
+    let params = new HttpParams();
+    if (paidFrom) {
+      params = params.set('paidFrom', paidFrom);
+    }
+    if (paidTo) {
+      params = params.set('paidTo', paidTo);
+    }
+    return this.http.get<ReceivableIndicators>('/api/receivables/indicators', { params });
   }
 
   /** Operational, paginated Receivable list filtered by the given criteria and the caller's visibility. */

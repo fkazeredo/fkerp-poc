@@ -10,6 +10,7 @@ import com.fksoft.erp.domain.financial.service.data.CreateReceivableCommand;
 import com.fksoft.erp.domain.financial.service.data.EligibleOrder;
 import com.fksoft.erp.domain.financial.service.data.InstallmentInput;
 import com.fksoft.erp.domain.financial.service.data.ReceivableDetail;
+import com.fksoft.erp.domain.financial.service.data.ReceivableIndicators;
 import com.fksoft.erp.domain.financial.service.data.ReceivableListItem;
 import com.fksoft.erp.domain.financial.service.data.ReceivableSearchCriteria;
 import com.fksoft.erp.domain.financial.service.data.RegisterPaymentCommand;
@@ -26,12 +27,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -117,6 +120,25 @@ public class ReceivableController {
     public List<EligibleOrder> eligibleOrders() {
         return receivableService.eligibleOrders(
                 userContext.currentUserId(), canSeeAllOrders(), canSeeUnassignedOrders());
+    }
+
+    /**
+     * Minimum Financial Operations indicators over the Receivables visible to the caller (an operational
+     * received-payments &amp; collection view): the current snapshot (open / partially-paid / overdue counts and the
+     * outstanding total) plus the volume in the requested period by payment date (receivables settled, payments
+     * registered, received amount and the received payments grouped by method). Gated by the Financial read tiers
+     * (the policy narrows visibility). Operational, not an executive dashboard: read-only, no Commission, Payables,
+     * bank-reconciliation, accounting or fiscal data.
+     *
+     * @param paidFrom optional inclusive lower bound on the payment date (ISO date)
+     * @param paidTo optional inclusive upper bound on the payment date (ISO date)
+     * @return the indicators
+     */
+    @GetMapping("/indicators")
+    public ReceivableIndicators indicators(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate paidFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate paidTo) {
+        return receivableService.indicators(userContext.currentUserId(), canSeeAllReceivables(), paidFrom, paidTo);
     }
 
     /**

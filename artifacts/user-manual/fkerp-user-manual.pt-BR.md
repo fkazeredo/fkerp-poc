@@ -1002,6 +1002,26 @@ vencidas). As contas **Vencidas continuam visíveis por padrão** na lista (como
 filtrar **somente vencidas**; no detalhe, cada **parcela vencida** aparece sinalizada. **Identificar o atraso não
 aplica juros nem multa, não envia notificação e não abre atendimento ao cliente** nesta versão.
 
+### 11.8 Visão operacional: recebimentos e cobrança
+
+A tela **Recebimentos** é uma **visão operacional simples** para entender, num relance, **o que está em aberto, o
+que está vencido e o que foi recebido**. Ela está em dois lugares: como **Recebimentos** no módulo **Financeiro**, e
+como a aba **Financeiro** de **Acompanhamento → Indicadores**. É **operacional, não é relatório executivo** — e
+**não** é conciliação bancária, contas a pagar nem contabilidade.
+
+Está organizada em duas partes:
+
+- **Retrato de hoje** (independe do período): quantas contas estão **Em aberto**, **Parcialmente pagas** e
+  **Vencidas**, e o **valor total em aberto** ainda a receber.
+- **Recebido no período** (escolhido pela **data de pagamento**, padrão o mês atual): o **valor recebido**, a
+  quantidade de **pagamentos registrados**, quantas contas foram **quitadas** no período, e a distribuição do
+  **recebido por forma de pagamento** (Dinheiro, Pix, Transferência, …). Um pagamento **estornado** **não** conta
+  como recebido.
+
+Os números respeitam a sua **visibilidade**: o usuário financeiro e os perfis de consulta (gerente, diretoria) veem
+os números operacionais; **vendedores e representantes não têm acesso** a essa visão financeira global. A tela mostra
+**apenas dados de contas a receber e de recebimentos** — nunca comissão, contas a pagar ou conciliação bancária.
+
 ---
 
 ## 12. Gerenciando cadastros

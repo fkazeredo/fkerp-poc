@@ -893,6 +893,132 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void financeReadsTheOperationalIndicatorsSnapshotAndPeriodFigures() throws Exception {
+        String fin = finance();
+        // A: open, no payment (future due) → OPEN, outstanding 500.
+        createReceivable(fin, confirmedOrder("IndOpen", "CONFIRMED"));
+        // B: partial 200 (Pix) on 2026-06-10 → PARTIALLY_PAID, outstanding 300, received 200.
+        String b = createReceivable(fin, confirmedOrder("IndPartial", "CONFIRMED"));
+        payInstallment(fin, b, firstInstallmentId(fin, b), "200.00", "2026-06-10", paymentMethodId("PIX"));
+        // C: full 500 (Cash) on 2026-06-15 → PAID, received 500, settled in period.
+        String c = createReceivable(fin, confirmedOrder("IndPaid", "CONFIRMED"));
+        payInstallment(fin, c, firstInstallmentId(fin, c), "500.00", "2026-06-15", paymentMethodId("CASH"));
+        // D: overdue (past due, unpaid) → OVERDUE after the daily check, outstanding 500.
+        UUID dOrder = confirmedOrder("IndOverdue", "CONFIRMED");
+        mvc.perform(post("/api/receivables")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"commercialOrderId\":\"%s\",\"dueDate\":\"2020-01-01\"}".formatted(dOrder)))
+                .andExpect(status().isCreated());
+        overdueJob.markOverdue(LocalDate.now());
+
+        String body = mvc.perform(get("/api/receivables/indicators?paidFrom=2026-06-01&paidTo=2026-06-30")
+                        .header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk())
+                // Current snapshot (ignores the period).
+                .andExpect(jsonPath("$.openCount").value(1))
+                .andExpect(jsonPath("$.partiallyPaidCount").value(1))
+                .andExpect(jsonPath("$.overdueCount").value(1))
+                .andExpect(jsonPath("$.outstandingAmount").value(1300.00)) // 500 + 300 + 0 + 500
+                // Volume in the period (by payment date).
+                .andExpect(jsonPath("$.paidReceivablesInPeriod").value(1)) // C
+                .andExpect(jsonPath("$.paymentsRegistered").value(2)) // B + C
+                .andExpect(jsonPath("$.receivedAmount").value(700.00)) // 200 + 500
+                .andExpect(jsonPath("$.paymentsByMethod.length()").value(2)) // Pix + Cash
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        // Operational figures only — never Commission, Payables or bank-reconciliation data.
+        assertThat(body.toLowerCase())
+                .doesNotContain("commission")
+                .doesNotContain("payable")
+                .doesNotContain("reconcil");
+    }
+
+    @Test
+    void reversedPaymentsAreExcludedFromTheReceivedIndicators() throws Exception {
+        String fin = finance();
+        String r = createReceivable(fin, confirmedOrder("IndRev", "CONFIRMED"));
+        String paymentId = registerFullPayment(fin, r, firstInstallmentId(fin, r)); // 500 on 2026-06-01 → PAID
+
+        // Before reversal: the payment counts as received and the receivable is paid in the period.
+        mvc.perform(get("/api/receivables/indicators?paidFrom=2026-06-01&paidTo=2026-06-30")
+                        .header("Authorization", "Bearer " + fin))
+                .andExpect(jsonPath("$.receivedAmount").value(500.00))
+                .andExpect(jsonPath("$.paymentsRegistered").value(1))
+                .andExpect(jsonPath("$.paidReceivablesInPeriod").value(1))
+                .andExpect(jsonPath("$.openCount").value(0));
+
+        mvc.perform(post("/api/receivables/%s/payments/%s/reversals".formatted(r, paymentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"estorno\"}"))
+                .andExpect(status().isOk());
+
+        // After reversal: the reversed payment no longer counts; the receivable is back to OPEN.
+        mvc.perform(get("/api/receivables/indicators?paidFrom=2026-06-01&paidTo=2026-06-30")
+                        .header("Authorization", "Bearer " + fin))
+                .andExpect(jsonPath("$.receivedAmount").value(0))
+                .andExpect(jsonPath("$.paymentsRegistered").value(0))
+                .andExpect(jsonPath("$.paidReceivablesInPeriod").value(0))
+                .andExpect(jsonPath("$.openCount").value(1))
+                .andExpect(jsonPath("$.paymentsByMethod.length()").value(0));
+    }
+
+    @Test
+    void theIndicatorsPeriodFilterNarrowsToTheSelectedPaymentDates() throws Exception {
+        String fin = finance();
+        // Two payments in different past months (the payment date can't be in the future — @PastOrPresent).
+        String may = createReceivable(fin, confirmedOrder("IndMay", "CONFIRMED"));
+        payInstallment(fin, may, firstInstallmentId(fin, may), "500.00", "2026-05-20", paymentMethodId("CASH"));
+        String june = createReceivable(fin, confirmedOrder("IndJun", "CONFIRMED"));
+        payInstallment(fin, june, firstInstallmentId(fin, june), "500.00", "2026-06-20", paymentMethodId("PIX"));
+
+        // June-only window → only the June (Pix) payment.
+        mvc.perform(get("/api/receivables/indicators?paidFrom=2026-06-01&paidTo=2026-06-30")
+                        .header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentsRegistered").value(1))
+                .andExpect(jsonPath("$.receivedAmount").value(500.00))
+                .andExpect(jsonPath("$.paymentsByMethod.length()").value(1))
+                .andExpect(jsonPath("$.paymentsByMethod[0].method").value("PIX"))
+                .andExpect(jsonPath("$.paymentsByMethod[0].amount").value(500.00));
+
+        // All-time (no params) → both payments.
+        mvc.perform(get("/api/receivables/indicators").header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentsRegistered").value(2))
+                .andExpect(jsonPath("$.receivedAmount").value(1000.00))
+                .andExpect(jsonPath("$.paymentsByMethod.length()").value(2));
+    }
+
+    @Test
+    void theManagerConsultsTheFinancialIndicators() throws Exception {
+        createReceivable(finance(), confirmedOrder("IndMgr", "CONFIRMED"));
+        // The commercial manager holds financial:receivable:read:all (consultation).
+        String manager = login("comercial", "comercial123");
+        mvc.perform(get("/api/receivables/indicators").header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.openCount").value(1));
+    }
+
+    @Test
+    void commercialUsersWithoutAFinancialTierCannotSeeTheIndicators() throws Exception {
+        // The seller and the representative have no financial read tier → 403 (no global financial view).
+        mvc.perform(get("/api/receivables/indicators")
+                        .header("Authorization", "Bearer " + login("vendedor", "vendedor123")))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/receivables/indicators")
+                        .header("Authorization", "Bearer " + login("representante", "representante123")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rejectsUnauthenticatedIndicators() throws Exception {
+        mvc.perform(get("/api/receivables/indicators")).andExpect(status().isUnauthorized());
+    }
+
     private String registerFullPayment(String token, String receivableId, String installmentId) throws Exception {
         String body =
                 payInstallment(token, receivableId, installmentId, "500.00", "2026-06-01", paymentMethodId("PIX"));

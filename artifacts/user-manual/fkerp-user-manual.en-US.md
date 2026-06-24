@@ -1005,6 +1005,26 @@ overdue). **Overdue receivables stay visible by default** in the list (as a prob
 filter **overdue only**; in the detail, each **overdue installment** is flagged. **Identifying overdue items
 applies no interest or late fee, sends no notification and opens no customer-care ticket** in this release.
 
+### 11.8 Operational view: received payments and collection
+
+The **Recebimentos** screen is a **simple operational view** to understand, at a glance, **what is open, what is
+overdue and what was received**. It is reachable in two places: as **Recebimentos** in the **Finance** module, and
+as the **Finance** tab of **Monitoring → Indicators**. It is **operational, not an executive report** — and it is
+**not** bank reconciliation, accounts payable or accounting.
+
+It is organized in two parts:
+
+- **Current snapshot** (the picture of today, regardless of the period): how many receivables are **Open**,
+  **Partially paid** and **Overdue**, and the total **outstanding amount** still to receive.
+- **Received in the period** (chosen by **payment date**, defaulting to the current month): the **amount received**,
+  the number of **payments registered**, how many receivables were **settled** in the period, and a **received by
+  payment method** breakdown (Cash, Pix, Bank transfer, …). A **reversed** payment does **not** count as received.
+
+The numbers respect your **visibility**: a financial user and the consultation profiles (manager, board) see the
+operational figures; **sellers and representatives do not have access** to this global financial view. The screen
+shows **receivable and received-payment figures only** — never commission, accounts payable or bank-reconciliation
+data.
+
 ---
 
 ## 12. Managing reference data (*cadastros*)

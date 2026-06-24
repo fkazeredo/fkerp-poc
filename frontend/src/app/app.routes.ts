@@ -47,6 +47,14 @@ export const routes: Routes = [
           import('./features/financial/receivable-list/receivable-list').then((m) => m.ReceivableList),
       },
       {
+        path: 'financeiro/recebimentos',
+        canActivate: [financialReadGuard],
+        loadComponent: () =>
+          import('./features/financial/receivable-indicators/receivable-indicators').then(
+            (m) => m.ReceivableIndicatorsPage,
+          ),
+      },
+      {
         path: 'financeiro/contas-a-receber/nova',
         canActivate: [financialReadGuard, financialCreateGuard],
         canDeactivate: [unsavedChangesGuard],

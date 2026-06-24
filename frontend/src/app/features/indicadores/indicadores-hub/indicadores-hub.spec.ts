@@ -19,6 +19,7 @@ describe('IndicadoresHub', () => {
     canSeeProposals: vi.fn(() => false),
     canSeeOrders: vi.fn(() => false),
     canSeeBookings: vi.fn(() => false),
+    canSeeReceivables: vi.fn(() => false),
   };
 
   function instance(): IndicadoresHub {
@@ -50,6 +51,7 @@ describe('IndicadoresHub', () => {
     auth.canSeeProposals.mockReset().mockReturnValue(false);
     auth.canSeeOrders.mockReset().mockReturnValue(false);
     auth.canSeeBookings.mockReset().mockReturnValue(false);
+    auth.canSeeReceivables.mockReset().mockReturnValue(false);
   });
 
   it('shows only the tabs the profile can see, in funnel order', () => {
@@ -72,6 +74,19 @@ describe('IndicadoresHub', () => {
   it('shows only the Reservas tab for a booking-operations-only profile', () => {
     auth.canSeeBookings.mockReturnValue(true);
     expect(instance()['tabs']().map((t) => t.key)).toEqual(['reservas']);
+  });
+
+  it('shows the Financeiro tab (last) for a profile that can see receivables', () => {
+    auth.canSeeOrders.mockReturnValue(true);
+    auth.canSeeReceivables.mockReturnValue(true);
+    expect(instance()['tabs']().map((t) => t.key)).toEqual(['pedidos', 'financeiro']);
+  });
+
+  it('shows only the Financeiro tab for a finance-only profile', () => {
+    auth.canSeeReceivables.mockReturnValue(true);
+    const tabs = instance()['tabs']();
+    expect(tabs.map((t) => t.key)).toEqual(['financeiro']);
+    expect(tabs[0].label).toBe('Financeiro');
   });
 
   it('defaults the active tab to the first visible one', () => {

@@ -61,6 +61,9 @@ class ReceivableServiceTest {
     private ReceivableRepository receivables;
 
     @Mock
+    private com.fksoft.erp.domain.financial.repository.ReceivableIndicatorQueries indicatorQueries;
+
+    @Mock
     private PaymentMethodRepository paymentMethods;
 
     @Mock
@@ -490,5 +493,58 @@ class ReceivableServiceTest {
         assertThatThrownBy(() -> service.reversePayment(receivable.id(), paymentId, "segundo estorno", userId, true))
                 .isInstanceOf(com.fksoft.erp.domain.financial.exception.PaymentAlreadyReversedException.class);
         verify(receivables, never()).save(any());
+    }
+
+    @Test
+    void indicatorsAssemblesTheRecordFromTheVisibilityScopedQueries() {
+        org.springframework.data.jpa.domain.Specification<Receivable> visible = (root, query, cb) -> null;
+        when(accessPolicy.visibleTo(userId, true)).thenReturn(visible);
+        LocalDate from = LocalDate.of(2026, 6, 1);
+        LocalDate to = LocalDate.of(2026, 6, 30);
+        when(indicatorQueries.countByStatus(visible))
+                .thenReturn(java.util.Map.of("OPEN", 3L, "PARTIALLY_PAID", 2L, "OVERDUE", 1L, "PAID", 5L));
+        when(indicatorQueries.sumOutstanding(visible)).thenReturn(new BigDecimal("1234.00"));
+        when(indicatorQueries.countPaidReceivablesInPeriod(visible, from, to)).thenReturn(5L);
+        when(indicatorQueries.countPayments(visible, from, to)).thenReturn(7L);
+        when(indicatorQueries.sumReceived(visible, from, to)).thenReturn(new BigDecimal("999.00"));
+        when(indicatorQueries.paymentsByMethod(visible, from, to))
+                .thenReturn(java.util.List.of(
+                        new com.fksoft.erp.domain.financial.service.data.ReceivableIndicators.MethodTotal(
+                                "PIX", "Pix", 4L, new BigDecimal("500.00"))));
+
+        var indicators = service.indicators(userId, true, from, to);
+
+        assertThat(indicators.openCount()).isEqualTo(3);
+        assertThat(indicators.partiallyPaidCount()).isEqualTo(2);
+        assertThat(indicators.overdueCount()).isEqualTo(1);
+        assertThat(indicators.outstandingAmount()).isEqualByComparingTo("1234.00");
+        assertThat(indicators.paidReceivablesInPeriod()).isEqualTo(5);
+        assertThat(indicators.paymentsRegistered()).isEqualTo(7);
+        assertThat(indicators.receivedAmount()).isEqualByComparingTo("999.00");
+        assertThat(indicators.paymentsByMethod()).singleElement().satisfies(m -> {
+            assertThat(m.method()).isEqualTo("PIX");
+            assertThat(m.methodLabel()).isEqualTo("Pix");
+            assertThat(m.count()).isEqualTo(4);
+            assertThat(m.amount()).isEqualByComparingTo("500.00");
+        });
+    }
+
+    @Test
+    void indicatorsNarrowsVisibilityToTheOwnTierWhenNotReadAll() {
+        org.springframework.data.jpa.domain.Specification<Receivable> ownOnly = (root, query, cb) -> null;
+        when(accessPolicy.visibleTo(userId, false)).thenReturn(ownOnly);
+        when(indicatorQueries.countByStatus(ownOnly)).thenReturn(java.util.Map.of());
+        when(indicatorQueries.sumOutstanding(ownOnly)).thenReturn(new BigDecimal("0.00"));
+        when(indicatorQueries.countPaidReceivablesInPeriod(ownOnly, null, null)).thenReturn(0L);
+        when(indicatorQueries.countPayments(ownOnly, null, null)).thenReturn(0L);
+        when(indicatorQueries.sumReceived(ownOnly, null, null)).thenReturn(new BigDecimal("0.00"));
+        when(indicatorQueries.paymentsByMethod(ownOnly, null, null)).thenReturn(java.util.List.of());
+
+        var indicators = service.indicators(userId, false, null, null);
+
+        assertThat(indicators.openCount()).isZero();
+        assertThat(indicators.paymentsByMethod()).isEmpty();
+        // The own-only visibility (not read-all) was resolved and threaded through every query.
+        verify(accessPolicy).visibleTo(userId, false);
     }
 }
