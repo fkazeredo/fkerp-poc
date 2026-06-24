@@ -1,5 +1,6 @@
 package com.fksoft.erp.domain.financial.model;
 
+import com.fksoft.erp.domain.financial.exception.PaymentAlreadyReversedException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -69,6 +70,18 @@ public class ReceivablePayment {
     @Column(name = "registered_at", nullable = false, updatable = false)
     private Instant registeredAt;
 
+    // Reversal state (a payment-entry correction): null = the payment stands; set = reversed (kept in history,
+    // never deleted). Unlike the immutable creation fields, these are updatable (stamped once, by reverse()).
+    @Size(max = 2000)
+    @Column(name = "reversal_reason")
+    private String reversalReason;
+
+    @Column(name = "reversed_by")
+    private UUID reversedBy;
+
+    @Column(name = "reversed_at")
+    private Instant reversedAt;
+
     /**
      * Builds a payment for an installment (the amount is normalized to scale 2). The amount / payable-state
      * checks live on {@link Receivable#registerPayment}.
@@ -97,6 +110,30 @@ public class ReceivablePayment {
         payment.note = emptyToNull(note);
         payment.registeredBy = registeredBy;
         return payment;
+    }
+
+    /**
+     * Marks this payment reversed (a payment-entry correction): records the reason and who/when, keeping the
+     * payment in history (it is never deleted). The amount/standing re-derivation is owned by
+     * {@link Receivable#reversePayment}.
+     *
+     * @param reason the reason for the reversal (required at the request boundary)
+     * @param reversedBy the user reversing the payment
+     * @param reversedAt when the reversal happened
+     * @throws PaymentAlreadyReversedException if the payment has already been reversed
+     */
+    void reverse(String reason, UUID reversedBy, Instant reversedAt) {
+        if (reversed()) {
+            throw new PaymentAlreadyReversedException();
+        }
+        this.reversalReason = emptyToNull(reason);
+        this.reversedBy = reversedBy;
+        this.reversedAt = reversedAt;
+    }
+
+    /** Whether this payment has been reversed (no longer counts towards the paid amount). */
+    public boolean reversed() {
+        return reversedAt != null;
     }
 
     private static String emptyToNull(String value) {

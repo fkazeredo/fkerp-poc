@@ -19,9 +19,10 @@ describe('ReceivableDetailPage', () => {
     detail: vi.fn(),
     paymentMethods: vi.fn(),
     registerPayment: vi.fn(),
+    reversePayment: vi.fn(),
   };
   const router = { navigateByUrl: vi.fn() };
-  const auth = { canRegisterPayment: vi.fn() };
+  const auth = { canRegisterPayment: vi.fn(), canReversePayment: vi.fn() };
 
   const samplePayment: Payment = {
     id: 'pay1',
@@ -36,6 +37,11 @@ describe('ReceivableDetailPage', () => {
     registeredById: 'u5',
     registeredByName: 'financeiro',
     registeredAt: '2026-06-01T12:00:00Z',
+    reversed: false,
+    reversalReason: null,
+    reversedById: null,
+    reversedByName: null,
+    reversedAt: null,
   };
 
   const sample: ReceivableDetail = {
@@ -122,12 +128,25 @@ describe('ReceivableDetailPage', () => {
     receivables.detail.mockReset();
     receivables.paymentMethods.mockReset();
     receivables.registerPayment.mockReset();
+    receivables.reversePayment.mockReset();
     router.navigateByUrl.mockReset();
     auth.canRegisterPayment.mockReset();
+    auth.canReversePayment.mockReset();
     auth.canRegisterPayment.mockReturnValue(false);
+    auth.canReversePayment.mockReturnValue(false);
     receivables.detail.mockReturnValue(of(sample));
     receivables.paymentMethods.mockReturnValue(of([{ id: 'm1', code: 'PIX', label: 'Pix', active: true, sortOrder: 3 }]));
   });
+
+  const reversedPayment: Payment = {
+    ...samplePayment,
+    id: 'pay9',
+    reversed: true,
+    reversalReason: 'lançamento duplicado',
+    reversedById: 'u5',
+    reversedByName: 'financeiro',
+    reversedAt: '2026-06-24T12:00:00Z',
+  };
 
   it('loads the receivable on init', () => {
     const comp = build();
@@ -311,6 +330,106 @@ describe('ReceivableDetailPage', () => {
     });
   });
 
+  describe('reverse payment', () => {
+    const paidDetail: ReceivableDetail = {
+      ...sample,
+      status: 'PAID',
+      amountPaid: 600,
+      outstandingAmount: 900,
+      payments: [samplePayment],
+    };
+
+    it('allows reversing a registered payment only when authorized, never an already-reversed one', () => {
+      const comp = build();
+      auth.canReversePayment.mockReturnValue(false);
+      expect(comp['canReverse'](samplePayment)).toBe(false);
+      auth.canReversePayment.mockReturnValue(true);
+      expect(comp['canReverse'](samplePayment)).toBe(true);
+      expect(comp['canReverse'](reversedPayment)).toBe(false);
+    });
+
+    it('opens the reversal dialog with an empty required reason', () => {
+      auth.canReversePayment.mockReturnValue(true);
+      receivables.detail.mockReturnValue(of(paidDetail));
+      const comp = build();
+      comp.ngOnInit();
+      comp['openReversal'](samplePayment);
+      expect(comp['reversalDialogOpen']()).toBe(true);
+      expect(comp['targetPayment']()?.id).toBe('pay1');
+      expect(comp['reversalForm'].controls.reason.value).toBe('');
+      expect(comp['reversalForm'].invalid).toBe(true); // reason required
+    });
+
+    it('does not submit a reversal without a reason (form invalid)', () => {
+      auth.canReversePayment.mockReturnValue(true);
+      const comp = build();
+      comp.ngOnInit();
+      comp['openReversal'](samplePayment);
+      comp['submitReversal']();
+      expect(receivables.reversePayment).not.toHaveBeenCalled();
+    });
+
+    it('reverses the payment and refreshes the detail from the response', () => {
+      const afterReversal: ReceivableDetail = {
+        ...sample,
+        status: 'OPEN',
+        amountPaid: 0,
+        outstandingAmount: 1500,
+        payments: [reversedPayment],
+      };
+      receivables.reversePayment.mockReturnValue(of(afterReversal));
+      auth.canReversePayment.mockReturnValue(true);
+      receivables.detail.mockReturnValue(of(paidDetail));
+      const comp = build();
+      comp.ngOnInit();
+      comp['openReversal'](samplePayment);
+      comp['reversalForm'].controls.reason.setValue('lançamento duplicado');
+      comp['submitReversal']();
+
+      expect(receivables.reversePayment).toHaveBeenCalledWith('r1', 'pay1', {
+        reason: 'lançamento duplicado',
+      });
+      expect(comp['receivable']()?.status).toBe('OPEN');
+      expect(comp['receivable']()?.payments[0].reversed).toBe(true);
+      expect(comp['reversalDialogOpen']()).toBe(false);
+      expect(comp['reversing']()).toBe(false);
+    });
+
+    it('surfaces a 422 already-reversed error from the reversal endpoint', () => {
+      receivables.reversePayment.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 422,
+              error: {
+                code: 'financial.payment.already-reversed',
+                message: 'Este pagamento já foi estornado',
+              },
+            }),
+        ),
+      );
+      auth.canReversePayment.mockReturnValue(true);
+      const comp = build();
+      comp.ngOnInit();
+      comp['openReversal'](samplePayment);
+      comp['reversalForm'].controls.reason.setValue('estorno');
+      comp['submitReversal']();
+      expect(comp['reversalError']()).toContain('já foi estornado');
+      expect(comp['reversalDialogOpen']()).toBe(true);
+    });
+
+    it('flags the reversal dialog as unsaved when the reason was typed', () => {
+      auth.canReversePayment.mockReturnValue(true);
+      const comp = build();
+      comp.ngOnInit();
+      comp['openReversal'](samplePayment);
+      expect(comp.hasUnsavedChanges()).toBe(false);
+      comp['reversalForm'].controls.reason.setValue('estorno');
+      comp['reversalForm'].markAsDirty();
+      expect(comp.hasUnsavedChanges()).toBe(true);
+    });
+  });
+
   describe('DOM rendering', () => {
     it('renders the loading state while the detail is in flight', () => {
       receivables.detail.mockReturnValue(NEVER);
@@ -349,6 +468,35 @@ describe('ReceivableDetailPage', () => {
       expect(rows.length).toBe(1);
       expect(el.textContent).toContain('Pix'); // method label
       expect(el.textContent).toContain('recebido'); // note
+      expect(el.textContent).toContain('Situação');
+      expect(el.textContent).toContain('Registrado'); // a standing payment
+    });
+
+    it('shows the Estornar action for a registered payment when authorized', () => {
+      auth.canReversePayment.mockReturnValue(true);
+      receivables.detail.mockReturnValue(of({ ...sample, amountPaid: 600, payments: [samplePayment] }));
+      const el = render();
+      expect(el.textContent).toContain('Estornar');
+    });
+
+    it('hides the Estornar action for a read-only user', () => {
+      auth.canReversePayment.mockReturnValue(false);
+      receivables.detail.mockReturnValue(of({ ...sample, amountPaid: 600, payments: [samplePayment] }));
+      const el = render();
+      expect(el.querySelector('.payments-table .col-action p-button')).toBeNull();
+    });
+
+    it('marks a reversed payment with the Estornado badge + reason and de-emphasises its row', () => {
+      auth.canReversePayment.mockReturnValue(true);
+      receivables.detail.mockReturnValue(
+        of({ ...sample, status: 'OPEN', amountPaid: 0, payments: [reversedPayment] } satisfies ReceivableDetail),
+      );
+      const el = render();
+      expect(el.textContent).toContain('Estornado');
+      expect(el.textContent).toContain('lançamento duplicado'); // the reversal reason
+      expect(el.querySelector('.payments-table tbody tr.reversed-row')).not.toBeNull();
+      // A reversed payment offers no second Estornar action.
+      expect(el.querySelector('.payments-table .col-action p-button')).toBeNull();
     });
 
     it('shows the "Registrar pagamento" action for open installments when authorized', () => {

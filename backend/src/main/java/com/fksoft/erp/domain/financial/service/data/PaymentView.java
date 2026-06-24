@@ -23,6 +23,11 @@ import java.util.UUID;
  * @param registeredById the user who registered the payment
  * @param registeredByName the resolved name of the user who registered the payment
  * @param registeredAt when the payment was registered
+ * @param reversed whether the payment has been reversed (kept in history, no longer counts towards the paid total)
+ * @param reversalReason the reason recorded for the reversal, or {@code null} if not reversed
+ * @param reversedById the user who reversed the payment, or {@code null} if not reversed
+ * @param reversedByName the resolved name of the user who reversed the payment, or {@code null}
+ * @param reversedAt when the payment was reversed, or {@code null} if not reversed
  */
 public record PaymentView(
         UUID id,
@@ -36,7 +41,12 @@ public record PaymentView(
         String note,
         UUID registeredById,
         String registeredByName,
-        Instant registeredAt) {
+        Instant registeredAt,
+        boolean reversed,
+        String reversalReason,
+        UUID reversedById,
+        String reversedByName,
+        Instant reversedAt) {
 
     /**
      * Builds the view from the payment entity and the resolved cross-aggregate data.
@@ -44,9 +54,11 @@ public record PaymentView(
      * @param payment the payment entity
      * @param installmentNumber the settled installment's number
      * @param registeredByName the resolved registering-user name, or {@code null}
+     * @param reversedByName the resolved reversing-user name, or {@code null} if not reversed
      * @return the read view
      */
-    public static PaymentView from(ReceivablePayment payment, int installmentNumber, String registeredByName) {
+    public static PaymentView from(
+            ReceivablePayment payment, int installmentNumber, String registeredByName, String reversedByName) {
         PaymentMethod method = payment.method();
         return new PaymentView(
                 payment.id(),
@@ -60,6 +72,11 @@ public record PaymentView(
                 payment.note(),
                 payment.registeredBy(),
                 registeredByName,
-                payment.registeredAt());
+                payment.registeredAt(),
+                payment.reversed(),
+                payment.reversalReason(),
+                payment.reversedBy(),
+                reversedByName,
+                payment.reversedAt());
     }
 }

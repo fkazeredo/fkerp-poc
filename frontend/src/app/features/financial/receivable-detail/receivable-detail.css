@@ -158,6 +158,25 @@
   text-align: center;
 }
 
+.payments-table .col-action {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* A reversed payment stays visible as history, but de-emphasised (muted + struck amount). */
+.payments-table tr.reversed-row td {
+  color: var(--p-text-muted-color, #9ca3af);
+}
+
+.payments-table tr.reversed-row .num {
+  text-decoration: line-through;
+}
+
+.reversal-meta {
+  font-size: 0.78rem;
+  margin-top: 0.2rem;
+}
+
 .muted {
   color: var(--p-text-muted-color, #6b7280);
 }

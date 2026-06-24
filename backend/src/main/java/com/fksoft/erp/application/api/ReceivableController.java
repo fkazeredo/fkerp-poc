@@ -4,6 +4,7 @@ import com.fksoft.erp.application.api.dto.CreateReceivableRequest;
 import com.fksoft.erp.application.api.dto.ReceivableListParams;
 import com.fksoft.erp.application.api.dto.ReceivableResponse;
 import com.fksoft.erp.application.api.dto.RegisterPaymentRequest;
+import com.fksoft.erp.application.api.dto.ReversePaymentRequest;
 import com.fksoft.erp.domain.financial.service.ReceivableService;
 import com.fksoft.erp.domain.financial.service.data.CreateReceivableCommand;
 import com.fksoft.erp.domain.financial.service.data.EligibleOrder;
@@ -151,6 +152,24 @@ public class ReceivableController {
                 request.paymentMethodId(), request.amount(), request.paymentDate(), request.note());
         return receivableService.registerPayment(
                 id, installmentId, command, userContext.currentUserId(), canSeeAllReceivables());
+    }
+
+    /**
+     * Reverses a registered payment of a Receivable (a payment-entry correction). The payment stays in history
+     * marked reversed, and the installment / Receivable status and paid amount are re-consolidated. Requires
+     * {@code financial:payment:reverse} and that the caller may see the Receivable. Creates no refund, Commission
+     * or Customer Care data.
+     *
+     * @param id the receivable id
+     * @param paymentId the payment to reverse
+     * @param request the reversal data (the required reason)
+     * @return the refreshed Receivable detail
+     */
+    @PostMapping("/{id}/payments/{paymentId}/reversals")
+    public ReceivableDetail reversePayment(
+            @PathVariable UUID id, @PathVariable UUID paymentId, @Valid @RequestBody ReversePaymentRequest request) {
+        return receivableService.reversePayment(
+                id, paymentId, request.reason(), userContext.currentUserId(), canSeeAllReceivables());
     }
 
     // Source-order visibility for creation/eligibility reuses the Order read tiers.

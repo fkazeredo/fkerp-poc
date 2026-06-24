@@ -405,4 +405,90 @@ class ReceivableServiceTest {
                 .isInstanceOf(PaymentExceedsOutstandingException.class);
         verify(receivables, never()).save(any());
     }
+
+    // A fully-paid receivable carrying one payment (for the reversal tests).
+    private Receivable paidReceivable() {
+        Receivable receivable = openReceivable();
+        PaymentMethod method = mock(PaymentMethod.class);
+        receivable.registerPayment(
+                receivable.installments().get(0).id(),
+                new BigDecimal("1500.00"),
+                LocalDate.of(2026, 6, 20),
+                method,
+                "pix",
+                userId);
+        return receivable;
+    }
+
+    @Test
+    void reversePaymentReturnsTheReceivableToOpenAndReflectsTheStatus() {
+        Receivable receivable = paidReceivable();
+        UUID paymentId = receivable.payments().get(0).id();
+        when(receivables.findById(receivable.id())).thenReturn(Optional.of(receivable));
+        when(accessPolicy.canSee(receivable, userId, true)).thenReturn(true);
+        when(receivables.save(any(Receivable.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ReceivableDetail detail =
+                service.reversePayment(receivable.id(), paymentId, "lançamento duplicado", userId, true);
+
+        assertThat(detail.status()).isEqualTo("OPEN");
+        assertThat(detail.amountPaid()).isEqualByComparingTo("0.00");
+        assertThat(detail.outstandingAmount()).isEqualByComparingTo("1500.00");
+        // The payment stays in history, marked reversed with its reason.
+        assertThat(detail.payments()).hasSize(1);
+        assertThat(detail.payments().get(0).reversed()).isTrue();
+        assertThat(detail.payments().get(0).reversalReason()).isEqualTo("lançamento duplicado");
+        verify(receivables).save(receivable);
+        // The re-consolidated status (OPEN) is reflected onto the Commercial Order.
+        ArgumentCaptor<ReceivableStatusChanged> reflected = ArgumentCaptor.forClass(ReceivableStatusChanged.class);
+        verify(events).publishEvent(reflected.capture());
+        assertThat(reflected.getValue().status()).isEqualTo("OPEN");
+        assertThat(reflected.getValue().commercialOrderId()).isEqualTo(receivable.commercialOrderId());
+    }
+
+    @Test
+    void reversePaymentThrowsNotFoundWhenReceivableAbsent() {
+        UUID id = UUID.randomUUID();
+        when(receivables.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.reversePayment(id, UUID.randomUUID(), "x", userId, true))
+                .isInstanceOf(ReceivableNotFoundException.class);
+        verify(receivables, never()).save(any());
+    }
+
+    @Test
+    void reversePaymentThrowsAccessDeniedWhenNotVisible() {
+        UUID id = UUID.randomUUID();
+        Receivable receivable = mock(Receivable.class);
+        when(receivables.findById(id)).thenReturn(Optional.of(receivable));
+        when(accessPolicy.canSee(receivable, userId, false)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.reversePayment(id, UUID.randomUUID(), "x", userId, false))
+                .isInstanceOf(ReceivableAccessDeniedException.class);
+        verify(receivables, never()).save(any());
+    }
+
+    @Test
+    void reversePaymentThrowsWhenThePaymentIsUnknown() {
+        Receivable receivable = paidReceivable();
+        when(receivables.findById(receivable.id())).thenReturn(Optional.of(receivable));
+        when(accessPolicy.canSee(receivable, userId, true)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.reversePayment(receivable.id(), UUID.randomUUID(), "x", userId, true))
+                .isInstanceOf(com.fksoft.erp.domain.financial.exception.PaymentNotFoundException.class);
+        verify(receivables, never()).save(any());
+    }
+
+    @Test
+    void reversePaymentThrowsWhenThePaymentIsAlreadyReversed() {
+        Receivable receivable = paidReceivable();
+        UUID paymentId = receivable.payments().get(0).id();
+        receivable.reversePayment(paymentId, "primeiro estorno", userId, java.time.Instant.now());
+        when(receivables.findById(receivable.id())).thenReturn(Optional.of(receivable));
+        when(accessPolicy.canSee(receivable, userId, true)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.reversePayment(receivable.id(), paymentId, "segundo estorno", userId, true))
+                .isInstanceOf(com.fksoft.erp.domain.financial.exception.PaymentAlreadyReversedException.class);
+        verify(receivables, never()).save(any());
+    }
 }

@@ -108,6 +108,43 @@ class ReceivableInstallmentTest {
     }
 
     @Test
+    void reverseAmountReturnsAFullyPaidInstallmentToOpen() {
+        ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("100.00"), DUE, null);
+        installment.applyPayment(new BigDecimal("100.00"));
+
+        installment.reverseAmount(new BigDecimal("100.00"));
+
+        assertThat(installment.status()).isEqualTo(InstallmentStatus.OPEN);
+        assertThat(installment.amountPaid()).isEqualByComparingTo("0.00");
+        assertThat(installment.outstanding()).isEqualByComparingTo("100.00");
+    }
+
+    @Test
+    void reverseAmountReturnsAPaidInstallmentToPartiallyPaidWhenAnotherPaymentRemains() {
+        ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("100.00"), DUE, null);
+        installment.applyPayment(new BigDecimal("40.00"));
+        installment.applyPayment(new BigDecimal("60.00")); // now PAID
+
+        installment.reverseAmount(new BigDecimal("60.00")); // reverse the second payment
+
+        assertThat(installment.status()).isEqualTo(InstallmentStatus.PARTIALLY_PAID);
+        assertThat(installment.amountPaid()).isEqualByComparingTo("40.00");
+        assertThat(installment.outstanding()).isEqualByComparingTo("60.00");
+    }
+
+    @Test
+    void reverseAmountKeepsAStillFullyCoveredInstallmentPaid() {
+        // Overpayment is out of scope, but a reversal must keep PAID while the remaining paid still covers it.
+        ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("100.00"), DUE, null);
+        installment.applyPayment(new BigDecimal("100.00"));
+
+        installment.reverseAmount(new BigDecimal("0.00"));
+
+        assertThat(installment.status()).isEqualTo(InstallmentStatus.PAID);
+        assertThat(installment.amountPaid()).isEqualByComparingTo("100.00");
+    }
+
+    @Test
     void isPastDueOnlyWhenUnpaidAndPastTheDueDate() {
         ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("100.00"), DUE, null);
 

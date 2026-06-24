@@ -7,9 +7,11 @@ import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.service.CustomerService;
 import com.fksoft.erp.domain.financial.exception.InstallmentNotPayableException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
+import com.fksoft.erp.domain.financial.exception.PaymentAlreadyReversedException;
 import com.fksoft.erp.domain.financial.exception.PaymentExceedsOutstandingException;
 import com.fksoft.erp.domain.financial.exception.PaymentInstallmentNotFoundException;
 import com.fksoft.erp.domain.financial.exception.PaymentMethodNotAvailableException;
+import com.fksoft.erp.domain.financial.exception.PaymentNotFoundException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAccessDeniedException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAlreadyExistsException;
 import com.fksoft.erp.domain.financial.exception.ReceivableNotFoundException;
@@ -18,7 +20,6 @@ import com.fksoft.erp.domain.financial.exception.SourceOrderNotFoundException;
 import com.fksoft.erp.domain.financial.model.PaymentMethod;
 import com.fksoft.erp.domain.financial.model.Receivable;
 import com.fksoft.erp.domain.financial.model.ReceivableCreated;
-import com.fksoft.erp.domain.financial.model.ReceivablePayment;
 import com.fksoft.erp.domain.financial.model.ReceivableStatus;
 import com.fksoft.erp.domain.financial.model.ReceivableStatusChanged;
 import com.fksoft.erp.domain.financial.repository.PaymentMethodRepository;
@@ -37,6 +38,7 @@ import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
@@ -212,6 +214,40 @@ public class ReceivableService {
         return toDetail(receivable);
     }
 
+    /**
+     * Reverses a registered payment of a Receivable the caller may see (a payment-entry correction). The payment
+     * is marked reversed (kept in history, never deleted), the settled installment and the Receivable's paid total
+     * and status are re-consolidated (a {@code PAID} receivable returns to {@code PARTIALLY_PAID}/{@code OPEN}), and
+     * the financial-status reflection onto the Order is republished. Creates no refund, Commission or Customer Care
+     * data and never touches the source Order, Lead or Customer.
+     *
+     * @param receivableId the receivable id
+     * @param paymentId the payment to reverse
+     * @param reason the reason for the reversal (required)
+     * @param userId the authenticated financial user reversing the payment
+     * @param canSeeAll whether the caller may see every Receivable
+     * @return the refreshed Receivable detail
+     * @throws ReceivableNotFoundException if the Receivable does not exist
+     * @throws ReceivableAccessDeniedException if the caller may not see it
+     * @throws PaymentNotFoundException if the payment is not part of the Receivable
+     * @throws PaymentAlreadyReversedException if the payment has already been reversed
+     */
+    @Transactional
+    public ReceivableDetail reversePayment(
+            UUID receivableId, UUID paymentId, String reason, UUID userId, boolean canSeeAll) {
+        Receivable receivable = receivables.findById(receivableId).orElseThrow(ReceivableNotFoundException::new);
+        if (!accessPolicy.canSee(receivable, userId, canSeeAll)) {
+            throw new ReceivableAccessDeniedException();
+        }
+        receivable.reversePayment(paymentId, reason, userId, Instant.now());
+        receivables.save(receivable);
+        events.publishEvent(new ReceivableStatusChanged(
+                receivable.id(),
+                receivable.commercialOrderId(),
+                receivable.status().name()));
+        return toDetail(receivable);
+    }
+
     // Assembles the detail read model: resolves the order number, payer/commercial references and the
     // responsible / creator / payment-registrant names, then maps the aggregate. Called by detail() and
     // registerPayment() (both inside a transaction so the installments and payments are loaded).
@@ -232,7 +268,7 @@ public class ReceivableService {
                         receivable.commercialResponsiblePersonId(),
                         receivable.financialResponsiblePersonId(),
                         receivable.createdBy()),
-                receivable.payments().stream().map(ReceivablePayment::registeredBy)));
+                receivable.payments().stream().flatMap(p -> Stream.of(p.registeredBy(), p.reversedBy()))));
         return ReceivableDetail.from(
                 receivable, orderNumber, customerName, proposalReference, opportunityReference, names, LocalDate.now());
     }
