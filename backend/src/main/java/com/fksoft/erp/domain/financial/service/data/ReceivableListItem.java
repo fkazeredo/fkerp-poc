@@ -51,15 +51,14 @@ public record ReceivableListItem(
 
     /**
      * Builds the list item from the entity and the resolved cross-aggregate names. {@code amountPaid} and
-     * {@code lastPaymentDate} read the denormalized payment standing; {@code overdue} is computed from the due
-     * date and the status (settled receivables are never overdue).
+     * {@code lastPaymentDate} read the denormalized payment standing; {@code overdue} is the stored OVERDUE status
+     * (set by the daily overdue check).
      *
      * @param r the receivable entity
      * @param orderNumber the resolved source order number
      * @param customerName the resolved payer name
      * @param commercialResponsibleName the resolved commercial-responsible name, or {@code null}
      * @param financialResponsibleName the resolved financial-responsible name, or {@code null}
-     * @param today the current date, for the overdue computation
      * @return the list item
      */
     public static ReceivableListItem from(
@@ -67,8 +66,7 @@ public record ReceivableListItem(
             long orderNumber,
             String customerName,
             String commercialResponsibleName,
-            String financialResponsibleName,
-            LocalDate today) {
+            String financialResponsibleName) {
         BigDecimal amountPaid = r.amountPaid();
         return new ReceivableListItem(
                 r.id(),
@@ -80,20 +78,12 @@ public record ReceivableListItem(
                 r.totalAmount().subtract(amountPaid),
                 r.status().name(),
                 r.dueDate(),
-                isOverdue(r, today),
+                r.status() == ReceivableStatus.OVERDUE,
                 r.commercialResponsiblePersonId(),
                 commercialResponsibleName,
                 r.financialResponsiblePersonId(),
                 financialResponsibleName,
                 r.createdAt(),
                 r.lastPaymentDate());
-    }
-
-    // Overdue = past the (next) due date and still requiring follow-up (not PAID, not CANCELLED).
-    private static boolean isOverdue(Receivable r, LocalDate today) {
-        return r.dueDate() != null
-                && r.dueDate().isBefore(today)
-                && r.status() != ReceivableStatus.PAID
-                && r.status() != ReceivableStatus.CANCELLED;
     }
 }

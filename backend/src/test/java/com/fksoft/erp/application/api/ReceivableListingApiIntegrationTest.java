@@ -119,20 +119,22 @@ class ReceivableListingApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void overdueReceivablesStayVisibleByDefaultAndCanBeFilteredAlone() throws Exception {
         String fin = finance();
-        // By default the past-due operational receivables are present and flagged overdue.
+        // Overdue is the stored OVERDUE status (the daily check's authoritative result), not the reference due
+        // date: Gamma (OVERDUE) is flagged; Alpha (OPEN, future) and Beta (PARTIALLY_PAID, past-due but not yet
+        // flagged) are not — both stay visible by default as operational receivables.
         mvc.perform(get("/api/receivables").header("Authorization", "Bearer " + fin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[?(@.customerName == 'Gamma Cliente')].overdue")
                         .value(org.hamcrest.Matchers.hasItem(true)))
                 .andExpect(jsonPath("$.content[?(@.customerName == 'Alpha Cliente')].overdue")
+                        .value(org.hamcrest.Matchers.hasItem(false)))
+                .andExpect(jsonPath("$.content[?(@.customerName == 'Beta Cliente')].overdue")
                         .value(org.hamcrest.Matchers.hasItem(false)));
-        // overdueOnly keeps just the past-due operational ones (Beta + Gamma), not the future-dated Alpha.
+        // overdueOnly keeps just the OVERDUE-status ones (Gamma), not the past-due-but-not-flagged Beta.
         mvc.perform(get("/api/receivables?overdueOnly=true").header("Authorization", "Bearer " + fin))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(2))
-                .andExpect(jsonPath(
-                        "$.content[*].customerName",
-                        org.hamcrest.Matchers.containsInAnyOrder("Beta Cliente", "Gamma Cliente")));
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].customerName").value("Gamma Cliente"));
     }
 
     @Test

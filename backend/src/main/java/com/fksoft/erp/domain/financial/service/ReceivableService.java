@@ -139,7 +139,6 @@ public class ReceivableService {
                 ReceivableSpecifications.matching(criteria).and(accessPolicy.visibleTo(userId, canSeeAll));
         Page<Receivable> page = receivables.findAll(spec, pageable);
 
-        LocalDate today = LocalDate.now();
         Map<UUID, Long> orderNumbers =
                 resolveOrderNumbers(page.getContent().stream().map(Receivable::commercialOrderId));
         Map<UUID, String> customerNames =
@@ -152,8 +151,7 @@ public class ReceivableService {
                 orderNumbers.getOrDefault(r.commercialOrderId(), 0L),
                 customerNames.get(r.customerId()),
                 nameOrNull(names, r.commercialResponsiblePersonId()),
-                nameOrNull(names, r.financialResponsiblePersonId()),
-                today));
+                nameOrNull(names, r.financialResponsiblePersonId())));
     }
 
     /**

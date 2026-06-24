@@ -92,14 +92,14 @@
       </thead>
       <tbody>
         @for (i of r.installments; track i.id) {
-          <tr [class.overdue-row]="installmentOverdue(i)">
+          <tr [class.overdue-row]="i.overdue">
             <td class="col-num">{{ i.number }}</td>
             <td class="num">{{ i.amount | currency: 'BRL' }}</td>
             <td class="num">{{ i.amountPaid | currency: 'BRL' }}</td>
             <td class="num">{{ i.outstanding | currency: 'BRL' }}</td>
             <td>
               {{ i.dueDate | date: 'dd/MM/yyyy' }}
-              @if (installmentOverdue(i)) {
+              @if (i.overdue) {
                 <p-tag value="Vencida" severity="danger" styleClass="overdue-tag" />
               }
             </td>

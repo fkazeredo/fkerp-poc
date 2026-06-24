@@ -133,13 +133,11 @@ public final class ReceivableSpecifications {
         };
     }
 
-    // Past the due date and still requiring follow-up (not PAID / CANCELLED). "Today" is the query execution date.
+    // Overdue is the stored OVERDUE status (the daily overdue check flags past-due receivables with a balance,
+    // per-installment-precise) — the single source of truth, so the filter matches it exactly.
     private static Specification<Receivable> overdueOnlyFilter(boolean overdueOnly) {
-        return (root, query, cb) -> !overdueOnly
-                ? cb.conjunction()
-                : cb.and(
-                        cb.lessThan(root.get("dueDate"), LocalDate.now()),
-                        root.get("status").in(ReceivableStatus.operational()));
+        return (root, query, cb) ->
+                !overdueOnly ? cb.conjunction() : cb.equal(root.get("status"), ReceivableStatus.OVERDUE);
     }
 
     private static ReceivableStatus toStatus(String value) {

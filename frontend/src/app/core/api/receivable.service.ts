@@ -9,7 +9,7 @@ export type ReceivableStatus = 'OPEN' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 
 /** The lifecycle status of a single Receivable installment (mirrors the Receivable status). */
 export type InstallmentStatus = 'OPEN' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 
-/** One installment of a Receivable's schedule, with its payment progress. Installment data only. */
+/** One installment of a Receivable's schedule, with its payment progress and overdue flag. Installment data only. */
 export interface ReceivableInstallment {
   id: string;
   number: number;
@@ -18,6 +18,8 @@ export interface ReceivableInstallment {
   outstanding: number;
   dueDate: string;
   status: InstallmentStatus;
+  /** Past due with a balance (OPEN/PARTIALLY_PAID and past its due date) — computed server-side. */
+  overdue: boolean;
   paymentNotes: string | null;
 }
 

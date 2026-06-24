@@ -13,10 +13,10 @@ import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-/** Unit tests for the operational Receivable list item: outstanding amount and the overdue computation. */
+/** Unit tests for the operational Receivable list item: outstanding amount and the status-based overdue flag. */
 class ReceivableListItemTest {
 
-    private static final LocalDate TODAY = LocalDate.of(2026, 7, 15);
+    private static final LocalDate REF_DUE = LocalDate.of(2026, 7, 15);
 
     private Receivable receivable(ReceivableStatus status, LocalDate dueDate) {
         Receivable r = mock(Receivable.class);
@@ -37,7 +37,7 @@ class ReceivableListItemTest {
     @Test
     void reportsZeroPaidFullOutstandingAndNoLastPaymentUntilThePaymentSlice() {
         ReceivableListItem item = ReceivableListItem.from(
-                receivable(ReceivableStatus.OPEN, TODAY.plusDays(10)), 7, "Maria", null, null, TODAY);
+                receivable(ReceivableStatus.OPEN, REF_DUE.plusDays(10)), 7, "Maria", null, null);
 
         assertThat(item.totalAmount()).isEqualByComparingTo("1500.00");
         assertThat(item.amountPaid()).isEqualByComparingTo("0.00");
@@ -46,32 +46,38 @@ class ReceivableListItemTest {
     }
 
     @Test
-    void flagsAPastDueOpenReceivableAsOverdue() {
+    void flagsAnOverdueStatusReceivableAsOverdue() {
         ReceivableListItem item = ReceivableListItem.from(
-                receivable(ReceivableStatus.OPEN, TODAY.minusDays(1)), 7, "Maria", null, null, TODAY);
+                receivable(ReceivableStatus.OVERDUE, REF_DUE.minusDays(1)), 7, "Maria", null, null);
         assertThat(item.overdue()).isTrue();
     }
 
     @Test
-    void doesNotFlagAFutureDueReceivableAsOverdue() {
-        ReceivableListItem item = ReceivableListItem.from(
-                receivable(ReceivableStatus.OPEN, TODAY.plusDays(1)), 7, "Maria", null, null, TODAY);
-        assertThat(item.overdue()).isFalse();
-    }
-
-    @Test
-    void neverFlagsSettledReceivablesAsOverdueEvenWhenPastDue() {
+    void doesNotFlagOperationalNonOverdueReceivablesEvenWhenPastTheReferenceDate() {
+        // Overdue is the stored OVERDUE status (the daily job's authoritative, per-installment result), not the
+        // single reference due date — so an OPEN/PARTIALLY_PAID receivable is not overdue until the job flags it.
         assertThat(ReceivableListItem.from(
-                                receivable(ReceivableStatus.PAID, TODAY.minusDays(5)), 7, "Maria", null, null, TODAY)
+                                receivable(ReceivableStatus.OPEN, REF_DUE.minusDays(5)), 7, "Maria", null, null)
                         .overdue())
                 .isFalse();
         assertThat(ReceivableListItem.from(
-                                receivable(ReceivableStatus.CANCELLED, TODAY.minusDays(5)),
+                                receivable(ReceivableStatus.PARTIALLY_PAID, REF_DUE.minusDays(5)),
                                 7,
                                 "Maria",
                                 null,
-                                null,
-                                TODAY)
+                                null)
+                        .overdue())
+                .isFalse();
+    }
+
+    @Test
+    void neverFlagsSettledReceivablesAsOverdue() {
+        assertThat(ReceivableListItem.from(
+                                receivable(ReceivableStatus.PAID, REF_DUE.minusDays(5)), 7, "Maria", null, null)
+                        .overdue())
+                .isFalse();
+        assertThat(ReceivableListItem.from(
+                                receivable(ReceivableStatus.CANCELLED, REF_DUE.minusDays(5)), 7, "Maria", null, null)
                         .overdue())
                 .isFalse();
     }

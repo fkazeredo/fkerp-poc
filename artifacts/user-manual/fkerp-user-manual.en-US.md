@@ -942,9 +942,9 @@ payments and outstanding balance**. The detail gathers:
 - the **customer (payer)**;
 - the traceable **commercial origin** — the **order** (PC-000n) and the **references** of the source **proposal**
   and **opportunity** (with links to open them, plus the lead) and the **commercial responsible**;
-- the **installments table** (number, amount, **paid**, **outstanding**, due date, status and notes), with
-  **overdue installments highlighted** and, for authorized users, a **Register payment** button on each installment
-  that still has a balance;
+- the **installments table** (number, amount, **paid**, **outstanding**, due date, status and notes), with each
+  **overdue installment** (unpaid and past its due date) **highlighted** and, for authorized users, a **Register
+  payment** button on each installment that still has a balance;
 - the **Payments** section — the **history of registered payments** (installment, amount, date, payment method, who
   registered it and notes); empty while there are no payments.
 
@@ -973,12 +973,17 @@ payment appears in the **Payments** section and the **paid** / **outstanding** f
 installment) update. Registering a payment creates **no** commission, invoice or receipt and performs **no** bank
 reconciliation, and it never changes the order, lead or customer.
 
-### 11.6 Receivable and installment states
+### 11.6 Receivable and installment states · Overdue
 
 Both the receivable and each **installment** can be **Open**, **Partially paid**, **Paid**, **Overdue** or
 **Cancelled**. Every receivable is born **Open**; as payments are registered, the installment becomes **Partially
-paid** (a partial payment) or **Paid** (settled), and the receivable **Partially paid** or **Paid**. The automatic
-transition to **Overdue** arrives in a later step.
+paid** (a partial payment) or **Paid** (settled), and the receivable **Partially paid** or **Paid**.
+
+A receivable becomes **Overdue** when its due date has passed and an **outstanding balance** remains — a **daily
+check** flags such receivables as **Overdue** automatically (**paid** and **cancelled** installments are never
+overdue). **Overdue receivables stay visible by default** in the list (as a problem to prioritize) and you can
+filter **overdue only**; in the detail, each **overdue installment** is flagged. **Identifying overdue items
+applies no interest or late fee, sends no notification and opens no customer-care ticket** in this release.
 
 ---
 
