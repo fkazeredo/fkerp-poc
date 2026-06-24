@@ -77,14 +77,40 @@ test('the help overlay documents the register-payment shortcut on a receivable',
   await expect(help.getByText('Registrar pagamento')).toBeVisible();
 });
 
+test('finance opens the Recebimentos operational view from the Financeiro module', async ({ page }) => {
+  await login(page, 'financeiro', 'financeiro123');
+
+  await page.goto('/financeiro/recebimentos');
+  await expect(page.getByRole('heading', { name: 'Recebimentos' })).toBeVisible();
+  // The two-part operational view: the current snapshot and the received-in-period section.
+  await expect(page.getByText('Em aberto (R$)')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Recebido no período' })).toBeVisible();
+  // The isolated e2e stack has no payments → the by-method breakdown shows its empty state.
+  await expect(page.getByText('Nenhum pagamento recebido no período.')).toBeVisible();
+});
+
+test('finance reaches the same view via the Financeiro tab of the Indicadores hub', async ({ page }) => {
+  await login(page, 'financeiro', 'financeiro123');
+
+  await page.goto('/indicadores');
+  const financeiroTab = page.getByRole('tab', { name: 'Financeiro' });
+  await expect(financeiroTab).toBeVisible();
+  await financeiroTab.click();
+  await expect(page.getByRole('heading', { name: 'Recebimentos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Recebido no período' })).toBeVisible();
+});
+
 test('a seller without a financial read tier cannot reach the receivables routes', async ({ page }) => {
   await login(page, 'vendedor', 'vendedor123');
 
-  // The read guard blocks the list and create routes and redirects back to the system home.
+  // The read guard blocks the list, create and indicators routes and redirects back to the system home.
   await page.goto('/financeiro/contas-a-receber');
   await expect(page).not.toHaveURL(/\/financeiro\//);
   await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 
   await page.goto('/financeiro/contas-a-receber/nova');
+  await expect(page).not.toHaveURL(/\/financeiro\//);
+
+  await page.goto('/financeiro/recebimentos');
   await expect(page).not.toHaveURL(/\/financeiro\//);
 });

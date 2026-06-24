@@ -97,6 +97,7 @@ export class NavigationService {
     if (this.auth.canSeeReceivables()) {
       financeiro.push(
         link('Contas a receber', 'pi pi-wallet', '/financeiro/contas-a-receber', false, 'O que há a receber dos negócios fechados.', 'sales'),
+        link('Recebimentos', 'pi pi-chart-bar', '/financeiro/recebimentos', false, 'O que está em aberto, vencido e o que foi recebido.', 'indicators'),
       );
     }
 
@@ -113,7 +114,8 @@ export class NavigationService {
       this.auth.canSeeOpportunities() ||
       this.auth.canSeeProposals() ||
       this.auth.canSeeOrders() ||
-      this.auth.canSeeBookings()
+      this.auth.canSeeBookings() ||
+      this.auth.canSeeReceivables()
     ) {
       acompanhamento.push(
         link('Indicadores', 'pi pi-chart-bar', '/indicadores', false, 'Os números do funil, num lugar só.', 'indicators'),
