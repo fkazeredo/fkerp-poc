@@ -58,6 +58,7 @@ export const routes: Routes = [
       {
         path: 'financeiro/contas-a-receber/:id',
         canActivate: [financialReadGuard],
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/financial/receivable-detail/receivable-detail').then(
             (m) => m.ReceivableDetailPage,
@@ -243,6 +244,13 @@ export const routes: Routes = [
       {
         path: 'cadastros/motivos-falha',
         data: { title: 'Motivos de falha', path: 'booking-failure-reasons', base: 'booking' },
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
+      },
+      {
+        path: 'cadastros/formas-pagamento',
+        data: { title: 'Formas de pagamento', path: 'payment-methods', base: 'financial' },
         canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),

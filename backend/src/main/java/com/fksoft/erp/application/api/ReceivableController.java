@@ -3,6 +3,7 @@ package com.fksoft.erp.application.api;
 import com.fksoft.erp.application.api.dto.CreateReceivableRequest;
 import com.fksoft.erp.application.api.dto.ReceivableListParams;
 import com.fksoft.erp.application.api.dto.ReceivableResponse;
+import com.fksoft.erp.application.api.dto.RegisterPaymentRequest;
 import com.fksoft.erp.domain.financial.service.ReceivableService;
 import com.fksoft.erp.domain.financial.service.data.CreateReceivableCommand;
 import com.fksoft.erp.domain.financial.service.data.EligibleOrder;
@@ -10,6 +11,7 @@ import com.fksoft.erp.domain.financial.service.data.InstallmentInput;
 import com.fksoft.erp.domain.financial.service.data.ReceivableDetail;
 import com.fksoft.erp.domain.financial.service.data.ReceivableListItem;
 import com.fksoft.erp.domain.financial.service.data.ReceivableSearchCriteria;
+import com.fksoft.erp.domain.financial.service.data.RegisterPaymentCommand;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
@@ -118,7 +120,8 @@ public class ReceivableController {
 
     /**
      * Full detail of a Receivable the caller may see, keeping the commercial origin traceable. The contract
-     * carries receivable data only — never Payment, Commission or Invoice data.
+     * carries receivable + installment + payment-history data only — never Commission, Invoice or
+     * bank-reconciliation data.
      *
      * @param id the receivable id
      * @return the Receivable detail read model
@@ -126,6 +129,28 @@ public class ReceivableController {
     @GetMapping("/{id}")
     public ReceivableDetail detail(@PathVariable UUID id) {
         return receivableService.detail(id, userContext.currentUserId(), canSeeAllReceivables());
+    }
+
+    /**
+     * Registers a full payment for one installment of a Receivable. The installment becomes Paid; when every
+     * installment is paid the Receivable becomes Paid (otherwise Partially paid). Requires
+     * {@code financial:payment:register} and that the caller may see the Receivable. Registers no Commission,
+     * Invoice or bank-reconciliation data.
+     *
+     * @param id the receivable id
+     * @param installmentId the target installment id
+     * @param request the payment data (method, amount, date, optional note)
+     * @return the refreshed Receivable detail
+     */
+    @PostMapping("/{id}/installments/{installmentId}/payments")
+    public ReceivableDetail registerPayment(
+            @PathVariable UUID id,
+            @PathVariable UUID installmentId,
+            @Valid @RequestBody RegisterPaymentRequest request) {
+        RegisterPaymentCommand command = new RegisterPaymentCommand(
+                request.paymentMethodId(), request.amount(), request.paymentDate(), request.note());
+        return receivableService.registerPayment(
+                id, installmentId, command, userContext.currentUserId(), canSeeAllReceivables());
     }
 
     // Source-order visibility for creation/eligibility reuses the Order read tiers.

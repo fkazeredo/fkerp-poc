@@ -7,11 +7,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.crm.model.Customer;
+import com.fksoft.erp.domain.financial.exception.InstallmentNotPayableException;
 import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
+import com.fksoft.erp.domain.financial.exception.PaymentAmountMismatchException;
+import com.fksoft.erp.domain.financial.exception.PaymentInstallmentNotFoundException;
 import com.fksoft.erp.domain.financial.model.InstallmentStatus;
+import com.fksoft.erp.domain.financial.model.PaymentMethod;
 import com.fksoft.erp.domain.financial.model.Receivable;
 import com.fksoft.erp.domain.financial.model.ReceivableInstallment;
+import com.fksoft.erp.domain.financial.model.ReceivablePayment;
 import com.fksoft.erp.domain.financial.model.ReceivableStatus;
 import com.fksoft.erp.domain.financial.service.data.InstallmentInput;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
@@ -180,6 +185,134 @@ class ReceivableTest {
         assertThatThrownBy(() ->
                         Receivable.createFromOrder(order, customer(), DUE, null, null, List.of(), UUID.randomUUID()))
                 .isInstanceOf(OrderBookingNotConfirmedException.class);
+    }
+
+    private PaymentMethod paymentMethod() {
+        PaymentMethod method = mock(PaymentMethod.class);
+        lenient().when(method.id()).thenReturn(UUID.randomUUID());
+        return method;
+    }
+
+    private Receivable receivableWithSchedule(BigDecimal total, List<InstallmentInput> schedule) {
+        return Receivable.createFromOrder(
+                confirmedOrder(total), customer(), DUE, null, null, schedule, UUID.randomUUID());
+    }
+
+    @Test
+    void registerFullPaymentOnTheOnlyInstallmentSettlesTheReceivable() {
+        Receivable receivable = receivableWithSchedule(new BigDecimal("1500.00"), List.of());
+        UUID installmentId = receivable.installments().get(0).id();
+        UUID payer = UUID.randomUUID();
+        LocalDate paidOn = LocalDate.of(2026, 6, 20);
+
+        ReceivablePayment payment = receivable.registerFullPayment(
+                installmentId, new BigDecimal("1500.00"), paidOn, paymentMethod(), "pix recebido", payer);
+
+        assertThat(payment.id()).isNotNull();
+        assertThat(payment.amount()).isEqualByComparingTo("1500.00");
+        assertThat(payment.note()).isEqualTo("pix recebido");
+        assertThat(receivable.installments().get(0).status()).isEqualTo(InstallmentStatus.PAID);
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.PAID);
+        assertThat(receivable.amountPaid()).isEqualByComparingTo("1500.00");
+        assertThat(receivable.lastPaymentDate()).isEqualTo(paidOn);
+        assertThat(receivable.payments()).hasSize(1);
+        assertThat(receivable.updatedBy()).isEqualTo(payer);
+    }
+
+    @Test
+    void registerFullPaymentOnOneOfManyInstallmentsMarksPartiallyPaidThenPaid() {
+        List<InstallmentInput> schedule = List.of(
+                new InstallmentInput(new BigDecimal("500.00"), LocalDate.of(2026, 7, 1), null),
+                new InstallmentInput(new BigDecimal("500.00"), LocalDate.of(2026, 8, 1), null),
+                new InstallmentInput(new BigDecimal("500.00"), LocalDate.of(2026, 9, 1), null));
+        Receivable receivable = receivableWithSchedule(new BigDecimal("1500.00"), schedule);
+
+        receivable.registerFullPayment(
+                receivable.installments().get(0).id(),
+                new BigDecimal("500.00"),
+                LocalDate.of(2026, 7, 2),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.PARTIALLY_PAID);
+        assertThat(receivable.amountPaid()).isEqualByComparingTo("500.00");
+
+        receivable.registerFullPayment(
+                receivable.installments().get(1).id(),
+                new BigDecimal("500.00"),
+                LocalDate.of(2026, 8, 2),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+        receivable.registerFullPayment(
+                receivable.installments().get(2).id(),
+                new BigDecimal("500.00"),
+                LocalDate.of(2026, 9, 2),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.PAID);
+        assertThat(receivable.amountPaid()).isEqualByComparingTo("1500.00");
+        assertThat(receivable.lastPaymentDate()).isEqualTo(LocalDate.of(2026, 9, 2));
+        assertThat(receivable.installments())
+                .allSatisfy(i -> assertThat(i.status()).isEqualTo(InstallmentStatus.PAID));
+        assertThat(receivable.payments()).hasSize(3);
+    }
+
+    @Test
+    void registerFullPaymentRejectsAnUnknownInstallment() {
+        Receivable receivable = receivableWithSchedule(new BigDecimal("100.00"), List.of());
+
+        assertThatThrownBy(() -> receivable.registerFullPayment(
+                        UUID.randomUUID(),
+                        new BigDecimal("100.00"),
+                        LocalDate.of(2026, 6, 20),
+                        paymentMethod(),
+                        null,
+                        UUID.randomUUID()))
+                .isInstanceOf(PaymentInstallmentNotFoundException.class);
+    }
+
+    @Test
+    void registerFullPaymentRejectsAnAlreadyPaidInstallment() {
+        Receivable receivable = receivableWithSchedule(new BigDecimal("100.00"), List.of());
+        UUID installmentId = receivable.installments().get(0).id();
+        receivable.registerFullPayment(
+                installmentId,
+                new BigDecimal("100.00"),
+                LocalDate.of(2026, 6, 20),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+
+        assertThatThrownBy(() -> receivable.registerFullPayment(
+                        installmentId,
+                        new BigDecimal("100.00"),
+                        LocalDate.of(2026, 6, 21),
+                        paymentMethod(),
+                        null,
+                        UUID.randomUUID()))
+                .isInstanceOf(InstallmentNotPayableException.class);
+    }
+
+    @Test
+    void registerFullPaymentRejectsAnAmountThatDiffersFromTheInstallment() {
+        Receivable receivable = receivableWithSchedule(new BigDecimal("100.00"), List.of());
+        UUID installmentId = receivable.installments().get(0).id();
+
+        assertThatThrownBy(() -> receivable.registerFullPayment(
+                        installmentId,
+                        new BigDecimal("60.00"),
+                        LocalDate.of(2026, 6, 20),
+                        paymentMethod(),
+                        null,
+                        UUID.randomUUID()))
+                .isInstanceOf(PaymentAmountMismatchException.class);
+        assertThat(receivable.installments().get(0).status()).isEqualTo(InstallmentStatus.OPEN);
+        assertThat(receivable.payments()).isEmpty();
+        assertThat(receivable.amountPaid()).isEqualByComparingTo("0.00");
     }
 
     @Test

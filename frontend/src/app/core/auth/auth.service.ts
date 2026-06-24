@@ -155,6 +155,11 @@ export class AuthService {
   canCreateReceivable(): boolean {
     return this.hasScope('financial:receivable:create');
   }
+
+  /** Whether the user may register a payment against a Receivable installment (the financial operator). */
+  canRegisterPayment(): boolean {
+    return this.hasScope('financial:payment:register');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

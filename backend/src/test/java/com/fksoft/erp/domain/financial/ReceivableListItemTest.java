@@ -29,6 +29,8 @@ class ReceivableListItemTest {
         lenient().when(r.commercialResponsiblePersonId()).thenReturn(null);
         lenient().when(r.financialResponsiblePersonId()).thenReturn(null);
         lenient().when(r.createdAt()).thenReturn(Instant.parse("2026-06-01T10:00:00Z"));
+        lenient().when(r.amountPaid()).thenReturn(BigDecimal.ZERO);
+        lenient().when(r.lastPaymentDate()).thenReturn(null);
         return r;
     }
 

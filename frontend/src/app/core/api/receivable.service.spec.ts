@@ -71,6 +71,33 @@ describe('ReceivableService', () => {
     req.flush([]);
   });
 
+  it('fetches the active payment methods cadastro', () => {
+    service.paymentMethods().subscribe();
+    const req = http.expectOne('/api/financial/payment-methods');
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
+  it('posts a full payment for an installment', () => {
+    service
+      .registerPayment('r1', 'inst1', {
+        paymentMethodId: 'm1',
+        amount: 500,
+        paymentDate: '2026-06-01',
+        note: 'pix',
+      })
+      .subscribe();
+    const req = http.expectOne('/api/receivables/r1/installments/inst1/payments');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({
+      paymentMethodId: 'm1',
+      amount: 500,
+      paymentDate: '2026-06-01',
+      note: 'pix',
+    });
+    req.flush({});
+  });
+
   it('builds list query params from the filters (repeated status, order, paging)', () => {
     service.list({ status: ['OPEN', 'OVERDUE'], order: 'ord1' }, 2, 10).subscribe();
     const req = http.expectOne((r) => r.url === '/api/receivables');

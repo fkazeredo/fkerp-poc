@@ -40,6 +40,8 @@ class ReceivableDetailTest {
         lenient().when(r.createdBy()).thenReturn(null);
         lenient().when(r.createdAt()).thenReturn(Instant.parse("2026-06-01T10:00:00Z"));
         lenient().when(r.installments()).thenReturn(List.<ReceivableInstallment>of());
+        lenient().when(r.amountPaid()).thenReturn(BigDecimal.ZERO);
+        lenient().when(r.payments()).thenReturn(List.of());
         return r;
     }
 
@@ -88,6 +90,8 @@ class ReceivableDetailTest {
         when(paid.status()).thenReturn(ReceivableStatus.PAID);
         when(paid.dueDate()).thenReturn(TODAY.minusDays(5));
         when(paid.installments()).thenReturn(List.of());
+        when(paid.amountPaid()).thenReturn(new BigDecimal("10.00"));
+        when(paid.payments()).thenReturn(List.of());
         ReceivableDetail detail = ReceivableDetail.from(paid, 1, null, null, null, Map.of(), TODAY);
         assertThat(detail.overdue()).isFalse();
     }

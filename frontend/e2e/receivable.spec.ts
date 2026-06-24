@@ -59,6 +59,24 @@ test('finance sees a not-found render for an unknown receivable id', async ({ pa
   await expect(page.getByRole('button', { name: 'Voltar' })).toBeVisible();
 });
 
+test('the payment-methods cadastro lists the seeded methods', async ({ page }) => {
+  await login(page, 'financeiro', 'financeiro123');
+
+  await page.goto('/cadastros/formas-pagamento');
+  await expect(page.getByRole('heading', { name: 'Formas de pagamento' })).toBeVisible();
+  // The seeded methods are listed (Slice 5: Cash / Bank transfer / Pix / … / Other).
+  await expect(page.getByText('Dinheiro', { exact: true })).toBeVisible();
+  await expect(page.getByText('Pix', { exact: true })).toBeVisible();
+});
+
+test('the help overlay documents the register-payment shortcut on a receivable', async ({ page }) => {
+  await login(page, 'financeiro', 'financeiro123');
+  await page.keyboard.press('?');
+  const help = page.getByRole('dialog', { name: 'Atalhos do teclado' });
+  await expect(help).toBeVisible();
+  await expect(help.getByText('Registrar pagamento')).toBeVisible();
+});
+
 test('a seller without a financial read tier cannot reach the receivables routes', async ({ page }) => {
   await login(page, 'vendedor', 'vendedor123');
 
