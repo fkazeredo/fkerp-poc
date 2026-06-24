@@ -81,6 +81,13 @@ public class CommercialOrder {
     @Column(name = "booking_status")
     private String bookingStatus;
 
+    // The Receivable's financial status code, reflected from the Financial Operations context (Sales owns this
+    // column; it is set by a Sales event listener, never by Financial). Null until a Receivable exists for this
+    // Order. This is a read-only reflection — it never drives the Order's own lifecycle ({@link #status}).
+    @Size(max = 60)
+    @Column(name = "financial_status")
+    private String financialStatus;
+
     // The order lines — an immutable snapshot of the Proposal's items at creation time.
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "order_id", nullable = false)
@@ -163,6 +170,19 @@ public class CommercialOrder {
      */
     public void reflectBookingStatus(String bookingStatus) {
         this.bookingStatus = bookingStatus;
+    }
+
+    /**
+     * Reflects the Receivable's financial status from the Financial Operations context onto this Order. This is a
+     * read-only reflection the Order <b>owns</b> (Financial never writes the Order): it records whether the deal
+     * is unpaid, partially paid, paid or overdue, so the Order is identifiable (e.g. as ready for Commission
+     * Management when {@code PAID}, or as a financial problem when {@code OVERDUE}). It never changes the Order's
+     * own lifecycle {@link #status}, never cancels the Order, and creates no Commission data.
+     *
+     * @param financialStatus the Receivable status code to reflect
+     */
+    public void reflectFinancialStatus(String financialStatus) {
+        this.financialStatus = financialStatus;
     }
 
     // The Order requires booking when at least one of its items is a bookable travel product.

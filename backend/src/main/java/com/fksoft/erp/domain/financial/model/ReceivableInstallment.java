@@ -107,6 +107,18 @@ public class ReceivableInstallment {
     }
 
     /**
+     * Whether this installment is past its due date with a balance remaining — i.e. it still requires payment
+     * ({@code OPEN}/{@code PARTIALLY_PAID}) and its due date is before the given reference date.
+     *
+     * @param today the reference (current) date
+     * @return {@code true} if the installment is unpaid/partially paid and past due
+     */
+    public boolean isPastDue(LocalDate today) {
+        return (status == InstallmentStatus.OPEN || status == InstallmentStatus.PARTIALLY_PAID)
+                && dueDate.isBefore(today);
+    }
+
+    /**
      * Applies a payment of {@code paymentAmount} against this installment: increases the paid amount and moves
      * the status to {@code PAID} when fully covered, otherwise {@code PARTIALLY_PAID}. A payment may settle the
      * installment fully (amount == outstanding) or partially. It may NOT exceed the outstanding amount

@@ -23,6 +23,7 @@ import {
   OrderService,
 } from '../../../core/api/order.service';
 import { BookingRequestStatus } from '../../../core/api/booking.service';
+import { ReceivableStatus } from '../../../core/api/receivable.service';
 
 const STATUS_LABELS: Record<CommercialOrderStatus, string> = {
   PENDING_BOOKING: 'Pendente de reserva',
@@ -53,6 +54,22 @@ const BOOKING_STATUS_SEVERITY: Record<BookingRequestStatus, TagSeverity> = {
   PARTIALLY_CONFIRMED: 'info',
   CONFIRMED: 'success',
   FAILED: 'danger',
+  CANCELLED: 'secondary',
+};
+
+const FINANCIAL_STATUS_LABELS: Record<ReceivableStatus, string> = {
+  OPEN: 'Em aberto',
+  PARTIALLY_PAID: 'Parcialmente paga',
+  PAID: 'Paga',
+  OVERDUE: 'Vencida',
+  CANCELLED: 'Cancelada',
+};
+
+const FINANCIAL_STATUS_SEVERITY: Record<ReceivableStatus, TagSeverity> = {
+  OPEN: 'info',
+  PARTIALLY_PAID: 'warn',
+  PAID: 'success',
+  OVERDUE: 'danger',
   CANCELLED: 'secondary',
 };
 
@@ -148,6 +165,14 @@ export class OrderList implements OnInit {
 
   protected bookingStatusSeverity(status: BookingRequestStatus): TagSeverity {
     return BOOKING_STATUS_SEVERITY[status];
+  }
+
+  protected financialStatusLabel(status: ReceivableStatus): string {
+    return FINANCIAL_STATUS_LABELS[status];
+  }
+
+  protected financialStatusSeverity(status: ReceivableStatus): TagSeverity {
+    return FINANCIAL_STATUS_SEVERITY[status];
   }
 
   /** Single loader: fires on first render and on pagination (lazy table). */

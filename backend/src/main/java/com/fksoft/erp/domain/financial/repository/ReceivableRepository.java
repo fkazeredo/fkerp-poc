@@ -25,6 +25,15 @@ public interface ReceivableRepository extends JpaRepository<Receivable, UUID>, J
             UUID commercialOrderId, Collection<ReceivableStatus> statuses);
 
     /**
+     * All Receivables whose status is in the given set — used by the daily overdue check to load the operational
+     * ({@code OPEN}/{@code PARTIALLY_PAID}) receivables that may have become overdue.
+     *
+     * @param statuses the statuses to match
+     * @return the matching receivables
+     */
+    List<Receivable> findByStatusIn(Collection<ReceivableStatus> statuses);
+
+    /**
      * The ids of the Commercial Orders that already have an active (non-cancelled) Receivable — used to
      * exclude them from the "orders eligible for a receivable" list.
      *

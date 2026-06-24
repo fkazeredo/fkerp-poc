@@ -9,12 +9,15 @@ import java.util.UUID;
  * Commercial Order list item (read model) for the Sales module's operational order list. {@code number} is
  * the human-friendly sequential id (rendered as PC-000n in the UI); {@code proposalTitle} is the
  * client-facing summary (the source Proposal's headline); {@code requiresBooking} is the booking-need
- * indicator (true when the Order is PENDING_BOOKING). Exposes commercial-order data only — never Booking,
- * Receivable, Payment, Commission or Customer Care data.
+ * indicator (true when the Order is PENDING_BOOKING). Exposes commercial-order data plus the booking and
+ * financial status reflections only — never Receivable, Payment, Commission or Customer Care detail.
  *
  * @param requiresBooking whether the Order still needs a booking operation (status PENDING_BOOKING)
  * @param bookingStatus the consolidated booking status reflected from Booking Operations, or {@code null} when
  *     no Booking Request exists yet (a read-only reflection; never drives the Order's own status)
+ * @param financialStatus the Receivable status reflected from Financial Operations, or {@code null} when no
+ *     Receivable exists yet ({@code PAID} = ready for Commission Management, {@code OVERDUE} = financial problem;
+ *     a read-only reflection; never drives the Order's own status)
  */
 public record CommercialOrderListItem(
         UUID id,
@@ -30,6 +33,7 @@ public record CommercialOrderListItem(
         BigDecimal total,
         boolean requiresBooking,
         String bookingStatus,
+        String financialStatus,
         Instant createdAt) {
 
     /**
@@ -58,6 +62,7 @@ public record CommercialOrderListItem(
                 o.total(),
                 "PENDING_BOOKING".equals(o.status().name()),
                 o.bookingStatus(),
+                o.financialStatus(),
                 o.createdAt());
     }
 }

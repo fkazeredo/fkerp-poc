@@ -662,8 +662,16 @@ The detail also shows the **Status da reserva** (Booking status) — the reflect
 are going (section 10) — with clear guidance: when the booking is **Confirmed**, the order is **ready to move on
 to Finance**; when it **Failed**, the order shows a **booking problem** that needs attention. This status is a
 **read-only reflection**: it does **not** change the order's own situation (still owned by the Commercial area),
-does **not** cancel the order and creates **nothing** financial. The list and the detail show **order data + that
-booking reflection** — never finance, payment or commission.
+does **not** cancel the order and creates **nothing** financial.
+
+The detail (and the list) also show the **Status financeiro** (Financial status) — the reflection of the
+**receivable** linked to the order (section 11): **Open** / **Partially paid** / **Paid** / **Overdue** (or empty
+when there is no receivable yet). When **Paid**, the order is **ready for Commission Management** (a later step);
+when **Overdue**, it shows as a **financial problem** to handle; **Partially paid** is not treated as paid. Like
+the booking reflection, the financial status is **read-only**: the order **stays owned by the Commercial area**
+(Finance never takes over the order), and reflecting it creates **no** commission. The **Overdue** status is set by
+a **daily check** that flags past-due receivables with a balance. The list and the detail show **order data + the
+booking and financial reflections** — never payment or commission.
 
 > From a **Pending booking** order, the **booking operations** are already available in the **Reservas** module
 > (section 10); as the booking is confirmed or fails there, the order's **Booking status** updates automatically.

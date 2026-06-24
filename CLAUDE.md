@@ -786,11 +786,29 @@ creates **no** Commission, Invoice, receipt/voucher or bank-reconciliation data,
 capture, and never touches the Order, Lead or Customer. **Persona → scopes:** only the back-office **`financeiro`**
 (005) holds `financial:payment:register`; the **Manager** (001) and **Board/Director** (004) keep read-only
 consultation (no payment register). Out of scope (later slices): **overpayment**, cross-installment /
-Receivable-level auto-allocation, payment reversal, the `OVERDUE` automatic transition, the financial status
-reflected onto the Order, financial indicators, interest/late fee, Commission, and receipt-PDF generation. In the
-frontend, the Receivable detail offers **Registrar pagamento** per **payable** installment (shortcut <kbd>p</kbd>)
-behind `canRegisterPayment()` with an **editable amount** defaulting to the outstanding, and the **Formas de
-pagamento** cadastro lives in the **Cadastros** module.
+Receivable-level auto-allocation, payment reversal, financial indicators, interest/late fee, Commission, and
+receipt-PDF generation. In the frontend, the Receivable detail offers **Registrar pagamento** per **payable**
+installment (shortcut <kbd>p</kbd>) behind `canRegisterPayment()` with an **editable amount** defaulting to the
+outstanding, and the **Formas de pagamento** cadastro lives in the **Cadastros** module.
+
+**Reflecting the financial status onto the Commercial Order (normative — Financial Operations, Sprint 5 Slice 7).**
+The Commercial Order **shows** the Receivable's financial status while **staying owned by Sales & Proposals** —
+Financial Operations **never** takes ownership of (or writes) the Order. This mirrors the Sprint-4 booking-status
+reflection exactly: Financial publishes a domain event (`ReceivableStatusChanged{receivableId, commercialOrderId,
+status}`) whenever the status is established or changes — on **creation** (`OPEN`), after **each payment** (the
+consolidated status) and when the **daily overdue check** flags it — and a **Sales-owned** `@EventListener`
+(`CommercialOrderFinancialStatusListener`, synchronous → atomic with the Financial change) writes the Order's own
+nullable `financial_status` column via `CommercialOrder.reflectFinancialStatus(...)`. This is a **read-only
+reflection**: it **never** changes the Order's own lifecycle (`status`) and **never** cancels the Order. The Order
+detail/list expose `financialStatus` (null = no Receivable yet): a **`PAID`** financial status makes the Order
+**identifiable as ready for Commission Management (Sprint 6)** and an **`OVERDUE`** marks it as a **financial
+problem**; a **`PARTIALLY_PAID`** Order is **not** treated as paid. **OVERDUE is a real stored Receivable status**
+set by a daily **`@Scheduled`** job (`ReceivableOverdueJob`, the project's first scheduled job —
+`@EnableScheduling`): it flips operational (`OPEN`/`PARTIALLY_PAID`) Receivables to **`OVERDUE`** once a due date
+has passed with a balance (`Receivable.markOverdueIfPastDue`, idempotent) and republishes the reflection. A
+payment **never "un-overdues"** a still-outstanding Receivable (`consolidateStatus` preserves `OVERDUE`); settling
+it moves it to `PAID`. Reflecting the status **must not** create Commission now, performs no notification, and the
+Order stays owned by Sales.
 
 **Customer (normative — the commercial graduation of a Lead, in `domain.crm`).** The **Customer** is the company's
 client, materialized from its source **Lead** when a Commercial Order is created (deal closed): a **synchronous,
