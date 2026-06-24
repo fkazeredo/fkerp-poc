@@ -93,7 +93,10 @@ describe('NavigationService', () => {
     auth.canSeeReceivables.mockReturnValue(true);
     const financeiro = build().module('financeiro')!;
     expect(financeiro.home).toBe('/financeiro');
-    expect(financeiro.items.map((i) => i.link)).toEqual(['/financeiro/contas-a-receber']);
+    expect(financeiro.items.map((i) => i.link)).toEqual([
+      '/financeiro/contas-a-receber',
+      '/financeiro/recebimentos',
+    ]);
   });
 
   it('builds the Acompanhamento hubs: pendencias from CRM scopes, indicadores from any funnel scope', () => {
@@ -106,6 +109,13 @@ describe('NavigationService', () => {
     auth.canSeeLeads.mockReturnValue(true);
     acomp = build().module('acompanhamento')!;
     expect(acomp.items.map((i) => i.link)).toEqual(['/pendencias', '/indicadores']);
+  });
+
+  it('reaches the Indicadores hub for a finance user (receivables read but no funnel scope)', () => {
+    // A finance-only profile (can see receivables, nothing else) still gets the Indicadores hub (Financeiro tab).
+    auth.canSeeReceivables.mockReturnValue(true);
+    const acomp = build().module('acompanhamento')!;
+    expect(acomp.items.map((i) => i.link)).toEqual(['/indicadores']);
   });
 
   it('every module points at its own home route', () => {

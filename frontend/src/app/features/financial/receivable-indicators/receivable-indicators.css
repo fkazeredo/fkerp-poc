@@ -1,0 +1,138 @@
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--app-muted);
+}
+
+.state {
+  padding: 1.5rem 0.25rem;
+}
+
+.group {
+  margin-bottom: 1.25rem;
+}
+
+.group-title {
+  margin: 0 0 0.7rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.group-title .muted {
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.9rem;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1.1rem 1.2rem;
+  border-left: 4px solid var(--app-border);
+}
+
+.kpi-value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.kpi-label {
+  font-size: 0.85rem;
+}
+
+.kpi.open {
+  border-left-color: #3b82f6;
+}
+.kpi.partial {
+  border-left-color: #f59e0b;
+}
+.kpi.overdue {
+  border-left-color: #ef4444;
+}
+.kpi.outstanding {
+  border-left-color: #6366f1;
+}
+.kpi.received {
+  border-left-color: #22c55e;
+}
+.kpi.payments {
+  border-left-color: #14b8a6;
+}
+.kpi.paid {
+  border-left-color: #a855f7;
+}
+
+.breakdown {
+  padding: 1.1rem 1.25rem;
+}
+
+.breakdown h2 {
+  margin: 0 0 0.9rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.breakdown h2 .muted {
+  font-weight: 400;
+  font-size: 0.8rem;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 10rem 1fr minmax(8rem, auto);
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.55rem;
+}
+
+.bar-label {
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-track {
+  height: 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-border) 60%, transparent);
+  overflow: hidden;
+}
+
+.bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #22c55e;
+  min-width: 2px;
+  transition: width 0.25s ease;
+}
+
+.bar-count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.9rem;
+}

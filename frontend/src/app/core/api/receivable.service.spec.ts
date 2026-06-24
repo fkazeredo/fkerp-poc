@@ -98,6 +98,41 @@ describe('ReceivableService', () => {
     req.flush({});
   });
 
+  it('fetches the operational indicators with the period params', () => {
+    service.indicators('2026-06-01', '2026-06-30').subscribe();
+    const req = http.expectOne((r) => r.url === '/api/receivables/indicators');
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('paidFrom')).toBe('2026-06-01');
+    expect(req.request.params.get('paidTo')).toBe('2026-06-30');
+    req.flush({
+      openCount: 0,
+      partiallyPaidCount: 0,
+      overdueCount: 0,
+      outstandingAmount: 0,
+      paidReceivablesInPeriod: 0,
+      paymentsRegistered: 0,
+      receivedAmount: 0,
+      paymentsByMethod: [],
+    });
+  });
+
+  it('omits the period params when no dates are given (all-time)', () => {
+    service.indicators().subscribe();
+    const req = http.expectOne((r) => r.url === '/api/receivables/indicators');
+    expect(req.request.params.has('paidFrom')).toBe(false);
+    expect(req.request.params.has('paidTo')).toBe(false);
+    req.flush({
+      openCount: 0,
+      partiallyPaidCount: 0,
+      overdueCount: 0,
+      outstandingAmount: 0,
+      paidReceivablesInPeriod: 0,
+      paymentsRegistered: 0,
+      receivedAmount: 0,
+      paymentsByMethod: [],
+    });
+  });
+
   it('posts a payment reversal with the reason to the reversals path', () => {
     service.reversePayment('r1', 'pay1', { reason: 'lançamento duplicado' }).subscribe();
     const req = http.expectOne('/api/receivables/r1/payments/pay1/reversals');
