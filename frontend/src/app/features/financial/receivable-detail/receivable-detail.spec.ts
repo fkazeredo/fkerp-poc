@@ -69,6 +69,7 @@ describe('ReceivableDetailPage', () => {
         outstanding: 600,
         dueDate: '2026-07-15',
         status: 'OPEN',
+        overdue: false,
         paymentNotes: 'entrada',
       },
       {
@@ -79,6 +80,7 @@ describe('ReceivableDetailPage', () => {
         outstanding: 900,
         dueDate: '2026-08-15',
         status: 'OPEN',
+        overdue: false,
         paymentNotes: null,
       },
     ],
@@ -156,14 +158,6 @@ describe('ReceivableDetailPage', () => {
     expect(comp['orderCode'](7)).toBe('PC-0007');
   });
 
-  it('flags a past-due open installment as overdue, but not a future or settled one', () => {
-    const comp = build();
-    const base = { id: 'x', number: 1, amount: 1, amountPaid: 0, outstanding: 1, paymentNotes: null };
-    expect(comp['installmentOverdue']({ ...base, dueDate: '2020-01-01', status: 'OPEN' })).toBe(true);
-    expect(comp['installmentOverdue']({ ...base, dueDate: '2999-12-31', status: 'OPEN' })).toBe(false);
-    expect(comp['installmentOverdue']({ ...base, dueDate: '2020-01-01', status: 'PAID' })).toBe(false);
-  });
-
   it('allows paying an OPEN or PARTIALLY_PAID installment when authorized, never a settled one', () => {
     const comp = build();
     const open = {
@@ -174,6 +168,7 @@ describe('ReceivableDetailPage', () => {
       outstanding: 100,
       dueDate: '2026-07-15',
       status: 'OPEN' as const,
+      overdue: false,
       paymentNotes: null,
     };
     const partial = { ...open, status: 'PARTIALLY_PAID' as const, amountPaid: 40, outstanding: 60 };
@@ -401,6 +396,24 @@ describe('ReceivableDetailPage', () => {
       // Two installment rows are rendered (number column shows 1 and 2).
       const rows = el.querySelectorAll('.installments-table tbody tr');
       expect(rows.length).toBe(2);
+    });
+
+    it('flags an overdue installment with the Vencida tag from the backend overdue flag', () => {
+      receivables.detail.mockReturnValue(
+        of({
+          ...sample,
+          status: 'OVERDUE',
+          overdue: true,
+          installments: [
+            { ...sample.installments[0], overdue: true, dueDate: '2020-01-01' },
+            { ...sample.installments[1], overdue: false },
+          ],
+        } satisfies ReceivableDetail),
+      );
+      const el = render();
+      // The overdue installment row carries the overdue-row class + the "Vencida" tag (driven by i.overdue).
+      expect(el.querySelector('.installments-table tbody tr.overdue-row')).not.toBeNull();
+      expect(el.textContent).toContain('Vencida');
     });
 
     it('renders the error state with a back button on 403', () => {

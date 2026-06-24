@@ -70,9 +70,10 @@ class ReceivableDetailTest {
     }
 
     @Test
-    void flagsAPastDueOperationalReceivableAsOverdue() {
+    void flagsAnOverdueStatusReceivableAsOverdue() {
+        // Overdue is the stored OVERDUE status (set by the daily check), not the reference due date.
         assertThat(ReceivableDetail.from(
-                                receivable(ReceivableStatus.OPEN, TODAY.minusDays(1)),
+                                receivable(ReceivableStatus.OVERDUE, TODAY.minusDays(1)),
                                 7,
                                 "Maria",
                                 null,
@@ -81,6 +82,21 @@ class ReceivableDetailTest {
                                 TODAY)
                         .overdue())
                 .isTrue();
+    }
+
+    @Test
+    void doesNotFlagAnOperationalReceivableOverdueUntilTheJobSetsTheStatus() {
+        // An OPEN receivable past its reference due date is NOT overdue until the daily job flips its status.
+        assertThat(ReceivableDetail.from(
+                                receivable(ReceivableStatus.OPEN, TODAY.minusDays(5)),
+                                7,
+                                "Maria",
+                                null,
+                                null,
+                                Map.of(),
+                                TODAY)
+                        .overdue())
+                .isFalse();
     }
 
     @Test
