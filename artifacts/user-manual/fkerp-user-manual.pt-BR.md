@@ -1002,25 +1002,26 @@ vencidas). As contas **Vencidas continuam visíveis por padrão** na lista (como
 filtrar **somente vencidas**; no detalhe, cada **parcela vencida** aparece sinalizada. **Identificar o atraso não
 aplica juros nem multa, não envia notificação e não abre atendimento ao cliente** nesta versão.
 
-### 11.8 Visão operacional: recebimentos e cobrança
+### 11.8 Indicadores operacionais: contas a receber e recebimentos
 
-A tela **Recebimentos** é uma **visão operacional simples** para entender, num relance, **o que está em aberto, o
-que está vencido e o que foi recebido**. Ela está em dois lugares: como **Recebimentos** no módulo **Financeiro**, e
-como a aba **Financeiro** de **Acompanhamento → Indicadores**. É **operacional, não é relatório executivo** — e
-**não** é conciliação bancária, contas a pagar nem contabilidade.
+A tela **Recebimentos** é uma **visão operacional mínima** para o gestor financeiro — o que foi originado e recebido
+num período e o retrato atual. Ela está em dois lugares: como **Recebimentos** no módulo **Financeiro**, e como a aba
+**Financeiro** de **Acompanhamento → Indicadores**. É **operacional, não é relatório executivo** — e **não** é
+conciliação bancária, contas a pagar, fluxo de caixa nem contabilidade.
 
-Está organizada em duas partes:
+Você escolhe um **período** (padrão: o mês atual) e a tela mostra duas partes:
 
-- **Retrato de hoje** (independe do período): quantas contas estão **Em aberto**, **Parcialmente pagas** e
-  **Vencidas**, e o **valor total em aberto** ainda a receber.
-- **Recebido no período** (escolhido pela **data de pagamento**, padrão o mês atual): o **valor recebido**, a
-  quantidade de **pagamentos registrados**, quantas contas foram **quitadas** no período, e a distribuição do
-  **recebido por forma de pagamento** (Dinheiro, Pix, Transferência, …). Um pagamento **estornado** **não** conta
-  como recebido.
+- **No período**: quantas contas foram **criadas** e o **total a receber** delas; o **valor recebido** e a quantidade
+  de **pagamentos registrados**; quantas contas foram **quitadas**; o **tempo médio até o pagamento**; e a
+  distribuição do **recebido por forma de pagamento** (Dinheiro, Pix, Transferência, …). Um pagamento **estornado**
+  **não** conta como recebido.
+- **Retrato de hoje** (independe do período): as **contas por status** (Em aberto / Parcialmente paga / Paga /
+  Vencida / Cancelada), o **valor em aberto** e o **valor vencido** ainda a receber, e quantas contas estão **prontas
+  para a Gestão de Comissão** (as totalmente pagas — uma contagem de prontidão, **não** um cálculo de comissão).
 
 Os números respeitam a sua **visibilidade**: o usuário financeiro e os perfis de consulta (gerente, diretoria) veem
-os números operacionais; **vendedores e representantes não têm acesso** a essa visão financeira global. A tela mostra
-**apenas dados de contas a receber e de recebimentos** — nunca comissão, contas a pagar ou conciliação bancária.
+os indicadores; **vendedores e representantes não têm acesso** a essa visão financeira global. A tela mostra **apenas
+dados de contas a receber e de recebimentos** — nunca cálculo de comissão, contas a pagar ou conciliação bancária.
 
 ---
 

@@ -501,26 +501,41 @@ class ReceivableServiceTest {
         when(accessPolicy.visibleTo(userId, true)).thenReturn(visible);
         LocalDate from = LocalDate.of(2026, 6, 1);
         LocalDate to = LocalDate.of(2026, 6, 30);
+        // The receivable-volume figures use the createdAt window anchored at UTC midnight ([from, to+1) exclusive).
+        java.time.Instant createdFrom =
+                from.atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+        java.time.Instant createdTo =
+                to.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
         when(indicatorQueries.countByStatus(visible))
                 .thenReturn(java.util.Map.of("OPEN", 3L, "PARTIALLY_PAID", 2L, "OVERDUE", 1L, "PAID", 5L));
-        when(indicatorQueries.sumOutstanding(visible)).thenReturn(new BigDecimal("1234.00"));
-        when(indicatorQueries.countPaidReceivablesInPeriod(visible, from, to)).thenReturn(5L);
-        when(indicatorQueries.countPayments(visible, from, to)).thenReturn(7L);
+        when(indicatorQueries.countCreatedInPeriod(visible, createdFrom, createdTo))
+                .thenReturn(11L);
+        when(indicatorQueries.sumTotalToReceiveCreatedInPeriod(visible, createdFrom, createdTo))
+                .thenReturn(new BigDecimal("8000.00"));
         when(indicatorQueries.sumReceived(visible, from, to)).thenReturn(new BigDecimal("999.00"));
+        when(indicatorQueries.countPayments(visible, from, to)).thenReturn(7L);
         when(indicatorQueries.paymentsByMethod(visible, from, to))
                 .thenReturn(java.util.List.of(
                         new com.fksoft.erp.domain.financial.service.data.ReceivableIndicators.MethodTotal(
                                 "PIX", "Pix", 4L, new BigDecimal("500.00"))));
+        when(indicatorQueries.countPaidReceivablesInPeriod(visible, from, to)).thenReturn(5L);
+        when(indicatorQueries.avgDaysToPayment(visible, from, to)).thenReturn(12L);
+        when(indicatorQueries.sumOutstanding(visible)).thenReturn(new BigDecimal("1234.00"));
+        when(indicatorQueries.sumOverdue(visible)).thenReturn(new BigDecimal("300.00"));
 
         var indicators = service.indicators(userId, true, from, to);
 
-        assertThat(indicators.openCount()).isEqualTo(3);
-        assertThat(indicators.partiallyPaidCount()).isEqualTo(2);
-        assertThat(indicators.overdueCount()).isEqualTo(1);
-        assertThat(indicators.outstandingAmount()).isEqualByComparingTo("1234.00");
-        assertThat(indicators.paidReceivablesInPeriod()).isEqualTo(5);
-        assertThat(indicators.paymentsRegistered()).isEqualTo(7);
+        assertThat(indicators.totalReceivablesInPeriod()).isEqualTo(11);
+        assertThat(indicators.totalToReceive()).isEqualByComparingTo("8000.00");
         assertThat(indicators.receivedAmount()).isEqualByComparingTo("999.00");
+        assertThat(indicators.paymentsRegistered()).isEqualTo(7);
+        assertThat(indicators.paidReceivablesInPeriod()).isEqualTo(5);
+        assertThat(indicators.avgDaysToPayment()).isEqualTo(12L);
+        assertThat(indicators.outstandingAmount()).isEqualByComparingTo("1234.00");
+        assertThat(indicators.overdueAmount()).isEqualByComparingTo("300.00");
+        // Receivables by status carries every bucket; ready-for-commission is the PAID count.
+        assertThat(indicators.byStatus()).hasSize(4);
+        assertThat(indicators.readyForCommission()).isEqualTo(5);
         assertThat(indicators.paymentsByMethod()).singleElement().satisfies(m -> {
             assertThat(m.method()).isEqualTo("PIX");
             assertThat(m.methodLabel()).isEqualTo("Pix");
@@ -534,15 +549,23 @@ class ReceivableServiceTest {
         org.springframework.data.jpa.domain.Specification<Receivable> ownOnly = (root, query, cb) -> null;
         when(accessPolicy.visibleTo(userId, false)).thenReturn(ownOnly);
         when(indicatorQueries.countByStatus(ownOnly)).thenReturn(java.util.Map.of());
-        when(indicatorQueries.sumOutstanding(ownOnly)).thenReturn(new BigDecimal("0.00"));
-        when(indicatorQueries.countPaidReceivablesInPeriod(ownOnly, null, null)).thenReturn(0L);
-        when(indicatorQueries.countPayments(ownOnly, null, null)).thenReturn(0L);
+        when(indicatorQueries.countCreatedInPeriod(ownOnly, null, null)).thenReturn(0L);
+        when(indicatorQueries.sumTotalToReceiveCreatedInPeriod(ownOnly, null, null))
+                .thenReturn(new BigDecimal("0.00"));
         when(indicatorQueries.sumReceived(ownOnly, null, null)).thenReturn(new BigDecimal("0.00"));
+        when(indicatorQueries.countPayments(ownOnly, null, null)).thenReturn(0L);
         when(indicatorQueries.paymentsByMethod(ownOnly, null, null)).thenReturn(java.util.List.of());
+        when(indicatorQueries.countPaidReceivablesInPeriod(ownOnly, null, null)).thenReturn(0L);
+        when(indicatorQueries.avgDaysToPayment(ownOnly, null, null)).thenReturn(null);
+        when(indicatorQueries.sumOutstanding(ownOnly)).thenReturn(new BigDecimal("0.00"));
+        when(indicatorQueries.sumOverdue(ownOnly)).thenReturn(new BigDecimal("0.00"));
 
         var indicators = service.indicators(userId, false, null, null);
 
-        assertThat(indicators.openCount()).isZero();
+        assertThat(indicators.totalReceivablesInPeriod()).isZero();
+        assertThat(indicators.avgDaysToPayment()).isNull();
+        assertThat(indicators.byStatus()).isEmpty();
+        assertThat(indicators.readyForCommission()).isZero();
         assertThat(indicators.paymentsByMethod()).isEmpty();
         // The own-only visibility (not read-all) was resolved and threaded through every query.
         verify(accessPolicy).visibleTo(userId, false);

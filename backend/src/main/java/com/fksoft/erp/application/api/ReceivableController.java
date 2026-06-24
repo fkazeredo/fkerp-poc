@@ -123,22 +123,23 @@ public class ReceivableController {
     }
 
     /**
-     * Minimum Financial Operations indicators over the Receivables visible to the caller (an operational
-     * received-payments &amp; collection view): the current snapshot (open / partially-paid / overdue counts and the
-     * outstanding total) plus the volume in the requested period by payment date (receivables settled, payments
-     * registered, received amount and the received payments grouped by method). Gated by the Financial read tiers
-     * (the policy narrows visibility). Operational, not an executive dashboard: read-only, no Commission, Payables,
+     * The minimum functional Financial Operations indicators over the Receivables visible to the caller — a
+     * manager's minimal view of receivables and received payments: the volume in the requested period (receivables
+     * created, amount to receive, amount received, payments by method, receivables settled and the average days to
+     * payment) plus the current snapshot (receivables by status, outstanding and overdue amounts, and the
+     * receivables ready for Commission Management). Gated by the Financial read tiers (the policy narrows
+     * visibility). Operational, not executive reporting: read-only, no Commission calculation, Accounts Payable,
      * bank-reconciliation, accounting or fiscal data.
      *
-     * @param paidFrom optional inclusive lower bound on the payment date (ISO date)
-     * @param paidTo optional inclusive upper bound on the payment date (ISO date)
+     * @param from optional inclusive lower bound on the period (ISO date)
+     * @param to optional inclusive upper bound on the period (ISO date)
      * @return the indicators
      */
     @GetMapping("/indicators")
     public ReceivableIndicators indicators(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate paidFrom,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate paidTo) {
-        return receivableService.indicators(userContext.currentUserId(), canSeeAllReceivables(), paidFrom, paidTo);
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return receivableService.indicators(userContext.currentUserId(), canSeeAllReceivables(), from, to);
     }
 
     /**

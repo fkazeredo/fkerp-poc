@@ -847,26 +847,30 @@ includes `OVERDUE`). The **detail** additionally exposes a **per-installment `ov
 installments are never overdue**), so the specific overdue installments are identifiable. Overdue detection
 applies **no interest or late fee**, sends **no notification**, and creates **no** Customer Care ticket.
 
-**Financial Operations indicators (normative — Financial Operations, Sprint 5 Slice 10).** The minimum indicators
-(`GET /api/receivables/indicators`) are an **operational received-payments & collection** read view gated by the
-**same Financial read tiers** as the Receivable list/detail — **no new scope, no migration** (the existing
-`GET /api/receivables/**` gate covers it; `ReceivableAccessPolicy` narrows visibility at the query level, on
-`financialResponsiblePersonId`). They carry **two scopes** like the other indicator views: a **current snapshot**
-(independent of the period) — `openCount`, `partiallyPaidCount`, `overdueCount` (per the stored statuses) and
-`outstandingAmount` (Σ `total − amountPaid` over the visible non-`CANCELLED` receivables) — plus the **volume in the
-selected period by payment date** — `paidReceivablesInPeriod` (receivables now `PAID` whose `last_payment_date` is in
-the period), `paymentsRegistered` and `receivedAmount` (the **non-reversed** payments received in the period; a
-reversed payment is a correction, excluded from both) and `paymentsByMethod` (those payments grouped by payment
-method → `{method, methodLabel, count, amount}`). The aggregation reuses the visibility `Specification` as its WHERE
-predicate (`ReceivableIndicatorQueries`, Criteria API), so the numbers never include receivables the caller cannot
-see. They expose **receivable + received-payment figures only — never** Commission, Accounts Payable, bank
-reconciliation, accounting ledger, fiscal, cash-flow or executive-dashboard data, and they are **operational, not
-executive reporting**. **Persona → tiers:** the back-office **`financeiro`** (005) and the consultation profiles
-**Manager** (001) and **Board/Director** (004) hold a financial read tier → **200**; **Sellers/Representatives** and
-HR/IT have **no** financial tier → **403** (no global financial operational view). In the frontend the same
-`ReceivableIndicatorsPage` is surfaced **both** as the **Recebimentos** destination in the **Financeiro** module
-(`/financeiro/recebimentos`, gated by `canSeeReceivables()`) **and** as the **Financeiro** tab of the
-**Acompanhamento → Indicadores** hub; the backend stays the only authority.
+**Financial Operations indicators (normative — Financial Operations, Sprint 5 Slices 10–11).** The minimum
+functional indicators (`GET /api/receivables/indicators?from=&to=`) are a **manager's minimal view of receivables and
+received payments**, gated by the **same Financial read tiers** as the Receivable list/detail — **no new scope, no
+migration** (the existing `GET /api/receivables/**` gate covers it; `ReceivableAccessPolicy` narrows visibility at the
+query level, on `financialResponsiblePersonId`). They carry **two scopes**: the **volume in the selected period** —
+receivables **created** in the period (`totalReceivablesInPeriod`, `totalToReceive` = Σ their `total`); the
+**non-reversed** payments **received** in the period by payment date (`receivedAmount`, `paymentsRegistered`,
+`paymentsByMethod` → `{method, methodLabel, count, amount}`; a reversed payment is a correction, excluded); and the
+receivables **settled** in the period (`paidReceivablesInPeriod`, and `avgDaysToPayment` = the average creation→
+settlement days over those settled, `null` when none) — plus the **current snapshot** (independent of the period):
+`byStatus` (count per status), `outstandingAmount` (Σ `total − amountPaid` over non-`CANCELLED`), `overdueAmount` (Σ
+`total − amountPaid` over `OVERDUE`) and `readyForCommission` (the count of `PAID` receivables — identifiable as
+**ready for Commission Management** in Sprint 6; a **readiness count, not a Commission calculation**). The single
+period window `[from, to]` is applied per figure by its natural date (created → `createdAt` anchored at UTC midnight;
+received → `payment_date`; settled → `last_payment_date`). The aggregation reuses the visibility `Specification` as
+its WHERE predicate (`ReceivableIndicatorQueries`, Criteria API), so the numbers never include receivables the caller
+cannot see. They expose **receivable + received-payment figures only — never** Commission **calculation/forecast**,
+Accounts Payable, bank reconciliation, accounting ledger, fiscal, P&L, cash-flow or executive-dashboard data, and
+they are **operational, not executive reporting**. **Persona → tiers:** the back-office **`financeiro`** (005) and the
+consultation profiles **Manager** (001) and **Board/Director** (004) hold a financial read tier → **200**;
+**Sellers/Representatives** and HR/IT have **no** financial tier → **403** (no global financial indicators). In the
+frontend the same `ReceivableIndicatorsPage` is surfaced **both** as the **Recebimentos** destination in the
+**Financeiro** module (`/financeiro/recebimentos`, gated by `canSeeReceivables()`) **and** as the **Financeiro** tab
+of the **Acompanhamento → Indicadores** hub; the backend stays the only authority.
 
 **Customer (normative — the commercial graduation of a Lead, in `domain.crm`).** The **Customer** is the company's
 client, materialized from its source **Lead** when a Commercial Order is created (deal closed): a **synchronous,

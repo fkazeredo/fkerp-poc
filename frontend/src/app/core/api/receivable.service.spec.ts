@@ -98,39 +98,35 @@ describe('ReceivableService', () => {
     req.flush({});
   });
 
-  it('fetches the operational indicators with the period params', () => {
+  const emptyIndicators = {
+    totalReceivablesInPeriod: 0,
+    totalToReceive: 0,
+    receivedAmount: 0,
+    paymentsRegistered: 0,
+    paymentsByMethod: [],
+    paidReceivablesInPeriod: 0,
+    avgDaysToPayment: null,
+    byStatus: [],
+    outstandingAmount: 0,
+    overdueAmount: 0,
+    readyForCommission: 0,
+  };
+
+  it('fetches the indicators with the period params', () => {
     service.indicators('2026-06-01', '2026-06-30').subscribe();
     const req = http.expectOne((r) => r.url === '/api/receivables/indicators');
     expect(req.request.method).toBe('GET');
-    expect(req.request.params.get('paidFrom')).toBe('2026-06-01');
-    expect(req.request.params.get('paidTo')).toBe('2026-06-30');
-    req.flush({
-      openCount: 0,
-      partiallyPaidCount: 0,
-      overdueCount: 0,
-      outstandingAmount: 0,
-      paidReceivablesInPeriod: 0,
-      paymentsRegistered: 0,
-      receivedAmount: 0,
-      paymentsByMethod: [],
-    });
+    expect(req.request.params.get('from')).toBe('2026-06-01');
+    expect(req.request.params.get('to')).toBe('2026-06-30');
+    req.flush(emptyIndicators);
   });
 
   it('omits the period params when no dates are given (all-time)', () => {
     service.indicators().subscribe();
     const req = http.expectOne((r) => r.url === '/api/receivables/indicators');
-    expect(req.request.params.has('paidFrom')).toBe(false);
-    expect(req.request.params.has('paidTo')).toBe(false);
-    req.flush({
-      openCount: 0,
-      partiallyPaidCount: 0,
-      overdueCount: 0,
-      outstandingAmount: 0,
-      paidReceivablesInPeriod: 0,
-      paymentsRegistered: 0,
-      receivedAmount: 0,
-      paymentsByMethod: [],
-    });
+    expect(req.request.params.has('from')).toBe(false);
+    expect(req.request.params.has('to')).toBe(false);
+    req.flush(emptyIndicators);
   });
 
   it('posts a payment reversal with the reason to the reversals path', () => {
