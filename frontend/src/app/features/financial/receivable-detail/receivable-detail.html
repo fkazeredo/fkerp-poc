@@ -82,6 +82,8 @@
         <tr>
           <th class="col-num">Nº</th>
           <th class="num">Valor</th>
+          <th class="num">Pago</th>
+          <th class="num">Em aberto</th>
           <th>Vencimento</th>
           <th>Status</th>
           <th>Observações</th>
@@ -93,6 +95,8 @@
           <tr [class.overdue-row]="installmentOverdue(i)">
             <td class="col-num">{{ i.number }}</td>
             <td class="num">{{ i.amount | currency: 'BRL' }}</td>
+            <td class="num">{{ i.amountPaid | currency: 'BRL' }}</td>
+            <td class="num">{{ i.outstanding | currency: 'BRL' }}</td>
             <td>
               {{ i.dueDate | date: 'dd/MM/yyyy' }}
               @if (installmentOverdue(i)) {
@@ -175,13 +179,24 @@
     @if (targetInstallment(); as i) {
       <form class="payment-form" [formGroup]="paymentForm" (ngSubmit)="submitPayment()">
         <p class="muted">
-          Parcela {{ i.number }} · vencimento {{ i.dueDate | date: 'dd/MM/yyyy' }}. O pagamento registra o
-          valor integral da parcela.
+          Parcela {{ i.number }} · vencimento {{ i.dueDate | date: 'dd/MM/yyyy' }} · em aberto
+          {{ i.outstanding | currency: 'BRL' }}. Registre o valor integral ou um pagamento parcial.
         </p>
 
         <label class="field">
-          <span>Valor</span>
-          <strong class="amount">{{ i.amount | currency: 'BRL' }}</strong>
+          <span>Valor *</span>
+          <p-inputNumber
+            formControlName="amount"
+            mode="currency"
+            currency="BRL"
+            locale="pt-BR"
+            [min]="0"
+            [max]="i.outstanding"
+            placeholder="Valor recebido"
+          />
+          @if (paymentForm.controls.amount.value && paymentForm.controls.amount.value > i.outstanding) {
+            <small class="field-error">O valor não pode exceder o saldo em aberto da parcela.</small>
+          }
         </label>
 
         <label class="field">
@@ -235,7 +250,7 @@
             icon="pi pi-check"
             type="submit"
             [loading]="saving()"
-            [disabled]="paymentForm.invalid"
+            [disabled]="paymentForm.invalid || (paymentForm.controls.amount.value ?? 0) > i.outstanding"
           />
         </div>
       </form>

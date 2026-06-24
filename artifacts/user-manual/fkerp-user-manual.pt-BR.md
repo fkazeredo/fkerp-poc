@@ -930,38 +930,43 @@ pagamentos e o saldo em aberto**. O detalhe reúne:
 - o **cliente (pagador)**;
 - a **origem comercial** rastreável — o **pedido** (PC-000n) e as **referências** da **proposta** e da
   **oportunidade** de origem (com atalhos para abri-los, além do lead) e o **responsável comercial**;
-- a **tabela de parcelas** (número, valor, vencimento, status e observações), com as parcelas **vencidas em
-  destaque** e, para quem pode, o botão **Registrar pagamento** em cada parcela em aberto;
+- a **tabela de parcelas** (número, valor, **pago**, **em aberto**, vencimento, status e observações), com as
+  parcelas **vencidas em destaque** e, para quem pode, o botão **Registrar pagamento** em cada parcela com saldo;
 - a seção **Pagamentos** — o **histórico dos pagamentos registrados** (parcela, valor, data, forma de pagamento,
   quem registrou e observações); fica vazia enquanto não houver pagamentos.
 
 A tela mostra **apenas dados da conta a receber e seus pagamentos** — nunca **comissão**, **conciliação bancária**
 ou **nota fiscal**. Você só abre o detalhe das contas que tem permissão para ver.
 
-### 11.5 Registrando um pagamento
+### 11.5 Registrando um pagamento (integral ou parcial)
 
-Quem tem o perfil **financeiro** pode **registrar o pagamento integral** de uma parcela **Em aberto**. No detalhe da
-conta, clique em **Registrar pagamento** na parcela desejada (ou use o atalho **`p`**, que abre o registro para a
-primeira parcela em aberto). Informe:
+Quem tem o perfil **financeiro** pode **registrar um pagamento** de uma parcela que ainda tenha saldo (**Em aberto**
+ou **Parcialmente paga**) — o valor recebido pode ser **integral** ou **parcial**. No detalhe da conta, clique em
+**Registrar pagamento** na parcela desejada (ou use o atalho **`p`**, que abre o registro para a primeira parcela com
+saldo). Informe:
 
+- **Valor** (obrigatório) — já vem preenchido com o **saldo em aberto** da parcela; ajuste para registrar um
+  **pagamento parcial**. O valor deve ser **maior que zero** e **não pode exceder o saldo em aberto** da parcela
+  (pagamento a maior não é tratado nesta versão).
 - **Forma de pagamento** (obrigatória) — escolha entre as formas cadastradas (Dinheiro, Transferência bancária, Pix,
   Cartão de crédito, Cartão de débito, Pagamento de fatura, Outro). O administrador gerencia essa lista em
   **Cadastros → Formas de pagamento**.
 - **Data do pagamento** (obrigatória) — quando o valor foi recebido; **não pode ser futura**.
 - **Observações** (opcional) — uma referência ou anotação livre.
 
-O **valor é o da parcela** (nesta versão registra-se o **pagamento integral** — não há pagamento parcial). Ao
-confirmar, a **parcela fica Paga**; quando **todas as parcelas** estão pagas, a **conta fica Paga**; se ainda houver
-parcelas em aberto, a conta fica **Parcialmente paga**. O pagamento aparece na seção **Pagamentos** e os valores
-**pago** / **em aberto** se atualizam. Registrar um pagamento **não** cria comissão, nota fiscal, recibo nem faz
-conciliação bancária, e **não** altera o pedido, o lead ou o cliente.
+Ao confirmar: se o valor **quita o saldo** da parcela, ela fica **Paga**; se cobre **parte** do saldo, fica
+**Parcialmente paga** e você pode registrar **novos pagamentos** até quitá-la. A conta a receber fica **Paga** quando
+**nada mais está em aberto**, ou **Parcialmente paga** enquanto houver saldo. O pagamento aparece na seção
+**Pagamentos** e os valores **pago** / **em aberto** (da conta e de cada parcela) se atualizam. Registrar um pagamento
+**não** cria comissão, nota fiscal, recibo nem faz conciliação bancária, e **não** altera o pedido, o lead ou o
+cliente.
 
 ### 11.6 Estados da conta e das parcelas
 
 Tanto a conta a receber quanto cada **parcela** podem estar **Em aberto**, **Parcialmente paga**, **Paga**,
-**Vencida** ou **Cancelada**. Toda conta nasce **Em aberto**; ao registrar pagamentos, a parcela passa a **Paga** e a
-conta a **Parcialmente paga** ou **Paga**. As transições automáticas para **Vencida** e o **pagamento parcial** chegam
-em etapas futuras.
+**Vencida** ou **Cancelada**. Toda conta nasce **Em aberto**; ao registrar pagamentos, a parcela passa a
+**Parcialmente paga** (pagamento parcial) ou **Paga** (quitada), e a conta a **Parcialmente paga** ou **Paga**. A
+transição automática para **Vencida** chega em uma etapa futura.
 
 ---
 
@@ -1049,7 +1054,7 @@ também é acessível pelo teclado:
 - **Em uma proposta:** `i` adicionar item · `e` editar dados comerciais · `s` enviar para revisão · `Esc`
   voltar.
 - **Em uma reserva:** `a` registrar tentativa · `Esc` voltar.
-- **Em uma conta a receber:** `p` registrar pagamento (primeira parcela em aberto) · `Esc` voltar / cancelar.
+- **Em uma conta a receber:** `p` registrar pagamento (primeira parcela com saldo) · `Esc` voltar / cancelar.
 
 ---
 

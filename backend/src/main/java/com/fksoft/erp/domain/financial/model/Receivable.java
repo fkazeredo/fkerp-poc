@@ -4,7 +4,7 @@ import com.fksoft.erp.domain.crm.model.Customer;
 import com.fksoft.erp.domain.financial.exception.InstallmentNotPayableException;
 import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
-import com.fksoft.erp.domain.financial.exception.PaymentAmountMismatchException;
+import com.fksoft.erp.domain.financial.exception.PaymentExceedsOutstandingException;
 import com.fksoft.erp.domain.financial.exception.PaymentInstallmentNotFoundException;
 import com.fksoft.erp.domain.financial.service.data.InstallmentInput;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
@@ -216,15 +216,17 @@ public class Receivable {
     }
 
     /**
-     * Registers a full payment for one of this Receivable's installments. The payment amount must equal the
-     * installment's amount (this slice registers full payments only; partial payments are a later slice). The
-     * installment becomes {@code PAID}, the payment is recorded in the aggregate's history, the paid total and the
-     * latest payment date are updated, and the Receivable status is consolidated ({@code PAID} when every
-     * installment is paid, otherwise {@code PARTIALLY_PAID}). Creates no Commission, Invoice or
-     * bank-reconciliation data and never touches the source Order, Lead or Customer.
+     * Registers a payment for one of this Receivable's installments. The payment may settle the installment
+     * fully (amount == the installment's outstanding) or partially (a smaller amount); it may NOT exceed the
+     * installment's outstanding amount (overpayment is out of scope). The installment becomes {@code PAID} when
+     * fully covered, otherwise {@code PARTIALLY_PAID}; the payment is recorded in the aggregate's history, the
+     * paid total and the latest payment date are updated, and the Receivable status is consolidated ({@code PAID}
+     * when nothing is outstanding, {@code PARTIALLY_PAID} when something has been received but a balance remains).
+     * Creates no Commission, Invoice or bank-reconciliation data and never touches the source Order, Lead or
+     * Customer.
      *
-     * @param installmentId the target installment (must belong to this Receivable and be {@code OPEN})
-     * @param amount the payment amount (must equal the installment's amount)
+     * @param installmentId the target installment (must belong to this Receivable and not be resolved)
+     * @param amount the payment amount (positive, not exceeding the installment's outstanding)
      * @param paymentDate the date the payment was received
      * @param method the payment method (an active cadastro value)
      * @param note optional free-text reference/note
@@ -232,9 +234,9 @@ public class Receivable {
      * @return the registered payment
      * @throws PaymentInstallmentNotFoundException if the installment is not part of this Receivable
      * @throws InstallmentNotPayableException if the installment is already paid or cancelled
-     * @throws PaymentAmountMismatchException if the amount does not equal the installment amount (full payment)
+     * @throws PaymentExceedsOutstandingException if the amount exceeds the installment's outstanding amount
      */
-    public ReceivablePayment registerFullPayment(
+    public ReceivablePayment registerPayment(
             UUID installmentId,
             BigDecimal amount,
             LocalDate paymentDate,
@@ -245,13 +247,7 @@ public class Receivable {
                 .filter(i -> i.id().equals(installmentId))
                 .findFirst()
                 .orElseThrow(PaymentInstallmentNotFoundException::new);
-        if (installment.status() != InstallmentStatus.OPEN) {
-            throw new InstallmentNotPayableException();
-        }
-        if (amount == null || amount.compareTo(installment.amount()) != 0) {
-            throw new PaymentAmountMismatchException();
-        }
-        installment.markPaid();
+        installment.applyPayment(amount);
         ReceivablePayment payment =
                 ReceivablePayment.of(installmentId, amount, paymentDate, method, note, registeredBy);
         payments.add(payment);
@@ -265,26 +261,21 @@ public class Receivable {
     }
 
     /**
-     * Consolidates the Receivable status from its installments after a payment: {@code PAID} when every
-     * (non-cancelled) installment is paid, {@code PARTIALLY_PAID} when at least one (but not all) is paid,
-     * otherwise unchanged ({@code OPEN}). Never overrides an explicit {@code CANCELLED}.
+     * Consolidates the Receivable status from the paid total after a payment: {@code PAID} when nothing is
+     * outstanding, {@code PARTIALLY_PAID} when something has been received but a balance remains, otherwise
+     * {@code OPEN} (no payment yet). Never overrides an explicit {@code CANCELLED}. Equivalent to rolling up the
+     * installment statuses, since the installments' paid amounts sum to the Receivable's.
      */
     private void consolidateStatus() {
         if (status == ReceivableStatus.CANCELLED) {
             return;
         }
-        List<ReceivableInstallment> active = installments.stream()
-                .filter(i -> i.status() != InstallmentStatus.CANCELLED)
-                .toList();
-        long paid = active.stream()
-                .filter(i -> i.status() == InstallmentStatus.PAID)
-                .count();
-        if (!active.isEmpty() && paid == active.size()) {
-            status = ReceivableStatus.PAID;
-        } else if (paid > 0) {
-            status = ReceivableStatus.PARTIALLY_PAID;
-        } else {
+        if (amountPaid.signum() == 0) {
             status = ReceivableStatus.OPEN;
+        } else if (totalAmount.subtract(amountPaid).signum() <= 0) {
+            status = ReceivableStatus.PAID;
+        } else {
+            status = ReceivableStatus.PARTIALLY_PAID;
         }
     }
 

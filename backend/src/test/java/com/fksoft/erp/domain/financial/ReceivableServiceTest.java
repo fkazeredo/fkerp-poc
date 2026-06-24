@@ -16,6 +16,7 @@ import com.fksoft.erp.domain.crm.repository.CustomerRepository;
 import com.fksoft.erp.domain.crm.service.CustomerService;
 import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
+import com.fksoft.erp.domain.financial.exception.PaymentExceedsOutstandingException;
 import com.fksoft.erp.domain.financial.exception.PaymentMethodNotAvailableException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAccessDeniedException;
 import com.fksoft.erp.domain.financial.exception.ReceivableAlreadyExistsException;
@@ -335,6 +336,52 @@ class ReceivableServiceTest {
         assertThatThrownBy(() -> service.registerPayment(
                         receivable.id(), receivable.installments().get(0).id(), cmd, userId, true))
                 .isInstanceOf(PaymentMethodNotAvailableException.class);
+        verify(receivables, never()).save(any());
+    }
+
+    @Test
+    void registerPaymentRecordsAPartialPaymentLeavingThePartiallyPaidDetail() {
+        Receivable receivable = openReceivable();
+        UUID installmentId = receivable.installments().get(0).id();
+        when(receivables.findById(receivable.id())).thenReturn(Optional.of(receivable));
+        when(accessPolicy.canSee(receivable, userId, true)).thenReturn(true);
+        UUID methodId = UUID.randomUUID();
+        PaymentMethod method = mock(PaymentMethod.class);
+        lenient().when(method.id()).thenReturn(methodId);
+        lenient().when(method.code()).thenReturn("PIX");
+        lenient().when(method.label()).thenReturn("Pix");
+        when(method.active()).thenReturn(true);
+        when(paymentMethods.findById(methodId)).thenReturn(Optional.of(method));
+        when(receivables.save(any(Receivable.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        RegisterPaymentCommand cmd =
+                new RegisterPaymentCommand(methodId, new BigDecimal("600.00"), LocalDate.of(2026, 6, 20), null);
+        ReceivableDetail detail = service.registerPayment(receivable.id(), installmentId, cmd, userId, true);
+
+        assertThat(detail.status()).isEqualTo("PARTIALLY_PAID");
+        assertThat(detail.amountPaid()).isEqualByComparingTo("600.00");
+        assertThat(detail.outstandingAmount()).isEqualByComparingTo("900.00");
+        assertThat(detail.installments().get(0).status()).isEqualTo("PARTIALLY_PAID");
+        assertThat(detail.installments().get(0).amountPaid()).isEqualByComparingTo("600.00");
+        assertThat(detail.installments().get(0).outstanding()).isEqualByComparingTo("900.00");
+        assertThat(detail.payments()).hasSize(1);
+    }
+
+    @Test
+    void registerPaymentPropagatesTheExceedsOutstandingError() {
+        Receivable receivable = openReceivable();
+        when(receivables.findById(receivable.id())).thenReturn(Optional.of(receivable));
+        when(accessPolicy.canSee(receivable, userId, true)).thenReturn(true);
+        UUID methodId = UUID.randomUUID();
+        PaymentMethod method = mock(PaymentMethod.class);
+        when(method.active()).thenReturn(true);
+        when(paymentMethods.findById(methodId)).thenReturn(Optional.of(method));
+
+        RegisterPaymentCommand cmd =
+                new RegisterPaymentCommand(methodId, new BigDecimal("2000.00"), LocalDate.of(2026, 6, 20), null);
+        assertThatThrownBy(() -> service.registerPayment(
+                        receivable.id(), receivable.installments().get(0).id(), cmd, userId, true))
+                .isInstanceOf(PaymentExceedsOutstandingException.class);
         verify(receivables, never()).save(any());
     }
 }

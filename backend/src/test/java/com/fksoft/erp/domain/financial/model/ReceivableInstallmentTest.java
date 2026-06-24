@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fksoft.erp.domain.financial.exception.InstallmentNotPayableException;
 import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
+import com.fksoft.erp.domain.financial.exception.PaymentExceedsOutstandingException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
@@ -53,19 +54,56 @@ class ReceivableInstallmentTest {
     }
 
     @Test
-    void markPaidMovesAnOpenInstallmentToPaid() {
-        ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("10.00"), DUE, null);
+    void applyPaymentPartiallyCoversTheInstallment() {
+        ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("100.00"), DUE, null);
 
-        installment.markPaid();
+        installment.applyPayment(new BigDecimal("40.00"));
 
-        assertThat(installment.status()).isEqualTo(InstallmentStatus.PAID);
+        assertThat(installment.status()).isEqualTo(InstallmentStatus.PARTIALLY_PAID);
+        assertThat(installment.amountPaid()).isEqualByComparingTo("40.00");
+        assertThat(installment.outstanding()).isEqualByComparingTo("60.00");
     }
 
     @Test
-    void markPaidRejectsAnAlreadyPaidInstallment() {
-        ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("10.00"), DUE, null);
-        installment.markPaid();
+    void applyPaymentSettlesTheInstallmentWhenItCoversTheOutstanding() {
+        ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("100.00"), DUE, null);
+        installment.applyPayment(new BigDecimal("40.00"));
 
-        assertThatThrownBy(installment::markPaid).isInstanceOf(InstallmentNotPayableException.class);
+        installment.applyPayment(new BigDecimal("60.00"));
+
+        assertThat(installment.status()).isEqualTo(InstallmentStatus.PAID);
+        assertThat(installment.amountPaid()).isEqualByComparingTo("100.00");
+        assertThat(installment.outstanding()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    void applyPaymentFullyCoversTheInstallmentInOneGo() {
+        ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("100.00"), DUE, null);
+
+        installment.applyPayment(new BigDecimal("100.00"));
+
+        assertThat(installment.status()).isEqualTo(InstallmentStatus.PAID);
+        assertThat(installment.outstanding()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    void applyPaymentRejectsAnAmountExceedingTheOutstanding() {
+        ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("100.00"), DUE, null);
+        installment.applyPayment(new BigDecimal("40.00"));
+
+        assertThatThrownBy(() -> installment.applyPayment(new BigDecimal("70.00")))
+                .isInstanceOf(PaymentExceedsOutstandingException.class);
+        // Rejected: nothing changed.
+        assertThat(installment.amountPaid()).isEqualByComparingTo("40.00");
+        assertThat(installment.status()).isEqualTo(InstallmentStatus.PARTIALLY_PAID);
+    }
+
+    @Test
+    void applyPaymentRejectsAnAlreadyPaidInstallment() {
+        ReceivableInstallment installment = ReceivableInstallment.of(1, new BigDecimal("100.00"), DUE, null);
+        installment.applyPayment(new BigDecimal("100.00"));
+
+        assertThatThrownBy(() -> installment.applyPayment(new BigDecimal("1.00")))
+                .isInstanceOf(InstallmentNotPayableException.class);
     }
 }

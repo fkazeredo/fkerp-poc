@@ -503,18 +503,57 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void rejectsAPaymentAmountThatDoesNotMatchTheInstallment() throws Exception {
+    void registersAPartialPaymentLeavingThePartiallyPaidThenSettlesIt() throws Exception {
         String fin = finance();
-        String receivableId = createReceivable(fin, confirmedOrder("Mismatch2", "CONFIRMED"));
+        String receivableId = createReceivable(fin, confirmedOrder("Partial", "CONFIRMED"));
+        String installmentId = firstInstallmentId(fin, receivableId);
+        String pix = paymentMethodId("PIX");
+
+        // First partial payment: 200 of the 500 single installment.
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, installmentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":200.00,\"paymentDate\":\"2026-06-01\"}"
+                                .formatted(pix)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PARTIALLY_PAID"))
+                .andExpect(jsonPath("$.amountPaid").value(200.00))
+                .andExpect(jsonPath("$.outstandingAmount").value(300.00))
+                .andExpect(jsonPath("$.installments[0].status").value("PARTIALLY_PAID"))
+                .andExpect(jsonPath("$.installments[0].amountPaid").value(200.00))
+                .andExpect(jsonPath("$.installments[0].outstanding").value(300.00))
+                .andExpect(jsonPath("$.payments.length()").value(1));
+
+        // Second partial payment for the remaining 300 settles the installment and the Receivable.
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, installmentId))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":300.00,\"paymentDate\":\"2026-06-02\"}"
+                                .formatted(pix)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PAID"))
+                .andExpect(jsonPath("$.amountPaid").value(500.00))
+                .andExpect(jsonPath("$.outstandingAmount").value(0))
+                .andExpect(jsonPath("$.installments[0].status").value("PAID"))
+                .andExpect(jsonPath("$.installments[0].amountPaid").value(500.00))
+                .andExpect(jsonPath("$.installments[0].outstanding").value(0))
+                .andExpect(jsonPath("$.payments.length()").value(2));
+    }
+
+    @Test
+    void rejectsAPaymentExceedingTheOutstanding() throws Exception {
+        String fin = finance();
+        String receivableId = createReceivable(fin, confirmedOrder("Exceeds", "CONFIRMED"));
         String installmentId = firstInstallmentId(fin, receivableId);
 
+        // The single installment is 500; 600 exceeds the outstanding (overpayment is out of scope).
         mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivableId, installmentId))
                         .header("Authorization", "Bearer " + fin)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"paymentMethodId\":\"%s\",\"amount\":600.00,\"paymentDate\":\"2026-06-01\"}"
                                 .formatted(paymentMethodId("PIX"))))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.code").value("financial.payment.amount-mismatch"));
+                .andExpect(jsonPath("$.code").value("financial.payment.exceeds-outstanding"));
     }
 
     @Test
