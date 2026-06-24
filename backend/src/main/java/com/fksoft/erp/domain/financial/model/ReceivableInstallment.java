@@ -2,6 +2,7 @@ package com.fksoft.erp.domain.financial.model;
 
 import com.fksoft.erp.domain.financial.exception.InstallmentNotPayableException;
 import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
+import com.fksoft.erp.domain.financial.exception.PaymentExceedsOutstandingException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -24,9 +25,10 @@ import org.hibernate.annotations.CreationTimestamp;
 
 /**
  * A single installment of a {@link Receivable} (part of the Receivable aggregate): a slice of the amount due,
- * with its own due date and status. The installments of a Receivable always sum to its total. It is NOT a
- * Payment, Commission or Invoice record; scheduling it registers none of those. It starts {@code OPEN};
- * the transitions beyond {@code OPEN} are driven by payment behavior (a later slice).
+ * with its own due date, paid amount and status. The installments of a Receivable always sum to its total. It is
+ * NOT a Commission or Invoice record; scheduling it registers none of those. It starts {@code OPEN} and, as
+ * payments are applied, moves to {@code PARTIALLY_PAID} (0 &lt; paid &lt; amount) then {@code PAID} (paid ==
+ * amount).
  */
 @Entity
 @Table(name = "receivable_installments")
@@ -48,6 +50,13 @@ public class ReceivableInstallment {
     @PositiveOrZero
     @Column(nullable = false)
     private BigDecimal amount;
+
+    // The amount already received against this installment (denormalized; sums the installment's payments). It
+    // drives the installment status: 0 → OPEN, 0 < paid < amount → PARTIALLY_PAID, paid == amount → PAID.
+    @NotNull
+    @PositiveOrZero
+    @Column(name = "amount_paid", nullable = false)
+    private BigDecimal amountPaid = BigDecimal.ZERO;
 
     @NotNull
     @Column(name = "due_date", nullable = false)
@@ -85,23 +94,38 @@ public class ReceivableInstallment {
         installment.id = UUID.randomUUID();
         installment.number = number;
         installment.amount = amount.setScale(SCALE, RoundingMode.HALF_UP);
+        installment.amountPaid = BigDecimal.ZERO.setScale(SCALE, RoundingMode.HALF_UP);
         installment.dueDate = dueDate;
         installment.paymentNotes = emptyToNull(paymentNotes);
         installment.status = InstallmentStatus.OPEN;
         return installment;
     }
 
+    /** The amount still due on this installment ({@code amount − amountPaid}). */
+    public BigDecimal outstanding() {
+        return amount.subtract(amountPaid);
+    }
+
     /**
-     * Marks this installment fully paid (its full amount was received). Only an {@code OPEN} installment can be
-     * paid; a paid or cancelled installment rejects the transition.
+     * Applies a payment of {@code paymentAmount} against this installment: increases the paid amount and moves
+     * the status to {@code PAID} when fully covered, otherwise {@code PARTIALLY_PAID}. A payment may settle the
+     * installment fully (amount == outstanding) or partially. It may NOT exceed the outstanding amount
+     * (overpayment is out of scope), and an already {@code PAID}/{@code CANCELLED} installment is not payable. The
+     * payment amount must be positive — enforced at the request boundary ({@code @Positive} → 400).
      *
-     * @throws InstallmentNotPayableException if the installment is not {@code OPEN}
+     * @param paymentAmount the amount received (must be ≤ {@link #outstanding()})
+     * @throws InstallmentNotPayableException if the installment is already {@code PAID} or {@code CANCELLED}
+     * @throws PaymentExceedsOutstandingException if the amount exceeds the outstanding amount
      */
-    void markPaid() {
-        if (status != InstallmentStatus.OPEN) {
+    void applyPayment(BigDecimal paymentAmount) {
+        if (status == InstallmentStatus.PAID || status == InstallmentStatus.CANCELLED) {
             throw new InstallmentNotPayableException();
         }
-        this.status = InstallmentStatus.PAID;
+        if (paymentAmount.compareTo(outstanding()) > 0) {
+            throw new PaymentExceedsOutstandingException();
+        }
+        amountPaid = amountPaid.add(paymentAmount).setScale(SCALE, RoundingMode.HALF_UP);
+        status = amountPaid.compareTo(amount) >= 0 ? InstallmentStatus.PAID : InstallmentStatus.PARTIALLY_PAID;
     }
 
     private static String emptyToNull(String value) {

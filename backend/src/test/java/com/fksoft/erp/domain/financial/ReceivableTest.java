@@ -10,7 +10,7 @@ import com.fksoft.erp.domain.crm.model.Customer;
 import com.fksoft.erp.domain.financial.exception.InstallmentNotPayableException;
 import com.fksoft.erp.domain.financial.exception.InstallmentScheduleInvalidException;
 import com.fksoft.erp.domain.financial.exception.OrderBookingNotConfirmedException;
-import com.fksoft.erp.domain.financial.exception.PaymentAmountMismatchException;
+import com.fksoft.erp.domain.financial.exception.PaymentExceedsOutstandingException;
 import com.fksoft.erp.domain.financial.exception.PaymentInstallmentNotFoundException;
 import com.fksoft.erp.domain.financial.model.InstallmentStatus;
 import com.fksoft.erp.domain.financial.model.PaymentMethod;
@@ -199,13 +199,13 @@ class ReceivableTest {
     }
 
     @Test
-    void registerFullPaymentOnTheOnlyInstallmentSettlesTheReceivable() {
+    void registerPaymentOnTheOnlyInstallmentSettlesTheReceivable() {
         Receivable receivable = receivableWithSchedule(new BigDecimal("1500.00"), List.of());
         UUID installmentId = receivable.installments().get(0).id();
         UUID payer = UUID.randomUUID();
         LocalDate paidOn = LocalDate.of(2026, 6, 20);
 
-        ReceivablePayment payment = receivable.registerFullPayment(
+        ReceivablePayment payment = receivable.registerPayment(
                 installmentId, new BigDecimal("1500.00"), paidOn, paymentMethod(), "pix recebido", payer);
 
         assertThat(payment.id()).isNotNull();
@@ -220,14 +220,14 @@ class ReceivableTest {
     }
 
     @Test
-    void registerFullPaymentOnOneOfManyInstallmentsMarksPartiallyPaidThenPaid() {
+    void registerPaymentOnOneOfManyInstallmentsMarksPartiallyPaidThenPaid() {
         List<InstallmentInput> schedule = List.of(
                 new InstallmentInput(new BigDecimal("500.00"), LocalDate.of(2026, 7, 1), null),
                 new InstallmentInput(new BigDecimal("500.00"), LocalDate.of(2026, 8, 1), null),
                 new InstallmentInput(new BigDecimal("500.00"), LocalDate.of(2026, 9, 1), null));
         Receivable receivable = receivableWithSchedule(new BigDecimal("1500.00"), schedule);
 
-        receivable.registerFullPayment(
+        receivable.registerPayment(
                 receivable.installments().get(0).id(),
                 new BigDecimal("500.00"),
                 LocalDate.of(2026, 7, 2),
@@ -238,14 +238,14 @@ class ReceivableTest {
         assertThat(receivable.status()).isEqualTo(ReceivableStatus.PARTIALLY_PAID);
         assertThat(receivable.amountPaid()).isEqualByComparingTo("500.00");
 
-        receivable.registerFullPayment(
+        receivable.registerPayment(
                 receivable.installments().get(1).id(),
                 new BigDecimal("500.00"),
                 LocalDate.of(2026, 8, 2),
                 paymentMethod(),
                 null,
                 UUID.randomUUID());
-        receivable.registerFullPayment(
+        receivable.registerPayment(
                 receivable.installments().get(2).id(),
                 new BigDecimal("500.00"),
                 LocalDate.of(2026, 9, 2),
@@ -262,10 +262,10 @@ class ReceivableTest {
     }
 
     @Test
-    void registerFullPaymentRejectsAnUnknownInstallment() {
+    void registerPaymentRejectsAnUnknownInstallment() {
         Receivable receivable = receivableWithSchedule(new BigDecimal("100.00"), List.of());
 
-        assertThatThrownBy(() -> receivable.registerFullPayment(
+        assertThatThrownBy(() -> receivable.registerPayment(
                         UUID.randomUUID(),
                         new BigDecimal("100.00"),
                         LocalDate.of(2026, 6, 20),
@@ -276,10 +276,10 @@ class ReceivableTest {
     }
 
     @Test
-    void registerFullPaymentRejectsAnAlreadyPaidInstallment() {
+    void registerPaymentRejectsAnAlreadyPaidInstallment() {
         Receivable receivable = receivableWithSchedule(new BigDecimal("100.00"), List.of());
         UUID installmentId = receivable.installments().get(0).id();
-        receivable.registerFullPayment(
+        receivable.registerPayment(
                 installmentId,
                 new BigDecimal("100.00"),
                 LocalDate.of(2026, 6, 20),
@@ -287,7 +287,7 @@ class ReceivableTest {
                 null,
                 UUID.randomUUID());
 
-        assertThatThrownBy(() -> receivable.registerFullPayment(
+        assertThatThrownBy(() -> receivable.registerPayment(
                         installmentId,
                         new BigDecimal("100.00"),
                         LocalDate.of(2026, 6, 21),
@@ -298,25 +298,62 @@ class ReceivableTest {
     }
 
     @Test
-    void registerFullPaymentRejectsAnAmountThatDiffersFromTheInstallment() {
+    void registerPaymentRejectsAnAmountExceedingTheOutstanding() {
         Receivable receivable = receivableWithSchedule(new BigDecimal("100.00"), List.of());
         UUID installmentId = receivable.installments().get(0).id();
 
-        assertThatThrownBy(() -> receivable.registerFullPayment(
+        assertThatThrownBy(() -> receivable.registerPayment(
                         installmentId,
-                        new BigDecimal("60.00"),
+                        new BigDecimal("120.00"),
                         LocalDate.of(2026, 6, 20),
                         paymentMethod(),
                         null,
                         UUID.randomUUID()))
-                .isInstanceOf(PaymentAmountMismatchException.class);
+                .isInstanceOf(PaymentExceedsOutstandingException.class);
         assertThat(receivable.installments().get(0).status()).isEqualTo(InstallmentStatus.OPEN);
         assertThat(receivable.payments()).isEmpty();
         assertThat(receivable.amountPaid()).isEqualByComparingTo("0.00");
     }
 
     @Test
-    void registerFullPaymentKeepsTheLatestPaymentDateForOutOfOrderPayments() {
+    void registerPaymentPartiallyPaysAnInstallmentThenSettlesItWithASecondPayment() {
+        Receivable receivable = receivableWithSchedule(new BigDecimal("500.00"), List.of());
+        UUID installmentId = receivable.installments().get(0).id();
+
+        receivable.registerPayment(
+                installmentId,
+                new BigDecimal("200.00"),
+                LocalDate.of(2026, 6, 20),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+
+        ReceivableInstallment installment = receivable.installments().get(0);
+        assertThat(installment.status()).isEqualTo(InstallmentStatus.PARTIALLY_PAID);
+        assertThat(installment.amountPaid()).isEqualByComparingTo("200.00");
+        assertThat(installment.outstanding()).isEqualByComparingTo("300.00");
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.PARTIALLY_PAID);
+        assertThat(receivable.amountPaid()).isEqualByComparingTo("200.00");
+        assertThat(receivable.payments()).hasSize(1);
+
+        // A second partial payment for the remaining balance settles the installment and the Receivable.
+        receivable.registerPayment(
+                installmentId,
+                new BigDecimal("300.00"),
+                LocalDate.of(2026, 6, 21),
+                paymentMethod(),
+                null,
+                UUID.randomUUID());
+
+        assertThat(receivable.installments().get(0).status()).isEqualTo(InstallmentStatus.PAID);
+        assertThat(receivable.installments().get(0).outstanding()).isEqualByComparingTo("0.00");
+        assertThat(receivable.status()).isEqualTo(ReceivableStatus.PAID);
+        assertThat(receivable.amountPaid()).isEqualByComparingTo("500.00");
+        assertThat(receivable.payments()).hasSize(2);
+    }
+
+    @Test
+    void registerPaymentKeepsTheLatestPaymentDateForOutOfOrderPayments() {
         List<InstallmentInput> schedule = List.of(
                 new InstallmentInput(new BigDecimal("200.00"), LocalDate.of(2026, 7, 1), null),
                 new InstallmentInput(new BigDecimal("300.00"), LocalDate.of(2026, 8, 1), null));
@@ -324,14 +361,14 @@ class ReceivableTest {
 
         // Pay the first installment with a LATER date, then the second with an EARLIER one: the denormalized
         // last payment date must keep the latest (the earlier, out-of-order payment must not move it back).
-        receivable.registerFullPayment(
+        receivable.registerPayment(
                 receivable.installments().get(0).id(),
                 new BigDecimal("200.00"),
                 LocalDate.of(2026, 6, 20),
                 paymentMethod(),
                 null,
                 UUID.randomUUID());
-        receivable.registerFullPayment(
+        receivable.registerPayment(
                 receivable.installments().get(1).id(),
                 new BigDecimal("300.00"),
                 LocalDate.of(2026, 6, 10),

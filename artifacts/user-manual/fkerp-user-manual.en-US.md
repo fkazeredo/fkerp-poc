@@ -934,37 +934,43 @@ payments and outstanding balance**. The detail gathers:
 - the **customer (payer)**;
 - the traceable **commercial origin** — the **order** (PC-000n) and the **references** of the source **proposal**
   and **opportunity** (with links to open them, plus the lead) and the **commercial responsible**;
-- the **installments table** (number, amount, due date, status and notes), with **overdue installments
-  highlighted** and, for authorized users, a **Register payment** button on each open installment;
+- the **installments table** (number, amount, **paid**, **outstanding**, due date, status and notes), with
+  **overdue installments highlighted** and, for authorized users, a **Register payment** button on each installment
+  that still has a balance;
 - the **Payments** section — the **history of registered payments** (installment, amount, date, payment method, who
   registered it and notes); empty while there are no payments.
 
 The screen shows **receivable data and its payments only** — never **commission**, **bank reconciliation** or **tax
 invoice** data. You can only open the detail of receivables you are allowed to see.
 
-### 11.5 Registering a payment
+### 11.5 Registering a payment (full or partial)
 
-Users with the **Finance** profile can **register the full payment** of an **Open** installment. On the receivable
-detail, click **Register payment** on the installment (or use the **`p`** shortcut, which opens the dialog for the
-first open installment). Provide:
+Users with the **Finance** profile can **register a payment** for an installment that still has a balance (**Open**
+or **Partially paid**) — the amount received may be **full** or **partial**. On the receivable detail, click
+**Register payment** on the installment (or use the **`p`** shortcut, which opens the dialog for the first
+installment with a balance). Provide:
 
+- **Amount** (required) — pre-filled with the installment's **outstanding** balance; lower it to register a
+  **partial payment**. It must be **greater than zero** and **may not exceed the installment's outstanding** balance
+  (overpayment is not handled in this release).
 - **Payment method** (required) — choose from the registered methods (Cash, Bank transfer, Pix, Credit card, Debit
   card, Invoice payment, Other). The administrator manages this list under **Reference data → Payment methods**.
 - **Payment date** (required) — when the amount was received; it **cannot be in the future**.
 - **Notes** (optional) — a reference or free remark.
 
-The **amount is the installment's** (this release registers the **full payment** — there is no partial payment).
-On confirmation, the **installment becomes Paid**; when **all installments** are paid, the **receivable becomes
-Paid**; if open installments remain, it becomes **Partially paid**. The payment appears in the **Payments** section
-and the **paid** / **outstanding** figures update. Registering a payment creates **no** commission, invoice or
-receipt and performs **no** bank reconciliation, and it never changes the order, lead or customer.
+On confirmation: if the amount **settles the installment's balance**, it becomes **Paid**; if it covers **part** of
+the balance, it becomes **Partially paid** and you may register **further payments** until it is settled. The
+receivable becomes **Paid** when **nothing is outstanding**, or **Partially paid** while a balance remains. The
+payment appears in the **Payments** section and the **paid** / **outstanding** figures (of the receivable and each
+installment) update. Registering a payment creates **no** commission, invoice or receipt and performs **no** bank
+reconciliation, and it never changes the order, lead or customer.
 
 ### 11.6 Receivable and installment states
 
 Both the receivable and each **installment** can be **Open**, **Partially paid**, **Paid**, **Overdue** or
-**Cancelled**. Every receivable is born **Open**; as payments are registered, the installment becomes **Paid** and
-the receivable **Partially paid** or **Paid**. The automatic transition to **Overdue** and **partial payments**
-arrive in later steps.
+**Cancelled**. Every receivable is born **Open**; as payments are registered, the installment becomes **Partially
+paid** (a partial payment) or **Paid** (settled), and the receivable **Partially paid** or **Paid**. The automatic
+transition to **Overdue** arrives in a later step.
 
 ---
 
@@ -1047,7 +1053,7 @@ is also reachable by keyboard:
 - **On an opportunity:** `a` log activity · `e` edit details · `s` advance stage · `p` mark lost · `Esc` back.
 - **On a proposal:** `i` add item · `e` edit commercial details · `s` submit for review · `Esc` back.
 - **On a booking:** `a` register attempt · `Esc` back.
-- **On a receivable:** `p` register payment (first open installment) · `Esc` back / cancel.
+- **On a receivable:** `p` register payment (first installment with a balance) · `Esc` back / cancel.
 
 ---
 
