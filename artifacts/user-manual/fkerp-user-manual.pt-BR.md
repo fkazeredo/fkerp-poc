@@ -906,10 +906,19 @@ fiscal nem altera o pedido.
 
 ### 11.4 A lista e o detalhe
 
-A tela **Contas a receber** mostra, para cada conta: o **pedido** de origem (código PC-000n), o **cliente**, o
-**valor**, o **vencimento**, o **status**, o **responsável financeiro** e a data de criação. Você pode **filtrar
-por status**; por padrão, as **canceladas** ficam ocultas. Cada perfil vê apenas as contas que tem permissão para
-ver.
+A tela **Contas a receber** é a **lista operacional** — as contas que precisam de acompanhamento financeiro, para
+**priorizar a cobrança**. Para cada conta ela mostra: o **pedido** de origem (código PC-000n), o **cliente
+(pagador)**, o **valor total**, o **valor pago**, o **valor em aberto**, o **status**, o **próximo vencimento**
+(com um destaque **Vencida** quando a conta está atrasada), o **responsável comercial** e o **financeiro**, a data
+de **criação** e o **último pagamento**. Nesta versão, *pago* é sempre zero, *em aberto* é o total e *último
+pagamento* fica vazio — esses números passam a valer quando o registro de pagamentos chegar.
+
+**Por padrão**, a lista mostra as contas **em acompanhamento** (Em aberto, Parcialmente paga, Vencida) e **omite as
+Pagas e Canceladas** — selecione esses status no filtro para vê-las. As **vencidas continuam visíveis** como
+problema operacional. Você pode **filtrar** por **status**, **cliente (pagador)**, **pedido nº**, **período de
+vencimento**, **período de criação**, **responsável comercial**, **responsável financeiro**, **faixa de valor** e
+**somente vencidas**. Cada perfil vê apenas as contas que tem permissão para ver — **representantes não veem** o
+detalhe financeiro. A lista **não** mostra dados de **comissão** nem de **conciliação bancária**.
 
 O **detalhe** de uma conta reúne o **resumo** (valor, vencimento, status, responsável e observações), o **cliente
 (pagador)**, a **origem comercial** rastreável — com atalhos para abrir o **pedido**, a **proposta** e a
@@ -1046,8 +1055,10 @@ A entrega foi **validada de ponta a ponta**.
 A **Sprint 5 — Operações Financeiras** está em andamento: o módulo **Financeiro** (seção 11) já permite **gerar
 contas a receber** a partir dos **pedidos com reserva confirmada**, com o **Cliente** (pagador) criado
 automaticamente no fechamento, o **parcelamento** da conta (uma ou várias parcelas, cuja soma é igual ao valor do
-pedido), além da **lista** e do **detalhe** das contas, tudo com visibilidade por perfil. O Financeiro lê o registro
-já pronto (valor no Pedido; localizadores, datas e fornecedor na reserva) sem redigitar dados, e Reserva e Comercial
+pedido), e a **lista operacional** das contas a acompanhar — com colunas de **pago / em aberto**, destaque de
+**vencidas** e um conjunto completo de **filtros** (status, cliente, pedido, períodos de vencimento e criação,
+responsáveis, faixa de valor e somente vencidas) —, tudo com visibilidade por perfil. O Financeiro lê o registro já
+pronto (valor no Pedido; localizadores, datas e fornecedor na reserva) sem redigitar dados, e Reserva e Comercial
 seguem separados. As **próximas etapas** desta Sprint trazem o **registro de pagamentos** (e as transições para
 *Paga* / *Parcialmente paga* / *Vencida*), o reflexo do status financeiro no pedido e a **comissão**. Este manual
 será atualizado a cada lançamento.
@@ -1056,6 +1067,6 @@ será atualizado a cada lançamento.
 
 *Status do documento: Sprints 1, 2, 3 e 4 concluídas e Sprint 5 (Operações Financeiras) em andamento — módulo
 Financeiro com geração de contas a receber a partir de pedidos com reserva confirmada, o Cliente (pagador)
-materializado no fechamento, o **parcelamento** da conta (uma ou várias parcelas que somam o valor do pedido), e a
-lista e o detalhe das contas, com visibilidade por perfil. Próximas etapas da Sprint 5: pagamentos e comissão.
-Mantido junto com o produto.*
+materializado no fechamento, o **parcelamento** da conta, e a **lista operacional** das contas a acompanhar (pago /
+em aberto, vencidas em destaque, filtros completos), com visibilidade por perfil. Próximas etapas da Sprint 5:
+pagamentos e comissão. Mantido junto com o produto.*

@@ -710,6 +710,22 @@ hold `financial:receivable:read:all` (consultation only); Sellers/Representative
 read tier. The payments lifecycle (registering/reversing a payment, the `OVERDUE`/`PAID` transitions, the financial
 status reflected onto the Order, indicators) and Commission are **later slices**.
 
+**Operational Receivable list (normative — Financial Operations, Sprint 5 Slice 3).** `GET /api/receivables` is the
+**operational worklist** of the receivables that require financial follow-up (to prioritize collection). It is gated
+by the same read tiers and narrowed by `ReceivableAccessPolicy` (so no filter can surface a receivable the caller may
+not see). The **default** list shows the **operational** statuses (`OPEN`/`PARTIALLY_PAID`/`OVERDUE`) and **excludes
+the settled `PAID` and `CANCELLED`** (pass them in the `status` filter to see them); **overdue receivables stay
+visible** as operational problems. A receivable is **`overdue`** (a computed read-model flag, and the `overdueOnly`
+filter) when its (next) `dueDate` is in the past and its status is still operational. The list item carries the
+operational fields — id, source Order (`PC-000n`), payer (Customer), `totalAmount`, `amountPaid`,
+`outstandingAmount` (`total − paid`), status, next `dueDate`, `overdue`, commercial + financial responsible names,
+`createdAt`, `lastPaymentDate` — **receivable + commercial-origin data only, never Commission or bank-reconciliation
+data**. `amountPaid`/`outstandingAmount`/`lastPaymentDate` reflect the current **no-payment** state (zero / full
+total / none) and become real with the payment slice. Filters: `status`, `payer` (customer-name substring), `order`
+/ `orderNumber` (source Commercial Order), due-date period, creation period, `commercialResponsible`,
+`financialResponsible`, amount range and `overdueOnly`. The list creates nothing and never shows Commission, bank
+reconciliation, tax-invoice or cash-flow data (those are out of scope).
+
 **Receivable installments (normative — Financial Operations, Sprint 5 Slice 2).** A Receivable is split into one or
 more **installments** (`ReceivableInstallment`, a child collection of the Receivable aggregate —
 `@OneToMany(cascade=ALL, orphanRemoval=true)`, mirroring `ProposalItem`). Each installment has an **`number`**

@@ -1,7 +1,7 @@
 <header class="page-head">
   <div>
     <h1>Contas a receber</h1>
-    <p class="sub muted">O que há a receber dos negócios fechados com reserva confirmada.</p>
+    <p class="sub muted">As contas que precisam de acompanhamento financeiro — para priorizar a cobrança.</p>
   </div>
   @if (canCreate) {
     <a routerLink="/financeiro/contas-a-receber/nova">
@@ -19,12 +19,142 @@
       optionValue="value"
       [(ngModel)]="status"
       (ngModelChange)="applyFilters()"
-      placeholder="Ativas"
+      placeholder="Em acompanhamento"
       [showClear]="true"
       styleClass="w-full"
       appendTo="body"
     />
   </div>
+  <div class="filter">
+    <label>Cliente (pagador)</label>
+    <input
+      pInputText
+      [(ngModel)]="payer"
+      (keyup.enter)="applyFilters()"
+      placeholder="Nome do cliente"
+      class="w-full"
+    />
+  </div>
+  <div class="filter filter-sm">
+    <label>Pedido nº</label>
+    <p-inputNumber
+      [(ngModel)]="orderNumber"
+      (onKeyDown)="$event.key === 'Enter' && applyFilters()"
+      [useGrouping]="false"
+      [min]="1"
+      placeholder="PC-000n"
+      styleClass="w-full"
+    />
+  </div>
+  <div class="filter">
+    <label>Responsável comercial</label>
+    <p-select
+      [options]="responsibleOptions()"
+      optionLabel="name"
+      optionValue="id"
+      [(ngModel)]="commercialResponsible"
+      (ngModelChange)="applyFilters()"
+      placeholder="Todos"
+      [showClear]="true"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Responsável financeiro</label>
+    <p-select
+      [options]="responsibleOptions()"
+      optionLabel="name"
+      optionValue="id"
+      [(ngModel)]="financialResponsible"
+      (ngModelChange)="applyFilters()"
+      placeholder="Todos"
+      [showClear]="true"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Vence de</label>
+    <p-datepicker
+      [(ngModel)]="dueFrom"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Vence até</label>
+    <p-datepicker
+      [(ngModel)]="dueTo"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Criado de</label>
+    <p-datepicker
+      [(ngModel)]="createdFrom"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Criado até</label>
+    <p-datepicker
+      [(ngModel)]="createdTo"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter filter-sm">
+    <label>Valor mín.</label>
+    <p-inputNumber
+      [(ngModel)]="amountMin"
+      (onKeyDown)="$event.key === 'Enter' && applyFilters()"
+      mode="currency"
+      currency="BRL"
+      locale="pt-BR"
+      [min]="0"
+      styleClass="w-full"
+    />
+  </div>
+  <div class="filter filter-sm">
+    <label>Valor máx.</label>
+    <p-inputNumber
+      [(ngModel)]="amountMax"
+      (onKeyDown)="$event.key === 'Enter' && applyFilters()"
+      mode="currency"
+      currency="BRL"
+      locale="pt-BR"
+      [min]="0"
+      styleClass="w-full"
+    />
+  </div>
+  <div class="filter filter-toggle">
+    <label for="overdueOnly">Somente vencidas</label>
+    <p-toggleswitch inputId="overdueOnly" [(ngModel)]="overdueOnly" (ngModelChange)="applyFilters()" />
+  </div>
+  <p-button
+    label="Buscar"
+    icon="pi pi-search"
+    size="small"
+    severity="secondary"
+    (onClick)="applyFilters()"
+  />
   <p-button
     label="Limpar"
     icon="pi pi-filter-slash"
@@ -50,21 +180,25 @@
     [first]="firstRow"
     [loading]="loading()"
     styleClass="p-datatable-sm"
-    [tableStyle]="{ 'min-width': '60rem' }"
+    [tableStyle]="{ 'min-width': '85rem' }"
   >
     <ng-template pTemplate="header">
       <tr>
         <th>Pedido</th>
         <th>Cliente</th>
-        <th class="num">Valor</th>
-        <th>Vencimento</th>
+        <th class="num">Total</th>
+        <th class="num">Pago</th>
+        <th class="num">Em aberto</th>
         <th>Status</th>
-        <th>Responsável financeiro</th>
+        <th>Próx. vencimento</th>
+        <th>Resp. comercial</th>
+        <th>Resp. financeiro</th>
         <th>Criado em</th>
+        <th>Último pgto.</th>
       </tr>
     </ng-template>
     <ng-template pTemplate="body" let-r>
-      <tr>
+      <tr [class.overdue-row]="r.overdue">
         <td>
           <a [routerLink]="['/financeiro/contas-a-receber', r.id]" class="order-link">
             {{ orderCode(r.orderNumber) }}
@@ -72,15 +206,24 @@
         </td>
         <td>{{ r.customerName ?? '—' }}</td>
         <td class="num">{{ r.totalAmount | currency: 'BRL' }}</td>
-        <td>{{ r.dueDate | date: 'dd/MM/yyyy' }}</td>
+        <td class="num">{{ r.amountPaid | currency: 'BRL' }}</td>
+        <td class="num">{{ r.outstandingAmount | currency: 'BRL' }}</td>
         <td><p-tag [value]="statusLabel(r.status)" [severity]="statusSeverity(r.status)" /></td>
+        <td>
+          {{ r.dueDate | date: 'dd/MM/yyyy' }}
+          @if (r.overdue) {
+            <p-tag value="Vencida" severity="danger" styleClass="overdue-tag" />
+          }
+        </td>
+        <td>{{ r.commercialResponsibleName ?? '—' }}</td>
         <td>{{ r.financialResponsibleName ?? '—' }}</td>
         <td>{{ r.createdAt | date: 'short' }}</td>
+        <td>{{ r.lastPaymentDate ? (r.lastPaymentDate | date: 'dd/MM/yyyy') : '—' }}</td>
       </tr>
     </ng-template>
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="7" class="muted empty">Nenhuma conta a receber ainda.</td>
+        <td colspan="11" class="muted empty">Nenhuma conta a receber para acompanhar.</td>
       </tr>
     </ng-template>
   </p-table>
