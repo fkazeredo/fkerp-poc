@@ -32,20 +32,37 @@ describe('CommissionService', () => {
     req.flush({});
   });
 
-  it('looks up the order commission and maps the 0/1 array to its first item', () => {
+  it('lists commissions with paging and the chosen filters', () => {
+    service
+      .list({ status: ['ELIGIBLE', 'APPROVED'], beneficiary: 'u2', orderNumber: 7, amountMin: 10 }, 1, 20)
+      .subscribe();
+    const req = http.expectOne((r) => r.url === '/api/commissions');
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('page')).toBe('1');
+    expect(req.request.params.get('size')).toBe('20');
+    expect(req.request.params.getAll('status')).toEqual(['ELIGIBLE', 'APPROVED']);
+    expect(req.request.params.get('beneficiary')).toBe('u2');
+    expect(req.request.params.get('orderNumber')).toBe('7');
+    expect(req.request.params.get('amountMin')).toBe('10');
+    req.flush({ content: [], totalElements: 0 });
+  });
+
+  it('looks up the order commission via the list and maps to the first item', () => {
     let result: unknown = 'unset';
     service.byOrder('ord1').subscribe((c) => (result = c));
     const req = http.expectOne((r) => r.url === '/api/commissions');
     expect(req.request.method).toBe('GET');
-    expect(req.request.params.get('commercialOrderId')).toBe('ord1');
-    req.flush([{ id: 'c1', status: 'ELIGIBLE' }]);
+    expect(req.request.params.get('order')).toBe('ord1');
+    // It asks for the active statuses (so a PAID commission is still shown on the order detail).
+    expect(req.request.params.getAll('status')).toEqual(['EXPECTED', 'ELIGIBLE', 'APPROVED', 'PAID']);
+    req.flush({ content: [{ id: 'c1', status: 'ELIGIBLE' }], totalElements: 1 });
     expect(result).toEqual({ id: 'c1', status: 'ELIGIBLE' });
   });
 
   it('maps an empty order-commission lookup to null', () => {
     let result: unknown = 'unset';
     service.byOrder('ord1').subscribe((c) => (result = c));
-    http.expectOne((r) => r.url === '/api/commissions').flush([]);
+    http.expectOne((r) => r.url === '/api/commissions').flush({ content: [], totalElements: 0 });
     expect(result).toBeNull();
   });
 });

@@ -15,6 +15,7 @@ import com.fksoft.erp.domain.booking.exception.BookingRequestAccessDeniedExcepti
 import com.fksoft.erp.domain.booking.exception.BookingRequestAlreadyExistsException;
 import com.fksoft.erp.domain.booking.exception.BookingRequestNotFoundException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
+import com.fksoft.erp.domain.commission.exception.CommissionAccessDeniedException;
 import com.fksoft.erp.domain.commission.exception.CommissionAlreadyExistsException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotFoundException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoAmountException;
@@ -189,6 +190,7 @@ public class HttpErrorMapping {
             entry(CommissionRuleDatesInvalidException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(CommissionRuleTargetUserNotFoundException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(CommissionNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(CommissionAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(CommissionSourceOrderNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(CommissionSourceOrderAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(CommissionOrderNotClosedException.class, HttpStatus.UNPROCESSABLE_ENTITY),

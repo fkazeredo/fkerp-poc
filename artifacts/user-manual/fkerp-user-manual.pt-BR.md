@@ -1136,6 +1136,25 @@ de **Prevista** para **Pendente de aprovação** e mostra **desde quando** ficou
 **Observação:** se um pagamento for **estornado** depois (recurso da Sprint 5), a comissão que já ficou elegível
 **não** volta a Prevista nesta versão (não há reversão/estorno de comissão automático — fica para uma etapa futura).
 
+### 11.8 Lista de comissões (Gestão de Comissão)
+
+Em **Comercial → Comissões** (atalho <kbd>g</kbd> depois <kbd>m</kbd>) o gerente comercial ou financeiro acompanha as
+comissões — previstas, pendentes de aprovação, aprovadas e pagas — numa **lista paginada** com filtros. **Quem vê o
+quê:** o **gerente comercial**, a **diretoria** e o **financeiro** veem **todas** as comissões; **vendedores** e
+**representantes** veem **apenas as suas** (aquelas em que são o beneficiário). O sistema é a única autoridade — os
+filtros nunca mostram uma comissão que você não pode ver.
+
+A lista mostra, por comissão: o **beneficiário**, o **pedido** de origem (PC-000n), a **referência** da proposta/
+oportunidade, o **valor**, o **percentual e a regra**, a **situação**, a **base de cálculo**, a **situação da conta a
+receber** relacionada, e as datas de **criação**, **elegibilidade**, **aprovação** e **pagamento** (as duas últimas
+aparecem quando existirem — a aprovação e o pagamento chegam nas próximas etapas). Filtros disponíveis: **situação**,
+**beneficiário**, **pedido**, **regra**, **período de criação**, **período de elegibilidade**, **período de
+pagamento** e **faixa de valor**.
+
+Por padrão a lista mostra as comissões **em acompanhamento** (Prevista / Pendente de aprovação / Aprovada); as
+**Pagas**, **Rejeitadas** e **Canceladas** aparecem **apenas quando você as escolhe** no filtro de situação. A tela
+mostra **apenas dados da comissão e da origem comercial** — nunca folha, imposto, contabilidade ou contas a pagar.
+
 ---
 
 ## 13. Mensagens e validação

@@ -11,6 +11,7 @@ describe('NavigationService', () => {
     canSeeOrders: vi.fn(),
     canSeeBookings: vi.fn(),
     canSeeReceivables: vi.fn(),
+    canSeeCommissions: vi.fn(),
     canManageCommissionRules: vi.fn(),
   };
 
@@ -32,6 +33,7 @@ describe('NavigationService', () => {
     auth.canSeeOrders.mockReset().mockReturnValue(false);
     auth.canSeeBookings.mockReset().mockReturnValue(false);
     auth.canSeeReceivables.mockReset().mockReturnValue(false);
+    auth.canSeeCommissions.mockReset().mockReturnValue(false);
     auth.canManageCommissionRules.mockReset().mockReturnValue(false);
   });
 
@@ -65,6 +67,17 @@ describe('NavigationService', () => {
       '/propostas',
       '/pedidos',
     ]);
+  });
+
+  it('shows the Comissões funnel entry only when the user can see commissions', () => {
+    auth.canSeeOrders.mockReturnValue(true);
+    expect(build().module('comercial')!.items.map((i) => i.link)).not.toContain('/comissoes');
+
+    auth.canSeeCommissions.mockReturnValue(true);
+    const comercial = build().module('comercial')!;
+    expect(comercial.items.map((i) => i.link)).toContain('/comissoes');
+    // It sits after Pedidos in the funnel order.
+    expect(comercial.items.map((i) => i.link)).toEqual(['/pedidos', '/comissoes']);
   });
 
   it('exposes "Novo lead" only as an action (home tile), not a sidebar item, and only with create scope', () => {

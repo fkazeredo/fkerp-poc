@@ -1,30 +1,38 @@
 package com.fksoft.erp.application.api;
 
+import com.fksoft.erp.application.api.dto.CommissionListParams;
 import com.fksoft.erp.application.api.dto.CommissionResponse;
 import com.fksoft.erp.application.api.dto.GenerateCommissionRequest;
 import com.fksoft.erp.domain.commission.service.CommissionService;
 import com.fksoft.erp.domain.commission.service.data.CommissionDetail;
+import com.fksoft.erp.domain.commission.service.data.CommissionListItem;
+import com.fksoft.erp.domain.commission.service.data.CommissionSearchCriteria;
 import com.fksoft.erp.infra.security.UserContextProvider;
+import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
-import java.util.List;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Commission endpoints (Commission Management). Generating an Expected Commission from a closed Commercial Order
- * requires {@code commission:create}; reading a commission requires {@code commission:read}. The caller must also be
- * allowed to see the source Order (the Order read tiers are read here and passed to the domain service). Generating a
- * commission creates no Commission Payment, Accounts Payable, payroll, tax or accounting data, and never modifies the
- * Order or the Receivable.
+ * requires {@code commission:create}; the operational list and the detail are gated by the Commission read tiers
+ * ({@code commission:read} own / {@code commission:read:all} all) and narrowed by {@link CommissionService} so a
+ * seller/representative sees only their own commissions. Reading a commission creates no Commission Payment, Accounts
+ * Payable, payroll, tax or accounting data.
  */
 @RestController
 @RequestMapping("/api/commissions")
@@ -51,25 +59,57 @@ public class CommissionController {
     }
 
     /**
-     * The active Commission of a Commercial Order (0 or 1) — feeds the Order detail's "this order's commission" view,
-     * showing whether it is still a forecast (Expected) or eligible for approval (Eligible).
+     * Operational, paginated Commission list visible to the caller, with optional filters — for tracking expected,
+     * eligible, approved and paid commissions. The settled {@code PAID} and the terminal {@code REJECTED}/
+     * {@code CANCELLED} are excluded unless the {@code status} filter includes them. Carries commission +
+     * commercial-origin data only — never payroll, tax, accounting or accounts-payable data.
      *
-     * @param commercialOrderId the source order id
-     * @return the order's active commission detail as a 0-or-1 list
+     * @param params the optional filters (see {@link CommissionListParams})
+     * @param pageable page, size and sort (default: createdAt desc, size 20)
+     * @return a page of Commission list items
      */
     @GetMapping
-    public List<CommissionDetail> byOrder(@RequestParam UUID commercialOrderId) {
-        return commissionService.byOrder(commercialOrderId);
+    public PageResponse<CommissionListItem> list(
+            CommissionListParams params,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        CommissionSearchCriteria criteria = new CommissionSearchCriteria(
+                params.status(),
+                params.beneficiary(),
+                params.order(),
+                params.orderNumber(),
+                params.rule(),
+                toStartOfDayUtc(params.createdFrom()),
+                toStartOfDayUtc(params.createdTo() != null ? params.createdTo().plusDays(1) : null),
+                toStartOfDayUtc(params.eligibleFrom()),
+                toStartOfDayUtc(
+                        params.eligibleTo() != null ? params.eligibleTo().plusDays(1) : null),
+                toStartOfDayUtc(params.paidFrom()),
+                toStartOfDayUtc(params.paidTo() != null ? params.paidTo().plusDays(1) : null),
+                params.amountMin(),
+                params.amountMax());
+        return PageResponse.from(
+                commissionService.list(criteria, pageable, userContext.currentUserId(), canSeeAllCommissions()),
+                item -> item);
     }
 
     /**
-     * Full detail of a Commission.
+     * Full detail of a Commission the caller may see.
      *
      * @param id the commission id
      * @return the commission detail
      */
     @GetMapping("/{id}")
     public CommissionDetail detail(@PathVariable UUID id) {
-        return commissionService.detail(id);
+        return commissionService.detail(id, userContext.currentUserId(), canSeeAllCommissions());
+    }
+
+    private boolean canSeeAllCommissions() {
+        return userContext.hasScope("commission:read:all");
+    }
+
+    // The filter periods are given as calendar dates; the stored fields are instants, so anchor at UTC midnight (the
+    // upper bounds are pre-incremented by a day, making each range [from, to) exclusive).
+    private static Instant toStartOfDayUtc(LocalDate date) {
+        return date != null ? date.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
     }
 }

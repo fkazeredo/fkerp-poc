@@ -113,10 +113,14 @@ describe('AuthService', () => {
     expect(service.canCreateCommission()).toBe(false);
   });
 
-  it('grants reading commissions with the commission:read scope', () => {
+  it('grants reading commissions through any read tier (own or all)', () => {
     service.accessToken.set(jwt({ sub: 'u', scope: 'commission:read' }));
     expect(service.canSeeCommissions()).toBe(true);
 
+    service.accessToken.set(jwt({ sub: 'u', scope: 'commission:read:all' }));
+    expect(service.canSeeCommissions()).toBe(true);
+
+    // Create alone does not grant read access.
     service.accessToken.set(jwt({ sub: 'u', scope: 'commission:create' }));
     expect(service.canSeeCommissions()).toBe(false);
   });
