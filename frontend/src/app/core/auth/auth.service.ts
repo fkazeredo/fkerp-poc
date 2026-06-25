@@ -170,6 +170,11 @@ export class AuthService {
   canManageCommissionRules(): boolean {
     return this.hasScope('commission:rule:manage');
   }
+
+  /** Whether the user may generate an Expected Commission from a Commercial Order (Commission Management). */
+  canCreateCommission(): boolean {
+    return this.hasScope('commission:create');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

@@ -151,12 +151,11 @@ class FinancialOperationsEndToEndIntegrationTest extends AbstractIntegrationTest
         assertThat(JsonPath.<Map<String, Object>>read(orderBody(order, fin), "$")
                         .keySet())
                 .doesNotContain("commission", "refund", "invoice");
-        // Exactly one Payment was recorded; no Commission row exists anywhere (the table does not exist yet).
+        // Exactly one Payment was recorded; the financial flow creates no Commission row (the commissions table
+        // exists since Sprint 6 Slice 2, but Financial Operations never generates a commission).
         assertThat(jdbc.queryForObject("SELECT count(*) FROM receivable_payments", Integer.class))
                 .isEqualTo(1);
-        assertThat(jdbc.queryForObject(
-                        "SELECT count(*) FROM information_schema.tables WHERE table_name = 'commissions'",
-                        Integer.class))
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM commissions", Integer.class))
                 .isZero();
     }
 

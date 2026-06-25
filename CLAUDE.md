@@ -937,6 +937,37 @@ In the frontend the rules screen lives under **Cadastros** (`/cadastros/regras-c
 `canManageCommissionRules()`); the backend stays the only authority. Commission **generation, eligibility, approval,
 payment, statement, order commission-status reflection and indicators** are the **later Sprint-6 slices**.
 
+**Expected Commission generation (normative — Commission Management, Sprint 6 Slice 2).** An authorized **commercial/
+financial manager generates an Expected Commission from a Commercial Order** (`POST /api/commissions`,
+`{commercialOrderId}`), so the future commission payment is **tracked from the start**. The commission is a
+**forecast** — it starts **`EXPECTED`** and is **not payable** yet. Generation requires the Order to be
+**commercially closed** (it exists and is **active**, i.e. not `CANCELLED` — else **422** `commission.order-not-closed`),
+to have a **commercial responsible** (the **beneficiary**; else **422** `commission.order-no-responsible`) and a
+**positive commercial total** (else **422** `commission.order-no-amount`); the caller must also be allowed to **see
+the source Order**, reusing the Order read tiers (`sales:order:read` / `:read:unassigned` / `:read:all`) — a caller who
+cannot see it gets **403** `commission.order-access-denied`, an unknown Order is **404** `commission.order-not-found`.
+The applied rule is the **active, in-window** `CommissionRule` selected **specific-first**: a rule whose
+`targetUserId == the beneficiary` wins, else a generic rule with `targetType = COMMERCIAL_RESPONSIBLE`; among
+candidates of the same kind the newest wins. Generic `SELLER`/`SALES_REPRESENTATIVE` rules are **not** auto-matched
+(there is no user-role model yet); when none applies → **422** `commission.no-applicable-rule`. The **amount** is
+`baseAmount × rulePercentage ÷ 100` (`BigDecimal` scale 2, `HALF_UP`); the **basis** is the **received amount** when
+the Order's Receivable already has payments (`amountPaid > 0`) — `RECEIVED_AMOUNT`, base = `amountPaid` — otherwise the
+**commercial total** (`COMMERCIAL_AMOUNT`, a forecast). The Commission **preserves** the commercial origin
+(`commercialOrderId`/`proposalId`/`opportunityId`/`leadId`, never modified), the **beneficiary**, and the applied
+**`ruleId` + `rulePercentage` snapshot**. An Order has **at most one active Commission** (the service returns a
+friendly **409** `commission.already-exists` with the existing id; a partial unique index `WHERE status NOT IN
+('REJECTED','CANCELLED')` is the last-resort guard; a new one is allowed once the previous is rejected/cancelled).
+Generating a Commission **reads** the Order and the Receivable but **never owns or modifies** them, and creates **NO**
+Commission Payment, Accounts Payable, payroll, tax or accounting data. `GET /api/commissions/{id}` returns the detail
+(commission + commercial-origin data only). **Persona → scopes:** `commission:create` (commercial **Manager** 001 +
+**Financeiro** 005; both already hold `sales:order:read:all` to see the Order) + `commission:read` (001 + **Board/
+Director** 004 + 005; sellers/representatives/operations/HR-IT have **no** commission scope → **403**). In the
+frontend the Order detail offers a minimal **"Gerar comissão"** action (shortcut <kbd>c</kbd>) behind
+`canCreateCommission()` that shows the generated commission inline; the backend stays the only authority. **Out of
+scope (later slices):** eligibility (`EXPECTED → ELIGIBLE` once the Receivable is paid), approval/rejection, payment
+registration + reversal, statement, order commission-status reflection, indicators, and multi-level/margin/supplier/
+target-based commission.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

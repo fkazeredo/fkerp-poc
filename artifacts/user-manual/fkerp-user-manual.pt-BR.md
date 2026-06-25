@@ -1098,6 +1098,27 @@ Ao criar ou editar uma regra, informe:
 Cada regra pode ser **ativada/desativada**: apenas regras **ativas** serão usadas para novos cálculos de comissão.
 A apuração, a aprovação e o pagamento de comissões chegam nas próximas etapas da Sprint 6.
 
+### 11.6 Geração da comissão prevista (Gestão de Comissão)
+
+A partir de um **pedido comercial fechado**, o **gerente comercial** ou o **financeiro** pode **gerar a comissão
+prevista** — assim a futura comissão já fica **acompanhada desde o início**. No **detalhe do pedido**, o botão
+**Gerar comissão** (atalho <kbd>c</kbd>) cria a previsão e mostra o resumo na própria tela: **beneficiário**
+(o responsável comercial do pedido), **regra aplicada** e seu **percentual**, **base de cálculo** e o **valor da
+comissão**. A comissão nasce como **Prevista** e **ainda não é paga**.
+
+- O sistema usa uma **regra de comissão ativa** que se aplique ao responsável do pedido (preferindo uma regra
+  específica daquele responsável; senão, uma regra do tipo **Responsável comercial**). Se nenhuma regra ativa se
+  aplicar, a geração é recusada com uma mensagem clara.
+- O **valor** é o **percentual da regra** sobre uma base: o **valor já recebido** quando o pedido já tem recebimentos
+  (a conta a receber já registrou pagamento), ou o **valor comercial do pedido** quando ainda não há recebimento —
+  nesse caso a comissão é uma **previsão**.
+- O pedido precisa estar **fechado** (não cancelado), ter um **responsável comercial** e um **valor** positivo; cada
+  pedido tem **no máximo uma comissão ativa** (uma nova mensagem avisa se já existe).
+
+Gerar a comissão **apenas lê** o pedido e a conta a receber — **não os altera** — e **não** cria pagamento de comissão,
+contas a pagar, folha, imposto nem contabilidade. A **elegibilidade** (quando o recebível é pago), a **aprovação**, o
+**pagamento** e os **indicadores** de comissão chegam nas próximas etapas da Sprint 6.
+
 ---
 
 ## 13. Mensagens e validação
