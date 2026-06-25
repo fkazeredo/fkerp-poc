@@ -1016,6 +1016,27 @@ authority. **Out of scope (later slices):** approval/rejection (populates `appro
 (populates `paid_at`), statement, order commission-status reflection, indicators, and the payroll dashboard / accounting
 report / tax report / bank payment file / accounts-payable list.
 
+**Commission detail consultation (normative — Commission Management, Sprint 6 Slice 5).** `GET /api/commissions/{id}`
+returns the **full read-only detail** a commercial/financial manager opens to understand a commission's origin,
+calculation, eligibility, approval and payment history. It is gated by the Commission read tiers and
+**`CommissionAccessPolicy.canSee`** (**404** `commission.not-found` if absent, **403** `commission.access-denied` if not
+visible — sellers/representatives may open **only their own**). The enriched `CommissionDetail` keeps the **commercial
+origin traceable** (source Order `PC-000n`, source **Proposal** `proposalReference` + id, source **Opportunity**
+`opportunityReference` + id, Lead id) and the **related Receivable** traceable (`receivableId` + `receivableStatus` —
+the source order's active Receivable, resolved read-only from Financial; the receivable is identified by the Order, so
+no monetary receivable data is duplicated), exposes the **calculation basis** (`basisType` + `baseAmount`) and the
+**rule used** via the **immutable `rulePercentage` snapshot** (so it stays visible even if the rule is later renamed or
+re-priced; `ruleName` is a live convenience), the **amount**, the **status**, `createdByName`, and the lifecycle stamps
+**`eligibleAt` / `approvedAt` / `paidAt`** — shown **when available** (approval/payment are later slices, null now). The
+frontend renders a read-only detail page at **`/comissoes/{id}`** (Comercial module, reached from the list's
+beneficiary link or the Order detail's commission panel; <kbd>Esc</kbd> returns to the list) with a **history/timeline**
+(Gerada → Elegível → Aprovada → Paga) that fills in as each stamp is populated. It carries **commission +
+commercial-origin data only — never payroll, tax or accounting data**. No new endpoint/scope/migration (the detail
+endpoint + visibility existed since Slices 2–4; this slice only **enriches** the read model). **Out of scope (later
+slices):** the **approval/rejection** info, **payment** info, **cancellation** info and free-text notes (they fill in as
+those slices land), statement, order commission-status reflection, indicators, and payroll / accounting / tax /
+bank-transfer / accounts-payable detail.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

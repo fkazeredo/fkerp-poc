@@ -1151,6 +1151,25 @@ By default the list shows the **in-progress** commissions (Expected / Pending ap
 **Rejected** and **Cancelled** appear **only when you select them** in the status filter. The screen shows **only
 commission and commercial-origin data** — never payroll, tax, accounting or accounts-payable data.
 
+### 11.9 Commission detail (Commission Management)
+
+Clicking the **beneficiary** in the commission list (or **Ver detalhe da comissão** on the order detail) opens the
+**commission detail** — the screen to understand its origin, calculation, eligibility, approval and payment. You only
+open commissions you may see (sellers and representatives open **only their own**); opening one without permission is
+refused with a clear message. The detail shows:
+
+- **Summary** — beneficiary, commission amount, percentage and status.
+- **Commercial origin** — the source **order** (PC-000n), **proposal** and **opportunity**, all traceable by links,
+  and the lead.
+- **Calculation** — the **calculation basis** (commercial or received amount), the **applied rule** (the percentage is
+  a **snapshot** kept on the commission, so it stays visible even if the rule changes later) and the **amount**.
+- **Receivable** — the related receivable status, traceable via the source order.
+- **History** — a timeline (Generated → Eligible → Approved → Paid) that fills in with the next steps (approval,
+  payment and cancellation arrive in later releases).
+
+The screen is **read-only** and shows **only commission and commercial-origin data** — never payroll, tax, accounting,
+bank-transfer or accounts-payable data.
+
 ---
 
 ## 13. Messages and validation

@@ -22,7 +22,9 @@ export interface CommissionDetail {
   commercialOrderId: string;
   orderNumber: number;
   proposalId: string;
+  proposalReference: string | null;
   opportunityId: string;
+  opportunityReference: string | null;
   leadId: string;
   beneficiaryUserId: string;
   beneficiaryName: string | null;
@@ -33,7 +35,13 @@ export interface CommissionDetail {
   baseAmount: number;
   amount: number;
   status: CommissionStatus;
+  /** The source order's active Receivable (the related-receivable reference), or null when there is none. */
+  receivableId: string | null;
+  receivableStatus: ReceivableStatusCode | null;
   eligibleAt: string | null;
+  approvedAt: string | null;
+  paidAt: string | null;
+  createdByName: string | null;
   createdAt: string;
 }
 
