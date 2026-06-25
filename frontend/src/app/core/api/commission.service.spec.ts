@@ -32,6 +32,21 @@ describe('CommissionService', () => {
     req.flush({});
   });
 
+  it('posts the optional notes to approve an eligible commission', () => {
+    service.approve('c1', 'Conferido').subscribe();
+    const req = http.expectOne('/api/commissions/c1/approve');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ notes: 'Conferido' });
+    req.flush({ id: 'c1', status: 'APPROVED' });
+  });
+
+  it('approves with null notes when none are given', () => {
+    service.approve('c1', null).subscribe();
+    const req = http.expectOne('/api/commissions/c1/approve');
+    expect(req.request.body).toEqual({ notes: null });
+    req.flush({ id: 'c1', status: 'APPROVED' });
+  });
+
   it('lists commissions with paging and the chosen filters', () => {
     service
       .list({ status: ['ELIGIBLE', 'APPROVED'], beneficiary: 'u2', orderNumber: 7, amountMin: 10 }, 1, 20)

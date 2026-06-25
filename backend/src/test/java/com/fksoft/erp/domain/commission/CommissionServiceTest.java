@@ -13,10 +13,12 @@ import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.commission.exception.CommissionAccessDeniedException;
 import com.fksoft.erp.domain.commission.exception.CommissionAlreadyExistsException;
+import com.fksoft.erp.domain.commission.exception.CommissionNotEligibleException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotFoundException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoAmountException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoResponsibleException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNotClosedException;
+import com.fksoft.erp.domain.commission.exception.CommissionSelfApprovalNotAllowedException;
 import com.fksoft.erp.domain.commission.exception.CommissionSourceOrderAccessDeniedException;
 import com.fksoft.erp.domain.commission.exception.CommissionSourceOrderNotFoundException;
 import com.fksoft.erp.domain.commission.exception.NoApplicableCommissionRuleException;
@@ -42,6 +44,7 @@ import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -370,6 +373,70 @@ class CommissionServiceTest {
         UUID id = UUID.randomUUID();
         when(commissions.findById(id)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.detail(id, userId, true)).isInstanceOf(CommissionNotFoundException.class);
+    }
+
+    // An ELIGIBLE commission (beneficiary = `beneficiary`, createdBy = `userId`), ready for approval.
+    private Commission eligibleCommission() {
+        Commission commission = generatedCommission();
+        commission.markEligible(UUID.randomUUID(), Instant.now());
+        return commission;
+    }
+
+    @Test
+    void approveTransitionsTheEligibleCommissionAndSavesIt() {
+        Commission commission = eligibleCommission();
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
+
+        var detail = service.approve(commission.id(), userId, true, "ok"); // approver userId != beneficiary
+
+        assertThat(commission.status()).isEqualTo(CommissionStatus.APPROVED);
+        assertThat(commission.approvedBy()).isEqualTo(userId);
+        assertThat(commission.approvalNotes()).isEqualTo("ok");
+        assertThat(detail.status()).isEqualTo("APPROVED");
+        verify(commissions).save(commission);
+    }
+
+    @Test
+    void approveRejectsSelfApprovalByTheBeneficiary() {
+        Commission commission = eligibleCommission();
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, beneficiary, true)).thenReturn(true);
+
+        // The approver IS the beneficiary.
+        assertThatThrownBy(() -> service.approve(commission.id(), beneficiary, true, null))
+                .isInstanceOf(CommissionSelfApprovalNotAllowedException.class);
+        verify(commissions, never()).save(any());
+    }
+
+    @Test
+    void approveDeniesACommissionTheApproverCannotSee() {
+        Commission commission = eligibleCommission();
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, false)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.approve(commission.id(), userId, false, null))
+                .isInstanceOf(CommissionAccessDeniedException.class);
+        verify(commissions, never()).save(any());
+    }
+
+    @Test
+    void approvePropagatesNotEligibleForANonEligibleCommission() {
+        Commission commission = generatedCommission(); // EXPECTED
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.approve(commission.id(), userId, true, null))
+                .isInstanceOf(CommissionNotEligibleException.class);
+        verify(commissions, never()).save(any());
+    }
+
+    @Test
+    void approveRejectsAnUnknownCommission() {
+        UUID id = UUID.randomUUID();
+        when(commissions.findById(id)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.approve(id, userId, true, null))
+                .isInstanceOf(CommissionNotFoundException.class);
     }
 
     @Test

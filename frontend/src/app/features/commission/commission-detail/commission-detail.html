@@ -11,7 +11,12 @@
       <h1>Comissão</h1>
       <p-tag [value]="statusLabel(c.status)" [severity]="statusSeverity(c.status)" />
     </div>
-    <p-button label="Voltar para comissões" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
+    <div class="head-actions">
+      @if (canApprove()) {
+        <p-button label="Aprovar comissão" icon="pi pi-check" (onClick)="openApprove()" />
+      }
+      <p-button label="Voltar para comissões" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
+    </div>
   </header>
 
   <div class="grid">
@@ -25,7 +30,21 @@
         <dd>{{ c.rulePercentage }}%</dd>
         <dt>Situação</dt>
         <dd><p-tag [value]="statusLabel(c.status)" [severity]="statusSeverity(c.status)" /></dd>
+        @if (c.approvedAt) {
+          <dt>Aprovada por</dt>
+          <dd>{{ c.approvedByName ?? '—' }} · {{ c.approvedAt | date: 'short' }}</dd>
+          @if (c.approvalNotes) {
+            <dt>Observações da aprovação</dt>
+            <dd>{{ c.approvalNotes }}</dd>
+          }
+        }
       </dl>
+      @if (c.status === 'ELIGIBLE') {
+        <p class="hint muted">
+          Comissão elegível, pendente de aprovação. Aprovar deixa-a pronta para pagamento (nenhum pagamento é
+          registrado na aprovação).
+        </p>
+      }
       <p class="hint muted">
         A comissão mostra apenas dados comerciais — nunca folha, imposto, contas a pagar ou contabilidade.
       </p>
@@ -83,11 +102,60 @@
       }
     </ol>
     <p class="hint muted">
-      Aprovação, rejeição, pagamento e cancelamento aparecem aqui conforme as próximas etapas.
+      Rejeição, pagamento e cancelamento aparecem aqui conforme as próximas etapas.
     </p>
   </p-card>
 
   <div class="back">
     <p-button label="Voltar para comissões" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
   </div>
+
+  <p-dialog
+    header="Aprovar comissão"
+    [visible]="approveDialogOpen()"
+    (visibleChange)="$event ? null : closeApprove()"
+    [modal]="true"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
+    [style]="{ width: '32rem' }"
+  >
+    <form class="approve-form" [formGroup]="approveForm" (ngSubmit)="submitApprove()">
+      <p class="muted">
+        A comissão de <strong>{{ c.beneficiaryName ?? '—' }}</strong> ({{ c.amount | currency: 'BRL' }}) ficará
+        aprovada e pronta para pagamento. Nenhum pagamento é registrado na aprovação.
+      </p>
+
+      <label class="field">
+        <span>Observações (opcional)</span>
+        <textarea
+          pTextarea
+          formControlName="notes"
+          rows="3"
+          maxlength="2000"
+          placeholder="Observação da aprovação (opcional)"
+        ></textarea>
+      </label>
+
+      @if (approveError()) {
+        <p-message severity="error" [text]="approveError()!" />
+      }
+
+      <div class="dialog-actions">
+        <p-button
+          label="Cancelar"
+          severity="secondary"
+          [text]="true"
+          type="button"
+          (onClick)="closeApprove()"
+        />
+        <p-button
+          label="Aprovar comissão"
+          icon="pi pi-check"
+          type="submit"
+          [loading]="approving()"
+          [disabled]="approveForm.invalid"
+        />
+      </div>
+    </form>
+  </p-dialog>
 }

@@ -6,6 +6,7 @@ import com.fksoft.erp.domain.commission.exception.CommissionNotFoundException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoAmountException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoResponsibleException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNotClosedException;
+import com.fksoft.erp.domain.commission.exception.CommissionSelfApprovalNotAllowedException;
 import com.fksoft.erp.domain.commission.exception.CommissionSourceOrderAccessDeniedException;
 import com.fksoft.erp.domain.commission.exception.CommissionSourceOrderNotFoundException;
 import com.fksoft.erp.domain.commission.exception.NoApplicableCommissionRuleException;
@@ -152,6 +153,36 @@ public class CommissionService {
     }
 
     /**
+     * Approves an Eligible Commission the approver may see, making it ready for payment. Enforces the segregation of
+     * duties (the beneficiary cannot approve their own commission) and the state invariant (only an Eligible
+     * commission can be approved — the entity rejects any other status). Records who approved, when, and the optional
+     * notes; registers no payment and creates no Accounts Payable, payroll, tax, accounting or bank data.
+     *
+     * @param id the commission id
+     * @param approverId the authenticated approver
+     * @param canSeeAll whether the approver may see every Commission
+     * @param notes optional approval notes
+     * @return the refreshed commission detail
+     * @throws CommissionNotFoundException if the commission does not exist
+     * @throws CommissionAccessDeniedException if the approver may not see it
+     * @throws CommissionSelfApprovalNotAllowedException if the approver is the beneficiary
+     * @throws com.fksoft.erp.domain.commission.exception.CommissionNotEligibleException if it is not Eligible
+     */
+    @Transactional
+    public CommissionDetail approve(UUID id, UUID approverId, boolean canSeeAll, String notes) {
+        Commission commission = commissions.findById(id).orElseThrow(CommissionNotFoundException::new);
+        if (!accessPolicy.canSee(commission, approverId, canSeeAll)) {
+            throw new CommissionAccessDeniedException();
+        }
+        if (approverId.equals(commission.beneficiaryUserId())) {
+            throw new CommissionSelfApprovalNotAllowedException();
+        }
+        commission.approve(approverId, notes, Instant.now());
+        commissions.save(commission);
+        return toDetail(commission);
+    }
+
+    /**
      * Operational, paginated Commission list filtered by the criteria and narrowed by the caller's visibility (own
      * vs all). Resolves the beneficiary / rule names, the source Proposal / Opportunity references and the order's
      * active Receivable status. Carries commission + commercial-origin data only — never payroll, tax, accounting or
@@ -209,6 +240,9 @@ public class CommissionService {
                 .orElse(null);
         String createdByName =
                 users.findById(commission.createdBy()).map(User::username).orElse(null);
+        String approvedByName = commission.approvedBy() == null
+                ? null
+                : users.findById(commission.approvedBy()).map(User::username).orElse(null);
         Receivable receivable = receivables
                 .findFirstByCommercialOrderIdAndStatusIn(commission.commercialOrderId(), ReceivableStatus.active())
                 .orElse(null);
@@ -219,7 +253,8 @@ public class CommissionService {
                 opportunityReference,
                 receivable == null ? null : receivable.id(),
                 receivable == null ? null : receivable.status().name(),
-                createdByName);
+                createdByName,
+                approvedByName);
         return CommissionDetail.from(commission, orderNumber, refs);
     }
 

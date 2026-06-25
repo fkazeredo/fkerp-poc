@@ -1164,11 +1164,31 @@ refused with a clear message. The detail shows:
 - **Calculation** — the **calculation basis** (commercial or received amount), the **applied rule** (the percentage is
   a **snapshot** kept on the commission, so it stays visible even if the rule changes later) and the **amount**.
 - **Receivable** — the related receivable status, traceable via the source order.
-- **History** — a timeline (Generated → Eligible → Approved → Paid) that fills in with the next steps (approval,
-  payment and cancellation arrive in later releases).
+- **History** — a timeline (Generated → Eligible → Approved → Paid) that fills in as each step happens. Once the
+  commission is **approved**, the summary shows **who approved it and when** plus the approval **notes**; payment and
+  cancellation arrive in later releases.
 
-The screen is **read-only** and shows **only commission and commercial-origin data** — never payroll, tax, accounting,
-bank-transfer or accounts-payable data.
+The screen is **read-only** (except the **approve** action described next) and shows **only commission and
+commercial-origin data** — never payroll, tax, accounting, bank-transfer or accounts-payable data.
+
+### 11.10 Approving a commission (Commission Management)
+
+An **eligible** commission (pending approval) must be **approved** by an authorized approver before it can be paid — so
+payment happens in a **controlled** way. On the **commission detail**, an authorized user sees the **Aprovar comissão**
+(Approve commission) button (shortcut <kbd>a</kbd>), which opens a dialog with an **optional notes** field; on confirm,
+the commission becomes **Approved** and **ready for payment**, recording **who approved it, when** and the notes. Key
+points:
+
+- **Only eligible commissions can be approved.** An **expected** commission (whose receivable is not yet fully paid) or
+  one already **approved/paid/rejected/cancelled** cannot be approved — the system refuses with a clear message.
+- **You cannot approve your own commission** (segregation of duties): if you are the **beneficiary**, the button is
+  hidden and the system refuses the attempt. In practice **finance** approves the commercial manager's commissions and
+  the **commercial manager** approves the sellers'/representatives'.
+- **Who approves:** the **commercial manager** and **finance**. The **board/director** (consultation), **sellers**,
+  **representatives** and **operations** **cannot** approve.
+- **Approving pays nothing.** Approval **registers no payment** and creates **no** commission payment, accounts
+  payable, payroll, tax, accounting or bank-transfer data — it only marks the commission ready for payment. Commission
+  payment is a later step.
 
 ---
 
@@ -1203,6 +1223,7 @@ is also reachable by keyboard:
 - **On a proposal:** `i` add item · `e` edit commercial details · `s` submit for review · `Esc` back.
 - **On a booking:** `a` register attempt · `Esc` back.
 - **On a receivable:** `p` register payment (first installment with a balance) · `Esc` back / cancel.
+- **On a commission:** `a` approve commission (when eligible and you may approve) · `Esc` back / cancel.
 
 ---
 

@@ -125,6 +125,15 @@ describe('AuthService', () => {
     expect(service.canSeeCommissions()).toBe(false);
   });
 
+  it('grants approving a commission only with the commission:approve scope', () => {
+    service.accessToken.set(jwt({ sub: 'u', scope: 'commission:approve commission:read:all' }));
+    expect(service.canApproveCommission()).toBe(true);
+
+    // A read tier alone does not grant approval.
+    service.accessToken.set(jwt({ sub: 'u', scope: 'commission:read:all' }));
+    expect(service.canApproveCommission()).toBe(false);
+  });
+
   it('exposes no scopes and a null subject when there is no token', () => {
     expect(service.scopes()).toEqual([]);
     expect(service.userId()).toBeNull();

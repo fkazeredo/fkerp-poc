@@ -1,5 +1,6 @@
 package com.fksoft.erp.domain.commission.model;
 
+import com.fksoft.erp.domain.commission.exception.CommissionNotEligibleException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,6 +11,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -107,11 +109,19 @@ public class Commission {
     @Column(name = "receivable_id")
     private UUID receivableId;
 
-    // The approval and payment instants, shown on the operational list. Null until the approval / payment slices set
-    // them (they own those transitions); this listing slice only reads them.
+    // The approval evidence: when it was approved, by whom and the optional approval notes. Null until approved.
+    // Carries no monetary data; approval registers no payment.
     @Column(name = "approved_at")
     private Instant approvedAt;
 
+    @Column(name = "approved_by")
+    private UUID approvedBy;
+
+    @Size(max = 2000)
+    @Column(name = "approval_notes")
+    private String approvalNotes;
+
+    // The payment instant, shown on the operational list. Null until the payment slice sets it.
     @Column(name = "paid_at")
     private Instant paidAt;
 
@@ -184,5 +194,33 @@ public class Commission {
         this.eligibleAt = when;
         this.receivableId = receivableId;
         return true;
+    }
+
+    /**
+     * Approves the commission — the single fixed transition {@code ELIGIBLE → APPROVED} — recording who approved it,
+     * when, and the optional approval notes. Approving makes the commission <b>ready for payment</b> but does NOT
+     * register a payment and creates no Accounts Payable, payroll, tax, accounting or bank data. Only an
+     * {@code ELIGIBLE} commission can be approved — any other status (Expected, already Approved, Paid, Rejected,
+     * Cancelled) is rejected. The self-approval rule (the beneficiary cannot approve their own) is enforced by the
+     * Application Service, which knows the approver relative to the beneficiary.
+     *
+     * @param approverId id of the approving user
+     * @param notes optional approval notes
+     * @param when the instant the commission was approved
+     * @throws CommissionNotEligibleException if the commission is not {@code ELIGIBLE}
+     */
+    public void approve(UUID approverId, String notes, Instant when) {
+        if (status != CommissionStatus.ELIGIBLE) {
+            throw new CommissionNotEligibleException();
+        }
+        this.status = CommissionStatus.APPROVED;
+        this.approvedAt = when;
+        this.approvedBy = approverId;
+        this.approvalNotes = emptyToNull(notes);
+        this.updatedBy = approverId;
+    }
+
+    private static String emptyToNull(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
     }
 }

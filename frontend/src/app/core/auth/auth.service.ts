@@ -180,6 +180,11 @@ export class AuthService {
   canSeeCommissions(): boolean {
     return this.hasScope('commission:read') || this.hasScope('commission:read:all');
   }
+
+  /** Whether the user may approve an Eligible Commission (a commercial/financial manager — Commission Management). */
+  canApproveCommission(): boolean {
+    return this.hasScope('commission:approve');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {
