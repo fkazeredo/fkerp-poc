@@ -1096,6 +1096,29 @@ invariant 8 (a *reason* cadastro). **Out of scope (later Sprint-6 slices):** cla
 accounting reversal, automatic recalculation, dispute workflow; **payment registration + reversal**, **statement**,
 **order commission-status reflection** and **indicators**.
 
+**Commission payment (normative — Commission Management, Sprint 6 Slice 8).** An authorized financial/commission manager
+**registers the manual payment of an Approved commission** (`POST /api/commissions/{id}/pay`, gated **`commission:pay`**)
+so the commission cycle is closed — the single fixed transition **`APPROVED → PAID`** (`Commission.pay` →
+`CommissionNotPayableException`, **422** `commission.not-payable` for an `EXPECTED`/`ELIGIBLE`/already-`PAID`/terminal
+commission). Commission payment is **full only** (no partial — out of scope): the request **amount must equal** the
+approved commission amount (else **422** `commission.payment-amount-mismatch`). It records the **amount**, the
+**payment date** (`@PastOrPresent`), the **payment method**, an optional **note** and **who/when** (`paidBy`/`paidAt`)
+as **flat fields on the commission** (a single full payment, not installments — Rule Zero, no child entity). The
+**payment method reuses the existing Financial `PaymentMethod` cadastro** (`/api/financial/payment-methods` — Cash /
+Bank transfer / Pix / Credit card / Debit card / Invoice payment / Other; **no second mechanism**); an unknown/inactive
+method → **422** `financial.payment.method-not-available`; the caller must also be able to **see** the commission
+(`canSee` → 403/404). Registering the payment **triggers no bank integration** and creates **no** Accounts Payable,
+payroll, tax or accounting data, and **never touches the Order or Receivable**. The Paid commission stays
+**historically visible**: hidden from the default list (`operational()`), surfaced by the `status=PAID` filter, with the
+detail exposing `paidAmount`/`paymentDate`/`paymentMethod`/`paymentNote`/`paidByName` + the **"Paga"** timeline entry.
+**Persona → scopes:** `commission:pay` is held by the commercial **Manager** (001) **and** the back-office
+**Financeiro** (005); Sellers (002), Representatives (003), the **Board/Director** (004, consultation) and operações
+(006) **cannot pay → 403**. In the frontend the commission detail shows a **"Registrar pagamento"** action (only
+`APPROVED` + `canPayCommission()`) — a method-select + amount (defaulted to the commission amount) + date + note dialog
+(shortcut <kbd>p</kbd>, in the `?` overlay) wired to the central **unsaved-changes** protection. **Out of scope (later
+Sprint-6 slices):** partial commission payment, **payment reversal**, **statement**, **order commission-status
+reflection** and **indicators**, plus payroll / accounts payable / bank payment file / tax withholding.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

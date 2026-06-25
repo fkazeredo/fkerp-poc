@@ -7,7 +7,9 @@ import static org.mockito.Mockito.mock;
 
 import com.fksoft.erp.domain.commission.exception.CommissionNotCancellableException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotEligibleException;
+import com.fksoft.erp.domain.commission.exception.CommissionNotPayableException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotRejectableException;
+import com.fksoft.erp.domain.commission.exception.CommissionPaymentAmountMismatchException;
 import com.fksoft.erp.domain.commission.model.Commission;
 import com.fksoft.erp.domain.commission.model.CommissionBasis;
 import com.fksoft.erp.domain.commission.model.CommissionResolutionReason;
@@ -15,6 +17,7 @@ import com.fksoft.erp.domain.commission.model.CommissionRule;
 import com.fksoft.erp.domain.commission.model.CommissionRuleData;
 import com.fksoft.erp.domain.commission.model.CommissionStatus;
 import com.fksoft.erp.domain.commission.model.CommissionTargetType;
+import com.fksoft.erp.domain.financial.model.PaymentMethod;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -267,5 +270,58 @@ class CommissionTest {
                 CommissionBasis.COMMERCIAL_AMOUNT,
                 new BigDecimal("1000.00"),
                 creator);
+    }
+
+    private final PaymentMethod pix = PaymentMethod.create("PIX", "Pix", 1);
+
+    private Commission approvedCommission() {
+        Commission commission = eligibleCommission();
+        commission.approve(UUID.randomUUID(), null, Instant.parse("2026-06-26T09:00:00Z"));
+        return commission;
+    }
+
+    @Test
+    void payTransitionsFromApprovedAndRecordsThePayment() {
+        Commission commission = approvedCommission(); // amount = 1000 × 5% = 50.00
+        UUID payer = UUID.randomUUID();
+        Instant when = Instant.parse("2026-06-28T09:00:00Z");
+
+        commission.pay(new BigDecimal("50.00"), LocalDate.of(2026, 6, 28), pix, "  ref-123  ", payer, when);
+
+        assertThat(commission.status()).isEqualTo(CommissionStatus.PAID);
+        assertThat(commission.paidAmount()).isEqualByComparingTo("50.00");
+        assertThat(commission.paymentDate()).isEqualTo(LocalDate.of(2026, 6, 28));
+        assertThat(commission.paymentMethod()).isEqualTo(pix);
+        assertThat(commission.paymentNote()).isEqualTo("ref-123"); // trimmed
+        assertThat(commission.paidBy()).isEqualTo(payer);
+        assertThat(commission.paidAt()).isEqualTo(when);
+    }
+
+    @Test
+    void payRejectsANonApprovedCommission() {
+        assertThatThrownBy(() -> expectedCommission()
+                        .pay(new BigDecimal("50.00"), LocalDate.now(), pix, null, creator, Instant.now()))
+                .isInstanceOf(CommissionNotPayableException.class);
+        assertThatThrownBy(() -> eligibleCommission()
+                        .pay(new BigDecimal("50.00"), LocalDate.now(), pix, null, creator, Instant.now()))
+                .isInstanceOf(CommissionNotPayableException.class);
+    }
+
+    @Test
+    void payRejectsAnAmountThatDoesNotMatchTheCommissionAmount() {
+        Commission commission = approvedCommission(); // amount = 50.00
+        assertThatThrownBy(() ->
+                        commission.pay(new BigDecimal("40.00"), LocalDate.now(), pix, null, creator, Instant.now()))
+                .isInstanceOf(CommissionPaymentAmountMismatchException.class);
+        assertThat(commission.status()).isEqualTo(CommissionStatus.APPROVED); // unchanged
+    }
+
+    @Test
+    void payRejectsAnAlreadyPaidCommission() {
+        Commission commission = approvedCommission();
+        commission.pay(new BigDecimal("50.00"), LocalDate.now(), pix, null, creator, Instant.now()); // PAID
+        assertThatThrownBy(() ->
+                        commission.pay(new BigDecimal("50.00"), LocalDate.now(), pix, null, creator, Instant.now()))
+                .isInstanceOf(CommissionNotPayableException.class);
     }
 }

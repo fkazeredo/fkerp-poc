@@ -20,10 +20,12 @@ import com.fksoft.erp.domain.commission.exception.CommissionAlreadyExistsExcepti
 import com.fksoft.erp.domain.commission.exception.CommissionNotCancellableException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotEligibleException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotFoundException;
+import com.fksoft.erp.domain.commission.exception.CommissionNotPayableException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotRejectableException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoAmountException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoResponsibleException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNotClosedException;
+import com.fksoft.erp.domain.commission.exception.CommissionPaymentAmountMismatchException;
 import com.fksoft.erp.domain.commission.exception.CommissionResolutionReasonNotAvailableException;
 import com.fksoft.erp.domain.commission.exception.CommissionRuleDatesInvalidException;
 import com.fksoft.erp.domain.commission.exception.CommissionRuleNotFoundException;
@@ -200,6 +202,8 @@ public class HttpErrorMapping {
             entry(CommissionNotRejectableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(CommissionNotCancellableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(CommissionResolutionReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(CommissionNotPayableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(CommissionPaymentAmountMismatchException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(CommissionSelfApprovalNotAllowedException.class, HttpStatus.FORBIDDEN),
             entry(CommissionSourceOrderNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(CommissionSourceOrderAccessDeniedException.class, HttpStatus.FORBIDDEN),

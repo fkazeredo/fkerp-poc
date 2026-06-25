@@ -1218,6 +1218,27 @@ Pontos importantes:
 - **Continuam visíveis no histórico:** comissões **Rejeitadas** e **Canceladas** ficam ocultas na lista por padrão, mas
   aparecem ao escolher a situação no filtro; o detalhe mostra o motivo, a anotação e quem/quando anulou.
 
+### 11.12 Registrar o pagamento da comissão (Gestão de Comissão)
+
+Quando uma comissão **aprovada** é efetivamente paga, um responsável autorizado **registra o pagamento** para **fechar
+o ciclo** da comissão. No **detalhe da comissão**, quem tem permissão vê o botão **Registrar pagamento** (atalho
+<kbd>p</kbd>), que abre um diálogo com a **forma de pagamento**, o **valor**, a **data do pagamento** e uma
+**observação** opcional; ao confirmar, a comissão passa a **Paga**, registrando o valor, a forma, a data e **quem e
+quando** pagou. Pontos importantes:
+
+- **Só comissões aprovadas podem ser pagas.** Uma comissão prevista, elegível, já paga, rejeitada ou cancelada não pode
+  ser paga.
+- **O valor deve ser igual ao valor da comissão** (pagamento integral): o campo já vem preenchido com o valor da
+  comissão; pagamento parcial não é permitido nesta versão.
+- **A forma de pagamento** vem do cadastro de **formas de pagamento** (o mesmo do Financeiro): Dinheiro, Transferência
+  bancária, Pix, Cartão, etc. A **data** não pode ser futura.
+- **Quem registra:** o **gerente comercial** e o **financeiro**. A **diretoria** (consulta), os **vendedores**, os
+  **representantes** e a **operação** **não** registram pagamento.
+- **Registrar o pagamento não dispara banco nem contabilidade:** **não** aciona integração bancária e **não** cria
+  contas a pagar, folha, imposto nem contabilidade; **não** altera o pedido nem a conta a receber.
+- **Fica visível no histórico:** comissões **Pagas** ficam ocultas na lista por padrão, mas aparecem ao escolher a
+  situação **Paga** no filtro; o detalhe mostra o valor, a forma, a data e quem registrou o pagamento.
+
 ---
 
 ## 13. Mensagens e validação
@@ -1254,7 +1275,8 @@ também é acessível pelo teclado:
   voltar.
 - **Em uma reserva:** `a` registrar tentativa · `Esc` voltar.
 - **Em uma conta a receber:** `p` registrar pagamento (primeira parcela com saldo) · `Esc` voltar / cancelar.
-- **Em uma comissão:** `a` aprovar · `r` rejeitar · `c` cancelar (cada um quando permitido) · `Esc` voltar / cancelar.
+- **Em uma comissão:** `a` aprovar · `r` rejeitar · `c` cancelar · `p` registrar pagamento (cada um quando permitido) ·
+  `Esc` voltar / cancelar.
 
 ---
 

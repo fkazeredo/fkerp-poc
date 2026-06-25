@@ -1212,6 +1212,27 @@ Key points:
 - **They stay historically visible:** **Rejected** and **Cancelled** commissions are hidden in the list by default but
   appear when you pick the status in the filter; the detail shows the reason, note and who/when it was voided.
 
+### 11.12 Registering a commission payment (Commission Management)
+
+When an **approved** commission is actually paid, an authorized user **registers the payment** to **close** the
+commission cycle. On the **commission detail**, an authorized user sees the **Registrar pagamento** (Register payment)
+button (shortcut <kbd>p</kbd>), which opens a dialog with the **payment method**, the **amount**, the **payment date**
+and an optional **note**; on confirm, the commission becomes **Paid**, recording the amount, method, date and **who and
+when** paid. Key points:
+
+- **Only approved commissions can be paid.** An expected, eligible, already-paid, rejected or cancelled commission
+  cannot be paid.
+- **The amount must equal the commission amount** (full payment): the field is pre-filled with the commission amount;
+  partial payment is not allowed in this release.
+- **The payment method** comes from the **payment-methods** cadastro (the same one Finance uses): Cash, Bank transfer,
+  Pix, Card, etc. The **date** cannot be in the future.
+- **Who registers:** the **commercial manager** and **finance**. The **board/director** (consultation), **sellers**,
+  **representatives** and **operations** **cannot** register a payment.
+- **Registering the payment triggers no bank or accounting:** it does **not** call any bank integration and creates
+  **no** accounts payable, payroll, tax or accounting data; it does **not** change the order or the receivable.
+- **It stays visible in history:** **Paid** commissions are hidden in the list by default but appear when you pick the
+  **Paid** status in the filter; the detail shows the amount, method, date and who registered the payment.
+
 ---
 
 ## 13. Messages and validation
@@ -1245,7 +1266,8 @@ is also reachable by keyboard:
 - **On a proposal:** `i` add item · `e` edit commercial details · `s` submit for review · `Esc` back.
 - **On a booking:** `a` register attempt · `Esc` back.
 - **On a receivable:** `p` register payment (first installment with a balance) · `Esc` back / cancel.
-- **On a commission:** `a` approve · `r` reject · `c` cancel (each when allowed) · `Esc` back / cancel.
+- **On a commission:** `a` approve · `r` reject · `c` cancel · `p` register payment (each when allowed) · `Esc` back /
+  cancel.
 
 ---
 
