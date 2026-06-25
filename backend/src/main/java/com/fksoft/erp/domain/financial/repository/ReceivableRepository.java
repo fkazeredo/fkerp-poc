@@ -34,6 +34,15 @@ public interface ReceivableRepository extends JpaRepository<Receivable, UUID>, J
     List<Receivable> findByStatusIn(Collection<ReceivableStatus> statuses);
 
     /**
+     * The Receivables of the given Orders — used to batch-resolve the order → active-Receivable status for the
+     * operational Commission list (avoiding an N+1 per row).
+     *
+     * @param commercialOrderIds the source order ids
+     * @return the matching receivables
+     */
+    List<Receivable> findByCommercialOrderIdIn(Collection<UUID> commercialOrderIds);
+
+    /**
      * The ids of the Commercial Orders that already have an active (non-cancelled) Receivable — used to
      * exclude them from the "orders eligible for a receivable" list.
      *

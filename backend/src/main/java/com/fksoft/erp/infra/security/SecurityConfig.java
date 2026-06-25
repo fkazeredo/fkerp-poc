@@ -68,6 +68,10 @@ public class SecurityConfig {
         "SCOPE_financial:receivable:read", "SCOPE_financial:receivable:read:all"
     };
 
+    // Two-tier read model for Commissions (Commission Management); CommissionAccessPolicy narrows WHICH are visible
+    // (own = beneficiary / all). Any read tier passes the GET gate.
+    private static final String[] COMMISSION_READ_SCOPES = {"SCOPE_commission:read", "SCOPE_commission:read:all"};
+
     private final SecurityProperties props;
 
     @Bean
@@ -177,16 +181,26 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/receivables", "/api/receivables/**")
                         .hasAnyAuthority(FINANCIAL_READ_SCOPES)
                         // Commission Management — generating an Expected Commission (Sprint 6) is for commercial/
-                        // financial managers (commission:create); reading a commission requires commission:read. These
+                        // financial managers (commission:create); reading a commission (list/detail) takes any
+                        // Commission read tier (own/all), with CommissionAccessPolicy narrowing visibility. These
                         // /api/commissions paths are disjoint from the /api/commission/rules cadastro paths below.
                         .requestMatchers(HttpMethod.POST, "/api/commissions")
                         .hasAuthority("SCOPE_commission:create")
                         .requestMatchers(HttpMethod.GET, "/api/commissions", "/api/commissions/**")
-                        .hasAuthority("SCOPE_commission:read")
-                        // Managing commission rules is for commercial/financial managers; both reads and writes
-                        // require commission:rule:manage.
-                        .requestMatchers("/api/commission/rules", "/api/commission/rules/**")
+                        .hasAnyAuthority(COMMISSION_READ_SCOPES)
+                        // Managing commission rules (write) is for commercial/financial managers; reading the rules
+                        // (e.g. the commission-list rule filter) also admits any Commission read tier.
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/commission/rules",
+                                "/api/commission/rules/*/activate",
+                                "/api/commission/rules/*/deactivate")
                         .hasAuthority("SCOPE_commission:rule:manage")
+                        .requestMatchers(HttpMethod.PUT, "/api/commission/rules/*")
+                        .hasAuthority("SCOPE_commission:rule:manage")
+                        .requestMatchers(HttpMethod.GET, "/api/commission/rules", "/api/commission/rules/**")
+                        .hasAnyAuthority(
+                                "SCOPE_commission:rule:manage", "SCOPE_commission:read", "SCOPE_commission:read:all")
                         // The responsible-people lookup is shared: any CRM reader, plus a commission-rule manager
                         // (who picks a responsible when targeting a specific user — Sprint 6).
                         .requestMatchers(HttpMethod.GET, "/api/crm/responsibles")

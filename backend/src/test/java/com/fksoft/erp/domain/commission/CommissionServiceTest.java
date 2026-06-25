@@ -3,6 +3,7 @@ package com.fksoft.erp.domain.commission;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fksoft.erp.domain.commission.exception.CommissionAccessDeniedException;
 import com.fksoft.erp.domain.commission.exception.CommissionAlreadyExistsException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotFoundException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoAmountException;
@@ -27,7 +29,7 @@ import com.fksoft.erp.domain.commission.model.CommissionTargetType;
 import com.fksoft.erp.domain.commission.repository.CommissionRepository;
 import com.fksoft.erp.domain.commission.repository.CommissionRuleRepository;
 import com.fksoft.erp.domain.commission.service.CommissionService;
-import com.fksoft.erp.domain.commission.service.data.CommissionDetail;
+import com.fksoft.erp.domain.commission.service.data.CommissionSearchCriteria;
 import com.fksoft.erp.domain.financial.model.Receivable;
 import com.fksoft.erp.domain.financial.model.ReceivableStatus;
 import com.fksoft.erp.domain.financial.repository.ReceivableRepository;
@@ -41,6 +43,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,6 +51,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 /** Unit tests of the Commission generation Application Service with the repositories and policy mocked. */
 @ExtendWith(MockitoExtension.class)
@@ -68,7 +74,16 @@ class CommissionServiceTest {
     private CommercialOrderRepository orders;
 
     @Mock
+    private com.fksoft.erp.domain.sales.repository.ProposalRepository proposals;
+
+    @Mock
+    private com.fksoft.erp.domain.crm.repository.OpportunityRepository opportunities;
+
+    @Mock
     private OrderAccessPolicy orderAccessPolicy;
+
+    @Mock
+    private com.fksoft.erp.domain.commission.service.CommissionAccessPolicy accessPolicy;
 
     @Mock
     private UserRepository users;
@@ -298,17 +313,18 @@ class CommissionServiceTest {
     }
 
     @Test
-    void detailReturnsTheReadModelWithResolvedNames() {
+    void detailReturnsTheReadModelWhenVisible() {
         Commission commission = generatedCommission();
         CommercialOrder detailOrder = closedOrder();
         when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
         when(orders.findById(commission.commercialOrderId())).thenReturn(Optional.of(detailOrder));
         User user = mock(User.class);
         when(user.username()).thenReturn("vendedor");
         when(users.findById(commission.beneficiaryUserId())).thenReturn(Optional.of(user));
         when(rules.findById(commission.ruleId())).thenReturn(Optional.empty());
 
-        var detail = service.detail(commission.id());
+        var detail = service.detail(commission.id(), userId, true);
 
         assertThat(detail.id()).isEqualTo(commission.id());
         assertThat(detail.orderNumber()).isEqualTo(7L);
@@ -318,10 +334,19 @@ class CommissionServiceTest {
     }
 
     @Test
+    void detailDeniesACommissionTheCallerCannotSee() {
+        Commission commission = generatedCommission();
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, false)).thenReturn(false);
+        assertThatThrownBy(() -> service.detail(commission.id(), userId, false))
+                .isInstanceOf(CommissionAccessDeniedException.class);
+    }
+
+    @Test
     void detailRejectsAnUnknownCommission() {
         UUID id = UUID.randomUUID();
         when(commissions.findById(id)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.detail(id)).isInstanceOf(CommissionNotFoundException.class);
+        assertThatThrownBy(() -> service.detail(id, userId, true)).isInstanceOf(CommissionNotFoundException.class);
     }
 
     @Test
@@ -368,26 +393,37 @@ class CommissionServiceTest {
     }
 
     @Test
-    void byOrderReturnsTheActiveCommission() {
+    void listAppliesTheVisibilitySpecificationAndResolvesTheReferences() {
         Commission commission = generatedCommission();
-        CommercialOrder detailOrder = closedOrder();
-        when(commissions.findFirstByCommercialOrderIdAndStatusIn(eq(orderId), any()))
-                .thenReturn(Optional.of(commission));
-        when(orders.findById(orderId)).thenReturn(Optional.of(detailOrder));
-        when(users.findById(any())).thenReturn(Optional.empty());
-        when(rules.findById(any())).thenReturn(Optional.empty());
+        Specification<Commission> visible = (root, q, cb) -> cb.conjunction();
+        when(accessPolicy.visibleTo(userId, true)).thenReturn(visible);
+        when(commissions.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(commission)));
+        CommercialOrder listOrder = closedOrder();
+        when(orders.findAllById(anySet())).thenReturn(List.of(listOrder));
+        User user = mock(User.class);
+        when(user.id()).thenReturn(beneficiary);
+        when(user.username()).thenReturn("vendedor");
+        when(users.findAllById(anySet())).thenReturn(List.of(user));
+        when(rules.findAllById(anySet())).thenReturn(List.of());
+        when(proposals.findAllById(anySet())).thenReturn(List.of());
+        when(opportunities.findAllById(anySet())).thenReturn(List.of());
+        Receivable receivable = mock(Receivable.class);
+        when(receivable.commercialOrderId()).thenReturn(orderId);
+        when(receivable.status()).thenReturn(ReceivableStatus.PAID);
+        when(receivables.findByCommercialOrderIdIn(anySet())).thenReturn(List.of(receivable));
 
-        List<CommissionDetail> result = service.byOrder(orderId);
+        CommissionSearchCriteria criteria = new CommissionSearchCriteria(
+                Set.of(), null, null, null, null, null, null, null, null, null, null, null, null);
+        var page = service.list(criteria, Pageable.unpaged(), userId, true);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).id()).isEqualTo(commission.id());
-        assertThat(result.get(0).status()).isEqualTo("EXPECTED");
-    }
-
-    @Test
-    void byOrderReturnsEmptyWhenThereIsNoCommission() {
-        when(commissions.findFirstByCommercialOrderIdAndStatusIn(eq(orderId), any()))
-                .thenReturn(Optional.empty());
-        assertThat(service.byOrder(orderId)).isEmpty();
+        assertThat(page.getContent()).hasSize(1);
+        var item = page.getContent().get(0);
+        assertThat(item.id()).isEqualTo(commission.id());
+        assertThat(item.beneficiaryName()).isEqualTo("vendedor");
+        assertThat(item.orderNumber()).isEqualTo(7L);
+        assertThat(item.status()).isEqualTo("EXPECTED");
+        assertThat(item.receivableStatus()).isEqualTo("PAID");
+        verify(accessPolicy).visibleTo(userId, true);
     }
 }

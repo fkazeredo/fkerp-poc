@@ -34,6 +34,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class CommissionApiIntegrationTest extends AbstractIntegrationTest {
 
     private static final UUID MANAGER = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID REPRESENTATIVE = UUID.fromString("00000000-0000-0000-0000-000000000003");
 
     @Autowired
     private CommercialOrderRepository orders;
@@ -305,16 +306,19 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void aSellerWithoutTheCommissionScopeIsForbidden() throws Exception {
+    void aUserWithoutAnyCommissionScopeIsForbidden() throws Exception {
         UUID order = closedOrder("Forbidden", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
-        String seller = login("vendedor", "vendedor123");
+        // Operações (back-office booking) holds no commission scope at all → 403 on create, list and detail.
+        String ops = login("operacoes", "operacoes123");
 
         mvc.perform(post("/api/commissions")
-                        .header("Authorization", "Bearer " + seller)
+                        .header("Authorization", "Bearer " + ops)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"commercialOrderId\":\"%s\"}".formatted(order)))
                 .andExpect(status().isForbidden());
-        mvc.perform(get("/api/commissions/" + UUID.randomUUID()).header("Authorization", "Bearer " + seller))
+        mvc.perform(get("/api/commissions").header("Authorization", "Bearer " + ops))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/commissions/" + UUID.randomUUID()).header("Authorization", "Bearer " + ops))
                 .andExpect(status().isForbidden());
     }
 
@@ -371,8 +375,8 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
         // The order's commission is visible (pending approval) via the by-order lookup.
         mvc.perform(get("/api/commissions?commercialOrderId=" + order).header("Authorization", "Bearer " + manager))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].status").value("ELIGIBLE"));
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].status").value("ELIGIBLE"));
 
         // Eligible is not approved, not paid: no Commission Payment table/row exists in this slice.
         assertThat(jdbc.queryForObject(
@@ -431,6 +435,101 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
                 // Generated from the received amount (the full 500), not the commercial forecast.
                 .andExpect(jsonPath("$.basisType").value("RECEIVED_AMOUNT"))
                 .andExpect(jsonPath("$.baseAmount").value(500.00));
+    }
+
+    @Test
+    void aManagerListsCommissionsWithTheOperationalColumns() throws Exception {
+        UUID order = closedOrder("List", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        generate(manager, order);
+
+        String body = mvc.perform(get("/api/commissions").header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].status").value("EXPECTED"))
+                .andExpect(jsonPath("$.content[0].beneficiaryUserId").value(MANAGER.toString()))
+                .andExpect(jsonPath("$.content[0].orderNumber").isNumber())
+                .andExpect(jsonPath("$.content[0].amount").value(25.00))
+                .andExpect(jsonPath("$.content[0].rulePercentage").value(5.00))
+                .andExpect(jsonPath("$.content[0].basisType").value("COMMERCIAL_AMOUNT"))
+                // The order has a confirmed Receivable? No — only a booking; the receivable status is null here.
+                .andExpect(jsonPath("$.content[0].receivableStatus").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.content[0].eligibleAt").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.content[0].approvedAt").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.content[0].paidAt").value(org.hamcrest.Matchers.nullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        // Commission + commercial-origin data only — never payroll, tax, accounting or generic payables.
+        assertThat(body.toLowerCase())
+                .doesNotContain("payroll")
+                .doesNotContain("payable")
+                .doesNotContain("accounting");
+    }
+
+    @Test
+    void theListShowsTheOrdersReceivableStatusAndFiltersByStatus() throws Exception {
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        // A: expected (no receivable). B: eligible (receivable fully paid).
+        UUID expectedOrder = closedOrder("Exp", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        generate(manager, expectedOrder);
+        UUID eligibleOrder = closedOrder("Elig", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        generate(manager, eligibleOrder);
+        fullyPayReceivableFor(login("financeiro", "financeiro123"), eligibleOrder);
+
+        // Default list (operational) shows both EXPECTED and ELIGIBLE.
+        mvc.perform(get("/api/commissions").header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+
+        // Filtering status=ELIGIBLE returns only the eligible one, carrying its receivable status PAID.
+        mvc.perform(get("/api/commissions?status=ELIGIBLE").header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].commercialOrderId").value(eligibleOrder.toString()))
+                .andExpect(jsonPath("$.content[0].receivableStatus").value("PAID"))
+                .andExpect(jsonPath("$.content[0].eligibleAt").value(org.hamcrest.Matchers.notNullValue()));
+
+        // Filtering by the source order narrows to that order's commission.
+        mvc.perform(get("/api/commissions?order=" + expectedOrder).header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].status").value("EXPECTED"));
+
+        // Filtering by an amount range above the commission excludes it.
+        mvc.perform(get("/api/commissions?amountMin=100").header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void aRepresentativeSeesOnlyTheirOwnCommission() throws Exception {
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        // One commission whose beneficiary is the representative, one whose beneficiary is the manager.
+        UUID ownOrder = closedOrder("Rep", "PENDING_BOOKING", REPRESENTATIVE, "500.00", "CONFIRMED");
+        UUID otherOrder = closedOrder("Mgr", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        generate(manager, ownOrder);
+        generate(manager, otherOrder);
+
+        // The representative (own tier) sees only the commission where they are the beneficiary.
+        String rep = login("representante", "representante123");
+        mvc.perform(get("/api/commissions").header("Authorization", "Bearer " + rep))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].beneficiaryUserId").value(REPRESENTATIVE.toString()));
+
+        // The manager (read-all) sees both.
+        mvc.perform(get("/api/commissions").header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    void rejectsAnUnauthenticatedList() throws Exception {
+        mvc.perform(get("/api/commissions")).andExpect(status().isUnauthorized());
     }
 
     // Creates an active, in-window COMMERCIAL_RESPONSIBLE rule (so it matches any order's commercial responsible).

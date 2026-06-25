@@ -1133,6 +1133,24 @@ Key points:
 **Note:** if a payment is later **reversed** (a Sprint 5 capability), a commission that already became eligible is
 **not** moved back to forecast in this release (there is no automatic commission clawback/reversal — a later step).
 
+### 11.8 Commission list (Commission Management)
+
+Under **Comercial → Comissões** (shortcut <kbd>g</kbd> then <kbd>m</kbd>) the commercial or financial manager tracks
+commissions — expected, pending approval, approved and paid — in a **paginated, filterable** list. **Who sees what:**
+the **commercial manager**, the **Board** and **Finance** see **all** commissions; **sellers** and **representatives**
+see **only their own** (the ones where they are the beneficiary). The backend is the only authority — no filter can
+surface a commission you may not see.
+
+Each row shows: the **beneficiary**, the source **order** (PC-000n), the proposal/opportunity **reference**, the
+**amount**, the **percentage and rule**, the **status**, the **calculation basis**, the related **receivable status**,
+and the **creation**, **eligibility**, **approval** and **payment** dates (the last two appear when available —
+approval and payment arrive in later steps). Available filters: **status**, **beneficiary**, **order**, **rule**,
+**creation period**, **eligibility period**, **payment period** and **amount range**.
+
+By default the list shows the **in-progress** commissions (Expected / Pending approval / Approved); **Paid**,
+**Rejected** and **Cancelled** appear **only when you select them** in the status filter. The screen shows **only
+commission and commercial-origin data** — never payroll, tax, accounting or accounts-payable data.
+
 ---
 
 ## 13. Messages and validation

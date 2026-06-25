@@ -960,8 +960,9 @@ friendly **409** `commission.already-exists` with the existing id; a partial uni
 Generating a Commission **reads** the Order and the Receivable but **never owns or modifies** them, and creates **NO**
 Commission Payment, Accounts Payable, payroll, tax or accounting data. `GET /api/commissions/{id}` returns the detail
 (commission + commercial-origin data only). **Persona → scopes:** `commission:create` (commercial **Manager** 001 +
-**Financeiro** 005; both already hold `sales:order:read:all` to see the Order) + `commission:read` (001 + **Board/
-Director** 004 + 005; sellers/representatives/operations/HR-IT have **no** commission scope → **403**). In the
+**Financeiro** 005; both already hold `sales:order:read:all` to see the Order) + a commission **read tier** (since
+Sprint 6 Slice 4: 001 + **Board/Director** 004 + 005 hold `commission:read:all`; sellers/representatives hold the
+own-only `commission:read`; operations/HR-IT have **no** commission read tier → **403**). In the
 frontend the Order detail offers a minimal **"Gerar comissão"** action (shortcut <kbd>c</kbd>) behind
 `canCreateCommission()` that shows the generated commission inline; the backend stays the only authority. **Out of
 scope (later slices):** eligibility (`EXPECTED → ELIGIBLE` once the Receivable is paid), approval/rejection, payment
@@ -986,8 +987,34 @@ showing `ELIGIBLE` as **"Pendente de aprovação"** with the `eligibleAt` date; 
 commission exists. **Known gap (intentional):** a payment **reversal** (Sprint 5) republishes a non-`PAID` status, which
 the listener **ignores** — an already-`ELIGIBLE` commission is **not regressed** back to `EXPECTED` (no clawback /
 reversal-reaction automation — out of scope). **Out of scope (later slices):** partial eligibility, clawback,
-reversal-reaction automation, approval/rejection, payment registration + reversal, the pending-approval worklist/list,
-order commission-status reflection, indicators, and payroll / accounts payable / tax / accounting ledger.
+reversal-reaction automation, approval/rejection, payment registration + reversal, order commission-status reflection,
+indicators, and payroll / accounts payable / tax / accounting ledger.
+
+**Operational Commission list (normative — Commission Management, Sprint 6 Slice 4).** `GET /api/commissions` is the
+**operational, paginated, filtered** list a commercial/financial manager uses to track Expected / Eligible / Approved /
+Paid commissions. It introduces the **two-tier commission read model** (mirroring the Receivable model): **`commission:read`**
+(own only = the **beneficiary**) → **`commission:read:all`** (all); any tier passes the GET gate and **`CommissionAccessPolicy`**
+(a query Specification on `beneficiaryUserId`) narrows the list, the single-record **detail** (`GET /api/commissions/{id}`)
+applying the same `canSee` check (**404** `commission.not-found` if absent, **403** `commission.access-denied` if not visible).
+The **default** list shows the **operational** statuses (`EXPECTED`/`ELIGIBLE`/`APPROVED` — `CommissionStatus.operational()`);
+the settled **`PAID`** and the terminal **`REJECTED`/`CANCELLED`** appear **only when passed in the `status` filter**
+(Eligible stays visible as **pending approval**). The list item carries **commission + commercial-origin data only — never
+payroll, tax, accounting or generic accounts-payable data**: id, beneficiary (id + name), source Order (`PC-000n`), source
+**Proposal/Opportunity reference**, commission `amount`, `rulePercentage` + rule name, `status`, the commercial-amount
+`basisType`, the source order's **active Receivable status** (consumed read-only from Financial, or null), `createdAt`,
+`eligibleAt`, and the forward-looking `approvedAt`/`paidAt` (null until the approval/payment slices set them). Filters
+(all optional): `status`, `beneficiary` (user id), source order (`order` id / `orderNumber`), `rule` id, creation period,
+eligibility period, **payment period** and amount range (ISO dates anchored at UTC midnight). The **rule-filter dropdown**
+is served by `GET /api/commission/rules`, whose **read** gate is broadened to admit any commission read tier (the rule
+**writes** stay `commission:rule:manage`). **Persona → scopes (revised this slice):** the commercial **Manager** (001),
+**Board/Director** (004) and **Financeiro** (005) hold **`commission:read:all`** (they move off the flat `commission:read`
+seeded in Slice 2); **Sellers** (vendedor 002) and **Representatives** (representante 003) hold the own-only
+**`commission:read`** (they see **only** commissions where they are the beneficiary); **operações** (006) and HR/IT have
+**no** commission read tier → **403**. In the frontend the list is the **Comissões** destination of the **Comercial**
+funnel module (`/comissoes`, gated by `canSeeCommissions()`, shortcut <kbd>g m</kbd>); the backend stays the only
+authority. **Out of scope (later slices):** approval/rejection (populates `approved_at`), payment registration + reversal
+(populates `paid_at`), statement, order commission-status reflection, indicators, and the payroll dashboard / accounting
+report / tax report / bank payment file / accounts-payable list.
 
 ## 11. Observability & performance
 

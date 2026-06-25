@@ -1,0 +1,233 @@
+<header class="page-head">
+  <div>
+    <h1>Comissões</h1>
+    <p class="sub muted">
+      As comissões a acompanhar — previstas, pendentes de aprovação, aprovadas e pagas. Mostra apenas dados da
+      comissão e da origem comercial; nunca folha, imposto, contabilidade ou contas a pagar.
+    </p>
+  </div>
+</header>
+
+<div class="filters surface pad">
+  <div class="filter">
+    <label>Status</label>
+    <p-multiSelect
+      [options]="statusOptions"
+      optionLabel="label"
+      optionValue="value"
+      [(ngModel)]="status"
+      (ngModelChange)="applyFilters()"
+      placeholder="Em acompanhamento"
+      [showClear]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Beneficiário</label>
+    <p-select
+      [options]="beneficiaryOptions()"
+      optionLabel="name"
+      optionValue="id"
+      [(ngModel)]="beneficiary"
+      (ngModelChange)="applyFilters()"
+      placeholder="Todos"
+      [showClear]="true"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter filter-sm">
+    <label>Pedido nº</label>
+    <p-inputNumber
+      [(ngModel)]="orderNumber"
+      (onKeyDown)="$event.key === 'Enter' && applyFilters()"
+      [useGrouping]="false"
+      [min]="1"
+      placeholder="PC-000n"
+      styleClass="w-full"
+    />
+  </div>
+  <div class="filter">
+    <label>Regra</label>
+    <p-select
+      [options]="ruleOptions()"
+      optionLabel="name"
+      optionValue="id"
+      [(ngModel)]="rule"
+      (ngModelChange)="applyFilters()"
+      placeholder="Todas"
+      [showClear]="true"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Criada de</label>
+    <p-datepicker
+      [(ngModel)]="createdFrom"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Criada até</label>
+    <p-datepicker
+      [(ngModel)]="createdTo"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Elegível de</label>
+    <p-datepicker
+      [(ngModel)]="eligibleFrom"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Elegível até</label>
+    <p-datepicker
+      [(ngModel)]="eligibleTo"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Paga de</label>
+    <p-datepicker
+      [(ngModel)]="paidFrom"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Paga até</label>
+    <p-datepicker
+      [(ngModel)]="paidTo"
+      (ngModelChange)="applyFilters()"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter filter-sm">
+    <label>Valor mín.</label>
+    <p-inputNumber
+      [(ngModel)]="amountMin"
+      (onKeyDown)="$event.key === 'Enter' && applyFilters()"
+      mode="currency"
+      currency="BRL"
+      locale="pt-BR"
+      [min]="0"
+      styleClass="w-full"
+    />
+  </div>
+  <div class="filter filter-sm">
+    <label>Valor máx.</label>
+    <p-inputNumber
+      [(ngModel)]="amountMax"
+      (onKeyDown)="$event.key === 'Enter' && applyFilters()"
+      mode="currency"
+      currency="BRL"
+      locale="pt-BR"
+      [min]="0"
+      styleClass="w-full"
+    />
+  </div>
+  <p-button
+    label="Buscar"
+    icon="pi pi-search"
+    size="small"
+    severity="secondary"
+    (onClick)="applyFilters()"
+  />
+  <p-button
+    label="Limpar"
+    icon="pi pi-filter-slash"
+    severity="secondary"
+    [text]="true"
+    size="small"
+    (onClick)="clearFilters()"
+  />
+</div>
+
+@if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+}
+
+<div class="surface table-wrap">
+  <p-table
+    [value]="items()"
+    [lazy]="true"
+    (onLazyLoad)="onLazyLoad($event)"
+    [paginator]="true"
+    [rows]="rows"
+    [totalRecords]="total()"
+    [first]="firstRow"
+    [loading]="loading()"
+    styleClass="p-datatable-sm"
+    [tableStyle]="{ 'min-width': '90rem' }"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Beneficiário</th>
+        <th>Pedido</th>
+        <th>Origem</th>
+        <th class="num">Valor</th>
+        <th>Percentual / regra</th>
+        <th>Status</th>
+        <th>Base</th>
+        <th>Conta a receber</th>
+        <th>Criada</th>
+        <th>Elegível</th>
+        <th>Aprovada</th>
+        <th>Paga</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-c>
+      <tr>
+        <td>{{ c.beneficiaryName ?? '—' }}</td>
+        <td>
+          <a [routerLink]="['/pedidos', c.commercialOrderId]" class="order-link">
+            {{ orderCode(c.orderNumber) }}
+          </a>
+        </td>
+        <td>{{ originReference(c) }}</td>
+        <td class="num">{{ c.amount | currency: 'BRL' }}</td>
+        <td>{{ c.rulePercentage }}% · {{ c.ruleName ?? '—' }}</td>
+        <td><p-tag [value]="statusLabel(c.status)" [severity]="statusSeverity(c.status)" /></td>
+        <td>{{ basisLabel(c.basisType) }}</td>
+        <td>{{ receivableLabel(c.receivableStatus) }}</td>
+        <td>{{ c.createdAt | date: 'short' }}</td>
+        <td>{{ c.eligibleAt ? (c.eligibleAt | date: 'dd/MM/yyyy') : '—' }}</td>
+        <td>{{ c.approvedAt ? (c.approvedAt | date: 'dd/MM/yyyy') : '—' }}</td>
+        <td>{{ c.paidAt ? (c.paidAt | date: 'dd/MM/yyyy') : '—' }}</td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="12" class="muted empty">Nenhuma comissão para acompanhar.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

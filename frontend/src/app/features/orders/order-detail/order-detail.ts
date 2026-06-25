@@ -15,7 +15,7 @@ import {
 } from '../../../core/api/order.service';
 import {
   CommissionBasis,
-  CommissionDetail,
+  CommissionListItem,
   CommissionService,
   CommissionStatus,
 } from '../../../core/api/commission.service';
@@ -165,7 +165,7 @@ export class OrderDetailPage implements OnInit {
 
   // This Order's active commission (fetched on load when the user may read commissions, and refreshed after
   // generating). Shows whether it is still a forecast (Prevista) or eligible for approval (Pendente de aprovação).
-  protected readonly commission = signal<CommissionDetail | null>(null);
+  protected readonly commission = signal<CommissionListItem | null>(null);
   protected readonly generating = signal(false);
 
   private orderId = '';
