@@ -43,6 +43,11 @@ export interface CommissionDetail {
   approvedByName: string | null;
   approvalNotes: string | null;
   paidAt: string | null;
+  /** The reject/cancel evidence (only when REJECTED/CANCELLED): reason label, note, who, when. */
+  resolutionReason: string | null;
+  resolutionNote: string | null;
+  resolvedByName: string | null;
+  resolvedAt: string | null;
   createdByName: string | null;
   createdAt: string;
 }
@@ -117,6 +122,22 @@ export class CommissionService {
    */
   approve(id: string, notes: string | null): Observable<CommissionDetail> {
     return this.http.post<CommissionDetail>(`/api/commissions/${id}/approve`, { notes });
+  }
+
+  /**
+   * Rejects an Eligible commission (terminal), with a required resolution-reason cadastro id + optional note; returns
+   * the refreshed detail. The backend rejects a non-eligible commission (422) and an unknown/inactive reason (422).
+   */
+  reject(id: string, reasonId: string, note: string | null): Observable<CommissionDetail> {
+    return this.http.post<CommissionDetail>(`/api/commissions/${id}/reject`, { reasonId, note });
+  }
+
+  /**
+   * Cancels an unpaid Expected/Approved commission (terminal), with a required resolution-reason cadastro id +
+   * optional note; returns the refreshed detail. The backend rejects a non-cancellable commission (422).
+   */
+  cancel(id: string, reasonId: string, note: string | null): Observable<CommissionDetail> {
+    return this.http.post<CommissionDetail>(`/api/commissions/${id}/cancel`, { reasonId, note });
   }
 
   /** Operational, paginated Commission list filtered by the given criteria and the caller's visibility. */

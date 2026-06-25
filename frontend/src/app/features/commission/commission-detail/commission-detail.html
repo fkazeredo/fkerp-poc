@@ -15,6 +15,24 @@
       @if (canApprove()) {
         <p-button label="Aprovar comissão" icon="pi pi-check" (onClick)="openApprove()" />
       }
+      @if (canReject()) {
+        <p-button
+          label="Rejeitar"
+          icon="pi pi-times-circle"
+          severity="danger"
+          [outlined]="true"
+          (onClick)="openReject()"
+        />
+      }
+      @if (canCancel()) {
+        <p-button
+          label="Cancelar comissão"
+          icon="pi pi-ban"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="openCancel()"
+        />
+      }
       <p-button label="Voltar para comissões" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
     </div>
   </header>
@@ -36,6 +54,16 @@
           @if (c.approvalNotes) {
             <dt>Observações da aprovação</dt>
             <dd>{{ c.approvalNotes }}</dd>
+          }
+        }
+        @if (c.resolvedAt) {
+          <dt>{{ c.status === 'CANCELLED' ? 'Cancelada por' : 'Rejeitada por' }}</dt>
+          <dd>{{ c.resolvedByName ?? '—' }} · {{ c.resolvedAt | date: 'short' }}</dd>
+          <dt>Motivo</dt>
+          <dd>{{ c.resolutionReason ?? '—' }}</dd>
+          @if (c.resolutionNote) {
+            <dt>Observação</dt>
+            <dd>{{ c.resolutionNote }}</dd>
           }
         }
       </dl>
@@ -102,7 +130,7 @@
       }
     </ol>
     <p class="hint muted">
-      Rejeição, pagamento e cancelamento aparecem aqui conforme as próximas etapas.
+      O pagamento aparece aqui na próxima etapa.
     </p>
   </p-card>
 
@@ -154,6 +182,130 @@
           type="submit"
           [loading]="approving()"
           [disabled]="approveForm.invalid"
+        />
+      </div>
+    </form>
+  </p-dialog>
+
+  <p-dialog
+    header="Rejeitar comissão"
+    [visible]="rejectDialogOpen()"
+    (visibleChange)="$event ? null : closeReject()"
+    [modal]="true"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
+    [style]="{ width: '32rem' }"
+  >
+    <form class="resolve-form" [formGroup]="rejectForm" (ngSubmit)="submitReject()">
+      <p class="muted">
+        A comissão elegível de <strong>{{ c.beneficiaryName ?? '—' }}</strong> será
+        <strong>rejeitada</strong> (não será aprovada nem paga). Não altera o pedido nem a conta a receber.
+      </p>
+
+      <label class="field">
+        <span>Motivo *</span>
+        <p-select
+          formControlName="reasonId"
+          [options]="reasonOptions()"
+          optionLabel="label"
+          optionValue="id"
+          placeholder="Selecione o motivo"
+          appendTo="body"
+        />
+      </label>
+
+      <label class="field">
+        <span>Observação (opcional)</span>
+        <textarea
+          pTextarea
+          formControlName="note"
+          rows="2"
+          maxlength="2000"
+          placeholder="Observação (opcional)"
+        ></textarea>
+      </label>
+
+      @if (rejectError()) {
+        <p-message severity="error" [text]="rejectError()!" />
+      }
+
+      <div class="dialog-actions">
+        <p-button
+          label="Cancelar"
+          severity="secondary"
+          [text]="true"
+          type="button"
+          (onClick)="closeReject()"
+        />
+        <p-button
+          label="Rejeitar comissão"
+          icon="pi pi-times-circle"
+          severity="danger"
+          type="submit"
+          [loading]="rejecting()"
+          [disabled]="rejectForm.invalid"
+        />
+      </div>
+    </form>
+  </p-dialog>
+
+  <p-dialog
+    header="Cancelar comissão"
+    [visible]="cancelDialogOpen()"
+    (visibleChange)="$event ? null : closeCancel()"
+    [modal]="true"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
+    [style]="{ width: '32rem' }"
+  >
+    <form class="resolve-form" [formGroup]="cancelForm" (ngSubmit)="submitCancel()">
+      <p class="muted">
+        A comissão de <strong>{{ c.beneficiaryName ?? '—' }}</strong> será <strong>cancelada</strong>
+        (não será paga). Não altera o pedido nem a conta a receber.
+      </p>
+
+      <label class="field">
+        <span>Motivo *</span>
+        <p-select
+          formControlName="reasonId"
+          [options]="reasonOptions()"
+          optionLabel="label"
+          optionValue="id"
+          placeholder="Selecione o motivo"
+          appendTo="body"
+        />
+      </label>
+
+      <label class="field">
+        <span>Observação (opcional)</span>
+        <textarea
+          pTextarea
+          formControlName="note"
+          rows="2"
+          maxlength="2000"
+          placeholder="Observação (opcional)"
+        ></textarea>
+      </label>
+
+      @if (cancelError()) {
+        <p-message severity="error" [text]="cancelError()!" />
+      }
+
+      <div class="dialog-actions">
+        <p-button
+          label="Voltar"
+          severity="secondary"
+          [text]="true"
+          type="button"
+          (onClick)="closeCancel()"
+        />
+        <p-button
+          label="Cancelar comissão"
+          icon="pi pi-ban"
+          severity="danger"
+          type="submit"
+          [loading]="cancelling()"
+          [disabled]="cancelForm.invalid"
         />
       </div>
     </form>

@@ -13,22 +13,27 @@ import static org.mockito.Mockito.when;
 
 import com.fksoft.erp.domain.commission.exception.CommissionAccessDeniedException;
 import com.fksoft.erp.domain.commission.exception.CommissionAlreadyExistsException;
+import com.fksoft.erp.domain.commission.exception.CommissionNotCancellableException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotEligibleException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotFoundException;
+import com.fksoft.erp.domain.commission.exception.CommissionNotRejectableException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoAmountException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoResponsibleException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNotClosedException;
+import com.fksoft.erp.domain.commission.exception.CommissionResolutionReasonNotAvailableException;
 import com.fksoft.erp.domain.commission.exception.CommissionSelfApprovalNotAllowedException;
 import com.fksoft.erp.domain.commission.exception.CommissionSourceOrderAccessDeniedException;
 import com.fksoft.erp.domain.commission.exception.CommissionSourceOrderNotFoundException;
 import com.fksoft.erp.domain.commission.exception.NoApplicableCommissionRuleException;
 import com.fksoft.erp.domain.commission.model.Commission;
 import com.fksoft.erp.domain.commission.model.CommissionBasis;
+import com.fksoft.erp.domain.commission.model.CommissionResolutionReason;
 import com.fksoft.erp.domain.commission.model.CommissionRule;
 import com.fksoft.erp.domain.commission.model.CommissionRuleData;
 import com.fksoft.erp.domain.commission.model.CommissionStatus;
 import com.fksoft.erp.domain.commission.model.CommissionTargetType;
 import com.fksoft.erp.domain.commission.repository.CommissionRepository;
+import com.fksoft.erp.domain.commission.repository.CommissionResolutionReasonRepository;
 import com.fksoft.erp.domain.commission.repository.CommissionRuleRepository;
 import com.fksoft.erp.domain.commission.service.CommissionService;
 import com.fksoft.erp.domain.commission.service.data.CommissionSearchCriteria;
@@ -92,6 +97,9 @@ class CommissionServiceTest {
 
     @Mock
     private UserRepository users;
+
+    @Mock
+    private CommissionResolutionReasonRepository resolutionReasons;
 
     @InjectMocks
     private CommissionService service;
@@ -437,6 +445,121 @@ class CommissionServiceTest {
         when(commissions.findById(id)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.approve(id, userId, true, null))
                 .isInstanceOf(CommissionNotFoundException.class);
+    }
+
+    private Commission approvedCommission() {
+        Commission commission = eligibleCommission();
+        commission.approve(userId, null, Instant.now());
+        return commission;
+    }
+
+    private UUID stubActiveReason() {
+        UUID reasonId = UUID.randomUUID();
+        when(resolutionReasons.findById(reasonId))
+                .thenReturn(Optional.of(CommissionResolutionReason.create("OTHER", "Outro", 1)));
+        return reasonId;
+    }
+
+    @Test
+    void rejectTransitionsTheEligibleCommissionAndSavesIt() {
+        Commission commission = eligibleCommission();
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
+        UUID reasonId = stubActiveReason();
+
+        var detail = service.reject(commission.id(), reasonId, "duplicada", userId, true);
+
+        assertThat(commission.status()).isEqualTo(CommissionStatus.REJECTED);
+        assertThat(commission.resolvedBy()).isEqualTo(userId);
+        assertThat(commission.resolutionNote()).isEqualTo("duplicada");
+        assertThat(commission.resolutionReason().label()).isEqualTo("Outro");
+        assertThat(detail.status()).isEqualTo("REJECTED");
+        assertThat(detail.resolutionReason()).isEqualTo("Outro");
+        verify(commissions).save(commission);
+    }
+
+    @Test
+    void rejectDeniesACommissionTheCallerCannotSee() {
+        Commission commission = eligibleCommission();
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, false)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.reject(commission.id(), UUID.randomUUID(), null, userId, false))
+                .isInstanceOf(CommissionAccessDeniedException.class);
+        verify(commissions, never()).save(any());
+    }
+
+    @Test
+    void rejectRejectsAnUnknownReason() {
+        Commission commission = eligibleCommission();
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
+        UUID reasonId = UUID.randomUUID();
+        when(resolutionReasons.findById(reasonId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.reject(commission.id(), reasonId, null, userId, true))
+                .isInstanceOf(CommissionResolutionReasonNotAvailableException.class);
+        verify(commissions, never()).save(any());
+    }
+
+    @Test
+    void rejectPropagatesNotRejectableForANonEligibleCommission() {
+        Commission commission = generatedCommission(); // EXPECTED
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
+        UUID reasonId = stubActiveReason();
+
+        assertThatThrownBy(() -> service.reject(commission.id(), reasonId, null, userId, true))
+                .isInstanceOf(CommissionNotRejectableException.class);
+        verify(commissions, never()).save(any());
+    }
+
+    @Test
+    void rejectRejectsAnUnknownCommission() {
+        UUID id = UUID.randomUUID();
+        when(commissions.findById(id)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.reject(id, UUID.randomUUID(), null, userId, true))
+                .isInstanceOf(CommissionNotFoundException.class);
+    }
+
+    @Test
+    void cancelTransitionsAnExpectedCommissionAndSavesIt() {
+        Commission commission = generatedCommission(); // EXPECTED
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
+        UUID reasonId = stubActiveReason();
+
+        var detail = service.cancel(commission.id(), reasonId, "engano", userId, true);
+
+        assertThat(commission.status()).isEqualTo(CommissionStatus.CANCELLED);
+        assertThat(commission.resolvedBy()).isEqualTo(userId);
+        assertThat(detail.status()).isEqualTo("CANCELLED");
+        verify(commissions).save(commission);
+    }
+
+    @Test
+    void cancelTransitionsAnApprovedCommissionAndSavesIt() {
+        Commission commission = approvedCommission();
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
+        UUID reasonId = stubActiveReason();
+
+        service.cancel(commission.id(), reasonId, null, userId, true);
+
+        assertThat(commission.status()).isEqualTo(CommissionStatus.CANCELLED);
+        verify(commissions).save(commission);
+    }
+
+    @Test
+    void cancelPropagatesNotCancellableForAnEligibleCommission() {
+        Commission commission = eligibleCommission(); // ELIGIBLE → use reject, not cancel
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
+        UUID reasonId = stubActiveReason();
+
+        assertThatThrownBy(() -> service.cancel(commission.id(), reasonId, null, userId, true))
+                .isInstanceOf(CommissionNotCancellableException.class);
+        verify(commissions, never()).save(any());
     }
 
     @Test

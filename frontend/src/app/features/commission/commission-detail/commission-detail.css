@@ -25,19 +25,22 @@
   flex-wrap: wrap;
 }
 
-.approve-form {
+.approve-form,
+.resolve-form {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.approve-form .field {
+.approve-form .field,
+.resolve-form .field {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
 
-.approve-form .field > span {
+.approve-form .field > span,
+.resolve-form .field > span {
   font-weight: 600;
   font-size: 0.85rem;
 }

@@ -36,6 +36,10 @@ import java.util.UUID;
  * @param approvedByName who approved the commission, or {@code null}
  * @param approvalNotes the optional approval notes, or {@code null}
  * @param paidAt when its commission payment was registered, or {@code null} (a later slice)
+ * @param resolutionReason the reject/cancel reason label, or {@code null} (only when rejected/cancelled)
+ * @param resolutionNote the optional reject/cancel note, or {@code null}
+ * @param resolvedByName who rejected/cancelled the commission, or {@code null}
+ * @param resolvedAt when it was rejected/cancelled, or {@code null}
  * @param createdByName who generated the commission, or {@code null}
  * @param createdAt when the commission was generated
  */
@@ -64,6 +68,10 @@ public record CommissionDetail(
         String approvedByName,
         String approvalNotes,
         Instant paidAt,
+        String resolutionReason,
+        String resolutionNote,
+        String resolvedByName,
+        Instant resolvedAt,
         String createdByName,
         Instant createdAt) {
 
@@ -78,6 +86,8 @@ public record CommissionDetail(
      * @param receivableStatus the source order's active Receivable status, or {@code null}
      * @param createdByName who generated the commission, or {@code null}
      * @param approvedByName who approved the commission, or {@code null}
+     * @param resolutionReason the reject/cancel reason label, or {@code null}
+     * @param resolvedByName who rejected/cancelled the commission, or {@code null}
      */
     public record Refs(
             String beneficiaryName,
@@ -87,7 +97,9 @@ public record CommissionDetail(
             UUID receivableId,
             String receivableStatus,
             String createdByName,
-            String approvedByName) {}
+            String approvedByName,
+            String resolutionReason,
+            String resolvedByName) {}
 
     /**
      * Builds the detail from the entity, the resolved source order number and the resolved cross-aggregate
@@ -124,6 +136,10 @@ public record CommissionDetail(
                 refs.approvedByName(),
                 c.approvalNotes(),
                 c.paidAt(),
+                refs.resolutionReason(),
+                c.resolutionNote(),
+                refs.resolvedByName(),
+                c.resolvedAt(),
                 refs.createdByName(),
                 c.createdAt());
     }

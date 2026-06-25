@@ -17,11 +17,14 @@ import com.fksoft.erp.domain.booking.exception.BookingRequestNotFoundException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
 import com.fksoft.erp.domain.commission.exception.CommissionAccessDeniedException;
 import com.fksoft.erp.domain.commission.exception.CommissionAlreadyExistsException;
+import com.fksoft.erp.domain.commission.exception.CommissionNotCancellableException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotEligibleException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotFoundException;
+import com.fksoft.erp.domain.commission.exception.CommissionNotRejectableException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoAmountException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoResponsibleException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNotClosedException;
+import com.fksoft.erp.domain.commission.exception.CommissionResolutionReasonNotAvailableException;
 import com.fksoft.erp.domain.commission.exception.CommissionRuleDatesInvalidException;
 import com.fksoft.erp.domain.commission.exception.CommissionRuleNotFoundException;
 import com.fksoft.erp.domain.commission.exception.CommissionRulePercentageAboveLimitException;
@@ -194,6 +197,9 @@ public class HttpErrorMapping {
             entry(CommissionNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(CommissionAccessDeniedException.class, HttpStatus.FORBIDDEN),
             entry(CommissionNotEligibleException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(CommissionNotRejectableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(CommissionNotCancellableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(CommissionResolutionReasonNotAvailableException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(CommissionSelfApprovalNotAllowedException.class, HttpStatus.FORBIDDEN),
             entry(CommissionSourceOrderNotFoundException.class, HttpStatus.NOT_FOUND),
             entry(CommissionSourceOrderAccessDeniedException.class, HttpStatus.FORBIDDEN),
