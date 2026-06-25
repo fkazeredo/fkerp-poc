@@ -38,11 +38,13 @@ test('a user without any commission scope is redirected away from the detail rou
   await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
 });
 
-test('the help overlay documents the approve-commission shortcut', async ({ page }) => {
+test('the help overlay documents the approve/reject/cancel-commission shortcuts', async ({ page }) => {
   await login(page, 'comercial', 'comercial123');
   await page.keyboard.press('?');
   const help = page.getByRole('dialog', { name: 'Atalhos do teclado' });
   await expect(help).toBeVisible();
   await expect(help.getByText('No detalhe de uma comissão')).toBeVisible();
-  await expect(help.getByText('Aprovar comissão')).toBeVisible();
+  const line = help.locator('li', { hasText: 'Aprovar comissão' });
+  await expect(line).toContainText('Rejeitar');
+  await expect(line).toContainText('Cancelar');
 });

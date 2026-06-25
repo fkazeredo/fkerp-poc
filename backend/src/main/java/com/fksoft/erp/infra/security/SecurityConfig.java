@@ -188,6 +188,10 @@ public class SecurityConfig {
                         .hasAuthority("SCOPE_commission:create")
                         .requestMatchers(HttpMethod.POST, "/api/commissions/*/approve")
                         .hasAuthority("SCOPE_commission:approve")
+                        .requestMatchers(HttpMethod.POST, "/api/commissions/*/reject")
+                        .hasAuthority("SCOPE_commission:reject")
+                        .requestMatchers(HttpMethod.POST, "/api/commissions/*/cancel")
+                        .hasAuthority("SCOPE_commission:cancel")
                         .requestMatchers(HttpMethod.GET, "/api/commissions", "/api/commissions/**")
                         .hasAnyAuthority(COMMISSION_READ_SCOPES)
                         // Managing commission rules (write) is for commercial/financial managers; reading the rules
@@ -203,6 +207,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/commission/rules", "/api/commission/rules/**")
                         .hasAnyAuthority(
                                 "SCOPE_commission:rule:manage", "SCOPE_commission:read", "SCOPE_commission:read:all")
+                        // The commission resolution-reason cadastro (reject/cancel reasons): read = authenticated,
+                        // write = reference:manage (the generic /api/sales|booking|financial/** reference rules below
+                        // do not cover the /api/commission/** namespace, so it is matched explicitly here).
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/commission/resolution-reasons",
+                                "/api/commission/resolution-reasons/**")
+                        .authenticated()
+                        .requestMatchers("/api/commission/resolution-reasons", "/api/commission/resolution-reasons/**")
+                        .hasAuthority("SCOPE_reference:manage")
                         // The responsible-people lookup is shared: any CRM reader, plus a commission-rule manager
                         // (who picks a responsible when targeting a specific user — Sprint 6).
                         .requestMatchers(HttpMethod.GET, "/api/crm/responsibles")

@@ -1064,6 +1064,38 @@ reason), **payment registration + reversal** (consume `APPROVED`), **cancellatio
 commission-status reflection**, **indicators**, and multi-level approval / approval thresholds / payroll / accounts
 payable / bank payment file / automatic payment / tax withholding.
 
+**Commission reject/cancel (normative — Commission Management, Sprint 6 Slice 7).** An authorized approver/manager
+**voids an invalid commission** so it is not paid, via two terminal transitions, each with a **required reason** + an
+optional note, recording who/when. **Reject** (`POST /api/commissions/{id}/reject`, gated **`commission:reject`**) is
+**`ELIGIBLE`-only** (`Commission.reject` → `CommissionNotRejectableException`, **422** `commission.not-rejectable`) →
+`REJECTED`. **Cancel** (`POST /api/commissions/{id}/cancel`, gated **`commission:cancel`**) is for an **unpaid
+`EXPECTED` or `APPROVED`** commission (`Commission.cancel` → `CommissionNotCancellableException`, **422**
+`commission.not-cancellable`; a `PAID` commission cannot be cancelled through the ordinary flow — `paidAt` is null until
+the payment slice, so `APPROVED` always qualifies now) → `CANCELLED`. Both require the caller to **see** the commission
+(`CommissionAccessPolicy.canSee` → **403** `commission.access-denied`, **404** `commission.not-found`) and a **required
+resolution reason** — a single shared **cadastro** `CommissionResolutionReason` over the `domain.reference` kernel
+(`POST/GET/PUT/DELETE /api/commission/resolution-reasons`, writes gated `reference:manage`, seeded with *incorrect
+responsible / incorrect rule / order correction needed / receivable-or-payment issue / duplicate / business exception /
+other*); an unknown/inactive reason → **422** `commission.resolution-reason-not-available`, a missing `reasonId` →
+**400** (Bean Validation on `ResolveCommissionRequest{ @NotNull reasonId, @Size note }`). The shared **resolution block**
+(`resolution_reason_id` + `resolution_note` + `resolved_by` + `resolved_at`, one set for both actions — the terminal
+`status` distinguishes reject vs cancel) is exposed on the detail (`resolutionReason` label / `resolutionNote` /
+`resolvedByName` / `resolvedAt`). **No self-rejection/self-cancel block** (voiding your own commission is against your
+interest, and only managers hold the scopes). Rejecting/cancelling **never alters the source Commercial Order or
+Receivable** and creates **no** refund, payroll, tax or accounting data (no clawback / refund / recalculation /
+dispute). Rejected/Cancelled commissions stay **historically visible**: the list hides them by default
+(`CommissionStatus.operational()`) but the `status` filter surfaces them, and the detail shows the full resolution +
+the **"Rejeitada"/"Cancelada"** timeline entry. **Persona → scopes:** `commission:reject` + `commission:cancel` are held
+by the commercial **Manager** (001) **and** the back-office **Financeiro** (005); Sellers (002), Representatives (003),
+the **Board/Director** (004, consultation) and operações (006) **cannot reject/cancel → 403**. In the frontend the
+commission detail shows **"Rejeitar"** (only `ELIGIBLE`) and **"Cancelar comissão"** (only unpaid `EXPECTED`/`APPROVED`)
+actions behind `canRejectCommission()`/`canCancelCommission()`, each a reason-select + optional-note dialog (shortcuts
+<kbd>r</kbd>/<kbd>c</kbd>, in the `?` overlay) wired to the central **unsaved-changes** protection; the shared reason
+list is a **Cadastros** entry ("Motivos de rejeição/cancelamento de comissão"). The cadastro-vs-enum choice follows §1
+invariant 8 (a *reason* cadastro). **Out of scope (later Sprint-6 slices):** clawback, refund, payroll adjustment,
+accounting reversal, automatic recalculation, dispute workflow; **payment registration + reversal**, **statement**,
+**order commission-status reflection** and **indicators**.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

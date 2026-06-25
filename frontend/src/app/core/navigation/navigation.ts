@@ -149,6 +149,7 @@ export class NavigationService {
       link('Resultados de tentativa', 'pi pi-database', '/cadastros/resultados-tentativa', false, 'Resultados de uma tentativa de reserva.', 'ref'),
       link('Motivos de falha', 'pi pi-database', '/cadastros/motivos-falha', false, 'Por que um item de reserva falhou.', 'ref'),
       link('Formas de pagamento', 'pi pi-database', '/cadastros/formas-pagamento', false, 'Como os pagamentos são recebidos.', 'ref'),
+      link('Motivos de comissão', 'pi pi-database', '/cadastros/motivos-comissao', false, 'Motivos para rejeitar ou cancelar uma comissão.', 'ref'),
     );
 
     return [

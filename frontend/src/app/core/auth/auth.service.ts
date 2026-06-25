@@ -185,6 +185,16 @@ export class AuthService {
   canApproveCommission(): boolean {
     return this.hasScope('commission:approve');
   }
+
+  /** Whether the user may reject an Eligible Commission (a commercial/financial manager — Commission Management). */
+  canRejectCommission(): boolean {
+    return this.hasScope('commission:reject');
+  }
+
+  /** Whether the user may cancel an unpaid Commission (a commercial/financial manager — Commission Management). */
+  canCancelCommission(): boolean {
+    return this.hasScope('commission:cancel');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

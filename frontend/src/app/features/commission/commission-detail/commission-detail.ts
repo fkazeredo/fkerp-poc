@@ -17,6 +17,7 @@ import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { MessageModule } from 'primeng/message';
 import { DialogModule } from 'primeng/dialog';
+import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -27,6 +28,7 @@ import {
   CommissionStatus,
   ReceivableStatusCode,
 } from '../../../core/api/commission.service';
+import { ReferenceItem, ReferenceService } from '../../../core/api/reference.service';
 import { HasUnsavedChanges, UnsavedChangesService } from '../../../core/forms/unsaved-changes.service';
 
 type TagSeverity = 'success' | 'info' | 'warn' | 'secondary' | 'contrast' | 'danger';
@@ -71,12 +73,11 @@ interface TimelineEntry {
 
 /**
  * Commission detail page (Commission Management): the read-only record a commercial/financial manager opens to
- * understand a commission's origin, calculation, eligibility, approval and payment history. Keeps the commercial
- * origin (Order / Proposal / Opportunity / Lead) and the related Receivable traceable, and shows the calculation
- * basis and the applied rule (the percentage is the snapshot, so it stays visible even if the rule changes). An
- * authorized approver can approve an Eligible commission (it becomes ready for payment) — but never their own
- * (segregation of duties; the backend is the authority). Shows commission + commercial-origin data only — never
- * payroll, tax or accounting data. The user only opens commissions they are allowed to see (own vs all).
+ * understand a commission's origin, calculation, eligibility, approval and payment history. An authorized approver
+ * can approve an Eligible commission (it becomes ready for payment) — but never their own (segregation of duties),
+ * reject an Eligible one, or cancel an unpaid Expected/Approved one (each with a required reason). Rejecting/
+ * cancelling voids the commission only: it touches no Order/Receivable and creates no financial data. Shows
+ * commission + commercial-origin data only — never payroll, tax or accounting data; the backend is the authority.
  */
 @Component({
   selector: 'app-commission-detail',
@@ -90,6 +91,7 @@ interface TimelineEntry {
     TagModule,
     MessageModule,
     DialogModule,
+    SelectModule,
     TextareaModule,
   ],
   templateUrl: './commission-detail.html',
@@ -99,6 +101,7 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly commissions = inject(CommissionService);
+  private readonly references = inject(ReferenceService);
   private readonly fb = inject(FormBuilder);
   private readonly messages = inject(MessageService);
   private readonly unsaved = inject(UnsavedChangesService);
@@ -116,6 +119,27 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     notes: ['', Validators.maxLength(2000)],
   });
 
+  // Reject / cancel share the resolution-reason cadastro options (one shared list).
+  protected readonly reasonOptions = signal<ReferenceItem[]>([]);
+
+  // Reject dialog state (a required reason + optional note).
+  protected readonly rejectDialogOpen = signal(false);
+  protected readonly rejecting = signal(false);
+  protected readonly rejectError = signal<string | null>(null);
+  protected readonly rejectForm = this.fb.nonNullable.group({
+    reasonId: ['', Validators.required],
+    note: ['', Validators.maxLength(2000)],
+  });
+
+  // Cancel dialog state (a required reason + optional note).
+  protected readonly cancelDialogOpen = signal(false);
+  protected readonly cancelling = signal(false);
+  protected readonly cancelError = signal<string | null>(null);
+  protected readonly cancelForm = this.fb.nonNullable.group({
+    reasonId: ['', Validators.required],
+    note: ['', Validators.maxLength(2000)],
+  });
+
   /** Whether the current user may approve this commission: it is Eligible, they hold the scope, and it is not theirs. */
   protected readonly canApprove = computed<boolean>(() => {
     const c = this.commission();
@@ -127,7 +151,21 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     );
   });
 
-  /** The lifecycle timeline assembled from the stamps present (generated / eligible / approved / paid). */
+  /** Whether the current user may reject this commission (only an Eligible commission can be rejected). */
+  protected readonly canReject = computed<boolean>(() => {
+    const c = this.commission();
+    return !!c && c.status === 'ELIGIBLE' && this.auth.canRejectCommission();
+  });
+
+  /** Whether the current user may cancel this commission (only an unpaid Expected/Approved one). */
+  protected readonly canCancel = computed<boolean>(() => {
+    const c = this.commission();
+    return (
+      !!c && (c.status === 'EXPECTED' || c.status === 'APPROVED') && this.auth.canCancelCommission()
+    );
+  });
+
+  /** The lifecycle timeline assembled from the stamps present (generated / eligible / approved / paid / voided). */
   protected readonly timeline = computed<TimelineEntry[]>(() => {
     const c = this.commission();
     if (!c) {
@@ -143,28 +181,49 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     if (c.paidAt) {
       entries.push({ label: 'Paga', at: c.paidAt, by: null });
     }
+    if (c.resolvedAt) {
+      entries.push({
+        label: c.status === 'CANCELLED' ? 'Cancelada' : 'Rejeitada',
+        at: c.resolvedAt,
+        by: c.resolvedByName,
+      });
+    }
     return entries;
   });
 
   private commissionId = '';
 
   constructor() {
-    // Keep the global unsaved flag (tab-close warning) in sync with the open dialog.
-    effect(() => this.unsaved.set(this.approveDialogOpen()));
+    // Keep the global unsaved flag (tab-close warning) in sync with any open dialog.
+    effect(() =>
+      this.unsaved.set(
+        this.approveDialogOpen() || this.rejectDialogOpen() || this.cancelDialogOpen(),
+      ),
+    );
   }
 
   ngOnInit(): void {
     this.commissionId = this.route.snapshot.paramMap.get('id') ?? '';
     this.load();
+    // Load the shared reject/cancel reasons only when the user can void commissions.
+    if (this.auth.canRejectCommission() || this.auth.canCancelCommission()) {
+      this.references
+        .list('resolution-reasons', false, 'commission')
+        .subscribe((items) => this.reasonOptions.set(items));
+    }
   }
 
   ngOnDestroy(): void {
     this.unsaved.set(false);
   }
 
-  /** Whether the approve dialog is open with modified fields (route guard + tab-close warning). */
+  /** Whether an open dialog has modified fields (route guard + tab-close warning). */
   hasUnsavedChanges(): boolean {
-    return this.approveDialogOpen() && this.approveForm.dirty;
+    return (
+      (this.approveDialogOpen() && this.approveForm.dirty) ||
+      (this.rejectDialogOpen() && this.rejectForm.dirty) ||
+      (this.cancelDialogOpen() && this.cancelForm.dirty)
+    );
   }
 
   protected statusLabel(status: CommissionStatus): string {
@@ -217,22 +276,102 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     this.approveError.set(null);
     const notes = emptyToNull(this.approveForm.getRawValue().notes);
     this.commissions.approve(c.id, notes).subscribe({
-      next: (detail) => {
-        this.approving.set(false);
-        this.commission.set(detail);
-        this.approveForm.markAsPristine();
-        this.approveDialogOpen.set(false);
-        this.messages.add({
-          severity: 'success',
-          summary: 'Comissão aprovada',
-          detail: 'A comissão foi aprovada e está pronta para pagamento.',
-        });
-      },
+      next: (detail) => this.onResolved(detail, this.approveDialogOpen, this.approving, 'Comissão aprovada'),
       error: (err: HttpErrorResponse) => {
         this.approving.set(false);
-        this.approveError.set(this.approveErrorMessage(err));
+        this.approveError.set(this.actionErrorMessage(err, 'aprovar'));
       },
     });
+  }
+
+  /** Opens the reject dialog (a required reason + optional note). */
+  protected openReject(): void {
+    if (!this.canReject()) {
+      return;
+    }
+    this.rejectError.set(null);
+    this.rejectForm.reset({ reasonId: '', note: '' });
+    this.rejectDialogOpen.set(true);
+  }
+
+  /** Closes the reject dialog: if the form was changed, confirms before discarding. */
+  protected async closeReject(): Promise<void> {
+    if (this.rejectForm.dirty && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
+    this.rejectDialogOpen.set(false);
+  }
+
+  /** Rejects the eligible commission (terminal), then refreshes the detail. */
+  protected submitReject(): void {
+    const c = this.commission();
+    if (!c || this.rejectForm.invalid || this.rejecting()) {
+      this.rejectForm.markAllAsTouched();
+      return;
+    }
+    this.rejecting.set(true);
+    this.rejectError.set(null);
+    const v = this.rejectForm.getRawValue();
+    this.commissions.reject(c.id, v.reasonId, emptyToNull(v.note)).subscribe({
+      next: (detail) => this.onResolved(detail, this.rejectDialogOpen, this.rejecting, 'Comissão rejeitada'),
+      error: (err: HttpErrorResponse) => {
+        this.rejecting.set(false);
+        this.rejectError.set(this.actionErrorMessage(err, 'rejeitar'));
+      },
+    });
+  }
+
+  /** Opens the cancel dialog (a required reason + optional note). */
+  protected openCancel(): void {
+    if (!this.canCancel()) {
+      return;
+    }
+    this.cancelError.set(null);
+    this.cancelForm.reset({ reasonId: '', note: '' });
+    this.cancelDialogOpen.set(true);
+  }
+
+  /** Closes the cancel dialog: if the form was changed, confirms before discarding. */
+  protected async closeCancel(): Promise<void> {
+    if (this.cancelForm.dirty && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
+    this.cancelDialogOpen.set(false);
+  }
+
+  /** Cancels the unpaid commission (terminal), then refreshes the detail. */
+  protected submitCancel(): void {
+    const c = this.commission();
+    if (!c || this.cancelForm.invalid || this.cancelling()) {
+      this.cancelForm.markAllAsTouched();
+      return;
+    }
+    this.cancelling.set(true);
+    this.cancelError.set(null);
+    const v = this.cancelForm.getRawValue();
+    this.commissions.cancel(c.id, v.reasonId, emptyToNull(v.note)).subscribe({
+      next: (detail) => this.onResolved(detail, this.cancelDialogOpen, this.cancelling, 'Comissão cancelada'),
+      error: (err: HttpErrorResponse) => {
+        this.cancelling.set(false);
+        this.cancelError.set(this.actionErrorMessage(err, 'cancelar'));
+      },
+    });
+  }
+
+  // Shared success handler: refresh the detail, mark the forms pristine, close the dialog, toast.
+  private onResolved(
+    detail: CommissionDetail,
+    open: { set(v: boolean): void },
+    busy: { set(v: boolean): void },
+    summary: string,
+  ): void {
+    busy.set(false);
+    this.commission.set(detail);
+    this.approveForm.markAsPristine();
+    this.rejectForm.markAsPristine();
+    this.cancelForm.markAsPristine();
+    open.set(false);
+    this.messages.add({ severity: 'success', summary, detail: 'Operação concluída com sucesso.' });
   }
 
   protected back(): void {
@@ -240,13 +379,20 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
   }
 
   /**
-   * Keyboard: <kbd>a</kbd> opens the approve dialog (when allowed); <kbd>Esc</kbd> closes the dialog (guarded) or,
-   * when none is open, returns to the commission list.
+   * Keyboard: <kbd>a</kbd> approve, <kbd>r</kbd> reject, <kbd>c</kbd> cancel (each when allowed); <kbd>Esc</kbd>
+   * closes the open dialog (guarded) or, when none is open, returns to the commission list.
    */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
     if (event.key === 'Escape' && !event.metaKey && !event.ctrlKey && !event.altKey) {
-      if (this.approveDialogOpen()) {
+      if (document.querySelector('.p-select-overlay')) {
+        return;
+      }
+      if (this.rejectDialogOpen()) {
+        void this.closeReject();
+      } else if (this.cancelDialogOpen()) {
+        void this.closeCancel();
+      } else if (this.approveDialogOpen()) {
         void this.closeApprove();
       } else {
         this.back();
@@ -257,27 +403,44 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     const typing =
       !!target &&
       (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
-    if (typing || event.ctrlKey || event.metaKey || event.altKey || this.approveDialogOpen()) {
+    if (
+      typing ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      this.approveDialogOpen() ||
+      this.rejectDialogOpen() ||
+      this.cancelDialogOpen()
+    ) {
       return;
     }
     if (event.key === 'a' && this.canApprove()) {
       event.preventDefault();
       this.openApprove();
+    } else if (event.key === 'r' && this.canReject()) {
+      event.preventDefault();
+      this.openReject();
+    } else if (event.key === 'c' && this.canCancel()) {
+      event.preventDefault();
+      this.openCancel();
     }
   }
 
-  private approveErrorMessage(err: HttpErrorResponse): string {
+  private actionErrorMessage(err: HttpErrorResponse, action: string): string {
     const body = err.error as { message?: string } | null;
     if (err.status === 403) {
-      return 'Você não pode aprovar esta comissão (sem permissão ou é a sua própria comissão).';
+      return `Você não tem permissão para ${action} esta comissão.`;
     }
     if (err.status === 404) {
       return 'Comissão não encontrada.';
     }
     if (err.status === 422) {
-      return body?.message ?? 'Apenas comissões elegíveis podem ser aprovadas.';
+      return body?.message ?? `Não foi possível ${action} a comissão neste estado.`;
     }
-    return body?.message ?? 'Não foi possível aprovar a comissão.';
+    if (err.status === 400) {
+      return 'Informe o motivo.';
+    }
+    return body?.message ?? `Não foi possível ${action} a comissão.`;
   }
 
   private load(): void {

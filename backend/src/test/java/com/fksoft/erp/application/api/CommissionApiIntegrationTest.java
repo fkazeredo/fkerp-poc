@@ -144,6 +144,10 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
                         "approvedByName",
                         "approvalNotes",
                         "paidAt",
+                        "resolutionReason",
+                        "resolutionNote",
+                        "resolvedByName",
+                        "resolvedAt",
                         "createdByName",
                         "createdAt");
         assertThat(body.toLowerCase()).doesNotContain("payable").doesNotContain("payroll");
@@ -721,6 +725,198 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void rejectsAnUnauthenticatedApproval() throws Exception {
         mvc.perform(post("/api/commissions/" + UUID.randomUUID() + "/approve")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void financeRejectsAnEligibleCommissionAndRecordsTheResolver() throws Exception {
+        UUID order = closedOrder("RejectOk", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        String fin = login("financeiro", "financeiro123");
+        fullyPayReceivableFor(fin, order); // ELIGIBLE
+
+        mvc.perform(post("/api/commissions/" + commissionId + "/reject")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonId\":\"%s\",\"note\":\"Duplicada\"}".formatted(resolutionReasonId("OTHER"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REJECTED"))
+                .andExpect(jsonPath("$.resolutionReason").value("Outro"))
+                .andExpect(jsonPath("$.resolutionNote").value("Duplicada"))
+                .andExpect(jsonPath("$.resolvedByName").value("financeiro"))
+                .andExpect(jsonPath("$.resolvedAt").value(org.hamcrest.Matchers.notNullValue()));
+
+        // The source Order + Receivable are untouched by voiding the commission.
+        assertThat(jdbc.queryForObject(
+                        "SELECT status FROM commercial_orders WHERE id = cast(? as uuid)",
+                        String.class,
+                        order.toString()))
+                .isEqualTo("PENDING_BOOKING");
+        assertThat(jdbc.queryForObject(
+                        "SELECT status FROM receivables WHERE commercial_order_id = cast(? as uuid)",
+                        String.class,
+                        order.toString()))
+                .isEqualTo("PAID");
+
+        // Rejected is hidden by default but visible via the status filter (historically visible).
+        mvc.perform(get("/api/commissions?order=" + order).header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/commissions?status=REJECTED&order=" + order).header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].status").value("REJECTED"));
+    }
+
+    @Test
+    void managerCancelsAnExpectedCommission() throws Exception {
+        UUID order = closedOrder("CancelExpected", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order); // EXPECTED
+
+        mvc.perform(post("/api/commissions/" + commissionId + "/cancel")
+                        .header("Authorization", "Bearer " + manager)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonId\":\"%s\"}".formatted(resolutionReasonId("BUSINESS_EXCEPTION"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.resolutionReason").value("Exceção de negócio"))
+                .andExpect(jsonPath("$.resolvedByName").value("comercial"));
+    }
+
+    @Test
+    void cancelsAnApprovedUnpaidCommission() throws Exception {
+        UUID order = closedOrder("CancelApproved", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        String fin = login("financeiro", "financeiro123");
+        fullyPayReceivableFor(fin, order); // ELIGIBLE
+        mvc.perform(post("/api/commissions/" + commissionId + "/approve").header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk()); // APPROVED (unpaid)
+
+        mvc.perform(post("/api/commissions/" + commissionId + "/cancel")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonId\":\"%s\"}".formatted(resolutionReasonId("INCORRECT_RULE"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+    }
+
+    @Test
+    void cannotRejectAnExpectedCommission() throws Exception {
+        UUID order = closedOrder("RejectExpected", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order); // EXPECTED
+
+        mvc.perform(post("/api/commissions/" + commissionId + "/reject")
+                        .header("Authorization", "Bearer " + login("financeiro", "financeiro123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonId\":\"%s\"}".formatted(resolutionReasonId("OTHER"))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("commission.not-rejectable"));
+    }
+
+    @Test
+    void cannotCancelAnEligibleCommission() throws Exception {
+        UUID order = closedOrder("CancelEligible", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        String fin = login("financeiro", "financeiro123");
+        fullyPayReceivableFor(fin, order); // ELIGIBLE
+
+        mvc.perform(post("/api/commissions/" + commissionId + "/cancel")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonId\":\"%s\"}".formatted(resolutionReasonId("OTHER"))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("commission.not-cancellable"));
+    }
+
+    @Test
+    void rejectRequiresAReason() throws Exception {
+        UUID order = closedOrder("RejectNoReason", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        String fin = login("financeiro", "financeiro123");
+        fullyPayReceivableFor(fin, order); // ELIGIBLE
+
+        mvc.perform(post("/api/commissions/" + commissionId + "/reject")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rejectRejectsAnUnknownReason() throws Exception {
+        UUID order = closedOrder("RejectBadReason", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        String fin = login("financeiro", "financeiro123");
+        fullyPayReceivableFor(fin, order); // ELIGIBLE
+
+        mvc.perform(post("/api/commissions/" + commissionId + "/reject")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonId\":\"%s\"}".formatted(UUID.randomUUID())))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("commission.resolution-reason-not-available"));
+    }
+
+    @Test
+    void aConsultationUserCannotRejectOrCancel() throws Exception {
+        UUID order = closedOrder("RejectNoScope", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        fullyPayReceivableFor(login("financeiro", "financeiro123"), order); // ELIGIBLE
+
+        // The Board/Director (004) holds commission:read:all but neither commission:reject nor commission:cancel → 403.
+        String director = login("diretor", "diretor123");
+        mvc.perform(post("/api/commissions/" + commissionId + "/reject")
+                        .header("Authorization", "Bearer " + director)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonId\":\"%s\"}".formatted(resolutionReasonId("OTHER"))))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/commissions/" + commissionId + "/cancel")
+                        .header("Authorization", "Bearer " + director)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonId\":\"%s\"}".formatted(resolutionReasonId("OTHER"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rejectsUnauthenticatedRejectAndCancel() throws Exception {
+        mvc.perform(post("/api/commissions/" + UUID.randomUUID() + "/reject")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/commissions/" + UUID.randomUUID() + "/cancel")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void theResolutionReasonCadastroIsReadableAndWriteGuarded() throws Exception {
+        // Read: any authenticated user sees the seeded reject/cancel reasons (ordered by sort order).
+        mvc.perform(get("/api/commission/resolution-reasons")
+                        .header("Authorization", "Bearer " + login("comercial", "comercial123")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(7))
+                .andExpect(jsonPath("$[0].label").value("Responsável incorreto"));
+
+        // Write requires reference:manage — financeiro (005) lacks it → 403 (so the cadastro stays unpolluted).
+        mvc.perform(post("/api/commission/resolution-reasons")
+                        .header("Authorization", "Bearer " + login("financeiro", "financeiro123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"X\",\"label\":\"X\",\"sortOrder\":9}"))
+                .andExpect(status().isForbidden());
+    }
+
+    private String resolutionReasonId(String code) {
+        return jdbc.queryForObject("SELECT id FROM commission_resolution_reasons WHERE code = ?", String.class, code);
     }
 
     // Creates an active, in-window COMMERCIAL_RESPONSIBLE rule (so it matches any order's commercial responsible).

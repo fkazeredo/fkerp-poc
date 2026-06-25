@@ -8,6 +8,7 @@ import { NEVER, of, throwError } from 'rxjs';
 import { CommissionDetailPage } from './commission-detail';
 import { CommissionDetail, CommissionService } from '../../../core/api/commission.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { ReferenceService } from '../../../core/api/reference.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
   observe() {}
@@ -16,10 +17,16 @@ import { AuthService } from '../../../core/auth/auth.service';
 };
 
 describe('CommissionDetailPage', () => {
-  const commissions = { detail: vi.fn(), approve: vi.fn() };
+  const commissions = { detail: vi.fn(), approve: vi.fn(), reject: vi.fn(), cancel: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
-  const auth = { canApproveCommission: vi.fn(), userId: vi.fn() };
+  const auth = {
+    canApproveCommission: vi.fn(),
+    canRejectCommission: vi.fn(),
+    canCancelCommission: vi.fn(),
+    userId: vi.fn(),
+  };
   const messages = { add: vi.fn() };
+  const references = { list: vi.fn() };
 
   const sample: CommissionDetail = {
     id: 'c1',
@@ -46,6 +53,10 @@ describe('CommissionDetailPage', () => {
     approvedByName: null,
     approvalNotes: null,
     paidAt: null,
+    resolutionReason: null,
+    resolutionNote: null,
+    resolvedByName: null,
+    resolvedAt: null,
     createdByName: 'comercial',
     createdAt: '2026-06-20T10:00:00Z',
   };
@@ -58,6 +69,19 @@ describe('CommissionDetailPage', () => {
     approvalNotes: 'Conferido',
   };
 
+  const rejected: CommissionDetail = {
+    ...sample,
+    status: 'REJECTED',
+    resolutionReason: 'Comissão duplicada',
+    resolutionNote: 'Lançada duas vezes',
+    resolvedByName: 'financeiro',
+    resolvedAt: '2026-06-27T09:00:00Z',
+  };
+
+  const reasons = [
+    { id: 'rsn1', code: 'DUPLICATE_COMMISSION', label: 'Comissão duplicada', active: true, sortOrder: 1 },
+  ];
+
   function configure() {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -68,6 +92,7 @@ describe('CommissionDetailPage', () => {
         { provide: CommissionService, useValue: commissions },
         { provide: Router, useValue: router },
         { provide: AuthService, useValue: auth },
+        { provide: ReferenceService, useValue: references },
         { provide: MessageService, useValue: messages },
         { provide: ConfirmationService, useValue: { confirm: vi.fn() } },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'c1' } } } },
@@ -91,10 +116,15 @@ describe('CommissionDetailPage', () => {
   beforeEach(() => {
     commissions.detail.mockReset().mockReturnValue(of(sample));
     commissions.approve.mockReset().mockReturnValue(of(approved));
+    commissions.reject.mockReset().mockReturnValue(of(rejected));
+    commissions.cancel.mockReset().mockReturnValue(of({ ...sample, status: 'CANCELLED' }));
     router.navigateByUrl.mockReset();
     messages.add.mockReset();
-    // By default the viewer holds the approve scope and is NOT the beneficiary.
+    references.list.mockReset().mockReturnValue(of(reasons));
+    // By default the viewer holds the approve/reject/cancel scopes and is NOT the beneficiary.
     auth.canApproveCommission.mockReset().mockReturnValue(true);
+    auth.canRejectCommission.mockReset().mockReturnValue(true);
+    auth.canCancelCommission.mockReset().mockReturnValue(true);
     auth.userId.mockReset().mockReturnValue('approver');
   });
 
@@ -212,13 +242,13 @@ describe('CommissionDetailPage', () => {
       expect(commissions.approve).toHaveBeenCalledWith('c1', null);
     });
 
-    it('shows a self-approval / permission message on 403 and keeps the dialog open', () => {
+    it('shows a permission message on 403 and keeps the dialog open', () => {
       commissions.approve.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
       const comp = build();
       comp.ngOnInit();
       comp['openApprove']();
       comp['submitApprove']();
-      expect(comp['approveError']()).toContain('própria comissão');
+      expect(comp['approveError']()).toContain('permissão');
       expect(comp['approveDialogOpen']()).toBe(true);
     });
 
@@ -239,6 +269,106 @@ describe('CommissionDetailPage', () => {
       expect(comp.hasUnsavedChanges()).toBe(false);
       comp['openApprove']();
       comp['approveForm'].markAsDirty();
+      expect(comp.hasUnsavedChanges()).toBe(true);
+    });
+  });
+
+  describe('reject and cancel', () => {
+    it('canReject is true only for an eligible commission with the scope', () => {
+      const comp = build();
+      comp.ngOnInit();
+      expect(comp['canReject']()).toBe(true);
+
+      auth.canRejectCommission.mockReturnValue(false);
+      const noScope = build();
+      noScope.ngOnInit();
+      expect(noScope['canReject']()).toBe(false);
+    });
+
+    it('canReject is false when the commission is not eligible', () => {
+      commissions.detail.mockReturnValue(of(approved));
+      const comp = build();
+      comp.ngOnInit();
+      expect(comp['canReject']()).toBe(false);
+    });
+
+    it('canCancel is true for an unpaid Expected/Approved commission with the scope, false for Eligible', () => {
+      commissions.detail.mockReturnValue(of(approved)); // APPROVED
+      const comp = build();
+      comp.ngOnInit();
+      expect(comp['canCancel']()).toBe(true);
+
+      commissions.detail.mockReturnValue(of(sample)); // ELIGIBLE → reject, not cancel
+      const eligible = build();
+      eligible.ngOnInit();
+      expect(eligible['canCancel']()).toBe(false);
+    });
+
+    it('loads the shared resolution reasons on init when the user can void', () => {
+      const comp = build();
+      comp.ngOnInit();
+      expect(references.list).toHaveBeenCalledWith('resolution-reasons', false, 'commission');
+      expect(comp['reasonOptions']()).toEqual(reasons);
+    });
+
+    it('rejects the commission with the reason and note and refreshes the detail', () => {
+      const comp = build();
+      comp.ngOnInit();
+      comp['openReject']();
+      comp['rejectForm'].setValue({ reasonId: 'rsn1', note: '  Duplicada  ' });
+      comp['submitReject']();
+      expect(commissions.reject).toHaveBeenCalledWith('c1', 'rsn1', 'Duplicada'); // trimmed
+      expect(comp['commission']()!.status).toBe('REJECTED');
+      expect(comp['rejectDialogOpen']()).toBe(false);
+      expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
+    });
+
+    it('requires a reason to submit a rejection (the form is invalid without it)', () => {
+      const comp = build();
+      comp.ngOnInit();
+      comp['openReject']();
+      comp['submitReject'](); // no reason chosen
+      expect(commissions.reject).not.toHaveBeenCalled();
+    });
+
+    it('cancels an unpaid commission with the reason and refreshes the detail', () => {
+      commissions.detail.mockReturnValue(of(approved)); // APPROVED (unpaid)
+      const comp = build();
+      comp.ngOnInit();
+      comp['openCancel']();
+      comp['cancelForm'].setValue({ reasonId: 'rsn1', note: '' });
+      comp['submitCancel']();
+      expect(commissions.cancel).toHaveBeenCalledWith('c1', 'rsn1', null);
+      expect(comp['commission']()!.status).toBe('CANCELLED');
+      expect(comp['cancelDialogOpen']()).toBe(false);
+    });
+
+    it('shows a permission message on 403 and a state message on 422 when rejecting', () => {
+      commissions.reject.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
+      const denied = build();
+      denied.ngOnInit();
+      denied['openReject']();
+      denied['rejectForm'].setValue({ reasonId: 'rsn1', note: '' });
+      denied['submitReject']();
+      expect(denied['rejectError']()).toContain('permissão');
+      expect(denied['rejectDialogOpen']()).toBe(true);
+
+      commissions.reject.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 422, error: { message: 'Apenas elegíveis' } })),
+      );
+      const bad = build();
+      bad.ngOnInit();
+      bad['openReject']();
+      bad['rejectForm'].setValue({ reasonId: 'rsn1', note: '' });
+      bad['submitReject']();
+      expect(bad['rejectError']()).toBe('Apenas elegíveis');
+    });
+
+    it('flags unsaved changes while the reject dialog is open with a dirty form', () => {
+      const comp = build();
+      comp.ngOnInit();
+      comp['openReject']();
+      comp['rejectForm'].markAsDirty();
       expect(comp.hasUnsavedChanges()).toBe(true);
     });
   });
@@ -295,6 +425,38 @@ describe('CommissionDetailPage', () => {
       expect(el.textContent).toContain('financeiro');
       expect(el.textContent).toContain('Conferido');
       // No approve action on an already-approved commission.
+      expect(el.textContent).not.toContain('Aprovar comissão');
+    });
+
+    it('shows the Rejeitar action for an eligible commission the user may reject', () => {
+      const el = render();
+      expect(el.textContent).toContain('Rejeitar');
+    });
+
+    it('shows the Cancelar action for an unpaid approved commission and hides reject', () => {
+      commissions.detail.mockReturnValue(of(approved)); // APPROVED
+      const el = render();
+      expect(el.textContent).toContain('Cancelar comissão');
+      // Reject is only for an eligible commission.
+      expect(el.textContent).not.toContain('Rejeitar');
+    });
+
+    it('hides reject/cancel actions without the scopes', () => {
+      auth.canRejectCommission.mockReturnValue(false);
+      auth.canCancelCommission.mockReturnValue(false);
+      const el = render();
+      expect(el.textContent).not.toContain('Rejeitar');
+      expect(el.textContent).not.toContain('Cancelar comissão');
+    });
+
+    it('renders the resolution (who/reason/note) once rejected', () => {
+      commissions.detail.mockReturnValue(of(rejected));
+      const el = render();
+      expect(el.textContent).toContain('Rejeitada por');
+      expect(el.textContent).toContain('financeiro');
+      expect(el.textContent).toContain('Comissão duplicada');
+      expect(el.textContent).toContain('Lançada duas vezes');
+      // The timeline shows the Rejeitada entry; no action buttons on a terminal commission.
       expect(el.textContent).not.toContain('Aprovar comissão');
     });
 

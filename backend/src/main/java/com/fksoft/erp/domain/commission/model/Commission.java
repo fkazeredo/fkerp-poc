@@ -1,12 +1,17 @@
 package com.fksoft.erp.domain.commission.model;
 
+import com.fksoft.erp.domain.commission.exception.CommissionNotCancellableException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotEligibleException;
+import com.fksoft.erp.domain.commission.exception.CommissionNotRejectableException;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotNull;
@@ -125,6 +130,23 @@ public class Commission {
     @Column(name = "paid_at")
     private Instant paidAt;
 
+    // The void evidence kept when the commission is rejected or cancelled: the required resolution reason (a shared
+    // cadastro), an optional note, and who/when. One shared block — the terminal status (REJECTED/CANCELLED)
+    // distinguishes which action voided it. Null while still active. Carries no monetary data.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "resolution_reason_id")
+    private CommissionResolutionReason resolutionReason;
+
+    @Size(max = 2000)
+    @Column(name = "resolution_note")
+    private String resolutionNote;
+
+    @Column(name = "resolved_by")
+    private UUID resolvedBy;
+
+    @Column(name = "resolved_at")
+    private Instant resolvedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -218,6 +240,58 @@ public class Commission {
         this.approvedBy = approverId;
         this.approvalNotes = emptyToNull(notes);
         this.updatedBy = approverId;
+    }
+
+    /**
+     * Rejects an Eligible commission — the single fixed transition {@code ELIGIBLE → REJECTED} (terminal) — so an
+     * invalid commission is not approved or paid. Records the required resolution reason, an optional note, and
+     * who/when. Only an {@code ELIGIBLE} commission can be rejected; any other status is refused. Rejecting voids the
+     * commission only: it does NOT touch the source Order or Receivable and creates no refund, payroll, tax or
+     * accounting data.
+     *
+     * @param byUser id of the rejecting user
+     * @param reason the resolution reason (required)
+     * @param note an optional free-text note
+     * @param when the instant the commission was rejected
+     * @throws CommissionNotRejectableException if the commission is not {@code ELIGIBLE}
+     */
+    public void reject(UUID byUser, CommissionResolutionReason reason, String note, Instant when) {
+        if (status != CommissionStatus.ELIGIBLE) {
+            throw new CommissionNotRejectableException();
+        }
+        this.status = CommissionStatus.REJECTED;
+        resolve(byUser, reason, note, when);
+    }
+
+    /**
+     * Cancels a commission that has not been paid — the fixed transition {@code EXPECTED}/{@code APPROVED → CANCELLED}
+     * (terminal), allowed only while the commission is unpaid ({@code paidAt == null}). Records the required resolution
+     * reason, an optional note, and who/when. An {@code ELIGIBLE} (use reject), a {@code PAID}, or an already-terminal
+     * commission is refused. Cancelling voids the commission only: it does NOT touch the source Order or Receivable and
+     * creates no refund, payroll, tax or accounting data.
+     *
+     * @param byUser id of the cancelling user
+     * @param reason the resolution reason (required)
+     * @param note an optional free-text note
+     * @param when the instant the commission was cancelled
+     * @throws CommissionNotCancellableException if the commission is not an unpaid Expected/Approved commission
+     */
+    public void cancel(UUID byUser, CommissionResolutionReason reason, String note, Instant when) {
+        boolean cancellable =
+                (status == CommissionStatus.EXPECTED || status == CommissionStatus.APPROVED) && paidAt == null;
+        if (!cancellable) {
+            throw new CommissionNotCancellableException();
+        }
+        this.status = CommissionStatus.CANCELLED;
+        resolve(byUser, reason, note, when);
+    }
+
+    private void resolve(UUID byUser, CommissionResolutionReason reason, String note, Instant when) {
+        this.resolutionReason = reason;
+        this.resolutionNote = emptyToNull(note);
+        this.resolvedBy = byUser;
+        this.resolvedAt = when;
+        this.updatedBy = byUser;
     }
 
     private static String emptyToNull(String value) {

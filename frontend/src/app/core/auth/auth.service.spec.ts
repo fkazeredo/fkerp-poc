@@ -134,6 +134,17 @@ describe('AuthService', () => {
     expect(service.canApproveCommission()).toBe(false);
   });
 
+  it('grants rejecting/cancelling a commission only with their granular scopes', () => {
+    service.accessToken.set(jwt({ sub: 'u', scope: 'commission:reject commission:cancel' }));
+    expect(service.canRejectCommission()).toBe(true);
+    expect(service.canCancelCommission()).toBe(true);
+
+    // Approve alone grants neither reject nor cancel (separate authorities).
+    service.accessToken.set(jwt({ sub: 'u', scope: 'commission:approve' }));
+    expect(service.canRejectCommission()).toBe(false);
+    expect(service.canCancelCommission()).toBe(false);
+  });
+
   it('exposes no scopes and a null subject when there is no token', () => {
     expect(service.scopes()).toEqual([]);
     expect(service.userId()).toBeNull();
