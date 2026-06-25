@@ -2,7 +2,10 @@ package com.fksoft.erp.domain.commission.model;
 
 import com.fksoft.erp.domain.commission.exception.CommissionNotCancellableException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotEligibleException;
+import com.fksoft.erp.domain.commission.exception.CommissionNotPayableException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotRejectableException;
+import com.fksoft.erp.domain.commission.exception.CommissionPaymentAmountMismatchException;
+import com.fksoft.erp.domain.financial.model.PaymentMethod;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,6 +23,7 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -126,7 +130,28 @@ public class Commission {
     @Column(name = "approval_notes")
     private String approvalNotes;
 
-    // The payment instant, shown on the operational list. Null until the payment slice sets it.
+    // The manual-payment evidence (Approved -> Paid): the paid amount (= the commission amount, full only), the
+    // payment date, the payment method (the financial cadastro, reused), an optional note, who registered it and the
+    // instant. Null until paid. This is the commission payment record itself — no Accounts Payable / payroll / bank.
+    @PositiveOrZero
+    @Column(name = "paid_amount")
+    private BigDecimal paidAmount;
+
+    @Column(name = "payment_date")
+    private LocalDate paymentDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_method_id")
+    private PaymentMethod paymentMethod;
+
+    @Size(max = 2000)
+    @Column(name = "payment_note")
+    private String paymentNote;
+
+    @Column(name = "paid_by")
+    private UUID paidBy;
+
+    // The payment instant, shown on the operational list. Null until paid.
     @Column(name = "paid_at")
     private Instant paidAt;
 
@@ -284,6 +309,39 @@ public class Commission {
         }
         this.status = CommissionStatus.CANCELLED;
         resolve(byUser, reason, note, when);
+    }
+
+    /**
+     * Registers the manual payment of an Approved commission — the fixed transition {@code APPROVED → PAID} — recording
+     * the paid amount, the payment date, the payment method, an optional note and who/when. Commission payment is
+     * <b>full only</b>: the amount must equal the approved commission amount (partial commission payment is out of
+     * scope). Only an {@code APPROVED} commission can be paid. Registering the payment creates NO Accounts Payable,
+     * payroll, tax, accounting or bank-transfer data and triggers no bank integration.
+     *
+     * @param amount the paid amount (must equal the commission amount)
+     * @param date the payment date
+     * @param method the payment method (an active cadastro value)
+     * @param note an optional free-text note
+     * @param byUser id of the user registering the payment
+     * @param when the instant the payment was registered
+     * @throws CommissionNotPayableException if the commission is not {@code APPROVED}
+     * @throws CommissionPaymentAmountMismatchException if the amount does not equal the commission amount
+     */
+    public void pay(BigDecimal amount, LocalDate date, PaymentMethod method, String note, UUID byUser, Instant when) {
+        if (status != CommissionStatus.APPROVED) {
+            throw new CommissionNotPayableException();
+        }
+        if (amount == null || amount.compareTo(this.amount) != 0) {
+            throw new CommissionPaymentAmountMismatchException();
+        }
+        this.status = CommissionStatus.PAID;
+        this.paidAmount = this.amount;
+        this.paymentDate = date;
+        this.paymentMethod = method;
+        this.paymentNote = emptyToNull(note);
+        this.paidBy = byUser;
+        this.paidAt = when;
+        this.updatedBy = byUser;
     }
 
     private void resolve(UUID byUser, CommissionResolutionReason reason, String note, Instant when) {

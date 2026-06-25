@@ -4,6 +4,7 @@ import com.fksoft.erp.application.api.dto.ApproveCommissionRequest;
 import com.fksoft.erp.application.api.dto.CommissionListParams;
 import com.fksoft.erp.application.api.dto.CommissionResponse;
 import com.fksoft.erp.application.api.dto.GenerateCommissionRequest;
+import com.fksoft.erp.application.api.dto.RegisterCommissionPaymentRequest;
 import com.fksoft.erp.application.api.dto.ResolveCommissionRequest;
 import com.fksoft.erp.domain.commission.service.CommissionService;
 import com.fksoft.erp.domain.commission.service.data.CommissionDetail;
@@ -146,6 +147,27 @@ public class CommissionController {
     public CommissionDetail cancel(@PathVariable UUID id, @Valid @RequestBody ResolveCommissionRequest request) {
         return commissionService.cancel(
                 id, request.reasonId(), request.note(), userContext.currentUserId(), canSeeAllCommissions());
+    }
+
+    /**
+     * Registers the manual payment of an Approved Commission (it becomes Paid), closing the commission cycle. Requires
+     * {@code commission:pay}; the amount must equal the commission amount (full payment only). Creates no Accounts
+     * Payable, payroll, tax, accounting or bank data and triggers no bank integration.
+     *
+     * @param id the commission id
+     * @param request the payment method, amount, date and optional note
+     * @return the refreshed commission detail
+     */
+    @PostMapping("/{id}/pay")
+    public CommissionDetail pay(@PathVariable UUID id, @Valid @RequestBody RegisterCommissionPaymentRequest request) {
+        return commissionService.pay(
+                id,
+                request.amount(),
+                request.paymentDate(),
+                request.paymentMethodId(),
+                request.note(),
+                userContext.currentUserId(),
+                canSeeAllCommissions());
     }
 
     private boolean canSeeAllCommissions() {

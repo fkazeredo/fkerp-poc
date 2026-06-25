@@ -63,6 +63,21 @@ describe('CommissionService', () => {
     req.flush({ id: 'c1', status: 'CANCELLED' });
   });
 
+  it('posts the payment fields to register a commission payment', () => {
+    service
+      .pay('c1', { paymentMethodId: 'm1', amount: 25, paymentDate: '2026-06-20', note: 'OP 9' })
+      .subscribe();
+    const req = http.expectOne('/api/commissions/c1/pay');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({
+      paymentMethodId: 'm1',
+      amount: 25,
+      paymentDate: '2026-06-20',
+      note: 'OP 9',
+    });
+    req.flush({ id: 'c1', status: 'PAID' });
+  });
+
   it('lists commissions with paging and the chosen filters', () => {
     service
       .list({ status: ['ELIGIBLE', 'APPROVED'], beneficiary: 'u2', orderNumber: 7, amountMin: 10 }, 1, 20)

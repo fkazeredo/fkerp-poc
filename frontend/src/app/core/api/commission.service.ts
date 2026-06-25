@@ -43,6 +43,12 @@ export interface CommissionDetail {
   approvedByName: string | null;
   approvalNotes: string | null;
   paidAt: string | null;
+  /** The payment evidence (only when PAID): amount, date, method label, note, who. */
+  paidAmount: number | null;
+  paymentDate: string | null;
+  paymentMethod: string | null;
+  paymentNote: string | null;
+  paidByName: string | null;
   /** The reject/cancel evidence (only when REJECTED/CANCELLED): reason label, note, who, when. */
   resolutionReason: string | null;
   resolutionNote: string | null;
@@ -50,6 +56,14 @@ export interface CommissionDetail {
   resolvedAt: string | null;
   createdByName: string | null;
   createdAt: string;
+}
+
+/** Body to register a manual commission payment (Approved → Paid). */
+export interface RegisterCommissionPayment {
+  paymentMethodId: string;
+  amount: number;
+  paymentDate: string;
+  note: string | null;
 }
 
 /**
@@ -138,6 +152,15 @@ export class CommissionService {
    */
   cancel(id: string, reasonId: string, note: string | null): Observable<CommissionDetail> {
     return this.http.post<CommissionDetail>(`/api/commissions/${id}/cancel`, { reasonId, note });
+  }
+
+  /**
+   * Registers the manual payment of an Approved commission (Approved → Paid); returns the refreshed detail. The amount
+   * must equal the commission amount (full payment only); the backend rejects a non-approved commission (422), a
+   * mismatched amount (422) and an inactive payment method (422).
+   */
+  pay(id: string, body: RegisterCommissionPayment): Observable<CommissionDetail> {
+    return this.http.post<CommissionDetail>(`/api/commissions/${id}/pay`, body);
   }
 
   /** Operational, paginated Commission list filtered by the given criteria and the caller's visibility. */

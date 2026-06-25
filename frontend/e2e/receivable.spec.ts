@@ -74,7 +74,11 @@ test('the help overlay documents the register-payment shortcut on a receivable',
   await page.keyboard.press('?');
   const help = page.getByRole('dialog', { name: 'Atalhos do teclado' });
   await expect(help).toBeVisible();
-  await expect(help.getByText('Registrar pagamento')).toBeVisible();
+  await expect(help.getByText('No detalhe de uma conta a receber')).toBeVisible();
+  // The receivable shortcut line has "Registrar pagamento" but not the commission actions.
+  await expect(
+    help.locator('li', { hasText: 'Registrar pagamento', hasNotText: 'Aprovar' }),
+  ).toBeVisible();
 });
 
 test('finance opens the Recebimentos operational view from the Financeiro module', async ({ page }) => {

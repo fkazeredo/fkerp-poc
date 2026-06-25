@@ -195,6 +195,11 @@ export class AuthService {
   canCancelCommission(): boolean {
     return this.hasScope('commission:cancel');
   }
+
+  /** Whether the user may register a Commission payment (a commercial/financial manager — Commission Management). */
+  canPayCommission(): boolean {
+    return this.hasScope('commission:pay');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

@@ -33,6 +33,9 @@
           (onClick)="openCancel()"
         />
       }
+      @if (canPay()) {
+        <p-button label="Registrar pagamento" icon="pi pi-wallet" (onClick)="openPay()" />
+      }
       <p-button label="Voltar para comissões" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
     </div>
   </header>
@@ -56,6 +59,24 @@
             <dd>{{ c.approvalNotes }}</dd>
           }
         }
+        @if (c.paidAt) {
+          <dt>Paga por</dt>
+          <dd>{{ c.paidByName ?? '—' }} · {{ c.paidAt | date: 'short' }}</dd>
+          <dt>Pagamento</dt>
+          <dd>
+            {{ c.paidAmount | currency: 'BRL' }}
+            @if (c.paymentMethod) {
+              · {{ c.paymentMethod }}
+            }
+            @if (c.paymentDate) {
+              · {{ c.paymentDate | date: 'dd/MM/yyyy' }}
+            }
+          </dd>
+          @if (c.paymentNote) {
+            <dt>Observação do pagamento</dt>
+            <dd>{{ c.paymentNote }}</dd>
+          }
+        }
         @if (c.resolvedAt) {
           <dt>{{ c.status === 'CANCELLED' ? 'Cancelada por' : 'Rejeitada por' }}</dt>
           <dd>{{ c.resolvedByName ?? '—' }} · {{ c.resolvedAt | date: 'short' }}</dd>
@@ -71,6 +92,12 @@
         <p class="hint muted">
           Comissão elegível, pendente de aprovação. Aprovar deixa-a pronta para pagamento (nenhum pagamento é
           registrado na aprovação).
+        </p>
+      }
+      @if (c.status === 'APPROVED') {
+        <p class="hint muted">
+          Comissão aprovada, pronta para pagamento. Registrar o pagamento fecha o ciclo (sem folha, contas a pagar,
+          imposto, contabilidade ou banco).
         </p>
       }
       <p class="hint muted">
@@ -130,7 +157,7 @@
       }
     </ol>
     <p class="hint muted">
-      O pagamento aparece aqui na próxima etapa.
+      A linha do tempo registra a geração, a elegibilidade, a aprovação e o pagamento da comissão.
     </p>
   </p-card>
 
@@ -306,6 +333,83 @@
           type="submit"
           [loading]="cancelling()"
           [disabled]="cancelForm.invalid"
+        />
+      </div>
+    </form>
+  </p-dialog>
+
+  <p-dialog
+    header="Registrar pagamento da comissão"
+    [visible]="payDialogOpen()"
+    (visibleChange)="$event ? null : closePay()"
+    [modal]="true"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
+    [style]="{ width: '32rem' }"
+  >
+    <form class="resolve-form" [formGroup]="payForm" (ngSubmit)="submitPay()">
+      <p class="muted">
+        Registra o pagamento da comissão de <strong>{{ c.beneficiaryName ?? '—' }}</strong>. O valor deve ser igual
+        ao valor da comissão ({{ c.amount | currency: 'BRL' }}); não dispara banco, folha nem contabilidade.
+      </p>
+
+      <label class="field">
+        <span>Forma de pagamento *</span>
+        <p-select
+          formControlName="paymentMethodId"
+          [options]="paymentMethodOptions()"
+          optionLabel="label"
+          optionValue="id"
+          placeholder="Selecione a forma de pagamento"
+          appendTo="body"
+        />
+      </label>
+
+      <label class="field">
+        <span>Valor *</span>
+        <p-inputNumber formControlName="amount" mode="currency" currency="BRL" locale="pt-BR" [min]="0" />
+      </label>
+
+      <label class="field">
+        <span>Data do pagamento *</span>
+        <p-datepicker
+          formControlName="paymentDate"
+          dateFormat="dd/mm/yy"
+          [maxDate]="today"
+          [showIcon]="true"
+          appendTo="body"
+        />
+      </label>
+
+      <label class="field">
+        <span>Observação (opcional)</span>
+        <textarea
+          pTextarea
+          formControlName="note"
+          rows="2"
+          maxlength="2000"
+          placeholder="Referência / observação (opcional)"
+        ></textarea>
+      </label>
+
+      @if (payError()) {
+        <p-message severity="error" [text]="payError()!" />
+      }
+
+      <div class="dialog-actions">
+        <p-button
+          label="Cancelar"
+          severity="secondary"
+          [text]="true"
+          type="button"
+          (onClick)="closePay()"
+        />
+        <p-button
+          label="Registrar pagamento"
+          icon="pi pi-check"
+          type="submit"
+          [loading]="paying()"
+          [disabled]="payForm.invalid"
         />
       </div>
     </form>

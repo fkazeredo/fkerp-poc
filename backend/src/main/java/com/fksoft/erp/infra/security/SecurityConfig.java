@@ -192,6 +192,8 @@ public class SecurityConfig {
                         .hasAuthority("SCOPE_commission:reject")
                         .requestMatchers(HttpMethod.POST, "/api/commissions/*/cancel")
                         .hasAuthority("SCOPE_commission:cancel")
+                        .requestMatchers(HttpMethod.POST, "/api/commissions/*/pay")
+                        .hasAuthority("SCOPE_commission:pay")
                         .requestMatchers(HttpMethod.GET, "/api/commissions", "/api/commissions/**")
                         .hasAnyAuthority(COMMISSION_READ_SCOPES)
                         // Managing commission rules (write) is for commercial/financial managers; reading the rules
