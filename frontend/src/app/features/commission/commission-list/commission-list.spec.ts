@@ -183,6 +183,9 @@ describe('CommissionList', () => {
       expect(el.textContent).toContain('vendedor'); // beneficiary
       expect(el.textContent).toContain('Comissão padrão'); // rule
       expect(el.textContent).toContain('Prevista'); // EXPECTED status label
+      // The beneficiary cell links to the commission detail; the order code links to the order.
+      expect(el.querySelector('a[href="/comissoes/c1"]')).not.toBeNull();
+      expect(el.querySelector('a[href="/pedidos/ord1"]')).not.toBeNull();
     });
 
     it('renders an eligible commission as "Pendente de aprovação" with its receivable status', () => {

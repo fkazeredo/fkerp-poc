@@ -135,7 +135,14 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
                         "baseAmount",
                         "amount",
                         "status",
+                        "proposalReference",
+                        "opportunityReference",
+                        "receivableId",
+                        "receivableStatus",
                         "eligibleAt",
+                        "approvedAt",
+                        "paidAt",
+                        "createdByName",
                         "createdAt");
         assertThat(body.toLowerCase()).doesNotContain("payable").doesNotContain("payroll");
 
@@ -530,6 +537,67 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void rejectsAnUnauthenticatedList() throws Exception {
         mvc.perform(get("/api/commissions")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void theDetailShowsTheFullTraceableContract() throws Exception {
+        UUID order = closedOrder("FullDetail", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        // Make it eligible (pay the receivable) so the eligibility + receivable reference are populated.
+        fullyPayReceivableFor(login("financeiro", "financeiro123"), order);
+
+        String body = mvc.perform(get("/api/commissions/" + commissionId).header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                // Summary + calculation.
+                .andExpect(jsonPath("$.status").value("ELIGIBLE"))
+                .andExpect(jsonPath("$.amount").value(25.00))
+                .andExpect(jsonPath("$.rulePercentage").value(5.00))
+                .andExpect(jsonPath("$.ruleName").value("Comissão padrão"))
+                // Generated off the commercial total (no payment yet at generation); eligibility doesn't change it.
+                .andExpect(jsonPath("$.basisType").value("COMMERCIAL_AMOUNT"))
+                // Traceable commercial origin.
+                .andExpect(jsonPath("$.commercialOrderId").value(order.toString()))
+                .andExpect(jsonPath("$.orderNumber").isNumber())
+                .andExpect(jsonPath("$.proposalReference").value("Proposta FullDetail"))
+                .andExpect(jsonPath("$.opportunityReference").value("FullDetail"))
+                .andExpect(jsonPath("$.beneficiaryUserId").value(MANAGER.toString()))
+                .andExpect(jsonPath("$.createdByName").value("comercial"))
+                // Related Receivable reference + eligibility; approval/payment empty (later slices).
+                .andExpect(jsonPath("$.receivableStatus").value("PAID"))
+                .andExpect(jsonPath("$.receivableId").exists())
+                .andExpect(jsonPath("$.eligibleAt").value(org.hamcrest.Matchers.notNullValue()))
+                .andExpect(jsonPath("$.approvedAt").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.paidAt").value(org.hamcrest.Matchers.nullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        // Commission + commercial-origin data only — never payroll, tax, accounting or accounts-payable data.
+        assertThat(body.toLowerCase())
+                .doesNotContain("payroll")
+                .doesNotContain("payable")
+                .doesNotContain("accounting");
+    }
+
+    @Test
+    void aRepresentativeCanOpenTheirOwnCommissionButNotAnothers() throws Exception {
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        UUID ownOrder = closedOrder("RepOwn", "PENDING_BOOKING", REPRESENTATIVE, "500.00", "CONFIRMED");
+        UUID otherOrder = closedOrder("MgrOwn", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String ownCommission = generate(manager, ownOrder);
+        String otherCommission = generate(manager, otherOrder);
+
+        String rep = login("representante", "representante123");
+        // The representative (own tier) opens their own commission detail (200)...
+        mvc.perform(get("/api/commissions/" + ownCommission).header("Authorization", "Bearer " + rep))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.beneficiaryUserId").value(REPRESENTATIVE.toString()));
+        // ...but not another beneficiary's (403).
+        mvc.perform(get("/api/commissions/" + otherCommission).header("Authorization", "Bearer " + rep))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("commission.access-denied"));
     }
 
     // Creates an active, in-window COMMERCIAL_RESPONSIBLE rule (so it matches any order's commercial responsible).

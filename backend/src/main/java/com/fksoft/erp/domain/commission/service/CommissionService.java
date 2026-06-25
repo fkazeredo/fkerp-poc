@@ -189,6 +189,9 @@ public class CommissionService {
                 receivableStatuses.get(c.commercialOrderId())));
     }
 
+    // Assembles the detail read model: resolves the source order number, the beneficiary / rule / creator names, the
+    // source Proposal and Opportunity references and the source order's active Receivable (the related-receivable
+    // reference). Keeps the commission's commercial origin traceable; carries no payroll/tax/accounting data.
     private CommissionDetail toDetail(Commission commission) {
         long orderNumber = orders.findById(commission.commercialOrderId())
                 .map(CommercialOrder::number)
@@ -198,7 +201,26 @@ public class CommissionService {
                 .orElse(null);
         String ruleName =
                 rules.findById(commission.ruleId()).map(CommissionRule::name).orElse(null);
-        return CommissionDetail.from(commission, orderNumber, beneficiaryName, ruleName);
+        String proposalReference =
+                proposals.findById(commission.proposalId()).map(Proposal::title).orElse(null);
+        String opportunityReference = opportunities
+                .findById(commission.opportunityId())
+                .map(Opportunity::name)
+                .orElse(null);
+        String createdByName =
+                users.findById(commission.createdBy()).map(User::username).orElse(null);
+        Receivable receivable = receivables
+                .findFirstByCommercialOrderIdAndStatusIn(commission.commercialOrderId(), ReceivableStatus.active())
+                .orElse(null);
+        CommissionDetail.Refs refs = new CommissionDetail.Refs(
+                beneficiaryName,
+                ruleName,
+                proposalReference,
+                opportunityReference,
+                receivable == null ? null : receivable.id(),
+                receivable == null ? null : receivable.status().name(),
+                createdByName);
+        return CommissionDetail.from(commission, orderNumber, refs);
     }
 
     private Map<UUID, Long> resolveOrderNumbers(Stream<UUID> orderIds) {

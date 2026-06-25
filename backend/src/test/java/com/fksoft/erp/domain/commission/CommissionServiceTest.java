@@ -30,6 +30,7 @@ import com.fksoft.erp.domain.commission.repository.CommissionRepository;
 import com.fksoft.erp.domain.commission.repository.CommissionRuleRepository;
 import com.fksoft.erp.domain.commission.service.CommissionService;
 import com.fksoft.erp.domain.commission.service.data.CommissionSearchCriteria;
+import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.financial.model.Receivable;
 import com.fksoft.erp.domain.financial.model.ReceivableStatus;
 import com.fksoft.erp.domain.financial.repository.ReceivableRepository;
@@ -37,6 +38,7 @@ import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
+import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
 import java.math.BigDecimal;
@@ -313,24 +315,45 @@ class CommissionServiceTest {
     }
 
     @Test
-    void detailReturnsTheReadModelWhenVisible() {
+    void detailReturnsTheEnrichedReadModelWhenVisible() {
         Commission commission = generatedCommission();
         CommercialOrder detailOrder = closedOrder();
         when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
         when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
         when(orders.findById(commission.commercialOrderId())).thenReturn(Optional.of(detailOrder));
-        User user = mock(User.class);
-        when(user.username()).thenReturn("vendedor");
-        when(users.findById(commission.beneficiaryUserId())).thenReturn(Optional.of(user));
+        User beneficiaryUser = mock(User.class);
+        when(beneficiaryUser.username()).thenReturn("vendedor");
+        when(users.findById(beneficiary)).thenReturn(Optional.of(beneficiaryUser));
+        User creator = mock(User.class);
+        when(creator.username()).thenReturn("comercial");
+        when(users.findById(userId)).thenReturn(Optional.of(creator)); // the generator (createdBy)
         when(rules.findById(commission.ruleId())).thenReturn(Optional.empty());
+        Proposal proposal = mock(Proposal.class);
+        when(proposal.title()).thenReturn("Proposta Aurora");
+        when(proposals.findById(commission.proposalId())).thenReturn(Optional.of(proposal));
+        Opportunity opportunity = mock(Opportunity.class);
+        when(opportunity.name()).thenReturn("Aurora");
+        when(opportunities.findById(commission.opportunityId())).thenReturn(Optional.of(opportunity));
+        Receivable receivable = mock(Receivable.class);
+        when(receivable.id()).thenReturn(UUID.randomUUID());
+        when(receivable.status()).thenReturn(ReceivableStatus.PAID);
+        when(receivables.findFirstByCommercialOrderIdAndStatusIn(eq(orderId), any()))
+                .thenReturn(Optional.of(receivable));
 
         var detail = service.detail(commission.id(), userId, true);
 
         assertThat(detail.id()).isEqualTo(commission.id());
         assertThat(detail.orderNumber()).isEqualTo(7L);
         assertThat(detail.beneficiaryName()).isEqualTo("vendedor");
+        assertThat(detail.createdByName()).isEqualTo("comercial");
+        assertThat(detail.proposalReference()).isEqualTo("Proposta Aurora");
+        assertThat(detail.opportunityReference()).isEqualTo("Aurora");
+        assertThat(detail.receivableStatus()).isEqualTo("PAID");
         assertThat(detail.status()).isEqualTo("EXPECTED");
         assertThat(detail.amount()).isEqualByComparingTo("50.00");
+        // The forward-looking lifecycle stamps are null until their slices populate them.
+        assertThat(detail.approvedAt()).isNull();
+        assertThat(detail.paidAt()).isNull();
     }
 
     @Test
