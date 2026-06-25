@@ -11,6 +11,7 @@ describe('NavigationService', () => {
     canSeeOrders: vi.fn(),
     canSeeBookings: vi.fn(),
     canSeeReceivables: vi.fn(),
+    canManageCommissionRules: vi.fn(),
   };
 
   function build(): NavigationService {
@@ -31,6 +32,7 @@ describe('NavigationService', () => {
     auth.canSeeOrders.mockReset().mockReturnValue(false);
     auth.canSeeBookings.mockReset().mockReturnValue(false);
     auth.canSeeReceivables.mockReset().mockReturnValue(false);
+    auth.canManageCommissionRules.mockReset().mockReturnValue(false);
   });
 
   it('shows only the modules the user can access', () => {
@@ -109,6 +111,16 @@ describe('NavigationService', () => {
     auth.canSeeLeads.mockReturnValue(true);
     acomp = build().module('acompanhamento')!;
     expect(acomp.items.map((i) => i.link)).toEqual(['/pendencias', '/indicadores']);
+  });
+
+  it('shows the "Regras de comissão" cadastro only to a commission-rule manager', () => {
+    // Default: no manage scope → the commission entry is absent (the other cadastros remain).
+    let cadastros = build().module('cadastros')!;
+    expect(cadastros.items.map((i) => i.link)).not.toContain('/cadastros/regras-comissao');
+
+    auth.canManageCommissionRules.mockReturnValue(true);
+    cadastros = build().module('cadastros')!;
+    expect(cadastros.items.map((i) => i.link)).toContain('/cadastros/regras-comissao');
   });
 
   it('reaches the Indicadores hub for a finance user (receivables read but no funnel scope)', () => {
