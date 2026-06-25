@@ -27,7 +27,9 @@ import com.fksoft.erp.domain.commission.model.CommissionTargetType;
 import com.fksoft.erp.domain.commission.repository.CommissionRepository;
 import com.fksoft.erp.domain.commission.repository.CommissionRuleRepository;
 import com.fksoft.erp.domain.commission.service.CommissionService;
+import com.fksoft.erp.domain.commission.service.data.CommissionDetail;
 import com.fksoft.erp.domain.financial.model.Receivable;
+import com.fksoft.erp.domain.financial.model.ReceivableStatus;
 import com.fksoft.erp.domain.financial.repository.ReceivableRepository;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
@@ -320,5 +322,72 @@ class CommissionServiceTest {
         UUID id = UUID.randomUUID();
         when(commissions.findById(id)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.detail(id)).isInstanceOf(CommissionNotFoundException.class);
+    }
+
+    @Test
+    void generatesAnEligibleCommissionWhenTheReceivableIsAlreadyFullyPaid() {
+        CommercialOrder order = closedOrder();
+        visibleOrder(order);
+        when(rules.findByActiveTrueOrderByCreatedAtDesc())
+                .thenReturn(List.of(rule(CommissionTargetType.COMMERCIAL_RESPONSIBLE, null, START, null)));
+        UUID receivableId = UUID.randomUUID();
+        Receivable receivable = mock(Receivable.class);
+        when(receivable.amountPaid()).thenReturn(new BigDecimal("1000.00"));
+        when(receivable.status()).thenReturn(ReceivableStatus.PAID);
+        when(receivable.id()).thenReturn(receivableId);
+        when(receivables.findFirstByCommercialOrderIdAndStatusIn(eq(orderId), any()))
+                .thenReturn(Optional.of(receivable));
+
+        service.generate(orderId, userId, true, false);
+
+        ArgumentCaptor<Commission> saved = ArgumentCaptor.forClass(Commission.class);
+        verify(commissions).save(saved.capture());
+        assertThat(saved.getValue().status()).isEqualTo(CommissionStatus.ELIGIBLE);
+        assertThat(saved.getValue().eligibleAt()).isNotNull();
+        assertThat(saved.getValue().receivableId()).isEqualTo(receivableId);
+    }
+
+    @Test
+    void staysExpectedWhenTheReceivableIsOnlyPartiallyPaidAtGeneration() {
+        CommercialOrder order = closedOrder();
+        visibleOrder(order);
+        when(rules.findByActiveTrueOrderByCreatedAtDesc())
+                .thenReturn(List.of(rule(CommissionTargetType.COMMERCIAL_RESPONSIBLE, null, START, null)));
+        Receivable receivable = mock(Receivable.class);
+        when(receivable.amountPaid()).thenReturn(new BigDecimal("300.00"));
+        when(receivable.status()).thenReturn(ReceivableStatus.PARTIALLY_PAID);
+        when(receivables.findFirstByCommercialOrderIdAndStatusIn(eq(orderId), any()))
+                .thenReturn(Optional.of(receivable));
+
+        service.generate(orderId, userId, true, false);
+
+        ArgumentCaptor<Commission> saved = ArgumentCaptor.forClass(Commission.class);
+        verify(commissions).save(saved.capture());
+        assertThat(saved.getValue().status()).isEqualTo(CommissionStatus.EXPECTED);
+        assertThat(saved.getValue().eligibleAt()).isNull();
+    }
+
+    @Test
+    void byOrderReturnsTheActiveCommission() {
+        Commission commission = generatedCommission();
+        CommercialOrder detailOrder = closedOrder();
+        when(commissions.findFirstByCommercialOrderIdAndStatusIn(eq(orderId), any()))
+                .thenReturn(Optional.of(commission));
+        when(orders.findById(orderId)).thenReturn(Optional.of(detailOrder));
+        when(users.findById(any())).thenReturn(Optional.empty());
+        when(rules.findById(any())).thenReturn(Optional.empty());
+
+        List<CommissionDetail> result = service.byOrder(orderId);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).id()).isEqualTo(commission.id());
+        assertThat(result.get(0).status()).isEqualTo("EXPECTED");
+    }
+
+    @Test
+    void byOrderReturnsEmptyWhenThereIsNoCommission() {
+        when(commissions.findFirstByCommercialOrderIdAndStatusIn(eq(orderId), any()))
+                .thenReturn(Optional.empty());
+        assertThat(service.byOrder(orderId)).isEmpty();
     }
 }

@@ -7,6 +7,7 @@ import com.fksoft.erp.domain.commission.service.data.CommissionDetail;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -49,7 +51,19 @@ public class CommissionController {
     }
 
     /**
-     * Full detail of an Expected Commission.
+     * The active Commission of a Commercial Order (0 or 1) — feeds the Order detail's "this order's commission" view,
+     * showing whether it is still a forecast (Expected) or eligible for approval (Eligible).
+     *
+     * @param commercialOrderId the source order id
+     * @return the order's active commission detail as a 0-or-1 list
+     */
+    @GetMapping
+    public List<CommissionDetail> byOrder(@RequestParam UUID commercialOrderId) {
+        return commissionService.byOrder(commercialOrderId);
+    }
+
+    /**
+     * Full detail of a Commission.
      *
      * @param id the commission id
      * @return the commission detail
