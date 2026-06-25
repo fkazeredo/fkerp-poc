@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 import { NEVER, of, throwError } from 'rxjs';
 import { OrderDetailPage } from './order-detail';
 import { CommercialOrderDetail, OrderService } from '../../../core/api/order.service';
+import { CommissionDetail, CommissionService } from '../../../core/api/commission.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
@@ -15,8 +17,29 @@ import { AuthService } from '../../../core/auth/auth.service';
 
 describe('OrderDetailPage', () => {
   const orders = { detail: vi.fn() };
+  const commissions = { generate: vi.fn(), detail: vi.fn() };
   const router = { navigateByUrl: vi.fn(), navigate: vi.fn() };
-  const auth = { canCreateReceivable: vi.fn() };
+  const auth = { canCreateReceivable: vi.fn(), canCreateCommission: vi.fn() };
+  const messages = { add: vi.fn() };
+
+  const commissionSample: CommissionDetail = {
+    id: 'c1',
+    commercialOrderId: 'ord1',
+    orderNumber: 7,
+    proposalId: 'p1',
+    opportunityId: 'o1',
+    leadId: 'l1',
+    beneficiaryUserId: 'u1',
+    beneficiaryName: 'comercial',
+    ruleId: 'r1',
+    ruleName: 'Comissão padrão',
+    rulePercentage: 5,
+    basisType: 'COMMERCIAL_AMOUNT',
+    baseAmount: 3000,
+    amount: 150,
+    status: 'EXPECTED',
+    createdAt: '2026-06-25T10:00:00Z',
+  };
 
   const sample: CommercialOrderDetail = {
     id: 'ord1',
@@ -74,8 +97,10 @@ describe('OrderDetailPage', () => {
       providers: [
         providePrimeNG(),
         { provide: OrderService, useValue: orders },
+        { provide: CommissionService, useValue: commissions },
         { provide: Router, useValue: router },
         { provide: AuthService, useValue: auth },
+        { provide: MessageService, useValue: messages },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'ord1' } } } },
       ],
     });
@@ -96,10 +121,16 @@ describe('OrderDetailPage', () => {
 
   beforeEach(() => {
     orders.detail.mockReset();
+    commissions.generate.mockReset();
+    commissions.detail.mockReset();
     router.navigateByUrl.mockReset();
     router.navigate.mockReset();
+    messages.add.mockReset();
     auth.canCreateReceivable.mockReset().mockReturnValue(false);
+    auth.canCreateCommission.mockReset().mockReturnValue(false);
     orders.detail.mockReturnValue(of(sample));
+    commissions.generate.mockReturnValue(of({ id: 'c1' }));
+    commissions.detail.mockReturnValue(of(commissionSample));
   });
 
   it('loads the order on init', () => {
@@ -243,6 +274,106 @@ describe('OrderDetailPage', () => {
       auth.canCreateReceivable.mockReturnValue(true);
       orders.detail.mockReturnValue(of({ ...sample, bookingStatus: 'CONFIRMED' } satisfies CommercialOrderDetail));
       expect(render().textContent).toContain('Gerar conta a receber');
+    });
+  });
+
+  describe('generate-commission', () => {
+    it('offers the commission action only for a non-cancelled order when the user may generate one', () => {
+      auth.canCreateCommission.mockReturnValue(true);
+      const comp = build();
+      comp.ngOnInit();
+      expect(comp['canGenerateCommission']()).toBe(true);
+
+      // No create scope → no offer.
+      auth.canCreateCommission.mockReturnValue(false);
+      expect(comp['canGenerateCommission']()).toBe(false);
+    });
+
+    it('does not offer the action for a cancelled order', () => {
+      auth.canCreateCommission.mockReturnValue(true);
+      orders.detail.mockReturnValue(of({ ...sample, status: 'CANCELLED' } satisfies CommercialOrderDetail));
+      const comp = build();
+      comp.ngOnInit();
+      expect(comp['canGenerateCommission']()).toBe(false);
+    });
+
+    it('generates the commission and shows its summary inline', () => {
+      auth.canCreateCommission.mockReturnValue(true);
+      const comp = build();
+      comp.ngOnInit();
+      comp['generateCommission']();
+      expect(commissions.generate).toHaveBeenCalledWith('ord1');
+      expect(commissions.detail).toHaveBeenCalledWith('c1');
+      expect(comp['generatedCommission']()).toEqual(commissionSample);
+      expect(comp['generating']()).toBe(false);
+      expect(messages.add).toHaveBeenCalledWith(
+        expect.objectContaining({ severity: 'success' }),
+      );
+    });
+
+    it('shows the already-generated message on 409', () => {
+      auth.canCreateCommission.mockReturnValue(true);
+      commissions.generate.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409 })));
+      const comp = build();
+      comp.ngOnInit();
+      comp['generateCommission']();
+      expect(comp['generatedCommission']()).toBeNull();
+      expect(messages.add).toHaveBeenCalledWith(
+        expect.objectContaining({ severity: 'error', summary: 'Comissão já gerada para este pedido.' }),
+      );
+    });
+
+    it('surfaces the backend business-rule message on 422', () => {
+      auth.canCreateCommission.mockReturnValue(true);
+      commissions.generate.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 422,
+              error: { code: 'commission.no-applicable-rule', message: 'Nenhuma regra de comissão ativa se aplica' },
+            }),
+        ),
+      );
+      const comp = build();
+      comp.ngOnInit();
+      comp['generateCommission']();
+      expect(messages.add).toHaveBeenCalledWith(
+        expect.objectContaining({ severity: 'error', summary: 'Nenhuma regra de comissão ativa se aplica' }),
+      );
+    });
+
+    it('does not generate twice while a request is in flight', () => {
+      auth.canCreateCommission.mockReturnValue(true);
+      commissions.generate.mockReturnValue(NEVER);
+      const comp = build();
+      comp.ngOnInit();
+      comp['generateCommission']();
+      comp['generateCommission']();
+      expect(commissions.generate).toHaveBeenCalledTimes(1);
+    });
+
+    it('the "c" shortcut triggers generation when allowed', () => {
+      auth.canCreateCommission.mockReturnValue(true);
+      const comp = build();
+      comp.ngOnInit();
+      comp['onShortcut'](new KeyboardEvent('keydown', { key: 'c' }));
+      expect(commissions.generate).toHaveBeenCalledWith('ord1');
+    });
+
+    it('renders the "Gerar comissão" button and the generated result (DOM)', () => {
+      auth.canCreateCommission.mockReturnValue(true);
+      configure();
+      const fixture = TestBed.createComponent(OrderDetailPage);
+      fixture.componentInstance.ngOnInit();
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Gerar comissão');
+
+      (fixture.componentInstance as unknown as { generateCommission: () => void }).generateCommission();
+      fixture.detectChanges();
+      const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+      expect(text).toContain('Comissão prevista gerada');
+      expect(text).toContain('Comissão padrão');
+      expect(text).toContain('Valor comercial (previsão)');
     });
   });
 

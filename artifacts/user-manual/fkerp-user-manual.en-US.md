@@ -1094,6 +1094,27 @@ that type); a **start** (required) and optional **end** date (the end cannot be 
 **notes**. Each rule can be **activated/deactivated** — only **active** rules are used for new commission
 calculation. Commission calculation, approval and payment arrive in the next Sprint-6 steps.
 
+### 11.6 Generating the expected commission (Commission Management)
+
+From a **closed commercial order**, the **commercial manager** or **Finance** can **generate the expected
+commission** — so the future commission is **tracked from the start**. On the **order detail**, the **Gerar comissão**
+button (shortcut <kbd>c</kbd>) creates the forecast and shows its summary right there: the **beneficiary** (the order's
+commercial responsible), the **applied rule** and its **percentage**, the **calculation basis** and the **commission
+amount**. The commission starts as **Expected** and is **not payable** yet.
+
+- The system uses an **active commission rule** that applies to the order's responsible (preferring a rule specific to
+  that person; otherwise a **Commercial responsible** rule). If no active rule applies, generation is refused with a
+  clear message.
+- The **amount** is the **rule's percentage** of a base: the **amount already received** when the order already has
+  receipts (its receivable has a registered payment), or the **order's commercial amount** when nothing was received
+  yet — in which case the commission is a **forecast**.
+- The order must be **closed** (not cancelled), have a **commercial responsible** and a positive **amount**; each order
+  has **at most one active commission** (a message warns if one already exists).
+
+Generating the commission **only reads** the order and the receivable — it **does not change** them — and creates **no**
+commission payment, accounts payable, payroll, tax or accounting data. Commission **eligibility** (once the receivable
+is paid), **approval**, **payment** and **indicators** arrive in the next Sprint-6 steps.
+
 ---
 
 ## 13. Messages and validation

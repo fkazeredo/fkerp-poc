@@ -176,8 +176,15 @@ public class SecurityConfig {
                         .hasAuthority("SCOPE_financial:payment:reverse")
                         .requestMatchers(HttpMethod.GET, "/api/receivables", "/api/receivables/**")
                         .hasAnyAuthority(FINANCIAL_READ_SCOPES)
-                        // Commission Management — managing commission rules (Sprint 6) is for commercial/financial
-                        // managers; both reads and writes require commission:rule:manage.
+                        // Commission Management — generating an Expected Commission (Sprint 6) is for commercial/
+                        // financial managers (commission:create); reading a commission requires commission:read. These
+                        // /api/commissions paths are disjoint from the /api/commission/rules cadastro paths below.
+                        .requestMatchers(HttpMethod.POST, "/api/commissions")
+                        .hasAuthority("SCOPE_commission:create")
+                        .requestMatchers(HttpMethod.GET, "/api/commissions", "/api/commissions/**")
+                        .hasAuthority("SCOPE_commission:read")
+                        // Managing commission rules is for commercial/financial managers; both reads and writes
+                        // require commission:rule:manage.
                         .requestMatchers("/api/commission/rules", "/api/commission/rules/**")
                         .hasAuthority("SCOPE_commission:rule:manage")
                         // The responsible-people lookup is shared: any CRM reader, plus a commission-rule manager

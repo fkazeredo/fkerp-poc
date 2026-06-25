@@ -18,6 +18,27 @@
   font-size: 1.4rem;
 }
 
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.commission-result .grand {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.commission-result .hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+}
+
+.muted {
+  color: var(--p-text-muted-color, #6b7280);
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
