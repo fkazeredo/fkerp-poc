@@ -122,7 +122,13 @@ export class NavigationService {
       );
     }
 
-    const cadastros: NavLink[] = [
+    const cadastros: NavLink[] = [];
+    if (this.auth.canManageCommissionRules()) {
+      cadastros.push(
+        link('Regras de comissão', 'pi pi-percentage', '/cadastros/regras-comissao', false, 'Como a comissão é calculada sobre o recebido.', 'ref'),
+      );
+    }
+    cadastros.push(
       link('Origens', 'pi pi-database', '/cadastros/origens', false, 'De onde vêm os leads.', 'ref'),
       link('Motivos de perda', 'pi pi-database', '/cadastros/motivos-perda', false, 'Por que um lead é perdido.', 'ref'),
       link('Tipos de interação', 'pi pi-database', '/cadastros/tipos-interacao', false, 'Tipos de contato registrados.', 'ref'),
@@ -138,7 +144,7 @@ export class NavigationService {
       link('Resultados de tentativa', 'pi pi-database', '/cadastros/resultados-tentativa', false, 'Resultados de uma tentativa de reserva.', 'ref'),
       link('Motivos de falha', 'pi pi-database', '/cadastros/motivos-falha', false, 'Por que um item de reserva falhou.', 'ref'),
       link('Formas de pagamento', 'pi pi-database', '/cadastros/formas-pagamento', false, 'Como os pagamentos são recebidos.', 'ref'),
-    ];
+    );
 
     return [
       module('comercial', 'Comercial', 'pi pi-briefcase', 'leads', '/comercial', 'O funil comercial: leads, oportunidades, propostas e pedidos.', comercial, comercialActions),

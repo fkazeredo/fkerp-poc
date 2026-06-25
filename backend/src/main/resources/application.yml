@@ -19,7 +19,10 @@ spring:
 
 app:
   name: FKERP
-  version: 0.60.2
+  version: 0.61.0
+  commission:
+    # Safe business limit for a Commission Rule percentage; above it requires the explicit allow-above-limit flag.
+    safe-max-percentage: 50
   security:
     jwt:
       secret: ${APP_JWT_SECRET:dev-insecure-secret-change-me-please-0123456789-abcdef}

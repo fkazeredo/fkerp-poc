@@ -1046,6 +1046,7 @@ They are all managed the same way, organised by area:
 | **Proposals** | Rejection reasons · Customer-rejection reasons · Sending channels · Item types |
 | **Bookings** | Attempt types · Attempt results · Failure reasons |
 | **Finance** | Payment methods |
+| **Commission** | Commission rules |
 
 When you rename an option, the new label appears on the operational screens immediately; when you
 **deactivate** an option, it is no longer offered on new records but stays visible on the older records that
@@ -1076,6 +1077,22 @@ it is **Active** or **Inactive**. By default only active records are shown; use
 - Click the **ban** icon to **deactivate** a record (soft delete). Inactive values stay
   for historical accuracy but **cannot be used on new leads**.
 - For an inactive record, click the **check** icon to **reactivate** it.
+
+### 11.5 Commission rules (Commission Management)
+
+The **Commission rule** is a **special** reference screen (richer than the others), under **Cadastros → Regras de
+comissão**, available to the **commercial manager** or **Finance**. It defines **how commission is calculated** — in
+this release, a **percentage of the received amount** — so the system can compute commissions consistently in the
+next steps. **Creating a rule is configuration only**: it creates no commission, payment, payroll, payable, tax or
+accounting data.
+
+When creating or editing a rule, provide: a **name** (required); a **percentage** (required — greater than zero, at
+most 100; above a configured **safe limit**, default 50%, the system **blocks** saving unless you check **"allow
+above the safe limit"**, a conscious confirmation against typos); the **target** (Seller, Sales representative or
+Commercial responsible); an optional **specific responsible** (when the rule applies to one person; blank = all of
+that type); a **start** (required) and optional **end** date (the end cannot be before the start); and optional
+**notes**. Each rule can be **activated/deactivated** — only **active** rules are used for new commission
+calculation. Commission calculation, approval and payment arrive in the next Sprint-6 steps.
 
 ---
 
