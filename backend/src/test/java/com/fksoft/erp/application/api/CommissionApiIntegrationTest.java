@@ -141,6 +141,8 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
                         "receivableStatus",
                         "eligibleAt",
                         "approvedAt",
+                        "approvedByName",
+                        "approvalNotes",
                         "paidAt",
                         "createdByName",
                         "createdAt");
@@ -598,6 +600,127 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(get("/api/commissions/" + otherCommission).header("Authorization", "Bearer " + rep))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("commission.access-denied"));
+    }
+
+    @Test
+    void financeApprovesAnEligibleCommissionAndRecordsTheApprover() throws Exception {
+        UUID order = closedOrder("ApproveOk", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        String fin = login("financeiro", "financeiro123");
+        fullyPayReceivableFor(fin, order); // ELIGIBLE
+
+        // Finance (not the beneficiary) approves, with notes → APPROVED + the approver + notes are recorded.
+        mvc.perform(post("/api/commissions/" + commissionId + "/approve")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"notes\":\"Conferido\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"))
+                .andExpect(jsonPath("$.approvedByName").value("financeiro"))
+                .andExpect(jsonPath("$.approvedAt").value(org.hamcrest.Matchers.notNullValue()))
+                .andExpect(jsonPath("$.approvalNotes").value("Conferido"))
+                // Approval registers no payment: paidAt stays null.
+                .andExpect(jsonPath("$.paidAt").value(org.hamcrest.Matchers.nullValue()));
+
+        // The detail persists the approval; approving created no Commission Payment table/row.
+        mvc.perform(get("/api/commissions/" + commissionId).header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"))
+                .andExpect(jsonPath("$.approvedByName").value("financeiro"))
+                .andExpect(jsonPath("$.approvalNotes").value("Conferido"));
+        assertThat(jdbc.queryForObject(
+                        "SELECT count(*) FROM information_schema.tables WHERE table_name = 'commission_payments'",
+                        Integer.class))
+                .isZero();
+    }
+
+    @Test
+    void approvesWithAnEmptyBodyAndKeepsTheNotesNull() throws Exception {
+        UUID order = closedOrder("ApproveNoBody", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        String fin = login("financeiro", "financeiro123");
+        fullyPayReceivableFor(fin, order); // ELIGIBLE
+
+        // An empty body (no notes) is tolerated.
+        mvc.perform(post("/api/commissions/" + commissionId + "/approve").header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"))
+                .andExpect(jsonPath("$.approvalNotes").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void theBeneficiaryCannotApproveTheirOwnCommission() throws Exception {
+        UUID order = closedOrder("SelfApprove", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        fullyPayReceivableFor(login("financeiro", "financeiro123"), order); // ELIGIBLE
+
+        // The manager (001) holds commission:approve AND is the beneficiary → segregation of duties blocks it (403).
+        mvc.perform(post("/api/commissions/" + commissionId + "/approve")
+                        .header("Authorization", "Bearer " + manager)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"notes\":\"Aprovo a minha\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("commission.self-approval-not-allowed"));
+
+        // It stays ELIGIBLE (unchanged).
+        mvc.perform(get("/api/commissions/" + commissionId).header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ELIGIBLE"));
+    }
+
+    @Test
+    void cannotApproveAnExpectedCommission() throws Exception {
+        UUID order = closedOrder("ApproveExpected", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order); // EXPECTED (receivable not paid)
+
+        mvc.perform(post("/api/commissions/" + commissionId + "/approve")
+                        .header("Authorization", "Bearer " + login("financeiro", "financeiro123")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("commission.not-eligible"));
+    }
+
+    @Test
+    void cannotApproveAnAlreadyApprovedCommission() throws Exception {
+        UUID order = closedOrder("ApproveTwice", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        String fin = login("financeiro", "financeiro123");
+        fullyPayReceivableFor(fin, order); // ELIGIBLE
+        mvc.perform(post("/api/commissions/" + commissionId + "/approve").header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk());
+
+        // A second approval on the now-APPROVED commission is rejected.
+        mvc.perform(post("/api/commissions/" + commissionId + "/approve").header("Authorization", "Bearer " + fin))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("commission.not-eligible"));
+    }
+
+    @Test
+    void aConsultationUserWithoutTheApproveScopeIsForbidden() throws Exception {
+        UUID order = closedOrder("ApproveNoScope", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        fullyPayReceivableFor(login("financeiro", "financeiro123"), order); // ELIGIBLE
+
+        // The Board/Director (004) holds commission:read:all (consultation) but not commission:approve → 403.
+        mvc.perform(post("/api/commissions/" + commissionId + "/approve")
+                        .header("Authorization", "Bearer " + login("diretor", "diretor123")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rejectsAnUnauthenticatedApproval() throws Exception {
+        mvc.perform(post("/api/commissions/" + UUID.randomUUID() + "/approve")).andExpect(status().isUnauthorized());
     }
 
     // Creates an active, in-window COMMERCIAL_RESPONSIBLE rule (so it matches any order's commercial responsible).

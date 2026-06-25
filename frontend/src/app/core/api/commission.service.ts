@@ -40,6 +40,8 @@ export interface CommissionDetail {
   receivableStatus: ReceivableStatusCode | null;
   eligibleAt: string | null;
   approvedAt: string | null;
+  approvedByName: string | null;
+  approvalNotes: string | null;
   paidAt: string | null;
   createdByName: string | null;
   createdAt: string;
@@ -106,6 +108,15 @@ export class CommissionService {
 
   detail(id: string): Observable<CommissionDetail> {
     return this.http.get<CommissionDetail>(`/api/commissions/${id}`);
+  }
+
+  /**
+   * Approves an Eligible Commission (it becomes ready for payment); returns the refreshed detail. The optional notes
+   * are recorded with the approval. The backend rejects approving a non-eligible commission (422) and a beneficiary
+   * approving their own (403).
+   */
+  approve(id: string, notes: string | null): Observable<CommissionDetail> {
+    return this.http.post<CommissionDetail>(`/api/commissions/${id}/approve`, { notes });
   }
 
   /** Operational, paginated Commission list filtered by the given criteria and the caller's visibility. */

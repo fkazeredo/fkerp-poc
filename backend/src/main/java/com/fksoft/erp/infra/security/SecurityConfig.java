@@ -186,6 +186,8 @@ public class SecurityConfig {
                         // /api/commissions paths are disjoint from the /api/commission/rules cadastro paths below.
                         .requestMatchers(HttpMethod.POST, "/api/commissions")
                         .hasAuthority("SCOPE_commission:create")
+                        .requestMatchers(HttpMethod.POST, "/api/commissions/*/approve")
+                        .hasAuthority("SCOPE_commission:approve")
                         .requestMatchers(HttpMethod.GET, "/api/commissions", "/api/commissions/**")
                         .hasAnyAuthority(COMMISSION_READ_SCOPES)
                         // Managing commission rules (write) is for commercial/financial managers; reading the rules

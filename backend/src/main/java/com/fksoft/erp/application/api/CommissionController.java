@@ -1,5 +1,6 @@
 package com.fksoft.erp.application.api;
 
+import com.fksoft.erp.application.api.dto.ApproveCommissionRequest;
 import com.fksoft.erp.application.api.dto.CommissionListParams;
 import com.fksoft.erp.application.api.dto.CommissionResponse;
 import com.fksoft.erp.application.api.dto.GenerateCommissionRequest;
@@ -101,6 +102,21 @@ public class CommissionController {
     @GetMapping("/{id}")
     public CommissionDetail detail(@PathVariable UUID id) {
         return commissionService.detail(id, userContext.currentUserId(), canSeeAllCommissions());
+    }
+
+    /**
+     * Approves an Eligible Commission (it becomes ready for payment). Requires {@code commission:approve}; the
+     * beneficiary cannot approve their own commission (403). Approval registers no payment.
+     *
+     * @param id the commission id
+     * @param request the optional approval notes (an empty body is allowed)
+     * @return the refreshed commission detail
+     */
+    @PostMapping("/{id}/approve")
+    public CommissionDetail approve(
+            @PathVariable UUID id, @Valid @RequestBody(required = false) ApproveCommissionRequest request) {
+        String notes = request == null ? null : request.notes();
+        return commissionService.approve(id, userContext.currentUserId(), canSeeAllCommissions(), notes);
     }
 
     private boolean canSeeAllCommissions() {

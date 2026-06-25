@@ -32,7 +32,9 @@ import java.util.UUID;
  * @param receivableId the source order's active Receivable id, or {@code null} when there is none
  * @param receivableStatus the source order's active Receivable status, or {@code null}
  * @param eligibleAt when it became eligible (its receivable was paid), or {@code null}
- * @param approvedAt when it was approved, or {@code null} (a later slice)
+ * @param approvedAt when it was approved, or {@code null}
+ * @param approvedByName who approved the commission, or {@code null}
+ * @param approvalNotes the optional approval notes, or {@code null}
  * @param paidAt when its commission payment was registered, or {@code null} (a later slice)
  * @param createdByName who generated the commission, or {@code null}
  * @param createdAt when the commission was generated
@@ -59,6 +61,8 @@ public record CommissionDetail(
         String receivableStatus,
         Instant eligibleAt,
         Instant approvedAt,
+        String approvedByName,
+        String approvalNotes,
         Instant paidAt,
         String createdByName,
         Instant createdAt) {
@@ -73,6 +77,7 @@ public record CommissionDetail(
      * @param receivableId the source order's active Receivable id, or {@code null}
      * @param receivableStatus the source order's active Receivable status, or {@code null}
      * @param createdByName who generated the commission, or {@code null}
+     * @param approvedByName who approved the commission, or {@code null}
      */
     public record Refs(
             String beneficiaryName,
@@ -81,7 +86,8 @@ public record CommissionDetail(
             String opportunityReference,
             UUID receivableId,
             String receivableStatus,
-            String createdByName) {}
+            String createdByName,
+            String approvedByName) {}
 
     /**
      * Builds the detail from the entity, the resolved source order number and the resolved cross-aggregate
@@ -115,6 +121,8 @@ public record CommissionDetail(
                 refs.receivableStatus(),
                 c.eligibleAt(),
                 c.approvedAt(),
+                refs.approvedByName(),
+                c.approvalNotes(),
                 c.paidAt(),
                 refs.createdByName(),
                 c.createdAt());
