@@ -104,6 +104,15 @@ describe('AuthService', () => {
     expect(service.canCreateReceivable()).toBe(false);
   });
 
+  it('grants commission generation only with the commission:create scope', () => {
+    service.accessToken.set(jwt({ sub: 'u', scope: 'commission:create commission:read' }));
+    expect(service.canCreateCommission()).toBe(true);
+
+    // Read/rule-manage alone does not grant generation.
+    service.accessToken.set(jwt({ sub: 'u', scope: 'commission:read commission:rule:manage' }));
+    expect(service.canCreateCommission()).toBe(false);
+  });
+
   it('exposes no scopes and a null subject when there is no token', () => {
     expect(service.scopes()).toEqual([]);
     expect(service.userId()).toBeNull();

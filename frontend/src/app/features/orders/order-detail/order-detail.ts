@@ -7,11 +7,17 @@ import { CardModule } from 'primeng/card';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { MessageModule } from 'primeng/message';
+import { MessageService } from 'primeng/api';
 import {
   CommercialOrderDetail,
   CommercialOrderStatus,
   OrderService,
 } from '../../../core/api/order.service';
+import {
+  CommissionBasis,
+  CommissionDetail,
+  CommissionService,
+} from '../../../core/api/commission.service';
 import { BookingRequestStatus } from '../../../core/api/booking.service';
 import { OpportunityStage } from '../../../core/api/opportunity.service';
 import { ProposalItemType, ProposalStatus } from '../../../core/api/proposal.service';
@@ -110,6 +116,11 @@ const FINANCIAL_STATUS_HINTS: Record<ReceivableStatus, string> = {
   CANCELLED: 'Conta a receber cancelada.',
 };
 
+const COMMISSION_BASIS_LABELS: Record<CommissionBasis, string> = {
+  COMMERCIAL_AMOUNT: 'Valor comercial (previsão)',
+  RECEIVED_AMOUNT: 'Valor recebido',
+};
+
 /**
  * Commercial Order detail page (Sales & Proposals): the formal, read-only record of the closed deal — its
  * status, the snapshot of the sold items and total, and the source Proposal / Opportunity / Lead kept
@@ -125,11 +136,17 @@ export class OrderDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly orders = inject(OrderService);
+  private readonly commissions = inject(CommissionService);
   private readonly auth = inject(AuthService);
+  private readonly messages = inject(MessageService);
 
   protected readonly order = signal<CommercialOrderDetail | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
+
+  // The Expected Commission generated from this Order in the current view (shown inline after generating).
+  protected readonly generatedCommission = signal<CommissionDetail | null>(null);
+  protected readonly generating = signal(false);
 
   private orderId = '';
 
@@ -218,16 +235,80 @@ export class OrderDetailPage implements OnInit {
     }
   }
 
+  /**
+   * Whether to offer generating an Expected Commission from this Order: the Order is commercially closed (not
+   * cancelled) and the user may generate commissions. The "has a responsible / a positive total / an applicable
+   * active rule" rules stay on the backend (surfaced as a friendly message on 422); the backend is the authority.
+   */
+  protected canGenerateCommission(): boolean {
+    return this.auth.canCreateCommission() && this.order()?.status !== 'CANCELLED';
+  }
+
+  /** Human label for the commission's calculation basis (commercial forecast vs received amount). */
+  protected basisLabel(basis: CommissionBasis): string {
+    return COMMISSION_BASIS_LABELS[basis];
+  }
+
+  /**
+   * Generates the Expected Commission for this Order and shows its summary inline. The amount, percentage, basis
+   * and EXPECTED status are read back from the generated commission. Friendly messages surface the "already
+   * generated" (409) and the business-rule (422) cases.
+   */
+  protected generateCommission(): void {
+    const o = this.order();
+    if (!o || this.generating() || !this.canGenerateCommission()) {
+      return;
+    }
+    this.generating.set(true);
+    this.commissions.generate(o.id).subscribe({
+      next: (created) => {
+        this.commissions.detail(created.id).subscribe({
+          next: (detail) => {
+            this.generating.set(false);
+            this.generatedCommission.set(detail);
+            this.messages.add({ severity: 'success', summary: 'Comissão prevista gerada' });
+          },
+          error: () => {
+            this.generating.set(false);
+            this.messages.add({ severity: 'success', summary: 'Comissão prevista gerada' });
+          },
+        });
+      },
+      error: (err: HttpErrorResponse) => {
+        this.generating.set(false);
+        this.messages.add({ severity: 'error', summary: this.commissionError(err) });
+      },
+    });
+  }
+
+  private commissionError(err: HttpErrorResponse): string {
+    if (err.status === 409) {
+      return 'Comissão já gerada para este pedido.';
+    }
+    const body = err.error as { message?: string } | null;
+    if (err.status === 422) {
+      return body?.message ?? 'Não foi possível gerar a comissão para este pedido.';
+    }
+    return body?.message ?? 'Não foi possível gerar a comissão.';
+  }
+
   protected back(): void {
     const o = this.order();
     this.router.navigateByUrl(o ? '/propostas/' + o.proposalId : '/vendas');
   }
 
-  /** Esc returns to the source Proposal. */
+  /** Esc returns to the source Proposal; "c" generates the Expected Commission when allowed. */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
+    if (event.metaKey || event.ctrlKey || event.altKey) {
+      return;
+    }
     if (event.key === 'Escape') {
       this.back();
+      return;
+    }
+    if (event.key === 'c' && this.canGenerateCommission()) {
+      this.generateCommission();
     }
   }
 

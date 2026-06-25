@@ -23,15 +23,47 @@
         />
       }
     </div>
-    @if (canGenerateReceivable()) {
-      <p-button
-        label="Gerar conta a receber"
-        icon="pi pi-wallet"
-        size="small"
-        (onClick)="generateReceivable()"
-      />
-    }
+    <div class="head-actions">
+      @if (canGenerateReceivable()) {
+        <p-button
+          label="Gerar conta a receber"
+          icon="pi pi-wallet"
+          size="small"
+          (onClick)="generateReceivable()"
+        />
+      }
+      @if (canGenerateCommission()) {
+        <p-button
+          label="Gerar comissão"
+          icon="pi pi-percentage"
+          size="small"
+          severity="secondary"
+          [loading]="generating()"
+          (onClick)="generateCommission()"
+        />
+      }
+    </div>
   </header>
+
+  @if (generatedCommission(); as c) {
+    <p-card header="Comissão prevista gerada" styleClass="section commission-result">
+      <dl class="data">
+        <dt>Situação</dt>
+        <dd>Prevista</dd>
+        <dt>Beneficiário</dt>
+        <dd>{{ c.beneficiaryName ?? '—' }}</dd>
+        <dt>Regra aplicada</dt>
+        <dd>{{ c.ruleName ?? '—' }} ({{ c.rulePercentage }}%)</dd>
+        <dt>Base de cálculo</dt>
+        <dd>{{ basisLabel(c.basisType) }} — {{ c.baseAmount | currency: 'BRL' }}</dd>
+        <dt>Valor da comissão</dt>
+        <dd class="grand">{{ c.amount | currency: 'BRL' }}</dd>
+      </dl>
+      <p class="hint muted">
+        A comissão é uma previsão (não gera pagamento, folha, contas a pagar, imposto ou contabilidade).
+      </p>
+    </p-card>
+  }
 
   <div class="grid">
     <p-card header="Resumo do pedido">

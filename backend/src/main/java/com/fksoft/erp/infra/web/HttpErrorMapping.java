@@ -15,11 +15,19 @@ import com.fksoft.erp.domain.booking.exception.BookingRequestAccessDeniedExcepti
 import com.fksoft.erp.domain.booking.exception.BookingRequestAlreadyExistsException;
 import com.fksoft.erp.domain.booking.exception.BookingRequestNotFoundException;
 import com.fksoft.erp.domain.booking.exception.CommercialOrderNotPendingBookingException;
+import com.fksoft.erp.domain.commission.exception.CommissionAlreadyExistsException;
+import com.fksoft.erp.domain.commission.exception.CommissionNotFoundException;
+import com.fksoft.erp.domain.commission.exception.CommissionOrderNoAmountException;
+import com.fksoft.erp.domain.commission.exception.CommissionOrderNoResponsibleException;
+import com.fksoft.erp.domain.commission.exception.CommissionOrderNotClosedException;
 import com.fksoft.erp.domain.commission.exception.CommissionRuleDatesInvalidException;
 import com.fksoft.erp.domain.commission.exception.CommissionRuleNotFoundException;
 import com.fksoft.erp.domain.commission.exception.CommissionRulePercentageAboveLimitException;
 import com.fksoft.erp.domain.commission.exception.CommissionRulePercentageInvalidException;
 import com.fksoft.erp.domain.commission.exception.CommissionRuleTargetUserNotFoundException;
+import com.fksoft.erp.domain.commission.exception.CommissionSourceOrderAccessDeniedException;
+import com.fksoft.erp.domain.commission.exception.CommissionSourceOrderNotFoundException;
+import com.fksoft.erp.domain.commission.exception.NoApplicableCommissionRuleException;
 import com.fksoft.erp.domain.crm.exception.CustomerNotFoundException;
 import com.fksoft.erp.domain.crm.exception.DuplicateLeadException;
 import com.fksoft.erp.domain.crm.exception.InteractionResultNotAvailableException;
@@ -180,6 +188,14 @@ public class HttpErrorMapping {
             entry(CommissionRulePercentageAboveLimitException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(CommissionRuleDatesInvalidException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(CommissionRuleTargetUserNotFoundException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(CommissionNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(CommissionSourceOrderNotFoundException.class, HttpStatus.NOT_FOUND),
+            entry(CommissionSourceOrderAccessDeniedException.class, HttpStatus.FORBIDDEN),
+            entry(CommissionOrderNotClosedException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(CommissionOrderNoResponsibleException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(CommissionOrderNoAmountException.class, HttpStatus.UNPROCESSABLE_ENTITY),
+            entry(CommissionAlreadyExistsException.class, HttpStatus.CONFLICT),
+            entry(NoApplicableCommissionRuleException.class, HttpStatus.UNPROCESSABLE_ENTITY),
             entry(ReferenceNotFoundException.class, HttpStatus.NOT_FOUND));
 
     public HttpStatus statusFor(DomainException ex) {

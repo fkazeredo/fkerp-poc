@@ -81,9 +81,12 @@ class CommissionRuleApiIntegrationTest extends AbstractIntegrationTest {
                 .getContentAsString();
         assertThat(list.toLowerCase()).doesNotContain("commission_payment").doesNotContain("payroll");
 
-        // No Commission/Payment table exists — only the rules table was created for this slice.
+        // Managing a rule creates no Commission row (the commissions table exists since Slice 2, but a rule is
+        // configuration only); the Commission Payment table is still a later slice.
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM commissions", Integer.class))
+                .isZero();
         assertThat(jdbc.queryForObject(
-                        "SELECT count(*) FROM information_schema.tables WHERE table_name IN ('commissions','commission_payments')",
+                        "SELECT count(*) FROM information_schema.tables WHERE table_name = 'commission_payments'",
                         Integer.class))
                 .isZero();
     }
