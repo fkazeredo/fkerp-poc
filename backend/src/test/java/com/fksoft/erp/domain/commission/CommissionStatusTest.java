@@ -18,4 +18,12 @@ class CommissionStatusTest {
                         CommissionStatus.PAID)
                 .doesNotContain(CommissionStatus.REJECTED, CommissionStatus.CANCELLED);
     }
+
+    @Test
+    void operationalIsTheDefaultListWorkingSet() {
+        assertThat(CommissionStatus.operational())
+                .containsExactlyInAnyOrder(
+                        CommissionStatus.EXPECTED, CommissionStatus.ELIGIBLE, CommissionStatus.APPROVED)
+                .doesNotContain(CommissionStatus.PAID, CommissionStatus.REJECTED, CommissionStatus.CANCELLED);
+    }
 }

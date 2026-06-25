@@ -243,13 +243,15 @@ class CommissionRuleApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void usersWithoutTheManageScopeAreForbidden() throws Exception {
+    void commissionReadersMayReadRulesButNotWriteThem() throws Exception {
+        // Commission readers — sellers/representatives (own tier) and the Board (read-all) — may READ the rules (the
+        // commission-list rule filter) but may NOT manage them (write requires commission:rule:manage).
         for (String[] user : new String[][] {
             {"vendedor", "vendedor123"}, {"representante", "representante123"}, {"diretor", "diretor123"}
         }) {
             String token = login(user[0], user[1]);
             mvc.perform(get("/api/commission/rules").header("Authorization", "Bearer " + token))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isOk());
             mvc.perform(
                             post("/api/commission/rules")
                                     .header("Authorization", "Bearer " + token)
@@ -258,6 +260,21 @@ class CommissionRuleApiIntegrationTest extends AbstractIntegrationTest {
                                             "{\"name\":\"R\",\"percentage\":5.00,\"targetType\":\"SELLER\",\"startDate\":\"2026-01-01\"}"))
                     .andExpect(status().isForbidden());
         }
+    }
+
+    @Test
+    void usersWithoutAnyCommissionScopeCannotReadOrWriteRules() throws Exception {
+        // Operações holds no commission scope at all → forbidden even to read the rules.
+        String ops = login("operacoes", "operacoes123");
+        mvc.perform(get("/api/commission/rules").header("Authorization", "Bearer " + ops))
+                .andExpect(status().isForbidden());
+        mvc.perform(
+                        post("/api/commission/rules")
+                                .header("Authorization", "Bearer " + ops)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"name\":\"R\",\"percentage\":5.00,\"targetType\":\"SELLER\",\"startDate\":\"2026-01-01\"}"))
+                .andExpect(status().isForbidden());
     }
 
     @Test

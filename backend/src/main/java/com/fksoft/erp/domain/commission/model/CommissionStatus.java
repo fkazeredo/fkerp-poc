@@ -36,4 +36,15 @@ public enum CommissionStatus {
     public static Set<CommissionStatus> active() {
         return EnumSet.complementOf(EnumSet.of(REJECTED, CANCELLED));
     }
+
+    /**
+     * The statuses shown by default in the operational commission list — the working set still needing attention
+     * ({@code EXPECTED} forecast, {@code ELIGIBLE} pending approval, {@code APPROVED} awaiting payment). The settled
+     * {@code PAID} and the terminal {@code REJECTED}/{@code CANCELLED} are excluded unless explicitly filtered.
+     *
+     * @return the operational commission statuses
+     */
+    public static Set<CommissionStatus> operational() {
+        return EnumSet.of(EXPECTED, ELIGIBLE, APPROVED);
+    }
 }

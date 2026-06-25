@@ -76,6 +76,11 @@ export class NavigationService {
         link('Pedidos', 'pi pi-shopping-bag', '/pedidos', false, 'Os negócios fechados.', 'sales'),
       );
     }
+    if (this.auth.canSeeCommissions()) {
+      comercial.push(
+        link('Comissões', 'pi pi-percentage', '/comissoes', false, 'As comissões dos negócios fechados.', 'sales'),
+      );
+    }
     if (this.auth.canCreateLead()) {
       comercialActions.push(
         link('Novo lead', 'pi pi-user-plus', '/leads/new', false, 'Registre um novo interessado e a primeira anotação.', 'new'),

@@ -107,6 +107,14 @@ public class Commission {
     @Column(name = "receivable_id")
     private UUID receivableId;
 
+    // The approval and payment instants, shown on the operational list. Null until the approval / payment slices set
+    // them (they own those transitions); this listing slice only reads them.
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
+    @Column(name = "paid_at")
+    private Instant paidAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

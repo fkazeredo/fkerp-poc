@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { bookingReadGuard } from './core/auth/booking-read.guard';
+import { commissionReadGuard } from './core/auth/commission-read.guard';
 import { commissionRuleManageGuard } from './core/auth/commission-rule-manage.guard';
 import { crmReadGuard } from './core/auth/crm-read.guard';
 import { financialCreateGuard } from './core/auth/financial-create.guard';
@@ -158,6 +159,12 @@ export const routes: Routes = [
         canActivate: [orderReadGuard],
         loadComponent: () =>
           import('./features/orders/order-detail/order-detail').then((m) => m.OrderDetailPage),
+      },
+      {
+        path: 'comissoes',
+        canActivate: [commissionReadGuard],
+        loadComponent: () =>
+          import('./features/commission/commission-list/commission-list').then((m) => m.CommissionList),
       },
       {
         path: 'cadastros/regras-comissao',

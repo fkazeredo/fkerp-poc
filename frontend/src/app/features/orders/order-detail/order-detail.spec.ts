@@ -6,7 +6,7 @@ import { providePrimeNG } from 'primeng/config';
 import { NEVER, of, throwError } from 'rxjs';
 import { OrderDetailPage } from './order-detail';
 import { CommercialOrderDetail, OrderService } from '../../../core/api/order.service';
-import { CommissionDetail, CommissionService } from '../../../core/api/commission.service';
+import { CommissionListItem, CommissionService } from '../../../core/api/commission.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
@@ -26,24 +26,25 @@ describe('OrderDetailPage', () => {
   };
   const messages = { add: vi.fn() };
 
-  const commissionSample: CommissionDetail = {
+  const commissionSample: CommissionListItem = {
     id: 'c1',
-    commercialOrderId: 'ord1',
-    orderNumber: 7,
-    proposalId: 'p1',
-    opportunityId: 'o1',
-    leadId: 'l1',
     beneficiaryUserId: 'u1',
     beneficiaryName: 'comercial',
-    ruleId: 'r1',
-    ruleName: 'Comissão padrão',
-    rulePercentage: 5,
-    basisType: 'COMMERCIAL_AMOUNT',
-    baseAmount: 3000,
+    commercialOrderId: 'ord1',
+    orderNumber: 7,
+    proposalReference: 'Proposta Aurora',
+    opportunityReference: 'Aurora',
     amount: 150,
+    baseAmount: 3000,
+    basisType: 'COMMERCIAL_AMOUNT',
+    rulePercentage: 5,
+    ruleName: 'Comissão padrão',
     status: 'EXPECTED',
-    eligibleAt: null,
+    receivableStatus: null,
     createdAt: '2026-06-25T10:00:00Z',
+    eligibleAt: null,
+    approvedAt: null,
+    paidAt: null,
   };
 
   const sample: CommercialOrderDetail = {
@@ -405,7 +406,7 @@ describe('OrderDetailPage', () => {
     it('renders an eligible commission as "Pendente de aprovação" with the eligible date (DOM)', () => {
       auth.canSeeCommissions.mockReturnValue(true);
       commissions.byOrder.mockReturnValue(
-        of({ ...commissionSample, status: 'ELIGIBLE', eligibleAt: '2026-06-25T12:00:00Z' } satisfies CommissionDetail),
+        of({ ...commissionSample, status: 'ELIGIBLE', eligibleAt: '2026-06-25T12:00:00Z' } satisfies CommissionListItem),
       );
       const el = render();
       expect(el.textContent).toContain('Pendente de aprovação');

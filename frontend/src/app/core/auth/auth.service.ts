@@ -176,9 +176,9 @@ export class AuthService {
     return this.hasScope('commission:create');
   }
 
-  /** Whether the user may read commissions (a commercial/financial manager or the Board — Commission Management). */
+  /** Any commission read tier (own / all) grants access to the commission list and detail (Commission Management). */
   canSeeCommissions(): boolean {
-    return this.hasScope('commission:read');
+    return this.hasScope('commission:read') || this.hasScope('commission:read:all');
   }
 }
 

@@ -18,6 +18,7 @@ describe('Shell keyboard shortcuts', () => {
     canSeeOrders: vi.fn(() => false),
     canSeeBookings: vi.fn(() => false),
     canSeeReceivables: vi.fn(() => false),
+    canSeeCommissions: vi.fn(() => false),
     canManageCommissionRules: vi.fn(() => false),
   };
 
