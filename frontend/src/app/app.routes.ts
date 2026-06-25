@@ -287,6 +287,17 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
       },
+      {
+        path: 'cadastros/motivos-comissao',
+        data: {
+          title: 'Motivos de rejeição/cancelamento de comissão',
+          path: 'resolution-reasons',
+          base: 'commission',
+        },
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+          import('./features/crm/reference-list/reference-list').then((m) => m.ReferenceList),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

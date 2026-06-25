@@ -1190,6 +1190,28 @@ points:
   payable, payroll, tax, accounting or bank-transfer data — it only marks the commission ready for payment. Commission
   payment is a later step.
 
+### 11.11 Rejecting or cancelling a commission (Commission Management)
+
+When a commission is **not valid**, an authorized user can **void it** so it is not paid — by two paths, both requiring
+a **reason** (standard list) and, optionally, a **note**, and recording **who and when**. On the **commission detail**:
+
+- **Rejeitar** (Reject; shortcut <kbd>r</kbd>) is available **only for an eligible commission** (pending approval): it
+  becomes **Rejected**.
+- **Cancelar comissão** (Cancel; shortcut <kbd>c</kbd>) is available for an **expected** or **approved-but-unpaid**
+  commission: it becomes **Cancelled**. A **paid** commission **cannot** be cancelled through this flow.
+
+Key points:
+
+- **The reason is required** (initial reasons: incorrect responsible, incorrect rule, order correction needed,
+  receivable/payment issue, duplicate commission, business exception, other). The list is a **cadastro** under
+  **Cadastros → Motivos de rejeição/cancelamento de comissão**, editable by the administrator.
+- **Who rejects/cancels:** the **commercial manager** and **finance**. The **board/director** (consultation),
+  **sellers**, **representatives** and **operations** **cannot** reject or cancel.
+- **Voiding touches nothing but the commission:** it does **not** change the source **order** or the **receivable**, and
+  creates **no** refund, payroll, tax or accounting data.
+- **They stay historically visible:** **Rejected** and **Cancelled** commissions are hidden in the list by default but
+  appear when you pick the status in the filter; the detail shows the reason, note and who/when it was voided.
+
 ---
 
 ## 13. Messages and validation
@@ -1223,7 +1245,7 @@ is also reachable by keyboard:
 - **On a proposal:** `i` add item · `e` edit commercial details · `s` submit for review · `Esc` back.
 - **On a booking:** `a` register attempt · `Esc` back.
 - **On a receivable:** `p` register payment (first installment with a balance) · `Esc` back / cancel.
-- **On a commission:** `a` approve commission (when eligible and you may approve) · `Esc` back / cancel.
+- **On a commission:** `a` approve · `r` reject · `c` cancel (each when allowed) · `Esc` back / cancel.
 
 ---
 

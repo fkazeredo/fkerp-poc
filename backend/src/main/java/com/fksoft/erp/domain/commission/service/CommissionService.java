@@ -6,16 +6,19 @@ import com.fksoft.erp.domain.commission.exception.CommissionNotFoundException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoAmountException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoResponsibleException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNotClosedException;
+import com.fksoft.erp.domain.commission.exception.CommissionResolutionReasonNotAvailableException;
 import com.fksoft.erp.domain.commission.exception.CommissionSelfApprovalNotAllowedException;
 import com.fksoft.erp.domain.commission.exception.CommissionSourceOrderAccessDeniedException;
 import com.fksoft.erp.domain.commission.exception.CommissionSourceOrderNotFoundException;
 import com.fksoft.erp.domain.commission.exception.NoApplicableCommissionRuleException;
 import com.fksoft.erp.domain.commission.model.Commission;
 import com.fksoft.erp.domain.commission.model.CommissionBasis;
+import com.fksoft.erp.domain.commission.model.CommissionResolutionReason;
 import com.fksoft.erp.domain.commission.model.CommissionRule;
 import com.fksoft.erp.domain.commission.model.CommissionStatus;
 import com.fksoft.erp.domain.commission.model.CommissionTargetType;
 import com.fksoft.erp.domain.commission.repository.CommissionRepository;
+import com.fksoft.erp.domain.commission.repository.CommissionResolutionReasonRepository;
 import com.fksoft.erp.domain.commission.repository.CommissionRuleRepository;
 import com.fksoft.erp.domain.commission.service.data.CommissionDetail;
 import com.fksoft.erp.domain.commission.service.data.CommissionListItem;
@@ -27,6 +30,7 @@ import com.fksoft.erp.domain.financial.model.ReceivableStatus;
 import com.fksoft.erp.domain.financial.repository.ReceivableRepository;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
+import com.fksoft.erp.domain.reference.ReferenceData;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
@@ -61,6 +65,7 @@ public class CommissionService {
 
     private final CommissionRepository commissions;
     private final CommissionRuleRepository rules;
+    private final CommissionResolutionReasonRepository resolutionReasons;
     private final ReceivableRepository receivables;
     private final CommercialOrderRepository orders;
     private final ProposalRepository proposals;
@@ -183,6 +188,70 @@ public class CommissionService {
     }
 
     /**
+     * Rejects an Eligible Commission the caller may see (Eligible → Rejected), with a required resolution reason and an
+     * optional note, recording who/when. Voiding the commission does NOT touch the source Order or Receivable and
+     * creates no refund, payroll, tax or accounting data.
+     *
+     * @param id the commission id
+     * @param reasonId the resolution-reason cadastro id (required, must be active)
+     * @param note an optional free-text note
+     * @param userId the authenticated user rejecting it
+     * @param canSeeAll whether the caller may see every Commission
+     * @return the refreshed commission detail
+     * @throws CommissionNotFoundException if the commission does not exist
+     * @throws CommissionAccessDeniedException if the caller may not see it
+     * @throws CommissionResolutionReasonNotAvailableException if the reason is unknown or inactive
+     * @throws com.fksoft.erp.domain.commission.exception.CommissionNotRejectableException if it is not Eligible
+     */
+    @Transactional
+    public CommissionDetail reject(UUID id, UUID reasonId, String note, UUID userId, boolean canSeeAll) {
+        Commission commission = loadVisible(id, userId, canSeeAll);
+        commission.reject(userId, activeReason(reasonId), note, Instant.now());
+        commissions.save(commission);
+        return toDetail(commission);
+    }
+
+    /**
+     * Cancels an unpaid Commission the caller may see (Expected/Approved → Cancelled), with a required resolution
+     * reason and an optional note, recording who/when. A Paid commission cannot be cancelled through this flow. Voiding
+     * the commission does NOT touch the source Order or Receivable and creates no refund, payroll, tax or accounting
+     * data.
+     *
+     * @param id the commission id
+     * @param reasonId the resolution-reason cadastro id (required, must be active)
+     * @param note an optional free-text note
+     * @param userId the authenticated user cancelling it
+     * @param canSeeAll whether the caller may see every Commission
+     * @return the refreshed commission detail
+     * @throws CommissionNotFoundException if the commission does not exist
+     * @throws CommissionAccessDeniedException if the caller may not see it
+     * @throws CommissionResolutionReasonNotAvailableException if the reason is unknown or inactive
+     * @throws com.fksoft.erp.domain.commission.exception.CommissionNotCancellableException if it is not unpaid Expected/Approved
+     */
+    @Transactional
+    public CommissionDetail cancel(UUID id, UUID reasonId, String note, UUID userId, boolean canSeeAll) {
+        Commission commission = loadVisible(id, userId, canSeeAll);
+        commission.cancel(userId, activeReason(reasonId), note, Instant.now());
+        commissions.save(commission);
+        return toDetail(commission);
+    }
+
+    private Commission loadVisible(UUID id, UUID userId, boolean canSeeAll) {
+        Commission commission = commissions.findById(id).orElseThrow(CommissionNotFoundException::new);
+        if (!accessPolicy.canSee(commission, userId, canSeeAll)) {
+            throw new CommissionAccessDeniedException();
+        }
+        return commission;
+    }
+
+    private CommissionResolutionReason activeReason(UUID reasonId) {
+        return resolutionReasons
+                .findById(reasonId)
+                .filter(ReferenceData::active)
+                .orElseThrow(CommissionResolutionReasonNotAvailableException::new);
+    }
+
+    /**
      * Operational, paginated Commission list filtered by the criteria and narrowed by the caller's visibility (own
      * vs all). Resolves the beneficiary / rule names, the source Proposal / Opportunity references and the order's
      * active Receivable status. Carries commission + commercial-origin data only — never payroll, tax, accounting or
@@ -243,6 +312,12 @@ public class CommissionService {
         String approvedByName = commission.approvedBy() == null
                 ? null
                 : users.findById(commission.approvedBy()).map(User::username).orElse(null);
+        String resolvedByName = commission.resolvedBy() == null
+                ? null
+                : users.findById(commission.resolvedBy()).map(User::username).orElse(null);
+        String resolutionReason = commission.resolutionReason() == null
+                ? null
+                : commission.resolutionReason().label();
         Receivable receivable = receivables
                 .findFirstByCommercialOrderIdAndStatusIn(commission.commercialOrderId(), ReceivableStatus.active())
                 .orElse(null);
@@ -254,7 +329,9 @@ public class CommissionService {
                 receivable == null ? null : receivable.id(),
                 receivable == null ? null : receivable.status().name(),
                 createdByName,
-                approvedByName);
+                approvedByName,
+                resolutionReason,
+                resolvedByName);
         return CommissionDetail.from(commission, orderNumber, refs);
     }
 

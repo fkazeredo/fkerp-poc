@@ -47,6 +47,22 @@ describe('CommissionService', () => {
     req.flush({ id: 'c1', status: 'APPROVED' });
   });
 
+  it('posts the reason and optional note to reject a commission', () => {
+    service.reject('c1', 'reason-1', 'Duplicada').subscribe();
+    const req = http.expectOne('/api/commissions/c1/reject');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ reasonId: 'reason-1', note: 'Duplicada' });
+    req.flush({ id: 'c1', status: 'REJECTED' });
+  });
+
+  it('posts the reason and optional note to cancel a commission', () => {
+    service.cancel('c1', 'reason-2', null).subscribe();
+    const req = http.expectOne('/api/commissions/c1/cancel');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ reasonId: 'reason-2', note: null });
+    req.flush({ id: 'c1', status: 'CANCELLED' });
+  });
+
   it('lists commissions with paging and the chosen filters', () => {
     service
       .list({ status: ['ELIGIBLE', 'APPROVED'], beneficiary: 'u2', orderNumber: 7, amountMin: 10 }, 1, 20)

@@ -4,6 +4,7 @@ import com.fksoft.erp.application.api.dto.ApproveCommissionRequest;
 import com.fksoft.erp.application.api.dto.CommissionListParams;
 import com.fksoft.erp.application.api.dto.CommissionResponse;
 import com.fksoft.erp.application.api.dto.GenerateCommissionRequest;
+import com.fksoft.erp.application.api.dto.ResolveCommissionRequest;
 import com.fksoft.erp.domain.commission.service.CommissionService;
 import com.fksoft.erp.domain.commission.service.data.CommissionDetail;
 import com.fksoft.erp.domain.commission.service.data.CommissionListItem;
@@ -117,6 +118,34 @@ public class CommissionController {
             @PathVariable UUID id, @Valid @RequestBody(required = false) ApproveCommissionRequest request) {
         String notes = request == null ? null : request.notes();
         return commissionService.approve(id, userContext.currentUserId(), canSeeAllCommissions(), notes);
+    }
+
+    /**
+     * Rejects an Eligible Commission (it becomes terminal Rejected), with a required reason. Requires
+     * {@code commission:reject}; voiding the commission touches no Order/Receivable/financial data.
+     *
+     * @param id the commission id
+     * @param request the required resolution reason + optional note
+     * @return the refreshed commission detail
+     */
+    @PostMapping("/{id}/reject")
+    public CommissionDetail reject(@PathVariable UUID id, @Valid @RequestBody ResolveCommissionRequest request) {
+        return commissionService.reject(
+                id, request.reasonId(), request.note(), userContext.currentUserId(), canSeeAllCommissions());
+    }
+
+    /**
+     * Cancels an unpaid Commission (Expected/Approved → terminal Cancelled), with a required reason. Requires
+     * {@code commission:cancel}; voiding the commission touches no Order/Receivable/financial data.
+     *
+     * @param id the commission id
+     * @param request the required resolution reason + optional note
+     * @return the refreshed commission detail
+     */
+    @PostMapping("/{id}/cancel")
+    public CommissionDetail cancel(@PathVariable UUID id, @Valid @RequestBody ResolveCommissionRequest request) {
+        return commissionService.cancel(
+                id, request.reasonId(), request.note(), userContext.currentUserId(), canSeeAllCommissions());
     }
 
     private boolean canSeeAllCommissions() {

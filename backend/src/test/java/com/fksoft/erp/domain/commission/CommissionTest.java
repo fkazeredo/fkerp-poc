@@ -5,9 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
+import com.fksoft.erp.domain.commission.exception.CommissionNotCancellableException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotEligibleException;
+import com.fksoft.erp.domain.commission.exception.CommissionNotRejectableException;
 import com.fksoft.erp.domain.commission.model.Commission;
 import com.fksoft.erp.domain.commission.model.CommissionBasis;
+import com.fksoft.erp.domain.commission.model.CommissionResolutionReason;
 import com.fksoft.erp.domain.commission.model.CommissionRule;
 import com.fksoft.erp.domain.commission.model.CommissionRuleData;
 import com.fksoft.erp.domain.commission.model.CommissionStatus;
@@ -195,5 +198,74 @@ class CommissionTest {
 
         assertThatThrownBy(() -> commission.approve(UUID.randomUUID(), null, Instant.now()))
                 .isInstanceOf(CommissionNotEligibleException.class);
+    }
+
+    private final CommissionResolutionReason reason = CommissionResolutionReason.create("DUPLICATE", "Duplicada", 1);
+
+    @Test
+    void rejectTransitionsFromEligibleAndRecordsTheResolution() {
+        Commission commission = eligibleCommission();
+        UUID actor = UUID.randomUUID();
+        Instant when = Instant.parse("2026-06-27T09:00:00Z");
+
+        commission.reject(actor, reason, "  motivo  ", when);
+
+        assertThat(commission.status()).isEqualTo(CommissionStatus.REJECTED);
+        assertThat(commission.resolvedBy()).isEqualTo(actor);
+        assertThat(commission.resolvedAt()).isEqualTo(when);
+        assertThat(commission.resolutionReason()).isEqualTo(reason);
+        assertThat(commission.resolutionNote()).isEqualTo("motivo"); // trimmed
+    }
+
+    @Test
+    void rejectRejectsANonEligibleCommission() {
+        Commission expected = expectedCommission(); // EXPECTED
+        assertThatThrownBy(() -> expected.reject(UUID.randomUUID(), reason, null, Instant.now()))
+                .isInstanceOf(CommissionNotRejectableException.class);
+
+        Commission approved = eligibleCommission();
+        approved.approve(UUID.randomUUID(), null, Instant.now()); // APPROVED
+        assertThatThrownBy(() -> approved.reject(UUID.randomUUID(), reason, null, Instant.now()))
+                .isInstanceOf(CommissionNotRejectableException.class);
+    }
+
+    @Test
+    void cancelTransitionsFromExpected() {
+        Commission commission = expectedCommission();
+        UUID actor = UUID.randomUUID();
+        Instant when = Instant.parse("2026-06-27T10:00:00Z");
+
+        commission.cancel(actor, reason, null, when);
+
+        assertThat(commission.status()).isEqualTo(CommissionStatus.CANCELLED);
+        assertThat(commission.resolvedBy()).isEqualTo(actor);
+        assertThat(commission.resolvedAt()).isEqualTo(when);
+        assertThat(commission.resolutionReason()).isEqualTo(reason);
+    }
+
+    @Test
+    void cancelTransitionsFromApprovedUnpaid() {
+        Commission commission = eligibleCommission();
+        commission.approve(UUID.randomUUID(), null, Instant.now()); // APPROVED (unpaid: paidAt null)
+
+        commission.cancel(UUID.randomUUID(), reason, null, Instant.now());
+
+        assertThat(commission.status()).isEqualTo(CommissionStatus.CANCELLED);
+    }
+
+    @Test
+    void cancelRejectsAnEligibleCommission() {
+        Commission commission = eligibleCommission(); // ELIGIBLE → reject, not cancel
+        assertThatThrownBy(() -> commission.cancel(UUID.randomUUID(), reason, null, Instant.now()))
+                .isInstanceOf(CommissionNotCancellableException.class);
+    }
+
+    private Commission expectedCommission() {
+        return Commission.generate(
+                order(new BigDecimal("1000.00")),
+                rule("5"),
+                CommissionBasis.COMMERCIAL_AMOUNT,
+                new BigDecimal("1000.00"),
+                creator);
     }
 }

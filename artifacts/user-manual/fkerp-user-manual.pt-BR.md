@@ -1195,6 +1195,29 @@ observações. Pontos importantes:
   pagar, folha, imposto, contabilidade nem transferência bancária — apenas marca a comissão como pronta para
   pagamento. O pagamento da comissão é uma etapa futura.
 
+### 11.11 Rejeitar ou cancelar uma comissão (Gestão de Comissão)
+
+Quando uma comissão **não é válida**, um responsável autorizado pode **anulá-la** para que não seja paga — em dois
+caminhos, ambos exigindo um **motivo** (lista padrão) e, opcionalmente, uma **anotação**, e registrando **quem e
+quando**. No **detalhe da comissão**:
+
+- **Rejeitar** (atalho <kbd>r</kbd>) está disponível **apenas para uma comissão elegível** (pendente de aprovação): a
+  comissão passa a **Rejeitada**.
+- **Cancelar comissão** (atalho <kbd>c</kbd>) está disponível para uma comissão **prevista** ou **aprovada ainda não
+  paga**: a comissão passa a **Cancelada**. Uma comissão **paga não pode** ser cancelada por este fluxo.
+
+Pontos importantes:
+
+- **O motivo é obrigatório** (motivos iniciais: responsável incorreto, regra incorreta, correção necessária no pedido,
+  problema na conta a receber/pagamento, comissão duplicada, exceção de negócio, outro). A lista é um **cadastro** em
+  **Cadastros → Motivos de rejeição/cancelamento de comissão**, editável pelo administrador.
+- **Quem rejeita/cancela:** o **gerente comercial** e o **financeiro**. A **diretoria** (consulta), os **vendedores**,
+  os **representantes** e a **operação** **não** rejeitam nem cancelam.
+- **Anular não mexe em nada além da comissão:** **não** altera o **pedido** de origem nem a **conta a receber**, e
+  **não** gera estorno, devolução, folha, imposto nem contabilidade.
+- **Continuam visíveis no histórico:** comissões **Rejeitadas** e **Canceladas** ficam ocultas na lista por padrão, mas
+  aparecem ao escolher a situação no filtro; o detalhe mostra o motivo, a anotação e quem/quando anulou.
+
 ---
 
 ## 13. Mensagens e validação
@@ -1231,7 +1254,7 @@ também é acessível pelo teclado:
   voltar.
 - **Em uma reserva:** `a` registrar tentativa · `Esc` voltar.
 - **Em uma conta a receber:** `p` registrar pagamento (primeira parcela com saldo) · `Esc` voltar / cancelar.
-- **Em uma comissão:** `a` aprovar comissão (quando elegível e você pode aprovar) · `Esc` voltar / cancelar.
+- **Em uma comissão:** `a` aprovar · `r` rejeitar · `c` cancelar (cada um quando permitido) · `Esc` voltar / cancelar.
 
 ---
 
