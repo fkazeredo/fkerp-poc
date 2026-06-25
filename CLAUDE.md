@@ -1037,6 +1037,33 @@ slices):** the **approval/rejection** info, **payment** info, **cancellation** i
 those slices land), statement, order commission-status reflection, indicators, and payroll / accounting / tax /
 bank-transfer / accounts-payable detail.
 
+**Commission approval (normative — Commission Management, Sprint 6 Slice 6).** An authorized **approver** **approves an
+Eligible Commission** (`POST /api/commissions/{id}/approve`) so it becomes **ready for payment**, in a controlled way.
+It is gated by the operation scope **`commission:approve`** **and** the caller must be allowed to **see** the commission
+(`CommissionAccessPolicy.canSee` → **403** `commission.access-denied` if not visible, **404** `commission.not-found` if
+absent). The transition is a **fixed `ELIGIBLE`-only** state machine on the entity (`Commission.approve` →
+`CommissionNotEligibleException`, **422** `commission.not-eligible` for an `EXPECTED`/already-`APPROVED`/`PAID`/
+`REJECTED`/`CANCELLED` commission), so a commission becomes Approved **only after its Receivable is paid** (Slice 3
+eligibility). **Segregation of duties: the beneficiary cannot approve their own commission** — when the approver equals
+the commission's `beneficiaryUserId` the service throws `CommissionSelfApprovalNotAllowedException` (**403**
+`commission.self-approval-not-allowed`), an authz check that lives in the service (it knows approver vs beneficiary),
+not the entity. Approval records **who (`approvedBy`) + when (`approvedAt`)** and the **optional `approvalNotes`**
+(`@Size ≤ 2000`, an empty body is tolerated), and returns the **refreshed `CommissionDetail`** (now exposing
+`approvedByName` + `approvalNotes`, with the **"Aprovada"** timeline entry carrying the approver). Approving **registers
+no payment** (`paidAt` stays null) and creates **no** Commission Payment, Accounts Payable, payroll, tax, accounting or
+bank data, and never touches the Order, Receivable, Lead or Customer. **Persona → scopes:** `commission:approve` is held
+by the commercial **Manager** (001) **and** the back-office **Financeiro** (005) — with self-approval blocked, finance
+approves the manager's own commissions and the manager approves the sellers'/representatives'; Sellers (002),
+Representatives (003), the **Board/Director** (004, consultation `commission:read:all`) and operações (006) **cannot
+approve → 403**. In the frontend the commission detail (`/comissoes/{id}`) shows an **"Aprovar comissão"** action — only
+for an `ELIGIBLE` commission the user may approve and **not their own** (the backend stays the authority) — opening a
+notes dialog (shortcut <kbd>a</kbd>, in the `?` overlay), wired to the central **unsaved-changes** protection
+(`unsavedChangesGuard` on the route + the discard dialog + `beforeunload`); on success the **"Aprovada"** entry +
+`approvedByName` + notes light up. **Out of scope (later Sprint-6 slices):** **reject** (`ELIGIBLE → REJECTED` with a
+reason), **payment registration + reversal** (consume `APPROVED`), **cancellation**, **statement**, **order
+commission-status reflection**, **indicators**, and multi-level approval / approval thresholds / payroll / accounts
+payable / bank payment file / automatic payment / tax withholding.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

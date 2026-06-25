@@ -1,10 +1,11 @@
 import { test, expect, Page } from '@playwright/test';
 
 /**
- * Sprint 6 / Slice 5 end-to-end: the Commission detail consultation page. The populated detail (origin/calculation/
- * receivable/eligibility + the own-vs-all visibility) is covered thoroughly by CommissionApiIntegrationTest and the
- * CommissionDetailPage component spec; this E2E covers the cross-cutting concerns — the route + read guard and the
- * not-found render (the isolated e2e stack has no seeded commissions).
+ * Sprint 6 / Slices 5–6 end-to-end: the Commission detail consultation + approve action. The populated detail and the
+ * approve flow (eligible→approved, self-approval block, not-eligible, own-vs-all visibility) are covered thoroughly by
+ * CommissionApiIntegrationTest and the CommissionDetailPage component spec; this E2E covers the cross-cutting concerns
+ * — the route + read guard, the not-found render and the help-overlay shortcut wiring (the isolated e2e stack has no
+ * seeded commissions, so the populated approve flow is exercised in the integration test).
  */
 
 async function login(page: Page, username: string, password: string): Promise<void> {
@@ -35,4 +36,13 @@ test('a user without any commission scope is redirected away from the detail rou
   await page.goto('/comissoes/00000000-0000-0000-0000-0000000000ff');
   await expect(page).not.toHaveURL(/\/comissoes\//);
   await expect(page.getByRole('heading', { name: 'Bem-vindo ao FKERP' })).toBeVisible();
+});
+
+test('the help overlay documents the approve-commission shortcut', async ({ page }) => {
+  await login(page, 'comercial', 'comercial123');
+  await page.keyboard.press('?');
+  const help = page.getByRole('dialog', { name: 'Atalhos do teclado' });
+  await expect(help).toBeVisible();
+  await expect(help.getByText('No detalhe de uma comissão')).toBeVisible();
+  await expect(help.getByText('Aprovar comissão')).toBeVisible();
 });

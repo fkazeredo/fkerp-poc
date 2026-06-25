@@ -18,6 +18,36 @@
   font-size: 1.4rem;
 }
 
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.approve-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.approve-form .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.approve-form .field > span {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));

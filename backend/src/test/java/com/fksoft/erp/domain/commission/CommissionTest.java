@@ -1,9 +1,11 @@
 package com.fksoft.erp.domain.commission;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
+import com.fksoft.erp.domain.commission.exception.CommissionNotEligibleException;
 import com.fksoft.erp.domain.commission.model.Commission;
 import com.fksoft.erp.domain.commission.model.CommissionBasis;
 import com.fksoft.erp.domain.commission.model.CommissionRule;
@@ -139,5 +141,59 @@ class CommissionTest {
         assertThat(commission.status()).isEqualTo(CommissionStatus.ELIGIBLE);
         assertThat(commission.eligibleAt()).isEqualTo(firstWhen);
         assertThat(commission.receivableId()).isEqualTo(firstReceivable);
+    }
+
+    private Commission eligibleCommission() {
+        Commission commission = Commission.generate(
+                order(new BigDecimal("1000.00")),
+                rule("5"),
+                CommissionBasis.COMMERCIAL_AMOUNT,
+                new BigDecimal("1000.00"),
+                creator);
+        commission.markEligible(UUID.randomUUID(), Instant.parse("2026-06-25T10:00:00Z"));
+        return commission;
+    }
+
+    @Test
+    void approveTransitionsFromEligibleAndRecordsTheApprover() {
+        Commission commission = eligibleCommission();
+        UUID approver = UUID.randomUUID();
+        Instant when = Instant.parse("2026-06-26T09:00:00Z");
+
+        commission.approve(approver, "  Tudo certo  ", when);
+
+        assertThat(commission.status()).isEqualTo(CommissionStatus.APPROVED);
+        assertThat(commission.approvedAt()).isEqualTo(when);
+        assertThat(commission.approvedBy()).isEqualTo(approver);
+        assertThat(commission.approvalNotes()).isEqualTo("Tudo certo"); // trimmed
+    }
+
+    @Test
+    void approveKeepsTheNotesNullWhenBlank() {
+        Commission commission = eligibleCommission();
+        commission.approve(UUID.randomUUID(), "   ", Instant.parse("2026-06-26T09:00:00Z"));
+        assertThat(commission.approvalNotes()).isNull();
+    }
+
+    @Test
+    void approveRejectsAnExpectedCommission() {
+        Commission commission = Commission.generate(
+                order(new BigDecimal("1000.00")),
+                rule("5"),
+                CommissionBasis.COMMERCIAL_AMOUNT,
+                new BigDecimal("1000.00"),
+                creator); // EXPECTED
+
+        assertThatThrownBy(() -> commission.approve(UUID.randomUUID(), null, Instant.now()))
+                .isInstanceOf(CommissionNotEligibleException.class);
+    }
+
+    @Test
+    void approveRejectsAnAlreadyApprovedCommission() {
+        Commission commission = eligibleCommission();
+        commission.approve(UUID.randomUUID(), null, Instant.parse("2026-06-26T09:00:00Z")); // ELIGIBLE -> APPROVED
+
+        assertThatThrownBy(() -> commission.approve(UUID.randomUUID(), null, Instant.now()))
+                .isInstanceOf(CommissionNotEligibleException.class);
     }
 }

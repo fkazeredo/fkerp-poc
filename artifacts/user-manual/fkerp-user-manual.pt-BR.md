@@ -1168,11 +1168,32 @@ comissão sem permissão é recusado com uma mensagem clara. O detalhe mostra:
 - **Cálculo** — a **base de cálculo** (valor comercial ou recebido), a **regra aplicada** (o percentual fica
   **registrado** na comissão, então continua visível mesmo se a regra mudar depois) e o **valor**.
 - **Conta a receber** — a situação da conta a receber relacionada, rastreável pelo pedido de origem.
-- **Histórico** — uma linha do tempo (Gerada → Elegível → Aprovada → Paga) que se preenche conforme as próximas
-  etapas (aprovação, pagamento e cancelamento chegam nas próximas versões).
+- **Histórico** — uma linha do tempo (Gerada → Elegível → Aprovada → Paga) que se preenche conforme cada etapa
+  acontece. Quando a comissão é **aprovada**, o resumo mostra **quem aprovou e quando** e as **observações** da
+  aprovação; o pagamento e o cancelamento chegam nas próximas versões.
 
-A tela é **somente leitura** e mostra **apenas dados da comissão e da origem comercial** — nunca folha, imposto,
-contabilidade, transferência bancária ou contas a pagar.
+A tela é **somente leitura** (exceto a ação de **aprovar**, descrita a seguir) e mostra **apenas dados da comissão e da
+origem comercial** — nunca folha, imposto, contabilidade, transferência bancária ou contas a pagar.
+
+### 11.10 Aprovação da comissão (Gestão de Comissão)
+
+Uma comissão **elegível** (pendente de aprovação) precisa ser **aprovada** por um responsável autorizado antes de
+poder ser paga — assim o pagamento acontece de forma **controlada**. No **detalhe da comissão**, quem tem permissão vê
+o botão **Aprovar comissão** (atalho <kbd>a</kbd>), que abre um diálogo com um campo de **observações opcional**; ao
+confirmar, a comissão passa a **Aprovada** e fica **pronta para pagamento**, registrando **quem aprovou, quando** e as
+observações. Pontos importantes:
+
+- **Só comissões elegíveis podem ser aprovadas.** Uma comissão **prevista** (cuja conta a receber ainda não foi
+  totalmente paga) ou que já esteja **aprovada/paga/rejeitada/cancelada** não pode ser aprovada — o sistema recusa com
+  uma mensagem clara.
+- **Você não pode aprovar a sua própria comissão** (separação de responsabilidades): se você for o **beneficiário**, o
+  botão não aparece e o sistema recusa a tentativa. Na prática, o **financeiro** aprova as comissões do gerente
+  comercial e o **gerente comercial** aprova as dos vendedores/representantes.
+- **Quem aprova:** o **gerente comercial** e o **financeiro**. A **diretoria** (consulta), os **vendedores**, os
+  **representantes** e a **operação** **não** aprovam.
+- **Aprovar não paga nada.** A aprovação **não** registra pagamento e **não** cria pagamento de comissão, contas a
+  pagar, folha, imposto, contabilidade nem transferência bancária — apenas marca a comissão como pronta para
+  pagamento. O pagamento da comissão é uma etapa futura.
 
 ---
 
@@ -1210,6 +1231,7 @@ também é acessível pelo teclado:
   voltar.
 - **Em uma reserva:** `a` registrar tentativa · `Esc` voltar.
 - **Em uma conta a receber:** `p` registrar pagamento (primeira parcela com saldo) · `Esc` voltar / cancelar.
+- **Em uma comissão:** `a` aprovar comissão (quando elegível e você pode aprovar) · `Esc` voltar / cancelar.
 
 ---
 
