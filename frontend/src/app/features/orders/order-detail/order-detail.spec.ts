@@ -17,9 +17,13 @@ import { AuthService } from '../../../core/auth/auth.service';
 
 describe('OrderDetailPage', () => {
   const orders = { detail: vi.fn() };
-  const commissions = { generate: vi.fn(), detail: vi.fn() };
+  const commissions = { generate: vi.fn(), detail: vi.fn(), byOrder: vi.fn() };
   const router = { navigateByUrl: vi.fn(), navigate: vi.fn() };
-  const auth = { canCreateReceivable: vi.fn(), canCreateCommission: vi.fn() };
+  const auth = {
+    canCreateReceivable: vi.fn(),
+    canCreateCommission: vi.fn(),
+    canSeeCommissions: vi.fn(),
+  };
   const messages = { add: vi.fn() };
 
   const commissionSample: CommissionDetail = {
@@ -38,6 +42,7 @@ describe('OrderDetailPage', () => {
     baseAmount: 3000,
     amount: 150,
     status: 'EXPECTED',
+    eligibleAt: null,
     createdAt: '2026-06-25T10:00:00Z',
   };
 
@@ -123,14 +128,17 @@ describe('OrderDetailPage', () => {
     orders.detail.mockReset();
     commissions.generate.mockReset();
     commissions.detail.mockReset();
+    commissions.byOrder.mockReset();
     router.navigateByUrl.mockReset();
     router.navigate.mockReset();
     messages.add.mockReset();
     auth.canCreateReceivable.mockReset().mockReturnValue(false);
     auth.canCreateCommission.mockReset().mockReturnValue(false);
+    auth.canSeeCommissions.mockReset().mockReturnValue(false);
     orders.detail.mockReturnValue(of(sample));
     commissions.generate.mockReturnValue(of({ id: 'c1' }));
     commissions.detail.mockReturnValue(of(commissionSample));
+    commissions.byOrder.mockReturnValue(of(null));
   });
 
   it('loads the order on init', () => {
@@ -297,18 +305,17 @@ describe('OrderDetailPage', () => {
       expect(comp['canGenerateCommission']()).toBe(false);
     });
 
-    it('generates the commission and shows its summary inline', () => {
+    it('generates the commission and shows it inline (refetched from the order)', () => {
       auth.canCreateCommission.mockReturnValue(true);
+      commissions.byOrder.mockReturnValue(of(commissionSample)); // the post-generate refetch
       const comp = build();
       comp.ngOnInit();
       comp['generateCommission']();
       expect(commissions.generate).toHaveBeenCalledWith('ord1');
-      expect(commissions.detail).toHaveBeenCalledWith('c1');
-      expect(comp['generatedCommission']()).toEqual(commissionSample);
+      expect(commissions.byOrder).toHaveBeenCalledWith('ord1');
+      expect(comp['commission']()).toEqual(commissionSample);
       expect(comp['generating']()).toBe(false);
-      expect(messages.add).toHaveBeenCalledWith(
-        expect.objectContaining({ severity: 'success' }),
-      );
+      expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
     });
 
     it('shows the already-generated message on 409', () => {
@@ -317,7 +324,7 @@ describe('OrderDetailPage', () => {
       const comp = build();
       comp.ngOnInit();
       comp['generateCommission']();
-      expect(comp['generatedCommission']()).toBeNull();
+      expect(comp['commission']()).toBeNull();
       expect(messages.add).toHaveBeenCalledWith(
         expect.objectContaining({ severity: 'error', summary: 'Comissão já gerada para este pedido.' }),
       );
@@ -359,21 +366,52 @@ describe('OrderDetailPage', () => {
       comp['onShortcut'](new KeyboardEvent('keydown', { key: 'c' }));
       expect(commissions.generate).toHaveBeenCalledWith('ord1');
     });
+  });
 
-    it('renders the "Gerar comissão" button and the generated result (DOM)', () => {
+  describe('commission visibility (pending approval)', () => {
+    it('fetches the order commission on load only when the user may read commissions', () => {
+      auth.canSeeCommissions.mockReturnValue(false);
+      const noScope = build();
+      noScope.ngOnInit();
+      expect(commissions.byOrder).not.toHaveBeenCalled();
+
+      auth.canSeeCommissions.mockReturnValue(true);
+      commissions.byOrder.mockReturnValue(of(commissionSample));
+      const reader = build();
+      reader.ngOnInit();
+      expect(commissions.byOrder).toHaveBeenCalledWith('ord1');
+      expect(reader['commission']()).toEqual(commissionSample);
+    });
+
+    it('hides the "Gerar comissão" button when a commission already exists for the order', () => {
       auth.canCreateCommission.mockReturnValue(true);
-      configure();
-      const fixture = TestBed.createComponent(OrderDetailPage);
-      fixture.componentInstance.ngOnInit();
-      fixture.detectChanges();
-      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Gerar comissão');
+      auth.canSeeCommissions.mockReturnValue(true);
+      commissions.byOrder.mockReturnValue(of(commissionSample));
+      const comp = build();
+      comp.ngOnInit();
+      expect(comp['canGenerateCommission']()).toBe(false);
+    });
 
-      (fixture.componentInstance as unknown as { generateCommission: () => void }).generateCommission();
-      fixture.detectChanges();
-      const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-      expect(text).toContain('Comissão prevista gerada');
-      expect(text).toContain('Comissão padrão');
-      expect(text).toContain('Valor comercial (previsão)');
+    it('renders the existing commission as "Prevista" (forecast) on load (DOM)', () => {
+      auth.canSeeCommissions.mockReturnValue(true);
+      commissions.byOrder.mockReturnValue(of(commissionSample));
+      const el = render();
+      expect(el.textContent).toContain('Comissão padrão');
+      expect(el.textContent).toContain('Valor comercial (previsão)');
+      expect(el.textContent).toContain('Prevista');
+      expect(el.textContent).not.toContain('Gerar comissão');
+    });
+
+    it('renders an eligible commission as "Pendente de aprovação" with the eligible date (DOM)', () => {
+      auth.canSeeCommissions.mockReturnValue(true);
+      commissions.byOrder.mockReturnValue(
+        of({ ...commissionSample, status: 'ELIGIBLE', eligibleAt: '2026-06-25T12:00:00Z' } satisfies CommissionDetail),
+      );
+      const el = render();
+      expect(el.textContent).toContain('Pendente de aprovação');
+      expect(el.textContent).toContain('Elegível desde');
+      // The hint explains it is not yet approved or paid.
+      expect(el.textContent).toContain('pendente de aprovação');
     });
   });
 

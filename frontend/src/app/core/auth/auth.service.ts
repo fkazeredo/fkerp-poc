@@ -175,6 +175,11 @@ export class AuthService {
   canCreateCommission(): boolean {
     return this.hasScope('commission:create');
   }
+
+  /** Whether the user may read commissions (a commercial/financial manager or the Board — Commission Management). */
+  canSeeCommissions(): boolean {
+    return this.hasScope('commission:read');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

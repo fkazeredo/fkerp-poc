@@ -1116,8 +1116,25 @@ comissão**. A comissão nasce como **Prevista** e **ainda não é paga**.
   pedido tem **no máximo uma comissão ativa** (uma nova mensagem avisa se já existe).
 
 Gerar a comissão **apenas lê** o pedido e a conta a receber — **não os altera** — e **não** cria pagamento de comissão,
-contas a pagar, folha, imposto nem contabilidade. A **elegibilidade** (quando o recebível é pago), a **aprovação**, o
-**pagamento** e os **indicadores** de comissão chegam nas próximas etapas da Sprint 6.
+contas a pagar, folha, imposto nem contabilidade. A **aprovação**, o **pagamento** e os **indicadores** de comissão
+chegam nas próximas etapas da Sprint 6.
+
+### 11.7 Comissão elegível — pendente de aprovação (Gestão de Comissão)
+
+A comissão prevista torna-se **elegível** (pendente de aprovação) **somente quando a conta a receber relacionada é
+totalmente paga** — assim a empresa **não paga comissão antes de receber**. No **detalhe do pedido**, a comissão passa
+de **Prevista** para **Pendente de aprovação** e mostra **desde quando** ficou elegível. Pontos importantes:
+
+- Um **pagamento parcial** da conta a receber **não** torna a comissão elegível: ela continua **Prevista** até a
+  quitação total (não há elegibilidade parcial).
+- Ficar elegível **não** aprova nem paga a comissão automaticamente — apenas a deixa **pendente de aprovação** para a
+  próxima etapa.
+- A conta a receber continua sendo do **Financeiro**; o Comissionamento apenas **consome** essa informação e guarda a
+  evidência (a data em que ficou elegível e a conta que foi paga) para a futura revisão.
+- Tornar a comissão elegível **não** cria pagamento de comissão, contas a pagar, folha, imposto nem contabilidade.
+
+**Observação:** se um pagamento for **estornado** depois (recurso da Sprint 5), a comissão que já ficou elegível
+**não** volta a Prevista nesta versão (não há reversão/estorno de comissão automático — fica para uma etapa futura).
 
 ---
 

@@ -134,6 +134,7 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
                         "baseAmount",
                         "amount",
                         "status",
+                        "eligibleAt",
                         "createdAt");
         assertThat(body.toLowerCase()).doesNotContain("payable").doesNotContain("payroll");
 
@@ -345,6 +346,93 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void aCommissionBecomesEligibleWhenItsReceivableIsFullyPaid() throws Exception {
+        UUID order = closedOrder("Eligible", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+
+        // It starts as a forecast: EXPECTED, no eligibility timestamp yet.
+        mvc.perform(get("/api/commissions/" + commissionId).header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXPECTED"))
+                .andExpect(jsonPath("$.eligibleAt").value(org.hamcrest.Matchers.nullValue()));
+
+        // Finance fully pays the related Receivable → the commission becomes Eligible (pending approval).
+        String fin = login("financeiro", "financeiro123");
+        fullyPayReceivableFor(fin, order);
+
+        mvc.perform(get("/api/commissions/" + commissionId).header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ELIGIBLE"))
+                .andExpect(jsonPath("$.eligibleAt").value(org.hamcrest.Matchers.notNullValue()));
+
+        // The order's commission is visible (pending approval) via the by-order lookup.
+        mvc.perform(get("/api/commissions?commercialOrderId=" + order).header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].status").value("ELIGIBLE"));
+
+        // Eligible is not approved, not paid: no Commission Payment table/row exists in this slice.
+        assertThat(jdbc.queryForObject(
+                        "SELECT count(*) FROM information_schema.tables WHERE table_name = 'commission_payments'",
+                        Integer.class))
+                .isZero();
+    }
+
+    @Test
+    void aCommissionStaysExpectedWhileItsReceivableIsOnlyPartiallyPaid() throws Exception {
+        UUID order = closedOrder("Partial", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+
+        String fin = login("financeiro", "financeiro123");
+        String receivable = createReceivable(fin, order);
+        payInstallment(fin, receivable, firstInstallment(fin, receivable), "200.00");
+
+        mvc.perform(get("/api/commissions/" + commissionId).header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXPECTED"))
+                .andExpect(jsonPath("$.eligibleAt").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void aCommissionStaysExpectedWhileItsReceivableIsOpen() throws Exception {
+        UUID order = closedOrder("Open", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+
+        // An open Receivable (no payment) must not make the commission eligible.
+        createReceivable(login("financeiro", "financeiro123"), order);
+
+        mvc.perform(get("/api/commissions/" + commissionId).header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXPECTED"));
+    }
+
+    @Test
+    void aCommissionGeneratedAfterFullPaymentIsEligibleImmediately() throws Exception {
+        UUID order = closedOrder("Already", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+
+        // The Receivable is fully paid before the commission is generated (the PAID event fired with no commission).
+        fullyPayReceivableFor(login("financeiro", "financeiro123"), order);
+
+        String commissionId = generate(manager, order);
+
+        mvc.perform(get("/api/commissions/" + commissionId).header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ELIGIBLE"))
+                .andExpect(jsonPath("$.eligibleAt").value(org.hamcrest.Matchers.notNullValue()))
+                // Generated from the received amount (the full 500), not the commercial forecast.
+                .andExpect(jsonPath("$.basisType").value("RECEIVED_AMOUNT"))
+                .andExpect(jsonPath("$.baseAmount").value(500.00));
+    }
+
     // Creates an active, in-window COMMERCIAL_RESPONSIBLE rule (so it matches any order's commercial responsible).
     private void activeResponsibleRule(String token, String percentage) throws Exception {
         mvc.perform(post("/api/commission/rules")
@@ -360,6 +448,57 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
 
     private String paymentMethodId(String code) {
         return jdbc.queryForObject("SELECT id FROM payment_methods WHERE code = ?", String.class, code);
+    }
+
+    private String generate(String token, UUID order) throws Exception {
+        return JsonPath.read(
+                mvc.perform(post("/api/commissions")
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"commercialOrderId\":\"%s\"}".formatted(order)))
+                        .andExpect(status().isCreated())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(),
+                "$.id");
+    }
+
+    // Finance creates a Receivable from the (confirmed) order — one full-amount installment due in the future.
+    private String createReceivable(String fin, UUID order) throws Exception {
+        return JsonPath.read(
+                mvc.perform(post("/api/receivables")
+                                .header("Authorization", "Bearer " + fin)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"commercialOrderId\":\"%s\",\"dueDate\":\"2026-07-15\"}".formatted(order)))
+                        .andExpect(status().isCreated())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(),
+                "$.id");
+    }
+
+    private String firstInstallment(String fin, String receivable) throws Exception {
+        return JsonPath.read(
+                mvc.perform(get("/api/receivables/" + receivable).header("Authorization", "Bearer " + fin))
+                        .andExpect(status().isOk())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(),
+                "$.installments[0].id");
+    }
+
+    private void payInstallment(String fin, String receivable, String installment, String amount) throws Exception {
+        mvc.perform(post("/api/receivables/%s/installments/%s/payments".formatted(receivable, installment))
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":%s,\"paymentDate\":\"2026-06-01\"}"
+                                .formatted(paymentMethodId("PIX"), amount)))
+                .andExpect(status().isOk());
+    }
+
+    private void fullyPayReceivableFor(String fin, UUID order) throws Exception {
+        String receivable = createReceivable(fin, order);
+        payInstallment(fin, receivable, firstInstallment(fin, receivable), "500.00");
     }
 
     /** Seeds an Order (with its commercial chain) with the given status, responsible, total and booking status. */

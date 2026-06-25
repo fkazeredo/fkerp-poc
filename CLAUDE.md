@@ -968,6 +968,27 @@ scope (later slices):** eligibility (`EXPECTED → ELIGIBLE` once the Receivable
 registration + reversal, statement, order commission-status reflection, indicators, and multi-level/margin/supplier/
 target-based commission.
 
+**Commission eligibility (normative — Commission Management, Sprint 6 Slice 3).** An Expected Commission advances one
+fixed step — **`EXPECTED → ELIGIBLE`** (pending approval) — **only when its related Receivable is fully `PAID`**, so the
+company never pays commission before receiving the money. Commission Management **consumes** the financial status; the
+Receivable stays **owned by Financial Operations** and the Order by Sales. The transition is driven by a
+**Commission-owned synchronous `@EventListener`** (`CommissionEligibilityListener`) on the **`ReceivableStatusChanged`**
+event Financial already publishes — it reacts **only** to `PAID` (a `PARTIALLY_PAID`/`OPEN`/`OVERDUE` receivable does
+**not** make it eligible; there is **no partial eligibility**), finds the Order's `EXPECTED` commission and calls
+`Commission.markEligible(...)`. The same transition also runs at **generation time** when the source Receivable is
+**already `PAID`** (the `PAID` event fired before the commission existed, so the listener would miss it). `markEligible`
+is **idempotent** (only from `EXPECTED`; a repeated `PAID` event or an already-advanced commission is a no-op), records
+the **financial evidence for review** (`eligibleAt` + the paid `receivableId`), and creates **NO** Commission Payment,
+Accounts Payable, payroll, tax or accounting data. Becoming eligible is **not** an automatic approval and **not** an
+automatic payment — it only makes the commission **visible as pending approval**. The Order detail surfaces the order's
+commission via **`GET /api/commissions?commercialOrderId={id}`** (gated `commission:read`, 0-or-1 active commission),
+showing `ELIGIBLE` as **"Pendente de aprovação"** with the `eligibleAt` date; the "Gerar comissão" action hides once a
+commission exists. **Known gap (intentional):** a payment **reversal** (Sprint 5) republishes a non-`PAID` status, which
+the listener **ignores** — an already-`ELIGIBLE` commission is **not regressed** back to `EXPECTED` (no clawback /
+reversal-reaction automation — out of scope). **Out of scope (later slices):** partial eligibility, clawback,
+reversal-reaction automation, approval/rejection, payment registration + reversal, the pending-approval worklist/list,
+order commission-status reflection, indicators, and payroll / accounts payable / tax / accounting ledger.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

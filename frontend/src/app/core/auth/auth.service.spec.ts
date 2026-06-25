@@ -113,6 +113,14 @@ describe('AuthService', () => {
     expect(service.canCreateCommission()).toBe(false);
   });
 
+  it('grants reading commissions with the commission:read scope', () => {
+    service.accessToken.set(jwt({ sub: 'u', scope: 'commission:read' }));
+    expect(service.canSeeCommissions()).toBe(true);
+
+    service.accessToken.set(jwt({ sub: 'u', scope: 'commission:create' }));
+    expect(service.canSeeCommissions()).toBe(false);
+  });
+
   it('exposes no scopes and a null subject when there is no token', () => {
     expect(service.scopes()).toEqual([]);
     expect(service.userId()).toBeNull();

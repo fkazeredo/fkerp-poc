@@ -1,6 +1,7 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 /** The Commission lifecycle status (Commission Management, Sprint 6). Slice 2 generates only EXPECTED. */
 export type CommissionStatus = 'EXPECTED' | 'ELIGIBLE' | 'APPROVED' | 'REJECTED' | 'PAID' | 'CANCELLED';
@@ -29,6 +30,8 @@ export interface CommissionDetail {
   baseAmount: number;
   amount: number;
   status: CommissionStatus;
+  /** When the commission became eligible (its receivable was paid), or null while still a forecast. */
+  eligibleAt: string | null;
   createdAt: string;
 }
 
@@ -49,5 +52,16 @@ export class CommissionService {
 
   detail(id: string): Observable<CommissionDetail> {
     return this.http.get<CommissionDetail>(`/api/commissions/${id}`);
+  }
+
+  /**
+   * The active commission of a Commercial Order (or null when there is none). Feeds the Order detail's "this order's
+   * commission" view, showing whether it is still a forecast (Expected) or eligible for approval (Eligible).
+   */
+  byOrder(commercialOrderId: string): Observable<CommissionDetail | null> {
+    const params = new HttpParams().set('commercialOrderId', commercialOrderId);
+    return this.http
+      .get<CommissionDetail[]>('/api/commissions', { params })
+      .pipe(map((list) => list[0] ?? null));
   }
 }
