@@ -45,11 +45,16 @@
     </div>
   </header>
 
-  @if (generatedCommission(); as c) {
-    <p-card header="Comissão prevista gerada" styleClass="section commission-result">
+  @if (commission(); as c) {
+    <p-card header="Comissão" styleClass="section commission-result">
       <dl class="data">
         <dt>Situação</dt>
-        <dd>Prevista</dd>
+        <dd>
+          <p-tag
+            [value]="commissionStatusLabel(c.status)"
+            [severity]="commissionStatusSeverity(c.status)"
+          />
+        </dd>
         <dt>Beneficiário</dt>
         <dd>{{ c.beneficiaryName ?? '—' }}</dd>
         <dt>Regra aplicada</dt>
@@ -58,9 +63,19 @@
         <dd>{{ basisLabel(c.basisType) }} — {{ c.baseAmount | currency: 'BRL' }}</dd>
         <dt>Valor da comissão</dt>
         <dd class="grand">{{ c.amount | currency: 'BRL' }}</dd>
+        @if (c.eligibleAt) {
+          <dt>Elegível desde</dt>
+          <dd>{{ c.eligibleAt | date: 'short' }}</dd>
+        }
       </dl>
       <p class="hint muted">
-        A comissão é uma previsão (não gera pagamento, folha, contas a pagar, imposto ou contabilidade).
+        @if (c.status === 'ELIGIBLE') {
+          A conta a receber foi paga: a comissão está pendente de aprovação (ainda não aprovada nem paga; não gera
+          folha, contas a pagar, imposto ou contabilidade).
+        } @else {
+          A comissão é uma previsão e fica elegível só quando a conta a receber for paga (não gera pagamento, folha,
+          contas a pagar, imposto ou contabilidade).
+        }
       </p>
     </p-card>
   }

@@ -12,6 +12,7 @@ import com.fksoft.erp.domain.commission.model.CommissionStatus;
 import com.fksoft.erp.domain.commission.model.CommissionTargetType;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -98,5 +99,45 @@ class CommissionTest {
                 creator);
 
         assertThat(commission.amount()).isEqualByComparingTo("0.26");
+    }
+
+    @Test
+    void markEligibleTransitionsFromExpectedAndRecordsTheEvidence() {
+        Commission commission = Commission.generate(
+                order(new BigDecimal("1000.00")),
+                rule("5"),
+                CommissionBasis.COMMERCIAL_AMOUNT,
+                new BigDecimal("1000.00"),
+                creator);
+        UUID receivableId = UUID.randomUUID();
+        Instant when = Instant.parse("2026-06-25T10:00:00Z");
+
+        boolean changed = commission.markEligible(receivableId, when);
+
+        assertThat(changed).isTrue();
+        assertThat(commission.status()).isEqualTo(CommissionStatus.ELIGIBLE);
+        assertThat(commission.eligibleAt()).isEqualTo(when);
+        assertThat(commission.receivableId()).isEqualTo(receivableId);
+    }
+
+    @Test
+    void markEligibleIsAnIdempotentNoOpWhenNotExpected() {
+        Commission commission = Commission.generate(
+                order(new BigDecimal("1000.00")),
+                rule("5"),
+                CommissionBasis.COMMERCIAL_AMOUNT,
+                new BigDecimal("1000.00"),
+                creator);
+        UUID firstReceivable = UUID.randomUUID();
+        Instant firstWhen = Instant.parse("2026-06-25T10:00:00Z");
+        commission.markEligible(firstReceivable, firstWhen); // EXPECTED -> ELIGIBLE
+
+        // A second call (e.g. a repeated PAID event) leaves the already-eligible commission untouched.
+        boolean changedAgain = commission.markEligible(UUID.randomUUID(), Instant.parse("2026-07-01T00:00:00Z"));
+
+        assertThat(changedAgain).isFalse();
+        assertThat(commission.status()).isEqualTo(CommissionStatus.ELIGIBLE);
+        assertThat(commission.eligibleAt()).isEqualTo(firstWhen);
+        assertThat(commission.receivableId()).isEqualTo(firstReceivable);
     }
 }

@@ -23,7 +23,8 @@ import java.util.UUID;
  * @param basisType the basis the amount was calculated from ({@code COMMERCIAL_AMOUNT}/{@code RECEIVED_AMOUNT})
  * @param baseAmount the base amount (commercial total or received amount)
  * @param amount the calculated commission amount
- * @param status the commission status ({@code EXPECTED} in this slice)
+ * @param status the commission status ({@code EXPECTED} or {@code ELIGIBLE} in this slice)
+ * @param eligibleAt when the commission became eligible (the related Receivable was paid), or {@code null}
  * @param createdAt when the commission was generated
  */
 public record CommissionDetail(
@@ -42,6 +43,7 @@ public record CommissionDetail(
         BigDecimal baseAmount,
         BigDecimal amount,
         String status,
+        Instant eligibleAt,
         Instant createdAt) {
 
     /**
@@ -71,6 +73,7 @@ public record CommissionDetail(
                 commission.baseAmount(),
                 commission.amount(),
                 commission.status().name(),
+                commission.eligibleAt(),
                 commission.createdAt());
     }
 }

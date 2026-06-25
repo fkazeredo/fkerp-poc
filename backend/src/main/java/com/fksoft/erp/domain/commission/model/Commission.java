@@ -99,6 +99,14 @@ public class Commission {
     @Column(nullable = false, length = 20)
     private CommissionStatus status;
 
+    // The financial evidence kept when the commission became eligible (the related Receivable was fully paid): when
+    // it happened and the paid Receivable's id. Null while still EXPECTED. Carries no monetary data.
+    @Column(name = "eligible_at")
+    private Instant eligibleAt;
+
+    @Column(name = "receivable_id")
+    private UUID receivableId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -146,5 +154,27 @@ public class Commission {
         commission.createdBy = createdBy;
         commission.updatedBy = createdBy;
         return commission;
+    }
+
+    /**
+     * Makes the commission <b>eligible</b> for approval — the single fixed transition {@code EXPECTED → ELIGIBLE},
+     * driven by the related Receivable becoming fully paid. It records the financial evidence (when it happened and
+     * the paid Receivable's id) so the future approval has a payment reference. The method is <b>idempotent</b>: any
+     * status other than {@code EXPECTED} (already eligible/approved/paid, or terminal rejected/cancelled) is left
+     * untouched. Making a commission eligible does NOT approve it, pay it, or create any Payment, Accounts Payable,
+     * payroll, tax or accounting data.
+     *
+     * @param receivableId the paid Receivable that triggered eligibility (the financial-evidence reference)
+     * @param when the instant the commission became eligible
+     * @return {@code true} if the commission transitioned to {@code ELIGIBLE}, {@code false} if it was a no-op
+     */
+    public boolean markEligible(UUID receivableId, Instant when) {
+        if (status != CommissionStatus.EXPECTED) {
+            return false;
+        }
+        this.status = CommissionStatus.ELIGIBLE;
+        this.eligibleAt = when;
+        this.receivableId = receivableId;
+        return true;
     }
 }

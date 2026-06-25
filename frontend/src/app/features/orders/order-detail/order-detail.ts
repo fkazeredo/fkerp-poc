@@ -17,6 +17,7 @@ import {
   CommissionBasis,
   CommissionDetail,
   CommissionService,
+  CommissionStatus,
 } from '../../../core/api/commission.service';
 import { BookingRequestStatus } from '../../../core/api/booking.service';
 import { OpportunityStage } from '../../../core/api/opportunity.service';
@@ -121,6 +122,24 @@ const COMMISSION_BASIS_LABELS: Record<CommissionBasis, string> = {
   RECEIVED_AMOUNT: 'Valor recebido',
 };
 
+const COMMISSION_STATUS_LABELS: Record<CommissionStatus, string> = {
+  EXPECTED: 'Prevista',
+  ELIGIBLE: 'Pendente de aprovação',
+  APPROVED: 'Aprovada',
+  REJECTED: 'Rejeitada',
+  PAID: 'Paga',
+  CANCELLED: 'Cancelada',
+};
+
+const COMMISSION_STATUS_SEVERITY: Record<CommissionStatus, TagSeverity> = {
+  EXPECTED: 'info',
+  ELIGIBLE: 'warn',
+  APPROVED: 'success',
+  REJECTED: 'danger',
+  PAID: 'success',
+  CANCELLED: 'secondary',
+};
+
 /**
  * Commercial Order detail page (Sales & Proposals): the formal, read-only record of the closed deal — its
  * status, the snapshot of the sold items and total, and the source Proposal / Opportunity / Lead kept
@@ -144,8 +163,9 @@ export class OrderDetailPage implements OnInit {
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
 
-  // The Expected Commission generated from this Order in the current view (shown inline after generating).
-  protected readonly generatedCommission = signal<CommissionDetail | null>(null);
+  // This Order's active commission (fetched on load when the user may read commissions, and refreshed after
+  // generating). Shows whether it is still a forecast (Prevista) or eligible for approval (Pendente de aprovação).
+  protected readonly commission = signal<CommissionDetail | null>(null);
   protected readonly generating = signal(false);
 
   private orderId = '';
@@ -153,6 +173,9 @@ export class OrderDetailPage implements OnInit {
   ngOnInit(): void {
     this.orderId = this.route.snapshot.paramMap.get('id') ?? '';
     this.load();
+    if (this.auth.canSeeCommissions()) {
+      this.commissions.byOrder(this.orderId).subscribe({ next: (c) => this.commission.set(c) });
+    }
   }
 
   protected statusLabel(status: CommercialOrderStatus): string {
@@ -237,11 +260,14 @@ export class OrderDetailPage implements OnInit {
 
   /**
    * Whether to offer generating an Expected Commission from this Order: the Order is commercially closed (not
-   * cancelled) and the user may generate commissions. The "has a responsible / a positive total / an applicable
-   * active rule" rules stay on the backend (surfaced as a friendly message on 422); the backend is the authority.
+   * cancelled), the user may generate commissions, and no commission exists yet for this Order. The "has a
+   * responsible / a positive total / an applicable active rule" rules stay on the backend (surfaced as a friendly
+   * message on 422); the backend is the authority.
    */
   protected canGenerateCommission(): boolean {
-    return this.auth.canCreateCommission() && this.order()?.status !== 'CANCELLED';
+    return (
+      this.auth.canCreateCommission() && this.order()?.status !== 'CANCELLED' && this.commission() === null
+    );
   }
 
   /** Human label for the commission's calculation basis (commercial forecast vs received amount). */
@@ -249,10 +275,19 @@ export class OrderDetailPage implements OnInit {
     return COMMISSION_BASIS_LABELS[basis];
   }
 
+  /** Human label for the commission status (ELIGIBLE is shown as "Pendente de aprovação"). */
+  protected commissionStatusLabel(status: CommissionStatus): string {
+    return COMMISSION_STATUS_LABELS[status];
+  }
+
+  protected commissionStatusSeverity(status: CommissionStatus): TagSeverity {
+    return COMMISSION_STATUS_SEVERITY[status];
+  }
+
   /**
-   * Generates the Expected Commission for this Order and shows its summary inline. The amount, percentage, basis
-   * and EXPECTED status are read back from the generated commission. Friendly messages surface the "already
-   * generated" (409) and the business-rule (422) cases.
+   * Generates the Expected Commission for this Order and shows its summary inline. After generating, the order's
+   * commission is re-fetched (so the panel reflects its real status — already Eligible if the receivable was paid).
+   * Friendly messages surface the "already generated" (409) and the business-rule (422) cases.
    */
   protected generateCommission(): void {
     const o = this.order();
@@ -261,11 +296,11 @@ export class OrderDetailPage implements OnInit {
     }
     this.generating.set(true);
     this.commissions.generate(o.id).subscribe({
-      next: (created) => {
-        this.commissions.detail(created.id).subscribe({
-          next: (detail) => {
+      next: () => {
+        this.commissions.byOrder(o.id).subscribe({
+          next: (c) => {
             this.generating.set(false);
-            this.generatedCommission.set(detail);
+            this.commission.set(c);
             this.messages.add({ severity: 'success', summary: 'Comissão prevista gerada' });
           },
           error: () => {

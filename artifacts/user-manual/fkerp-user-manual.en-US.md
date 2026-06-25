@@ -1112,8 +1112,26 @@ amount**. The commission starts as **Expected** and is **not payable** yet.
   has **at most one active commission** (a message warns if one already exists).
 
 Generating the commission **only reads** the order and the receivable — it **does not change** them — and creates **no**
-commission payment, accounts payable, payroll, tax or accounting data. Commission **eligibility** (once the receivable
-is paid), **approval**, **payment** and **indicators** arrive in the next Sprint-6 steps.
+commission payment, accounts payable, payroll, tax or accounting data. Commission **approval**, **payment** and
+**indicators** arrive in the next Sprint-6 steps.
+
+### 11.7 Eligible commission — pending approval (Commission Management)
+
+An expected commission becomes **eligible** (pending approval) **only when its related receivable is fully paid** — so
+the company **never pays commission before receiving the money**. On the **order detail** the commission moves from
+**Prevista** (forecast) to **Pendente de aprovação** (pending approval) and shows **since when** it became eligible.
+Key points:
+
+- A **partial payment** of the receivable does **not** make the commission eligible — it stays a forecast until the
+  receivable is fully settled (there is no partial eligibility).
+- Becoming eligible does **not** approve or pay the commission automatically — it only marks it **pending approval**
+  for the next step.
+- The receivable stays owned by **Finance**; Commission Management only **consumes** that status and keeps the evidence
+  (when it became eligible and which receivable was paid) for the future review.
+- Making a commission eligible creates **no** commission payment, accounts payable, payroll, tax or accounting data.
+
+**Note:** if a payment is later **reversed** (a Sprint 5 capability), a commission that already became eligible is
+**not** moved back to forecast in this release (there is no automatic commission clawback/reversal — a later step).
 
 ---
 

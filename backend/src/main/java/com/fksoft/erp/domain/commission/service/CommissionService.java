@@ -25,6 +25,7 @@ import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -104,6 +105,11 @@ public class CommissionService {
         BigDecimal baseAmount = received ? receivable.amountPaid() : order.total();
 
         Commission commission = Commission.generate(order, rule, basis, baseAmount, userId);
+        // If the Receivable is already fully paid at generation time, the commission is eligible right away — the
+        // PAID event fired before the commission existed, so the eligibility listener would otherwise miss it.
+        if (receivable != null && receivable.status() == ReceivableStatus.PAID) {
+            commission.markEligible(receivable.id(), Instant.now());
+        }
         commissions.save(commission);
         return commission.id();
     }
@@ -117,7 +123,26 @@ public class CommissionService {
      */
     @Transactional(readOnly = true)
     public CommissionDetail detail(UUID id) {
-        Commission commission = commissions.findById(id).orElseThrow(CommissionNotFoundException::new);
+        return toDetail(commissions.findById(id).orElseThrow(CommissionNotFoundException::new));
+    }
+
+    /**
+     * The active Commission of a Commercial Order (0 or 1), for the Order detail's "this order's commission" view. It
+     * shows whether the order's commission is still a forecast ({@code EXPECTED}) or eligible for approval
+     * ({@code ELIGIBLE}). Gated by {@code commission:read} at the controller.
+     *
+     * @param commercialOrderId the source order id
+     * @return the order's active commission detail as a 0-or-1 list
+     */
+    @Transactional(readOnly = true)
+    public List<CommissionDetail> byOrder(UUID commercialOrderId) {
+        return commissions
+                .findFirstByCommercialOrderIdAndStatusIn(commercialOrderId, CommissionStatus.active())
+                .map(commission -> List.of(toDetail(commission)))
+                .orElseGet(List::of);
+    }
+
+    private CommissionDetail toDetail(Commission commission) {
         long orderNumber = orders.findById(commission.commercialOrderId())
                 .map(CommercialOrder::number)
                 .orElse(0L);
