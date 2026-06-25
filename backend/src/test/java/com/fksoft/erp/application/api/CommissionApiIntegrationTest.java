@@ -144,6 +144,11 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
                         "approvedByName",
                         "approvalNotes",
                         "paidAt",
+                        "paidAmount",
+                        "paymentDate",
+                        "paymentMethod",
+                        "paymentNote",
+                        "paidByName",
                         "resolutionReason",
                         "resolutionNote",
                         "resolvedByName",
@@ -896,6 +901,122 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
     void rejectsUnauthenticatedRejectAndCancel() throws Exception {
         mvc.perform(post("/api/commissions/" + UUID.randomUUID() + "/reject")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/commissions/" + UUID.randomUUID() + "/cancel")).andExpect(status().isUnauthorized());
+    }
+
+    // Brings a fresh commission to APPROVED (generate + fully pay its receivable + approve) and returns its id.
+    private String approvedCommission(String name) throws Exception {
+        UUID order = closedOrder(name, "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        String fin = login("financeiro", "financeiro123");
+        fullyPayReceivableFor(fin, order); // ELIGIBLE
+        mvc.perform(post("/api/commissions/" + commissionId + "/approve").header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk()); // APPROVED (amount = 500 × 5% = 25.00)
+        return commissionId;
+    }
+
+    @Test
+    void financeRegistersAnApprovedCommissionPaymentAndItBecomesPaid() throws Exception {
+        String commissionId = approvedCommission("PayOk");
+        String fin = login("financeiro", "financeiro123");
+
+        mvc.perform(post("/api/commissions/" + commissionId + "/pay")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"paymentMethodId\":\"%s\",\"amount\":25.00,\"paymentDate\":\"2026-06-20\",\"note\":\"OP 9\"}"
+                                        .formatted(paymentMethodId("PIX"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PAID"))
+                .andExpect(jsonPath("$.paidAmount").value(25.00))
+                .andExpect(jsonPath("$.paymentMethod").value("Pix"))
+                .andExpect(jsonPath("$.paymentDate").value("2026-06-20"))
+                .andExpect(jsonPath("$.paymentNote").value("OP 9"))
+                .andExpect(jsonPath("$.paidByName").value("financeiro"))
+                .andExpect(jsonPath("$.paidAt").value(org.hamcrest.Matchers.notNullValue()));
+
+        // Paid is hidden by default but visible via the status filter (historically visible). No payable/payroll leak.
+        String manager = login("comercial", "comercial123");
+        String list = mvc.perform(get("/api/commissions?status=PAID").header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].status").value("PAID"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(list.toLowerCase()).doesNotContain("payable").doesNotContain("payroll");
+    }
+
+    @Test
+    void cannotPayANonApprovedCommission() throws Exception {
+        UUID order = closedOrder("PayExpected", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order); // EXPECTED
+
+        mvc.perform(post("/api/commissions/" + commissionId + "/pay")
+                        .header("Authorization", "Bearer " + login("financeiro", "financeiro123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":25.00,\"paymentDate\":\"2026-06-20\"}"
+                                .formatted(paymentMethodId("PIX"))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("commission.not-payable"));
+    }
+
+    @Test
+    void cannotPayWithAMismatchedAmount() throws Exception {
+        String commissionId = approvedCommission("PayMismatch");
+
+        mvc.perform(post("/api/commissions/" + commissionId + "/pay")
+                        .header("Authorization", "Bearer " + login("financeiro", "financeiro123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":30.00,\"paymentDate\":\"2026-06-20\"}"
+                                .formatted(paymentMethodId("PIX"))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("commission.payment-amount-mismatch"));
+    }
+
+    @Test
+    void cannotPayWithAnUnknownMethod() throws Exception {
+        String commissionId = approvedCommission("PayBadMethod");
+
+        mvc.perform(post("/api/commissions/" + commissionId + "/pay")
+                        .header("Authorization", "Bearer " + login("financeiro", "financeiro123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":25.00,\"paymentDate\":\"2026-06-20\"}"
+                                .formatted(UUID.randomUUID())))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("financial.payment.method-not-available"));
+    }
+
+    @Test
+    void payRequiresTheMandatoryFields() throws Exception {
+        String commissionId = approvedCommission("PayNoBody");
+
+        mvc.perform(post("/api/commissions/" + commissionId + "/pay")
+                        .header("Authorization", "Bearer " + login("financeiro", "financeiro123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void aConsultationUserCannotPay() throws Exception {
+        String commissionId = approvedCommission("PayNoScope");
+
+        // The Board/Director (004) holds commission:read:all but not commission:pay → 403.
+        mvc.perform(post("/api/commissions/" + commissionId + "/pay")
+                        .header("Authorization", "Bearer " + login("diretor", "diretor123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":25.00,\"paymentDate\":\"2026-06-20\"}"
+                                .formatted(paymentMethodId("PIX"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rejectsUnauthenticatedPay() throws Exception {
+        mvc.perform(post("/api/commissions/" + UUID.randomUUID() + "/pay")).andExpect(status().isUnauthorized());
     }
 
     @Test

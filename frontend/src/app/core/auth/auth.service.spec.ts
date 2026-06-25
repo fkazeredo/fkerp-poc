@@ -145,6 +145,14 @@ describe('AuthService', () => {
     expect(service.canCancelCommission()).toBe(false);
   });
 
+  it('grants registering a commission payment only with the commission:pay scope', () => {
+    service.accessToken.set(jwt({ sub: 'u', scope: 'commission:pay' }));
+    expect(service.canPayCommission()).toBe(true);
+
+    service.accessToken.set(jwt({ sub: 'u', scope: 'commission:approve commission:read:all' }));
+    expect(service.canPayCommission()).toBe(false);
+  });
+
   it('exposes no scopes and a null subject when there is no token', () => {
     expect(service.scopes()).toEqual([]);
     expect(service.userId()).toBeNull();

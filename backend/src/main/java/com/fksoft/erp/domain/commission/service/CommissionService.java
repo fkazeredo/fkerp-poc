@@ -25,8 +25,11 @@ import com.fksoft.erp.domain.commission.service.data.CommissionListItem;
 import com.fksoft.erp.domain.commission.service.data.CommissionSearchCriteria;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
+import com.fksoft.erp.domain.financial.exception.PaymentMethodNotAvailableException;
+import com.fksoft.erp.domain.financial.model.PaymentMethod;
 import com.fksoft.erp.domain.financial.model.Receivable;
 import com.fksoft.erp.domain.financial.model.ReceivableStatus;
+import com.fksoft.erp.domain.financial.repository.PaymentMethodRepository;
 import com.fksoft.erp.domain.financial.repository.ReceivableRepository;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
@@ -66,6 +69,7 @@ public class CommissionService {
     private final CommissionRepository commissions;
     private final CommissionRuleRepository rules;
     private final CommissionResolutionReasonRepository resolutionReasons;
+    private final PaymentMethodRepository paymentMethods;
     private final ReceivableRepository receivables;
     private final CommercialOrderRepository orders;
     private final ProposalRepository proposals;
@@ -236,6 +240,46 @@ public class CommissionService {
         return toDetail(commission);
     }
 
+    /**
+     * Registers the manual payment of an Approved Commission the caller may see (Approved → Paid), closing the
+     * commission cycle. The amount must equal the approved commission amount (full payment only); the payment method
+     * must be an active cadastro value. Records the amount, date, method, optional note and who/when. Registering the
+     * payment creates NO Accounts Payable, payroll, tax, accounting or bank-transfer data and triggers no bank
+     * integration; it never touches the Order or Receivable.
+     *
+     * @param id the commission id
+     * @param amount the paid amount (must equal the commission amount)
+     * @param paymentDate the payment date (not in the future)
+     * @param paymentMethodId the payment-method cadastro id (must be active)
+     * @param note an optional free-text note
+     * @param userId the authenticated user registering the payment
+     * @param canSeeAll whether the caller may see every Commission
+     * @return the refreshed commission detail
+     * @throws CommissionNotFoundException if the commission does not exist
+     * @throws CommissionAccessDeniedException if the caller may not see it
+     * @throws PaymentMethodNotAvailableException if the payment method is unknown or inactive
+     * @throws com.fksoft.erp.domain.commission.exception.CommissionNotPayableException if it is not Approved
+     * @throws com.fksoft.erp.domain.commission.exception.CommissionPaymentAmountMismatchException if the amount differs
+     */
+    @Transactional
+    public CommissionDetail pay(
+            UUID id,
+            BigDecimal amount,
+            LocalDate paymentDate,
+            UUID paymentMethodId,
+            String note,
+            UUID userId,
+            boolean canSeeAll) {
+        Commission commission = loadVisible(id, userId, canSeeAll);
+        PaymentMethod method = paymentMethods
+                .findById(paymentMethodId)
+                .filter(ReferenceData::active)
+                .orElseThrow(PaymentMethodNotAvailableException::new);
+        commission.pay(amount, paymentDate, method, note, userId, Instant.now());
+        commissions.save(commission);
+        return toDetail(commission);
+    }
+
     private Commission loadVisible(UUID id, UUID userId, boolean canSeeAll) {
         Commission commission = commissions.findById(id).orElseThrow(CommissionNotFoundException::new);
         if (!accessPolicy.canSee(commission, userId, canSeeAll)) {
@@ -318,6 +362,12 @@ public class CommissionService {
         String resolutionReason = commission.resolutionReason() == null
                 ? null
                 : commission.resolutionReason().label();
+        String paidByName = commission.paidBy() == null
+                ? null
+                : users.findById(commission.paidBy()).map(User::username).orElse(null);
+        String paymentMethod = commission.paymentMethod() == null
+                ? null
+                : commission.paymentMethod().label();
         Receivable receivable = receivables
                 .findFirstByCommercialOrderIdAndStatusIn(commission.commercialOrderId(), ReceivableStatus.active())
                 .orElse(null);
@@ -331,7 +381,9 @@ public class CommissionService {
                 createdByName,
                 approvedByName,
                 resolutionReason,
-                resolvedByName);
+                resolvedByName,
+                paymentMethod,
+                paidByName);
         return CommissionDetail.from(commission, orderNumber, refs);
     }
 

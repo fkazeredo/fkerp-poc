@@ -19,6 +19,8 @@ import { MessageModule } from 'primeng/message';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
+import { DatePickerModule } from 'primeng/datepicker';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
@@ -93,6 +95,8 @@ interface TimelineEntry {
     DialogModule,
     SelectModule,
     TextareaModule,
+    DatePickerModule,
+    InputNumberModule,
   ],
   templateUrl: './commission-detail.html',
   styleUrl: './commission-detail.css',
@@ -140,6 +144,20 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     note: ['', Validators.maxLength(2000)],
   });
 
+  // Pay dialog state. The amount defaults to (and must equal) the commission amount; the method is from the financial
+  // payment-method cadastro; the date cannot be in the future.
+  protected readonly payDialogOpen = signal(false);
+  protected readonly paying = signal(false);
+  protected readonly payError = signal<string | null>(null);
+  protected readonly paymentMethodOptions = signal<ReferenceItem[]>([]);
+  protected readonly today = new Date();
+  protected readonly payForm = this.fb.nonNullable.group({
+    paymentMethodId: ['', Validators.required],
+    amount: [null as number | null, [Validators.required, Validators.min(0.01)]],
+    paymentDate: [null as Date | null, Validators.required],
+    note: ['', Validators.maxLength(2000)],
+  });
+
   /** Whether the current user may approve this commission: it is Eligible, they hold the scope, and it is not theirs. */
   protected readonly canApprove = computed<boolean>(() => {
     const c = this.commission();
@@ -165,6 +183,12 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     );
   });
 
+  /** Whether the current user may register a payment for this commission (only an Approved one). */
+  protected readonly canPay = computed<boolean>(() => {
+    const c = this.commission();
+    return !!c && c.status === 'APPROVED' && this.auth.canPayCommission();
+  });
+
   /** The lifecycle timeline assembled from the stamps present (generated / eligible / approved / paid / voided). */
   protected readonly timeline = computed<TimelineEntry[]>(() => {
     const c = this.commission();
@@ -179,7 +203,7 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
       entries.push({ label: 'Aprovada', at: c.approvedAt, by: c.approvedByName });
     }
     if (c.paidAt) {
-      entries.push({ label: 'Paga', at: c.paidAt, by: null });
+      entries.push({ label: 'Paga', at: c.paidAt, by: c.paidByName });
     }
     if (c.resolvedAt) {
       entries.push({
@@ -197,7 +221,10 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     // Keep the global unsaved flag (tab-close warning) in sync with any open dialog.
     effect(() =>
       this.unsaved.set(
-        this.approveDialogOpen() || this.rejectDialogOpen() || this.cancelDialogOpen(),
+        this.approveDialogOpen() ||
+          this.rejectDialogOpen() ||
+          this.cancelDialogOpen() ||
+          this.payDialogOpen(),
       ),
     );
   }
@@ -211,6 +238,12 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
         .list('resolution-reasons', false, 'commission')
         .subscribe((items) => this.reasonOptions.set(items));
     }
+    // Load the payment methods (reused from Financial) only when the user can register payments.
+    if (this.auth.canPayCommission()) {
+      this.references
+        .list('payment-methods', false, 'financial')
+        .subscribe((items) => this.paymentMethodOptions.set(items));
+    }
   }
 
   ngOnDestroy(): void {
@@ -222,7 +255,8 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     return (
       (this.approveDialogOpen() && this.approveForm.dirty) ||
       (this.rejectDialogOpen() && this.rejectForm.dirty) ||
-      (this.cancelDialogOpen() && this.cancelForm.dirty)
+      (this.cancelDialogOpen() && this.cancelForm.dirty) ||
+      (this.payDialogOpen() && this.payForm.dirty)
     );
   }
 
@@ -358,6 +392,51 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     });
   }
 
+  /** Opens the pay dialog, defaulting the amount to the commission amount (the payment must be full). */
+  protected openPay(): void {
+    const c = this.commission();
+    if (!c || !this.canPay()) {
+      return;
+    }
+    this.payError.set(null);
+    this.payForm.reset({ paymentMethodId: '', amount: c.amount, paymentDate: new Date(), note: '' });
+    this.payDialogOpen.set(true);
+  }
+
+  /** Closes the pay dialog: if the form was changed, confirms before discarding. */
+  protected async closePay(): Promise<void> {
+    if (this.payForm.dirty && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
+    this.payDialogOpen.set(false);
+  }
+
+  /** Registers the commission payment (Approved → Paid), then refreshes the detail. */
+  protected submitPay(): void {
+    const c = this.commission();
+    if (!c || this.payForm.invalid || this.paying()) {
+      this.payForm.markAllAsTouched();
+      return;
+    }
+    this.paying.set(true);
+    this.payError.set(null);
+    const v = this.payForm.getRawValue();
+    this.commissions
+      .pay(c.id, {
+        paymentMethodId: v.paymentMethodId,
+        amount: v.amount!,
+        paymentDate: toIsoDate(v.paymentDate)!,
+        note: emptyToNull(v.note),
+      })
+      .subscribe({
+        next: (detail) => this.onResolved(detail, this.payDialogOpen, this.paying, 'Pagamento registrado'),
+        error: (err: HttpErrorResponse) => {
+          this.paying.set(false);
+          this.payError.set(this.actionErrorMessage(err, 'pagar'));
+        },
+      });
+  }
+
   // Shared success handler: refresh the detail, mark the forms pristine, close the dialog, toast.
   private onResolved(
     detail: CommissionDetail,
@@ -370,6 +449,7 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     this.approveForm.markAsPristine();
     this.rejectForm.markAsPristine();
     this.cancelForm.markAsPristine();
+    this.payForm.markAsPristine();
     open.set(false);
     this.messages.add({ severity: 'success', summary, detail: 'Operação concluída com sucesso.' });
   }
@@ -385,13 +465,15 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
     if (event.key === 'Escape' && !event.metaKey && !event.ctrlKey && !event.altKey) {
-      if (document.querySelector('.p-select-overlay')) {
+      if (document.querySelector('.p-select-overlay, .p-datepicker-panel')) {
         return;
       }
       if (this.rejectDialogOpen()) {
         void this.closeReject();
       } else if (this.cancelDialogOpen()) {
         void this.closeCancel();
+      } else if (this.payDialogOpen()) {
+        void this.closePay();
       } else if (this.approveDialogOpen()) {
         void this.closeApprove();
       } else {
@@ -410,7 +492,8 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
       event.altKey ||
       this.approveDialogOpen() ||
       this.rejectDialogOpen() ||
-      this.cancelDialogOpen()
+      this.cancelDialogOpen() ||
+      this.payDialogOpen()
     ) {
       return;
     }
@@ -423,6 +506,9 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
     } else if (event.key === 'c' && this.canCancel()) {
       event.preventDefault();
       this.openCancel();
+    } else if (event.key === 'p' && this.canPay()) {
+      event.preventDefault();
+      this.openPay();
     }
   }
 
@@ -438,7 +524,7 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
       return body?.message ?? `Não foi possível ${action} a comissão neste estado.`;
     }
     if (err.status === 400) {
-      return 'Informe o motivo.';
+      return 'Verifique os campos obrigatórios.';
     }
     return body?.message ?? `Não foi possível ${action} a comissão.`;
   }
@@ -468,4 +554,14 @@ export class CommissionDetailPage implements OnInit, OnDestroy, HasUnsavedChange
 function emptyToNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
+}
+
+function toIsoDate(date: Date | null): string | null {
+  if (!date) {
+    return null;
+  }
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }

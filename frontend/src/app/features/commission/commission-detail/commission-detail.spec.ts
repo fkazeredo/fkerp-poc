@@ -17,12 +17,19 @@ import { ReferenceService } from '../../../core/api/reference.service';
 };
 
 describe('CommissionDetailPage', () => {
-  const commissions = { detail: vi.fn(), approve: vi.fn(), reject: vi.fn(), cancel: vi.fn() };
+  const commissions = {
+    detail: vi.fn(),
+    approve: vi.fn(),
+    reject: vi.fn(),
+    cancel: vi.fn(),
+    pay: vi.fn(),
+  };
   const router = { navigateByUrl: vi.fn() };
   const auth = {
     canApproveCommission: vi.fn(),
     canRejectCommission: vi.fn(),
     canCancelCommission: vi.fn(),
+    canPayCommission: vi.fn(),
     userId: vi.fn(),
   };
   const messages = { add: vi.fn() };
@@ -53,6 +60,11 @@ describe('CommissionDetailPage', () => {
     approvedByName: null,
     approvalNotes: null,
     paidAt: null,
+    paidAmount: null,
+    paymentDate: null,
+    paymentMethod: null,
+    paymentNote: null,
+    paidByName: null,
     resolutionReason: null,
     resolutionNote: null,
     resolvedByName: null,
@@ -67,6 +79,17 @@ describe('CommissionDetailPage', () => {
     approvedAt: '2026-06-26T09:00:00Z',
     approvedByName: 'financeiro',
     approvalNotes: 'Conferido',
+  };
+
+  const paid: CommissionDetail = {
+    ...approved,
+    status: 'PAID',
+    paidAt: '2026-06-28T09:00:00Z',
+    paidAmount: 150,
+    paymentDate: '2026-06-28',
+    paymentMethod: 'Pix',
+    paymentNote: 'OP 9',
+    paidByName: 'financeiro',
   };
 
   const rejected: CommissionDetail = {
@@ -118,13 +141,15 @@ describe('CommissionDetailPage', () => {
     commissions.approve.mockReset().mockReturnValue(of(approved));
     commissions.reject.mockReset().mockReturnValue(of(rejected));
     commissions.cancel.mockReset().mockReturnValue(of({ ...sample, status: 'CANCELLED' }));
+    commissions.pay.mockReset().mockReturnValue(of(paid));
     router.navigateByUrl.mockReset();
     messages.add.mockReset();
     references.list.mockReset().mockReturnValue(of(reasons));
-    // By default the viewer holds the approve/reject/cancel scopes and is NOT the beneficiary.
+    // By default the viewer holds the approve/reject/cancel/pay scopes and is NOT the beneficiary.
     auth.canApproveCommission.mockReset().mockReturnValue(true);
     auth.canRejectCommission.mockReset().mockReturnValue(true);
     auth.canCancelCommission.mockReset().mockReturnValue(true);
+    auth.canPayCommission.mockReset().mockReturnValue(true);
     auth.userId.mockReset().mockReturnValue('approver');
   });
 
@@ -373,6 +398,76 @@ describe('CommissionDetailPage', () => {
     });
   });
 
+  describe('payment', () => {
+    it('canPay is true only for an approved commission with the scope', () => {
+      commissions.detail.mockReturnValue(of(approved));
+      const comp = build();
+      comp.ngOnInit();
+      expect(comp['canPay']()).toBe(true);
+
+      auth.canPayCommission.mockReturnValue(false);
+      const noScope = build();
+      noScope.ngOnInit();
+      expect(noScope['canPay']()).toBe(false);
+    });
+
+    it('canPay is false for a non-approved commission (e.g. eligible)', () => {
+      const comp = build(); // sample is ELIGIBLE
+      comp.ngOnInit();
+      expect(comp['canPay']()).toBe(false);
+    });
+
+    it('loads the payment methods on init when the user can pay', () => {
+      const comp = build();
+      comp.ngOnInit();
+      expect(references.list).toHaveBeenCalledWith('payment-methods', false, 'financial');
+    });
+
+    it('defaults the amount to the commission amount and pays, refreshing the detail', () => {
+      commissions.detail.mockReturnValue(of(approved)); // amount 150
+      const comp = build();
+      comp.ngOnInit();
+      comp['openPay']();
+      expect(comp['payForm'].getRawValue().amount).toBe(150); // pre-filled = commission amount
+      comp['payForm'].patchValue({ paymentMethodId: 'm1', paymentDate: new Date('2026-06-28T00:00:00') });
+      comp['submitPay']();
+      expect(commissions.pay).toHaveBeenCalledWith('c1', {
+        paymentMethodId: 'm1',
+        amount: 150,
+        paymentDate: '2026-06-28',
+        note: null,
+      });
+      expect(comp['commission']()!.status).toBe('PAID');
+      expect(comp['payDialogOpen']()).toBe(false);
+      expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
+    });
+
+    it('shows the backend message on a 422 (e.g. amount mismatch) and keeps the dialog open', () => {
+      commissions.detail.mockReturnValue(of(approved));
+      commissions.pay.mockReturnValue(
+        throwError(
+          () => new HttpErrorResponse({ status: 422, error: { message: 'O valor deve ser igual' } }),
+        ),
+      );
+      const comp = build();
+      comp.ngOnInit();
+      comp['openPay']();
+      comp['payForm'].patchValue({ paymentMethodId: 'm1', paymentDate: new Date('2026-06-28T00:00:00') });
+      comp['submitPay']();
+      expect(comp['payError']()).toBe('O valor deve ser igual');
+      expect(comp['payDialogOpen']()).toBe(true);
+    });
+
+    it('flags unsaved changes while the pay dialog is open with a dirty form', () => {
+      commissions.detail.mockReturnValue(of(approved));
+      const comp = build();
+      comp.ngOnInit();
+      comp['openPay']();
+      comp['payForm'].markAsDirty();
+      expect(comp.hasUnsavedChanges()).toBe(true);
+    });
+  });
+
   describe('DOM rendering', () => {
     it('renders the loading state while the detail is in flight', () => {
       commissions.detail.mockReturnValue(NEVER);
@@ -458,6 +553,30 @@ describe('CommissionDetailPage', () => {
       expect(el.textContent).toContain('Lançada duas vezes');
       // The timeline shows the Rejeitada entry; no action buttons on a terminal commission.
       expect(el.textContent).not.toContain('Aprovar comissão');
+    });
+
+    it('shows the Registrar pagamento action for an approved commission the user may pay', () => {
+      commissions.detail.mockReturnValue(of(approved));
+      const el = render();
+      expect(el.textContent).toContain('Registrar pagamento');
+    });
+
+    it('hides the pay action without the scope', () => {
+      commissions.detail.mockReturnValue(of(approved));
+      auth.canPayCommission.mockReturnValue(false);
+      const el = render();
+      expect(el.textContent).not.toContain('Registrar pagamento');
+    });
+
+    it('renders the payment (who/amount/method) once paid', () => {
+      commissions.detail.mockReturnValue(of(paid));
+      const el = render();
+      expect(el.textContent).toContain('Paga por');
+      expect(el.textContent).toContain('financeiro');
+      expect(el.textContent).toContain('Pix');
+      expect(el.textContent).toContain('OP 9');
+      // No action buttons on a settled commission.
+      expect(el.textContent).not.toContain('Registrar pagamento');
     });
 
     it('renders the error state with a back button on 403', () => {

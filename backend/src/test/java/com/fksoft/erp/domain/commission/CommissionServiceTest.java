@@ -16,10 +16,12 @@ import com.fksoft.erp.domain.commission.exception.CommissionAlreadyExistsExcepti
 import com.fksoft.erp.domain.commission.exception.CommissionNotCancellableException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotEligibleException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotFoundException;
+import com.fksoft.erp.domain.commission.exception.CommissionNotPayableException;
 import com.fksoft.erp.domain.commission.exception.CommissionNotRejectableException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoAmountException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNoResponsibleException;
 import com.fksoft.erp.domain.commission.exception.CommissionOrderNotClosedException;
+import com.fksoft.erp.domain.commission.exception.CommissionPaymentAmountMismatchException;
 import com.fksoft.erp.domain.commission.exception.CommissionResolutionReasonNotAvailableException;
 import com.fksoft.erp.domain.commission.exception.CommissionSelfApprovalNotAllowedException;
 import com.fksoft.erp.domain.commission.exception.CommissionSourceOrderAccessDeniedException;
@@ -38,8 +40,11 @@ import com.fksoft.erp.domain.commission.repository.CommissionRuleRepository;
 import com.fksoft.erp.domain.commission.service.CommissionService;
 import com.fksoft.erp.domain.commission.service.data.CommissionSearchCriteria;
 import com.fksoft.erp.domain.crm.model.Opportunity;
+import com.fksoft.erp.domain.financial.exception.PaymentMethodNotAvailableException;
+import com.fksoft.erp.domain.financial.model.PaymentMethod;
 import com.fksoft.erp.domain.financial.model.Receivable;
 import com.fksoft.erp.domain.financial.model.ReceivableStatus;
+import com.fksoft.erp.domain.financial.repository.PaymentMethodRepository;
 import com.fksoft.erp.domain.financial.repository.ReceivableRepository;
 import com.fksoft.erp.domain.identity.User;
 import com.fksoft.erp.domain.identity.UserRepository;
@@ -100,6 +105,9 @@ class CommissionServiceTest {
 
     @Mock
     private CommissionResolutionReasonRepository resolutionReasons;
+
+    @Mock
+    private PaymentMethodRepository paymentMethods;
 
     @InjectMocks
     private CommissionService service;
@@ -560,6 +568,97 @@ class CommissionServiceTest {
         assertThatThrownBy(() -> service.cancel(commission.id(), reasonId, null, userId, true))
                 .isInstanceOf(CommissionNotCancellableException.class);
         verify(commissions, never()).save(any());
+    }
+
+    private UUID stubActiveMethod() {
+        UUID methodId = UUID.randomUUID();
+        when(paymentMethods.findById(methodId)).thenReturn(Optional.of(PaymentMethod.create("PIX", "Pix", 1)));
+        return methodId;
+    }
+
+    @Test
+    void payTransitionsTheApprovedCommissionAndSavesIt() {
+        Commission commission = approvedCommission(); // amount = 50.00
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
+        UUID methodId = stubActiveMethod();
+
+        var detail = service.pay(
+                commission.id(), new BigDecimal("50.00"), LocalDate.of(2026, 6, 28), methodId, "ref", userId, true);
+
+        assertThat(commission.status()).isEqualTo(CommissionStatus.PAID);
+        assertThat(commission.paidBy()).isEqualTo(userId);
+        assertThat(detail.status()).isEqualTo("PAID");
+        assertThat(detail.paymentMethod()).isEqualTo("Pix");
+        assertThat(detail.paidAmount()).isEqualByComparingTo("50.00");
+        verify(commissions).save(commission);
+    }
+
+    @Test
+    void payRejectsAnUnknownOrInactiveMethod() {
+        Commission commission = approvedCommission();
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
+        UUID methodId = UUID.randomUUID();
+        when(paymentMethods.findById(methodId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.pay(
+                        commission.id(), new BigDecimal("50.00"), LocalDate.now(), methodId, null, userId, true))
+                .isInstanceOf(PaymentMethodNotAvailableException.class);
+        verify(commissions, never()).save(any());
+    }
+
+    @Test
+    void payPropagatesNotPayableForANonApprovedCommission() {
+        Commission commission = eligibleCommission(); // not APPROVED
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
+        UUID methodId = stubActiveMethod();
+
+        assertThatThrownBy(() -> service.pay(
+                        commission.id(), new BigDecimal("50.00"), LocalDate.now(), methodId, null, userId, true))
+                .isInstanceOf(CommissionNotPayableException.class);
+        verify(commissions, never()).save(any());
+    }
+
+    @Test
+    void payPropagatesAmountMismatch() {
+        Commission commission = approvedCommission(); // amount = 50.00
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, true)).thenReturn(true);
+        UUID methodId = stubActiveMethod();
+
+        assertThatThrownBy(() -> service.pay(
+                        commission.id(), new BigDecimal("40.00"), LocalDate.now(), methodId, null, userId, true))
+                .isInstanceOf(CommissionPaymentAmountMismatchException.class);
+        verify(commissions, never()).save(any());
+    }
+
+    @Test
+    void payDeniesACommissionTheCallerCannotSee() {
+        Commission commission = approvedCommission();
+        when(commissions.findById(commission.id())).thenReturn(Optional.of(commission));
+        when(accessPolicy.canSee(commission, userId, false)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.pay(
+                        commission.id(),
+                        new BigDecimal("50.00"),
+                        LocalDate.now(),
+                        UUID.randomUUID(),
+                        null,
+                        userId,
+                        false))
+                .isInstanceOf(CommissionAccessDeniedException.class);
+        verify(commissions, never()).save(any());
+    }
+
+    @Test
+    void payRejectsAnUnknownCommission() {
+        UUID id = UUID.randomUUID();
+        when(commissions.findById(id)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.pay(
+                        id, new BigDecimal("50.00"), LocalDate.now(), UUID.randomUUID(), null, userId, true))
+                .isInstanceOf(CommissionNotFoundException.class);
     }
 
     @Test

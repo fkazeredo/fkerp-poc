@@ -3,6 +3,7 @@ package com.fksoft.erp.domain.commission.service.data;
 import com.fksoft.erp.domain.commission.model.Commission;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -35,7 +36,12 @@ import java.util.UUID;
  * @param approvedAt when it was approved, or {@code null}
  * @param approvedByName who approved the commission, or {@code null}
  * @param approvalNotes the optional approval notes, or {@code null}
- * @param paidAt when its commission payment was registered, or {@code null} (a later slice)
+ * @param paidAt when its commission payment was registered, or {@code null}
+ * @param paidAmount the paid amount (= the commission amount), or {@code null} (only when paid)
+ * @param paymentDate the payment date, or {@code null}
+ * @param paymentMethod the payment-method label, or {@code null}
+ * @param paymentNote the optional payment note, or {@code null}
+ * @param paidByName who registered the payment, or {@code null}
  * @param resolutionReason the reject/cancel reason label, or {@code null} (only when rejected/cancelled)
  * @param resolutionNote the optional reject/cancel note, or {@code null}
  * @param resolvedByName who rejected/cancelled the commission, or {@code null}
@@ -68,6 +74,11 @@ public record CommissionDetail(
         String approvedByName,
         String approvalNotes,
         Instant paidAt,
+        BigDecimal paidAmount,
+        LocalDate paymentDate,
+        String paymentMethod,
+        String paymentNote,
+        String paidByName,
         String resolutionReason,
         String resolutionNote,
         String resolvedByName,
@@ -88,6 +99,8 @@ public record CommissionDetail(
      * @param approvedByName who approved the commission, or {@code null}
      * @param resolutionReason the reject/cancel reason label, or {@code null}
      * @param resolvedByName who rejected/cancelled the commission, or {@code null}
+     * @param paymentMethod the payment-method label, or {@code null}
+     * @param paidByName who registered the payment, or {@code null}
      */
     public record Refs(
             String beneficiaryName,
@@ -99,7 +112,9 @@ public record CommissionDetail(
             String createdByName,
             String approvedByName,
             String resolutionReason,
-            String resolvedByName) {}
+            String resolvedByName,
+            String paymentMethod,
+            String paidByName) {}
 
     /**
      * Builds the detail from the entity, the resolved source order number and the resolved cross-aggregate
@@ -136,6 +151,11 @@ public record CommissionDetail(
                 refs.approvedByName(),
                 c.approvalNotes(),
                 c.paidAt(),
+                c.paidAmount(),
+                c.paymentDate(),
+                refs.paymentMethod(),
+                c.paymentNote(),
+                refs.paidByName(),
                 refs.resolutionReason(),
                 c.resolutionNote(),
                 refs.resolvedByName(),
