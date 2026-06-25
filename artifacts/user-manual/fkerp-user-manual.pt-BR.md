@@ -1155,6 +1155,25 @@ Por padrão a lista mostra as comissões **em acompanhamento** (Prevista / Pende
 **Pagas**, **Rejeitadas** e **Canceladas** aparecem **apenas quando você as escolhe** no filtro de situação. A tela
 mostra **apenas dados da comissão e da origem comercial** — nunca folha, imposto, contabilidade ou contas a pagar.
 
+### 11.9 Detalhe da comissão (Gestão de Comissão)
+
+Ao clicar no **beneficiário** na lista de comissões (ou em **Ver detalhe da comissão** no detalhe do pedido) você abre
+o **detalhe da comissão** — a tela para entender a origem, o cálculo, a elegibilidade, a aprovação e o pagamento.
+Você só abre comissões que tem permissão para ver (vendedores e representantes abrem **apenas as suas**); abrir uma
+comissão sem permissão é recusado com uma mensagem clara. O detalhe mostra:
+
+- **Resumo** — beneficiário, valor da comissão, percentual e situação.
+- **Origem comercial** — o **pedido** (PC-000n), a **proposta** e a **oportunidade** de origem, todos rastreáveis por
+  links; e o lead.
+- **Cálculo** — a **base de cálculo** (valor comercial ou recebido), a **regra aplicada** (o percentual fica
+  **registrado** na comissão, então continua visível mesmo se a regra mudar depois) e o **valor**.
+- **Conta a receber** — a situação da conta a receber relacionada, rastreável pelo pedido de origem.
+- **Histórico** — uma linha do tempo (Gerada → Elegível → Aprovada → Paga) que se preenche conforme as próximas
+  etapas (aprovação, pagamento e cancelamento chegam nas próximas versões).
+
+A tela é **somente leitura** e mostra **apenas dados da comissão e da origem comercial** — nunca folha, imposto,
+contabilidade, transferência bancária ou contas a pagar.
+
 ---
 
 ## 13. Mensagens e validação

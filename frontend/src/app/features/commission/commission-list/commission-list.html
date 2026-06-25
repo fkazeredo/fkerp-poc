@@ -206,7 +206,9 @@
     </ng-template>
     <ng-template pTemplate="body" let-c>
       <tr>
-        <td>{{ c.beneficiaryName ?? '—' }}</td>
+        <td>
+          <a [routerLink]="['/comissoes', c.id]" class="order-link">{{ c.beneficiaryName ?? 'Ver comissão' }}</a>
+        </td>
         <td>
           <a [routerLink]="['/pedidos', c.commercialOrderId]" class="order-link">
             {{ orderCode(c.orderNumber) }}

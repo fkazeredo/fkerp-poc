@@ -1,0 +1,93 @@
+@if (loading()) {
+  <p class="loading muted">Carregando…</p>
+} @else if (error()) {
+  <p-message severity="error" [text]="error()!" />
+  <div class="back">
+    <p-button label="Voltar" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
+  </div>
+} @else if (commission(); as c) {
+  <header class="head">
+    <div class="head-main">
+      <h1>Comissão</h1>
+      <p-tag [value]="statusLabel(c.status)" [severity]="statusSeverity(c.status)" />
+    </div>
+    <p-button label="Voltar para comissões" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
+  </header>
+
+  <div class="grid">
+    <p-card header="Resumo">
+      <dl class="data">
+        <dt>Beneficiário</dt>
+        <dd>{{ c.beneficiaryName ?? '—' }}</dd>
+        <dt>Valor da comissão</dt>
+        <dd class="grand">{{ c.amount | currency: 'BRL' }}</dd>
+        <dt>Percentual</dt>
+        <dd>{{ c.rulePercentage }}%</dd>
+        <dt>Situação</dt>
+        <dd><p-tag [value]="statusLabel(c.status)" [severity]="statusSeverity(c.status)" /></dd>
+      </dl>
+      <p class="hint muted">
+        A comissão mostra apenas dados comerciais — nunca folha, imposto, contas a pagar ou contabilidade.
+      </p>
+    </p-card>
+
+    <p-card header="Origem comercial">
+      <dl class="data">
+        <dt>Pedido</dt>
+        <dd><a class="link" [routerLink]="['/pedidos', c.commercialOrderId]">{{ orderCode(c.orderNumber) }}</a></dd>
+        <dt>Proposta</dt>
+        <dd><a class="link" [routerLink]="['/propostas', c.proposalId]">{{ c.proposalReference ?? 'Ver proposta' }}</a></dd>
+        <dt>Oportunidade</dt>
+        <dd>
+          <a class="link" [routerLink]="['/oportunidades', c.opportunityId]">
+            {{ c.opportunityReference ?? 'Ver oportunidade' }}
+          </a>
+        </dd>
+        <dt>Lead</dt>
+        <dd><a class="link" [routerLink]="['/leads', c.leadId]">Ver lead</a></dd>
+      </dl>
+    </p-card>
+
+    <p-card header="Cálculo">
+      <dl class="data">
+        <dt>Base de cálculo</dt>
+        <dd>{{ basisLabel(c.basisType) }} — {{ c.baseAmount | currency: 'BRL' }}</dd>
+        <dt>Regra aplicada</dt>
+        <dd>{{ c.ruleName ?? '—' }} ({{ c.rulePercentage }}%)</dd>
+        <dt>Valor da comissão</dt>
+        <dd class="grand">{{ c.amount | currency: 'BRL' }}</dd>
+      </dl>
+    </p-card>
+
+    <p-card header="Conta a receber">
+      <dl class="data">
+        <dt>Situação</dt>
+        <dd>{{ receivableLabel(c.receivableStatus) }}</dd>
+      </dl>
+      <p class="hint muted">
+        A conta a receber é rastreável pelo pedido de origem ({{ orderCode(c.orderNumber) }}).
+      </p>
+    </p-card>
+  </div>
+
+  <p-card header="Histórico" styleClass="section">
+    <ol class="timeline">
+      @for (entry of timeline(); track entry.label) {
+        <li>
+          <span class="when">{{ entry.at | date: 'short' }}</span>
+          <span class="what">{{ entry.label }}</span>
+          @if (entry.by) {
+            <span class="by muted">por {{ entry.by }}</span>
+          }
+        </li>
+      }
+    </ol>
+    <p class="hint muted">
+      Aprovação, rejeição, pagamento e cancelamento aparecem aqui conforme as próximas etapas.
+    </p>
+  </p-card>
+
+  <div class="back">
+    <p-button label="Voltar para comissões" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
+  </div>
+}

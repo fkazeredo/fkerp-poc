@@ -401,6 +401,8 @@ describe('OrderDetailPage', () => {
       expect(el.textContent).toContain('Valor comercial (previsão)');
       expect(el.textContent).toContain('Prevista');
       expect(el.textContent).not.toContain('Gerar comissão');
+      // The panel links to the full commission detail (href resolution is covered by commission-list.spec).
+      expect(el.textContent).toContain('Ver detalhe da comissão');
     });
 
     it('renders an eligible commission as "Pendente de aprovação" with the eligible date (DOM)', () => {
