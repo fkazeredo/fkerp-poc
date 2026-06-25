@@ -903,6 +903,40 @@ and Payment remain separated** (distinct aggregates/contexts; the Receivable ref
 Commission (the `Expected → Eligible → Approved → Paid` commission lifecycle, its calculation, approval and payment)
 is **Sprint 6** and MUST NOT be started here.
 
+**Commission Management (normative — Sprint 6).** The **Commission Management** bounded context lives in
+`domain.commission` (same layout as the other contexts: `model`/`repository`/`service`/`service.data`/`exception`)
+and owns **Commission Rules**, **Commissions**, **Commission Approval** and **Commission Payment registration**. Its
+scopes use the **`commission:`** prefix. It **calculates, makes eligible, approves and registers commission as paid**
+from **paid Commercial Orders** — it **does NOT take ownership of** the Commercial Order (Sales) or the Receivable/
+Payment (Financial), which it only **reads**. A **Commission is not salary, not Accounts Payable, not bank
+integration, not tax and not accounting**; Commission Management MUST NOT implement payroll, HR, tax, full
+accounting, generic Accounts Payable, expenses, refunds, Customer Care, bank integration, automatic transfer,
+invoice issuing, advanced split, or monthly-target / margin-based / supplier-based commission. The Commission
+lifecycle is a fixed enum state machine: `Expected → Eligible → Approved → Paid`, plus `Rejected` and `Cancelled`
+(commission becomes **Eligible** only after the Receivable is **paid**); the Commission Payment is `Registered`
+(with a simple `Reversed`).
+
+**Commission Rule (normative — Commission Management, Sprint 6 Slice 1).** The first slice ships **only the
+configuration**: an authorized **commercial or financial manager** defines a **Commission Rule** — for Sprint 6, a
+**percentage of the received amount** (no fixed-amount type yet). A rule is a managed entity (`CommissionRule`, not a
+`domain.reference` cadastro — it carries percentage/dates/target and business logic), with a **`name`** (required), a
+**`percentage`** (> 0 and ≤ 100, scale 2, mirrored by a DB CHECK), a **`targetType`** enum
+(`SELLER`/`SALES_REPRESENTATIVE`/`COMMERCIAL_RESPONSIBLE` — the commercial actor it targets), an optional
+**`targetUserId`** (a user-specific rule; validated to exist+active when set, else **422**
+`commission.rule.target-user-not-found`), an **`active`** flag, a **`startDate`** (required) + optional **`endDate`**
+(`≥ startDate`, else **422** `commission.rule.dates-invalid`), and optional **`notes`**. The percentage **must not
+exceed a configured safe business limit** (`app.commission.safe-max-percentage`, default 50, a typed
+`CommissionProperties`) **unless the request explicitly sets `allowAboveLimit`** (else **422**
+`commission.rule.percentage-above-limit`, carrying the limit); ≤ 0 or > 100 is **400** (Bean Validation). **Only
+active rules** are usable for new commission calculation (a later slice). Endpoints `POST/GET/PUT
+/api/commission/rules[/{id}]` + `POST /{id}/activate|deactivate` are each gated by **`commission:rule:manage`**
+(seeded for the commercial **Manager** (001) + **Financeiro** (005); sellers/representatives/Board → **403**); the
+shared `GET /api/crm/responsibles` lookup also admits `commission:rule:manage` so a manager can target a specific
+user. **Creating/editing a rule creates NO Commission record, Payment, payroll, payable, tax or accounting data.**
+In the frontend the rules screen lives under **Cadastros** (`/cadastros/regras-comissao`, a bespoke screen gated by
+`canManageCommissionRules()`); the backend stays the only authority. Commission **generation, eligibility, approval,
+payment, statement, order commission-status reflection and indicators** are the **later Sprint-6 slices**.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

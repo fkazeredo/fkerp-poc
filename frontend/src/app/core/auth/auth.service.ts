@@ -165,6 +165,11 @@ export class AuthService {
   canReversePayment(): boolean {
     return this.hasScope('financial:payment:reverse');
   }
+
+  /** Whether the user may manage commission rules (a commercial/financial manager — Commission Management). */
+  canManageCommissionRules(): boolean {
+    return this.hasScope('commission:rule:manage');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

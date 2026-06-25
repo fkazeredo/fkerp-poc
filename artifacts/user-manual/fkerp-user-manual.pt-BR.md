@@ -1042,6 +1042,7 @@ São gerenciadas do mesmo jeito, organizadas por área:
 | **Propostas** | Motivos de rejeição · Motivos de recusa do cliente · Canais de envio · Tipos de item |
 | **Reservas** | Tipos de tentativa · Resultados de tentativa · Motivos de falha |
 | **Financeiro** | Formas de pagamento |
+| **Comissão** | Regras de comissão |
 
 Quando você renomeia uma opção, o novo rótulo passa a aparecer nas telas operacionais imediatamente; quando
 você **desativa** uma opção, ela deixa de ser oferecida em novos registros, mas continua visível nos
@@ -1073,6 +1074,29 @@ alternar.
 - Clique no ícone de **proibido** para **desativar** um registro (exclusão lógica). Valores inativos
   permanecem para a fidelidade histórica, mas **não podem ser usados em novos Leads**.
 - Para um registro inativo, clique no ícone de **check** para **reativá-lo**.
+
+### 11.5 Regras de comissão (Gestão de Comissão)
+
+A **Regra de comissão** é um cadastro **especial** (mais rico que os demais), disponível em **Cadastros → Regras de
+comissão** para o **gerente comercial** ou o **financeiro**. Ela define **como a comissão será calculada** — nesta
+versão, um **percentual sobre o valor recebido** —, para que o sistema apure as comissões de forma consistente nas
+próximas etapas. **Criar uma regra é apenas configuração**: não gera comissão, pagamento, folha, contas a pagar,
+imposto nem contabilidade.
+
+Ao criar ou editar uma regra, informe:
+
+- **Nome** (obrigatório).
+- **Percentual** (obrigatório) — maior que zero e no máximo 100. Acima de um **limite seguro** configurado (padrão
+  50%), o sistema **bloqueia** o salvamento, a menos que você marque **“Permitir percentual acima do limite seguro”** —
+  uma confirmação consciente para evitar erros de digitação.
+- **Alvo** — o tipo de responsável que ganha a comissão (**Vendedor**, **Representante** ou **Responsável comercial**).
+- **Responsável específico** (opcional) — quando a regra vale para **uma pessoa**; em branco, vale para **todos** do
+  tipo escolhido.
+- **Início** (obrigatório) e **Fim** (opcional) — a vigência da regra; a data final não pode ser anterior à inicial.
+- **Observações** (opcional).
+
+Cada regra pode ser **ativada/desativada**: apenas regras **ativas** serão usadas para novos cálculos de comissão.
+A apuração, a aprovação e o pagamento de comissões chegam nas próximas etapas da Sprint 6.
 
 ---
 

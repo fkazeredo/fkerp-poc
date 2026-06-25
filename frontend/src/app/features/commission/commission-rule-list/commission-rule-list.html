@@ -1,0 +1,174 @@
+<header class="head">
+  <div class="head-main">
+    <h1>Regras de comissão</h1>
+    <p class="sub muted">
+      Defina as regras que o sistema usará para calcular comissões — um percentual do valor recebido. Criar uma
+      regra é apenas configuração: não gera comissão, pagamento, folha, contas a pagar, imposto ou contabilidade.
+    </p>
+  </div>
+  <div class="head-actions">
+    <p-button label="Nova regra" icon="pi pi-plus" (onClick)="openCreate()" />
+  </div>
+</header>
+
+<div class="toolbar">
+  <p-button
+    [label]="includeInactive() ? 'Ocultar inativas' : 'Mostrar inativas'"
+    [text]="true"
+    size="small"
+    icon="pi pi-filter"
+    (onClick)="toggleInactive()"
+  />
+</div>
+
+@if (loading()) {
+  <p class="loading muted">Carregando…</p>
+} @else if (error()) {
+  <p-message severity="error" [text]="error()!" />
+} @else {
+  <p-card>
+    <table class="rules-table">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th class="num">Percentual</th>
+          <th>Alvo</th>
+          <th>Responsável</th>
+          <th>Início</th>
+          <th>Fim</th>
+          <th>Status</th>
+          <th class="col-action"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (rule of items(); track rule.id) {
+          <tr [class.inactive-row]="!rule.active">
+            <td>{{ rule.name }}</td>
+            <td class="num">{{ rule.percentage }}%</td>
+            <td>{{ targetLabel(rule.targetType) }}</td>
+            <td>{{ rule.targetUserName ?? 'Todos' }}</td>
+            <td>{{ rule.startDate | date: 'dd/MM/yyyy' }}</td>
+            <td>{{ rule.endDate ? (rule.endDate | date: 'dd/MM/yyyy') : '—' }}</td>
+            <td>
+              <p-tag
+                [value]="rule.active ? 'Ativa' : 'Inativa'"
+                [severity]="rule.active ? 'success' : 'secondary'"
+              />
+            </td>
+            <td class="col-action">
+              <p-button icon="pi pi-pencil" [text]="true" size="small" (onClick)="openEdit(rule)" />
+              <p-button
+                [icon]="rule.active ? 'pi pi-ban' : 'pi pi-check'"
+                [text]="true"
+                size="small"
+                [severity]="rule.active ? 'danger' : 'success'"
+                (onClick)="toggleActive(rule)"
+              />
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="8" class="muted empty">Nenhuma regra de comissão cadastrada.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </p-card>
+}
+
+<p-dialog
+  [header]="editingId() ? 'Editar regra de comissão' : 'Nova regra de comissão'"
+  [visible]="dialogOpen()"
+  (visibleChange)="$event ? null : close()"
+  [modal]="true"
+  [closeOnEscape]="false"
+  [dismissableMask]="false"
+  [style]="{ width: '34rem' }"
+>
+  <form class="rule-form" [formGroup]="form" (ngSubmit)="submit()">
+    <label class="field">
+      <span>Nome *</span>
+      <input pInputText formControlName="name" maxlength="160" placeholder="Ex.: Padrão vendedores" />
+    </label>
+
+    <div class="row">
+      <label class="field">
+        <span>Percentual (% do recebido) *</span>
+        <p-inputNumber
+          formControlName="percentage"
+          suffix="%"
+          [min]="0"
+          [max]="100"
+          [minFractionDigits]="0"
+          [maxFractionDigits]="2"
+          placeholder="Ex.: 5"
+        />
+      </label>
+      <label class="field">
+        <span>Alvo *</span>
+        <p-select
+          formControlName="targetType"
+          [options]="targetTypes"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+        />
+      </label>
+    </div>
+
+    <label class="field">
+      <span>Responsável específico (opcional)</span>
+      <p-select
+        formControlName="targetUserId"
+        [options]="responsibles()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Todos do tipo selecionado"
+        [showClear]="true"
+        appendTo="body"
+      />
+    </label>
+
+    <div class="row">
+      <label class="field">
+        <span>Início *</span>
+        <p-datepicker formControlName="startDate" dateFormat="dd/mm/yy" [showIcon]="true" appendTo="body" />
+      </label>
+      <label class="field">
+        <span>Fim (opcional)</span>
+        <p-datepicker formControlName="endDate" dateFormat="dd/mm/yy" [showIcon]="true" appendTo="body" />
+      </label>
+    </div>
+
+    <label class="field">
+      <span>Observações</span>
+      <textarea pTextarea formControlName="notes" rows="2" maxlength="2000" placeholder="Opcional"></textarea>
+    </label>
+
+    <label class="check">
+      <p-checkbox formControlName="allowAboveLimit" [binary]="true" inputId="allowAboveLimit" />
+      <span>Permitir percentual acima do limite seguro</span>
+    </label>
+
+    @if (formError()) {
+      <p-message severity="error" [text]="formError()!" />
+    }
+
+    <div class="dialog-actions">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        type="button"
+        (onClick)="close()"
+      />
+      <p-button
+        [label]="editingId() ? 'Salvar' : 'Criar regra'"
+        icon="pi pi-check"
+        type="submit"
+        [loading]="saving()"
+        [disabled]="form.invalid"
+      />
+    </div>
+  </form>
+</p-dialog>
