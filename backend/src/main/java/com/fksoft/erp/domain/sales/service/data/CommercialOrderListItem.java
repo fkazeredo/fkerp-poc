@@ -18,6 +18,8 @@ import java.util.UUID;
  * @param financialStatus the Receivable status reflected from Financial Operations, or {@code null} when no
  *     Receivable exists yet ({@code PAID} = ready for Commission Management, {@code OVERDUE} = financial problem;
  *     a read-only reflection; never drives the Order's own status)
+ * @param commissionStatus the commission status summary reflected from Commission Management, or {@code null} when no
+ *     Commission exists yet ({@code PAID} = cycle closed, {@code ISSUE} = voided commission; a read-only reflection)
  */
 public record CommercialOrderListItem(
         UUID id,
@@ -34,6 +36,7 @@ public record CommercialOrderListItem(
         boolean requiresBooking,
         String bookingStatus,
         String financialStatus,
+        String commissionStatus,
         Instant createdAt) {
 
     /**
@@ -63,6 +66,7 @@ public record CommercialOrderListItem(
                 "PENDING_BOOKING".equals(o.status().name()),
                 o.bookingStatus(),
                 o.financialStatus(),
+                o.commissionStatus(),
                 o.createdAt());
     }
 }

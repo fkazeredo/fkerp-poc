@@ -16,6 +16,7 @@ import com.fksoft.erp.domain.commission.model.CommissionBasis;
 import com.fksoft.erp.domain.commission.model.CommissionResolutionReason;
 import com.fksoft.erp.domain.commission.model.CommissionRule;
 import com.fksoft.erp.domain.commission.model.CommissionStatus;
+import com.fksoft.erp.domain.commission.model.CommissionStatusChanged;
 import com.fksoft.erp.domain.commission.model.CommissionTargetType;
 import com.fksoft.erp.domain.commission.repository.CommissionRepository;
 import com.fksoft.erp.domain.commission.repository.CommissionResolutionReasonRepository;
@@ -53,6 +54,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -82,6 +84,16 @@ public class CommissionService {
     private final OrderAccessPolicy orderAccessPolicy;
     private final CommissionAccessPolicy accessPolicy;
     private final UserRepository users;
+    private final ApplicationEventPublisher events;
+
+    // Publishes the commission's current status as a business fact so the Sales context can reflect it onto the
+    // source Commercial Order (Sales owns the Order; Commission never writes it). Changes no Receivable/Payment data.
+    private void publishStatus(Commission commission) {
+        events.publishEvent(new CommissionStatusChanged(
+                commission.id(),
+                commission.commercialOrderId(),
+                commission.status().name()));
+    }
 
     /**
      * Generates an {@code EXPECTED} Commission from a commercially-closed Commercial Order the caller may see. The
@@ -144,6 +156,7 @@ public class CommissionService {
             commission.markEligible(receivable.id(), Instant.now());
         }
         commissions.save(commission);
+        publishStatus(commission);
         return commission.id();
     }
 
@@ -193,6 +206,7 @@ public class CommissionService {
         }
         commission.approve(approverId, notes, Instant.now());
         commissions.save(commission);
+        publishStatus(commission);
         return toDetail(commission);
     }
 
@@ -217,6 +231,7 @@ public class CommissionService {
         Commission commission = loadVisible(id, userId, canSeeAll);
         commission.reject(userId, activeReason(reasonId), note, Instant.now());
         commissions.save(commission);
+        publishStatus(commission);
         return toDetail(commission);
     }
 
@@ -242,6 +257,7 @@ public class CommissionService {
         Commission commission = loadVisible(id, userId, canSeeAll);
         commission.cancel(userId, activeReason(reasonId), note, Instant.now());
         commissions.save(commission);
+        publishStatus(commission);
         return toDetail(commission);
     }
 
@@ -282,6 +298,7 @@ public class CommissionService {
                 .orElseThrow(PaymentMethodNotAvailableException::new);
         commission.pay(amount, paymentDate, method, note, userId, Instant.now());
         commissions.save(commission);
+        publishStatus(commission);
         return toDetail(commission);
     }
 

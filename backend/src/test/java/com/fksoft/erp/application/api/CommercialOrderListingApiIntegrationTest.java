@@ -110,6 +110,7 @@ class CommercialOrderListingApiIntegrationTest extends AbstractIntegrationTest {
                         "requiresBooking",
                         "bookingStatus",
                         "financialStatus",
+                        "commissionStatus",
                         "createdAt");
     }
 

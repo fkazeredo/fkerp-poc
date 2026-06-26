@@ -1,6 +1,7 @@
 package com.fksoft.erp.domain.commission.service;
 
 import com.fksoft.erp.domain.commission.model.CommissionStatus;
+import com.fksoft.erp.domain.commission.model.CommissionStatusChanged;
 import com.fksoft.erp.domain.commission.repository.CommissionRepository;
 import com.fksoft.erp.domain.financial.model.ReceivableStatus;
 import com.fksoft.erp.domain.financial.model.ReceivableStatusChanged;
@@ -8,6 +9,7 @@ import java.time.Instant;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -30,9 +32,11 @@ import org.springframework.stereotype.Component;
 public class CommissionEligibilityListener {
 
     private final CommissionRepository commissions;
+    private final ApplicationEventPublisher events;
 
     /**
      * Transitions the Order's Expected Commission to Eligible when its Receivable is paid. Ignores any other status.
+     * On transition it republishes the commission status so the Order's commission reflection moves to {@code ELIGIBLE}.
      *
      * @param event the receivable-status fact (carries the order id, the receivable id and the status code)
      */
@@ -44,6 +48,12 @@ public class CommissionEligibilityListener {
         commissions
                 .findFirstByCommercialOrderIdAndStatusIn(event.commercialOrderId(), Set.of(CommissionStatus.EXPECTED))
                 .filter(commission -> commission.markEligible(event.receivableId(), Instant.now()))
-                .ifPresent(commissions::save);
+                .ifPresent(commission -> {
+                    commissions.save(commission);
+                    events.publishEvent(new CommissionStatusChanged(
+                            commission.id(),
+                            commission.commercialOrderId(),
+                            commission.status().name()));
+                });
     }
 }

@@ -88,6 +88,14 @@ public class CommercialOrder {
     @Column(name = "financial_status")
     private String financialStatus;
 
+    // The Commission's status summary, reflected from the Commission Management context (Sales owns this column;
+    // it is set by a Sales event listener, never by Commission). Null until a Commission exists for this Order; a
+    // Rejected/Cancelled commission reflects ISSUE. This is a read-only reflection — it never drives the Order's
+    // own lifecycle ({@link #status}).
+    @Size(max = 60)
+    @Column(name = "commission_status")
+    private String commissionStatus;
+
     // The order lines — an immutable snapshot of the Proposal's items at creation time.
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "order_id", nullable = false)
@@ -183,6 +191,20 @@ public class CommercialOrder {
      */
     public void reflectFinancialStatus(String financialStatus) {
         this.financialStatus = financialStatus;
+    }
+
+    /**
+     * Reflects the Commission's status summary from the Commission Management context onto this Order. This is a
+     * read-only reflection the Order <b>owns</b> (Commission never writes the Order): it records whether the sale's
+     * commission is a forecast ({@code EXPECTED}), eligible, approved, paid (which closes the commission cycle for the
+     * Order) or has an issue ({@code ISSUE} when the commission was rejected/cancelled). It never changes the Order's
+     * own lifecycle {@link #status}, never cancels the Order, and creates no Receivable, Payment, payroll, tax or
+     * accounting data.
+     *
+     * @param commissionStatus the Commission status summary to reflect
+     */
+    public void reflectCommissionStatus(String commissionStatus) {
+        this.commissionStatus = commissionStatus;
     }
 
     // The Order requires booking when at least one of its items is a bookable travel product.

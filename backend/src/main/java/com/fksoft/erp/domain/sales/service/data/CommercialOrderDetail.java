@@ -28,6 +28,9 @@ import java.util.UUID;
  * @param financialStatus the Receivable status reflected from Financial Operations, or {@code null} when no
  *     Receivable exists yet; {@code PAID} marks the Order ready for Commission Management (Sprint 6) and
  *     {@code OVERDUE} marks a financial problem (a read-only reflection — it never drives the Order's own status)
+ * @param commissionStatus the commission status summary reflected from Commission Management, or {@code null} when no
+ *     Commission exists yet; {@code PAID} closes the commission cycle and {@code ISSUE} flags a voided commission (a
+ *     read-only reflection — it never drives the Order's own status)
  * @param items the order lines (snapshot of the Proposal's items), each with its computed line total
  * @param subtotal the items subtotal (snapshot from the Proposal)
  * @param total the order total (snapshot from the Proposal)
@@ -46,6 +49,7 @@ public record CommercialOrderDetail(
         boolean requiresBooking,
         String bookingStatus,
         String financialStatus,
+        String commissionStatus,
         UUID responsibleId,
         String responsibleName,
         boolean unassigned,
@@ -84,6 +88,7 @@ public record CommercialOrderDetail(
                 "PENDING_BOOKING".equals(o.status().name()),
                 o.bookingStatus(),
                 o.financialStatus(),
+                o.commissionStatus(),
                 o.responsiblePersonId(),
                 nameOf(names, o.responsiblePersonId()),
                 o.responsiblePersonId() == null,

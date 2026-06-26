@@ -665,8 +665,15 @@ receber). Quando **Paga**, o pedido fica **pronto para o Comissionamento** (etap
 aparece como **problema financeiro** a tratar; **Parcialmente paga** não é tratado como pago. Assim como o reflexo
 da reserva, o status financeiro é apenas **leitura**: o pedido **continua sob a área Comercial** (o Financeiro
 nunca assume o pedido), e refleti-lo **não** cria comissão. O status **Vencida** é marcado por uma **verificação
-diária** que sinaliza as contas vencidas com saldo em aberto. A lista e o detalhe mostram **dados do pedido + os
-reflexos de reserva e financeiro** — nunca pagamento ou comissão.
+diária** que sinaliza as contas vencidas com saldo em aberto.
+
+O detalhe (e a lista) mostram também o **Status da comissão** — um resumo apenas de leitura da comissão do pedido:
+**Prevista** / **Pendente de aprovação** (elegível, aguardando aprovação) / **Aprovada** / **Paga** / **Problema na
+comissão** (uma comissão rejeitada ou cancelada que precisa de atenção), ou vazio quando ainda não há comissão.
+Quando **Paga**, o **ciclo da comissão** do pedido está encerrado. Assim como os reflexos de reserva e financeiro,
+este é apenas **leitura**: o pedido **continua sob a área Comercial** (o Comissionamento nunca assume o pedido) e não
+cria nada de folha, imposto ou contabilidade. A lista e o detalhe mostram **dados do pedido + os reflexos de reserva,
+financeiro e comissão** — nunca detalhe de pagamento ou folha.
 
 > A partir de um pedido **Pendente de reserva**, as **operações de reserva** já estão disponíveis no módulo
 > **Reservas** (seção 10); conforme a reserva é confirmada ou falha por lá, o **Status da reserva** do pedido se

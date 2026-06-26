@@ -147,6 +147,34 @@ class CommercialOrderTest {
     }
 
     @Test
+    void startsWithNoReflectedCommissionStatus() {
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L);
+        assertThat(order.commissionStatus()).isNull();
+    }
+
+    @Test
+    void reflectsTheCommissionStatusWithoutChangingTheLifecycle() {
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L);
+
+        order.reflectCommissionStatus("PAID");
+
+        // Identifiable as having a paid commission (cycle closed), without touching the Order's own lifecycle.
+        assertThat(order.commissionStatus()).isEqualTo("PAID");
+        assertThat(order.status()).isEqualTo(CommercialOrderStatus.PENDING_BOOKING);
+        assertThat(order.isActive()).isTrue();
+    }
+
+    @Test
+    void aCommissionIssueReflectionDoesNotCancelTheOrder() {
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L);
+
+        order.reflectCommissionStatus("ISSUE");
+
+        assertThat(order.commissionStatus()).isEqualTo("ISSUE");
+        assertThat(order.status()).isNotEqualTo(CommercialOrderStatus.CANCELLED);
+    }
+
+    @Test
     void reflectingANewStatusReplacesThePreviousReflection() {
         CommercialOrder order = order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L);
 

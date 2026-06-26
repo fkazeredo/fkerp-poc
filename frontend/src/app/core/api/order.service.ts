@@ -10,6 +10,13 @@ import { ReceivableStatus } from './receivable.service';
 /** The Commercial Order lifecycle status (Sprint 3). */
 export type CommercialOrderStatus = 'PENDING_BOOKING' | 'BOOKING_NOT_REQUIRED' | 'CANCELLED';
 
+/**
+ * The commission status summary reflected onto the Order (Sprint 6 Slice 10). Read-only mirror of the
+ * order's commission lifecycle — `ISSUE` flags a voided (rejected/cancelled) commission; `null` = no
+ * commission yet. The Order stays owned by Sales; this never carries payroll/tax/accounting data.
+ */
+export type OrderCommissionStatus = 'EXPECTED' | 'ELIGIBLE' | 'APPROVED' | 'PAID' | 'ISSUE';
+
 /** The booking-need filter — maps to the PENDING_BOOKING / BOOKING_NOT_REQUIRED status. */
 export type BookingNeed = 'REQUIRED' | 'NOT_REQUIRED';
 
@@ -72,6 +79,7 @@ export interface CommercialOrderListItem {
   requiresBooking: boolean;
   bookingStatus: BookingRequestStatus | null;
   financialStatus: ReceivableStatus | null;
+  commissionStatus: OrderCommissionStatus | null;
   createdAt: string;
 }
 
@@ -102,6 +110,7 @@ export interface CommercialOrderDetail {
   requiresBooking: boolean;
   bookingStatus: BookingRequestStatus | null;
   financialStatus: ReceivableStatus | null;
+  commissionStatus: OrderCommissionStatus | null;
   responsibleId: string | null;
   responsibleName: string | null;
   unassigned: boolean;

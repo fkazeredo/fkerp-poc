@@ -110,6 +110,9 @@ class CommissionServiceTest {
     @Mock
     private PaymentMethodRepository paymentMethods;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher events;
+
     @InjectMocks
     private CommissionService service;
 
@@ -412,6 +415,12 @@ class CommissionServiceTest {
         assertThat(commission.approvalNotes()).isEqualTo("ok");
         assertThat(detail.status()).isEqualTo("APPROVED");
         verify(commissions).save(commission);
+        // Publishes the status so the Sales context reflects it onto the source Commercial Order.
+        ArgumentCaptor<com.fksoft.erp.domain.commission.model.CommissionStatusChanged> published =
+                ArgumentCaptor.forClass(com.fksoft.erp.domain.commission.model.CommissionStatusChanged.class);
+        verify(events).publishEvent(published.capture());
+        assertThat(published.getValue().commercialOrderId()).isEqualTo(orderId);
+        assertThat(published.getValue().status()).isEqualTo("APPROVED");
     }
 
     @Test
