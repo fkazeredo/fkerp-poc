@@ -15,6 +15,7 @@ import com.fksoft.erp.domain.commission.model.CommissionBasis;
 import com.fksoft.erp.domain.commission.model.CommissionRule;
 import com.fksoft.erp.domain.commission.model.CommissionRuleData;
 import com.fksoft.erp.domain.commission.model.CommissionStatus;
+import com.fksoft.erp.domain.commission.model.CommissionStatusChanged;
 import com.fksoft.erp.domain.commission.model.CommissionTargetType;
 import com.fksoft.erp.domain.commission.repository.CommissionRepository;
 import com.fksoft.erp.domain.commission.service.CommissionEligibilityListener;
@@ -26,9 +27,11 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 /**
  * Unit tests of the Commission eligibility listener: an Expected Commission becomes Eligible only when its
@@ -40,6 +43,9 @@ class CommissionEligibilityListenerTest {
 
     @Mock
     private CommissionRepository commissions;
+
+    @Mock
+    private ApplicationEventPublisher events;
 
     @InjectMocks
     private CommissionEligibilityListener listener;
@@ -80,6 +86,12 @@ class CommissionEligibilityListenerTest {
         assertThat(commission.eligibleAt()).isNotNull();
         assertThat(commission.receivableId()).isEqualTo(receivableId);
         verify(commissions).save(commission);
+
+        // The eligibility transition publishes the status change so Sales can reflect ELIGIBLE onto the Order.
+        ArgumentCaptor<CommissionStatusChanged> published = ArgumentCaptor.forClass(CommissionStatusChanged.class);
+        verify(events).publishEvent(published.capture());
+        assertThat(published.getValue().commercialOrderId()).isEqualTo(orderId);
+        assertThat(published.getValue().status()).isEqualTo("ELIGIBLE");
     }
 
     @Test

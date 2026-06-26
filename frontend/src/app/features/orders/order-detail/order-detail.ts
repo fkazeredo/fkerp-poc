@@ -11,6 +11,7 @@ import { MessageService } from 'primeng/api';
 import {
   CommercialOrderDetail,
   CommercialOrderStatus,
+  OrderCommissionStatus,
   OrderService,
 } from '../../../core/api/order.service';
 import {
@@ -115,6 +116,32 @@ const FINANCIAL_STATUS_HINTS: Record<ReceivableStatus, string> = {
   PAID: 'Paga — o pedido está pronto para o Comissionamento (Sprint 6).',
   OVERDUE: 'Vencida — problema financeiro a tratar.',
   CANCELLED: 'Conta a receber cancelada.',
+};
+
+// The commission-status summary reflected onto the Order (Slice 10) — distinct from the live commission panel: a
+// read-only mirror visible to any order reader (even without the commission scope). ISSUE = a voided commission.
+const ORDER_COMMISSION_STATUS_LABELS: Record<OrderCommissionStatus, string> = {
+  EXPECTED: 'Prevista',
+  ELIGIBLE: 'Pendente de aprovação',
+  APPROVED: 'Aprovada',
+  PAID: 'Paga',
+  ISSUE: 'Problema na comissão',
+};
+
+const ORDER_COMMISSION_STATUS_SEVERITY: Record<OrderCommissionStatus, TagSeverity> = {
+  EXPECTED: 'info',
+  ELIGIBLE: 'warn',
+  APPROVED: 'success',
+  PAID: 'success',
+  ISSUE: 'danger',
+};
+
+const ORDER_COMMISSION_STATUS_HINTS: Record<OrderCommissionStatus, string> = {
+  EXPECTED: 'Comissão prevista para a venda — ainda uma previsão.',
+  ELIGIBLE: 'Comissão pendente de aprovação (conta a receber paga).',
+  APPROVED: 'Comissão aprovada — pronta para pagamento.',
+  PAID: 'Comissão paga — ciclo da comissão encerrado.',
+  ISSUE: 'Comissão cancelada ou rejeitada — requer atenção.',
 };
 
 const COMMISSION_BASIS_LABELS: Record<CommissionBasis, string> = {
@@ -222,6 +249,20 @@ export class OrderDetailPage implements OnInit {
   /** A human hint about the financial reflection (PAID → ready for commission, OVERDUE → problem, etc.). */
   protected financialHint(status: ReceivableStatus | null): string {
     return status ? FINANCIAL_STATUS_HINTS[status] : 'Sem conta a receber ainda.';
+  }
+
+  /** Label of the commission-status summary reflected onto the Order (Slice 10). */
+  protected orderCommissionLabel(status: OrderCommissionStatus): string {
+    return ORDER_COMMISSION_STATUS_LABELS[status];
+  }
+
+  protected orderCommissionSeverity(status: OrderCommissionStatus): TagSeverity {
+    return ORDER_COMMISSION_STATUS_SEVERITY[status];
+  }
+
+  /** A human hint about the commission reflection (PAID → cycle closed, ISSUE → voided, etc.). */
+  protected orderCommissionHint(status: OrderCommissionStatus | null): string {
+    return status ? ORDER_COMMISSION_STATUS_HINTS[status] : 'Sem comissão ainda.';
   }
 
   /** The human-friendly order code (PC-000n). */

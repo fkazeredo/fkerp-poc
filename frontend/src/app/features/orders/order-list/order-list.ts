@@ -19,6 +19,7 @@ import {
   BookingNeed,
   CommercialOrderListItem,
   CommercialOrderStatus,
+  OrderCommissionStatus,
   OrderFilters,
   OrderService,
 } from '../../../core/api/order.service';
@@ -71,6 +72,22 @@ const FINANCIAL_STATUS_SEVERITY: Record<ReceivableStatus, TagSeverity> = {
   PAID: 'success',
   OVERDUE: 'danger',
   CANCELLED: 'secondary',
+};
+
+const COMMISSION_STATUS_LABELS: Record<OrderCommissionStatus, string> = {
+  EXPECTED: 'Prevista',
+  ELIGIBLE: 'Pendente de aprovação',
+  APPROVED: 'Aprovada',
+  PAID: 'Paga',
+  ISSUE: 'Problema na comissão',
+};
+
+const COMMISSION_STATUS_SEVERITY: Record<OrderCommissionStatus, TagSeverity> = {
+  EXPECTED: 'info',
+  ELIGIBLE: 'warn',
+  APPROVED: 'success',
+  PAID: 'success',
+  ISSUE: 'danger',
 };
 
 const UNASSIGNED = 'unassigned';
@@ -173,6 +190,14 @@ export class OrderList implements OnInit {
 
   protected financialStatusSeverity(status: ReceivableStatus): TagSeverity {
     return FINANCIAL_STATUS_SEVERITY[status];
+  }
+
+  protected commissionStatusLabel(status: OrderCommissionStatus): string {
+    return COMMISSION_STATUS_LABELS[status];
+  }
+
+  protected commissionStatusSeverity(status: OrderCommissionStatus): TagSeverity {
+    return COMMISSION_STATUS_SEVERITY[status];
   }
 
   /** Single loader: fires on first render and on pagination (lazy table). */

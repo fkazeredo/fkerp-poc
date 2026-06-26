@@ -221,6 +221,7 @@ class OrderBookingStatusReflectionApiIntegrationTest extends AbstractIntegration
                         "requiresBooking",
                         "bookingStatus",
                         "financialStatus",
+                        "commissionStatus",
                         "responsibleId",
                         "responsibleName",
                         "unassigned",
