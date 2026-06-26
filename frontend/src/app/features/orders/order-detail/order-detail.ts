@@ -1,12 +1,17 @@
-import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, effect, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { MessageModule } from 'primeng/message';
+import { DialogModule } from 'primeng/dialog';
+import { SelectModule } from 'primeng/select';
+import { TextareaModule } from 'primeng/textarea';
+import { InputTextModule } from 'primeng/inputtext';
 import { MessageService } from 'primeng/api';
 import {
   CommercialOrderDetail,
@@ -24,7 +29,9 @@ import { BookingRequestStatus } from '../../../core/api/booking.service';
 import { OpportunityStage } from '../../../core/api/opportunity.service';
 import { ProposalItemType, ProposalStatus } from '../../../core/api/proposal.service';
 import { ReceivableStatus } from '../../../core/api/receivable.service';
+import { ContactMethod, CustomerDetail, CustomerService } from '../../../core/api/customer.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { HasUnsavedChanges, UnsavedChangesService } from '../../../core/forms/unsaved-changes.service';
 
 const STATUS_LABELS: Record<CommercialOrderStatus, string> = {
   PENDING_BOOKING: 'Pendente de reserva',
@@ -174,17 +181,34 @@ const COMMISSION_STATUS_SEVERITY: Record<CommissionStatus, TagSeverity> = {
  */
 @Component({
   selector: 'app-order-detail',
-  imports: [CurrencyPipe, DatePipe, RouterLink, ButtonModule, CardModule, TableModule, TagModule, MessageModule],
+  imports: [
+    CurrencyPipe,
+    DatePipe,
+    RouterLink,
+    ReactiveFormsModule,
+    ButtonModule,
+    CardModule,
+    TableModule,
+    TagModule,
+    MessageModule,
+    DialogModule,
+    SelectModule,
+    TextareaModule,
+    InputTextModule,
+  ],
   templateUrl: './order-detail.html',
   styleUrl: './order-detail.css',
 })
-export class OrderDetailPage implements OnInit {
+export class OrderDetailPage implements OnInit, OnDestroy, HasUnsavedChanges {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly orders = inject(OrderService);
   private readonly commissions = inject(CommissionService);
+  private readonly customers = inject(CustomerService);
   private readonly auth = inject(AuthService);
   private readonly messages = inject(MessageService);
+  private readonly fb = inject(FormBuilder);
+  private readonly unsaved = inject(UnsavedChangesService);
 
   protected readonly order = signal<CommercialOrderDetail | null>(null);
   protected readonly loading = signal(true);
@@ -195,7 +219,33 @@ export class OrderDetailPage implements OnInit {
   protected readonly commission = signal<CommissionListItem | null>(null);
   protected readonly generating = signal(false);
 
+  // Consolidate-customer dialog state (Customer Management — Sprint 7 Slice 1). Only the order id is required;
+  // the fields prefill from the source Lead and are optional.
+  protected readonly customerDialogOpen = signal(false);
+  protected readonly consolidating = signal(false);
+  protected readonly customerError = signal<string | null>(null);
+  protected readonly consolidatedCustomer = signal<CustomerDetail | null>(null);
+  protected readonly contactMethodOptions: { label: string; value: ContactMethod }[] = [
+    { label: 'E-mail', value: 'EMAIL' },
+    { label: 'Telefone', value: 'PHONE' },
+    { label: 'WhatsApp', value: 'WHATSAPP' },
+  ];
+  protected readonly customerForm = this.fb.nonNullable.group({
+    name: ['', Validators.maxLength(200)],
+    document: ['', Validators.maxLength(30)],
+    email: ['', [Validators.email, Validators.maxLength(255)]],
+    phone: ['', [Validators.pattern(/^\d*$/), Validators.maxLength(30)]],
+    whatsapp: ['', [Validators.pattern(/^\d*$/), Validators.maxLength(30)]],
+    preferredContactMethod: [null as ContactMethod | null],
+    notes: ['', Validators.maxLength(2000)],
+  });
+
   private orderId = '';
+
+  constructor() {
+    // Keep the app-wide unsaved flag (tab-close warning) in sync with the open consolidate dialog.
+    effect(() => this.unsaved.set(this.customerDialogOpen()));
+  }
 
   ngOnInit(): void {
     this.orderId = this.route.snapshot.paramMap.get('id') ?? '';
@@ -203,6 +253,15 @@ export class OrderDetailPage implements OnInit {
     if (this.auth.canSeeCommissions()) {
       this.commissions.byOrder(this.orderId).subscribe({ next: (c) => this.commission.set(c) });
     }
+  }
+
+  ngOnDestroy(): void {
+    this.unsaved.set(false);
+  }
+
+  /** Whether the open consolidate dialog has modified fields (route guard + tab-close warning). */
+  hasUnsavedChanges(): boolean {
+    return this.customerDialogOpen() && this.customerForm.dirty;
   }
 
   protected statusLabel(status: CommercialOrderStatus): string {
@@ -368,23 +427,125 @@ export class OrderDetailPage implements OnInit {
     return body?.message ?? 'Não foi possível gerar a comissão.';
   }
 
+  /**
+   * Whether to offer creating/consolidating a Customer from this Order: the user holds the Customer Management
+   * create scope and the Order is loaded. The "from a Commercial Order" rule and idempotency stay on the backend.
+   */
+  protected canConsolidateCustomer(): boolean {
+    return this.auth.canCreateCustomer() && this.order() !== null;
+  }
+
+  /** Opens the consolidate dialog, prefilling the editable fields from the source Lead. */
+  protected openConsolidate(): void {
+    const o = this.order();
+    if (!o || !this.canConsolidateCustomer()) {
+      return;
+    }
+    this.customerError.set(null);
+    this.customerForm.reset({
+      name: o.sourceLead.name ?? '',
+      document: '',
+      email: o.sourceLead.email ?? '',
+      phone: o.sourceLead.phone ?? '',
+      whatsapp: o.sourceLead.whatsapp ?? '',
+      preferredContactMethod: null,
+      notes: '',
+    });
+    this.customerDialogOpen.set(true);
+  }
+
+  /** Closes the consolidate dialog: if the form was changed, confirms before discarding. */
+  protected async closeConsolidate(): Promise<void> {
+    if (this.customerForm.dirty && !(await this.unsaved.confirmDiscard())) {
+      return;
+    }
+    this.customerDialogOpen.set(false);
+  }
+
+  /** Creates/consolidates the Customer Profile from this Order and shows it inline. */
+  protected submitConsolidate(): void {
+    const o = this.order();
+    if (!o || this.customerForm.invalid || this.consolidating()) {
+      this.customerForm.markAllAsTouched();
+      return;
+    }
+    this.consolidating.set(true);
+    this.customerError.set(null);
+    const v = this.customerForm.getRawValue();
+    this.customers
+      .createFromOrder({
+        commercialOrderId: o.id,
+        name: nullable(v.name),
+        document: nullable(v.document),
+        email: nullable(v.email),
+        phone: nullable(v.phone),
+        whatsapp: nullable(v.whatsapp),
+        preferredContactMethod: v.preferredContactMethod,
+        notes: nullable(v.notes),
+      })
+      .subscribe({
+        next: (customer) => {
+          this.consolidating.set(false);
+          this.consolidatedCustomer.set(customer);
+          this.customerForm.markAsPristine();
+          this.customerDialogOpen.set(false);
+          this.messages.add({ severity: 'success', summary: 'Cliente consolidado' });
+        },
+        error: (err: HttpErrorResponse) => {
+          this.consolidating.set(false);
+          this.customerError.set(this.customerErrorMessage(err));
+        },
+      });
+  }
+
+  private customerErrorMessage(err: HttpErrorResponse): string {
+    const body = err.error as { message?: string } | null;
+    if (err.status === 403) {
+      return 'Você não tem permissão para consolidar clientes.';
+    }
+    if (err.status === 404) {
+      return 'Pedido não encontrado.';
+    }
+    if (err.status === 400) {
+      return 'Verifique os campos informados.';
+    }
+    return body?.message ?? 'Não foi possível consolidar o cliente.';
+  }
+
   protected back(): void {
     const o = this.order();
     this.router.navigateByUrl(o ? '/propostas/' + o.proposalId : '/vendas');
   }
 
-  /** Esc returns to the source Proposal; "c" generates the Expected Commission when allowed. */
+  /**
+   * Keyboard: <kbd>c</kbd> generates the Expected Commission, <kbd>k</kbd> consolidates the Customer (each when
+   * allowed); <kbd>Esc</kbd> closes the open dialog (guarded) or returns to the source Proposal.
+   */
   @HostListener('document:keydown', ['$event'])
   protected onShortcut(event: KeyboardEvent): void {
-    if (event.metaKey || event.ctrlKey || event.altKey) {
+    if (event.key === 'Escape' && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      if (document.querySelector('.p-select-overlay')) {
+        return;
+      }
+      if (this.customerDialogOpen()) {
+        void this.closeConsolidate();
+      } else {
+        this.back();
+      }
       return;
     }
-    if (event.key === 'Escape') {
-      this.back();
+    const target = event.target as HTMLElement | null;
+    const typing =
+      !!target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
+    if (typing || event.ctrlKey || event.metaKey || event.altKey || this.customerDialogOpen()) {
       return;
     }
     if (event.key === 'c' && this.canGenerateCommission()) {
+      event.preventDefault();
       this.generateCommission();
+    } else if (event.key === 'k' && this.canConsolidateCustomer()) {
+      event.preventDefault();
+      this.openConsolidate();
     }
   }
 
@@ -408,4 +569,10 @@ export class OrderDetailPage implements OnInit {
       },
     });
   }
+}
+
+/** Trims a form string and maps an empty value to null (so an unfilled field keeps the Lead snapshot). */
+function nullable(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : trimmed;
 }

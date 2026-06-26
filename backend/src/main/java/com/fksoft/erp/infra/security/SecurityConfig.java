@@ -161,6 +161,11 @@ public class SecurityConfig {
                         .hasAuthority("SCOPE_sales:order:create")
                         .requestMatchers(HttpMethod.GET, "/api/orders", "/api/orders/**")
                         .hasAnyAuthority(ORDER_READ_SCOPES)
+                        // Customer Management — creating/consolidating a Customer Profile from a Commercial Order is
+                        // for the post-sale back-office and the commercial manager (customer:create). The customer
+                        // read tiers (list/detail) are a later slice (CARE7-002).
+                        .requestMatchers(HttpMethod.POST, "/api/customers")
+                        .hasAuthority("SCOPE_customer:create")
                         .requestMatchers(HttpMethod.POST, "/api/bookings")
                         .hasAuthority("SCOPE_booking:request:create")
                         .requestMatchers(

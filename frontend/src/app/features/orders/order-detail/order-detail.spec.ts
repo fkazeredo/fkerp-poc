@@ -7,7 +7,9 @@ import { NEVER, of, throwError } from 'rxjs';
 import { OrderDetailPage } from './order-detail';
 import { CommercialOrderDetail, OrderService } from '../../../core/api/order.service';
 import { CommissionListItem, CommissionService } from '../../../core/api/commission.service';
+import { CustomerDetail, CustomerService } from '../../../core/api/customer.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { UnsavedChangesService } from '../../../core/forms/unsaved-changes.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
   observe() {}
@@ -18,13 +20,35 @@ import { AuthService } from '../../../core/auth/auth.service';
 describe('OrderDetailPage', () => {
   const orders = { detail: vi.fn() };
   const commissions = { generate: vi.fn(), detail: vi.fn(), byOrder: vi.fn() };
+  const customers = { createFromOrder: vi.fn() };
   const router = { navigateByUrl: vi.fn(), navigate: vi.fn() };
   const auth = {
     canCreateReceivable: vi.fn(),
     canCreateCommission: vi.fn(),
     canSeeCommissions: vi.fn(),
+    canCreateCustomer: vi.fn(),
   };
   const messages = { add: vi.fn() };
+  const unsaved = { set: vi.fn(), confirmDiscard: vi.fn() };
+
+  const customerSample: CustomerDetail = {
+    id: 'cust1',
+    leadId: 'l1',
+    sourceCommercialOrderId: 'ord1',
+    sourceProposalId: 'p1',
+    sourceOpportunityId: 'o1',
+    name: 'Cliente Aurora',
+    phone: '11999998888',
+    whatsapp: null,
+    email: 'cliente@aurora.com',
+    preferredContactMethod: 'EMAIL',
+    document: '12345678901',
+    documentType: null,
+    billingAddress: null,
+    notes: 'VIP',
+    status: 'ACTIVE',
+    createdAt: '2026-06-26T10:00:00Z',
+  };
 
   const commissionSample: CommissionListItem = {
     id: 'c1',
@@ -105,9 +129,11 @@ describe('OrderDetailPage', () => {
         providePrimeNG(),
         { provide: OrderService, useValue: orders },
         { provide: CommissionService, useValue: commissions },
+        { provide: CustomerService, useValue: customers },
         { provide: Router, useValue: router },
         { provide: AuthService, useValue: auth },
         { provide: MessageService, useValue: messages },
+        { provide: UnsavedChangesService, useValue: unsaved },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'ord1' } } } },
       ],
     });
@@ -134,13 +160,18 @@ describe('OrderDetailPage', () => {
     router.navigateByUrl.mockReset();
     router.navigate.mockReset();
     messages.add.mockReset();
+    customers.createFromOrder.mockReset();
+    unsaved.set.mockReset();
+    unsaved.confirmDiscard.mockReset().mockResolvedValue(true);
     auth.canCreateReceivable.mockReset().mockReturnValue(false);
     auth.canCreateCommission.mockReset().mockReturnValue(false);
     auth.canSeeCommissions.mockReset().mockReturnValue(false);
+    auth.canCreateCustomer.mockReset().mockReturnValue(false);
     orders.detail.mockReturnValue(of(sample));
     commissions.generate.mockReturnValue(of({ id: 'c1' }));
     commissions.detail.mockReturnValue(of(commissionSample));
     commissions.byOrder.mockReturnValue(of(null));
+    customers.createFromOrder.mockReturnValue(of(customerSample));
   });
 
   it('loads the order on init', () => {
@@ -515,6 +546,113 @@ describe('OrderDetailPage', () => {
       expect(el.textContent).toContain('permissão');
       expect(el.querySelector('p-message')).not.toBeNull();
       expect(el.textContent).toContain('Voltar');
+    });
+  });
+
+  describe('consolidate-customer (Customer Management)', () => {
+    it('offers the consolidate action only when the user holds the create scope', () => {
+      auth.canCreateCustomer.mockReturnValue(true);
+      const comp = build();
+      comp.ngOnInit();
+      expect(comp['canConsolidateCustomer']()).toBe(true);
+
+      auth.canCreateCustomer.mockReturnValue(false);
+      expect(comp['canConsolidateCustomer']()).toBe(false);
+    });
+
+    it('renders the "Consolidar cliente" button when permitted (DOM)', () => {
+      auth.canCreateCustomer.mockReturnValue(true);
+      expect(render().textContent).toContain('Consolidar cliente');
+    });
+
+    it('does not render the button without the scope (DOM)', () => {
+      auth.canCreateCustomer.mockReturnValue(false);
+      expect(render().textContent).not.toContain('Consolidar cliente');
+    });
+
+    it('opens the dialog prefilling the editable fields from the source lead', () => {
+      auth.canCreateCustomer.mockReturnValue(true);
+      const comp = build();
+      comp.ngOnInit();
+      comp['openConsolidate']();
+      expect(comp['customerDialogOpen']()).toBe(true);
+      expect(comp['customerForm'].getRawValue()).toMatchObject({
+        name: 'Cliente Aurora',
+        email: 'cliente@aurora.com',
+        phone: '11999998888',
+        whatsapp: '',
+      });
+    });
+
+    it('consolidates the customer and shows it inline, mapping empty fields to null', () => {
+      auth.canCreateCustomer.mockReturnValue(true);
+      const comp = build();
+      comp.ngOnInit();
+      comp['openConsolidate']();
+      comp['customerForm'].patchValue({ document: '12345678901', notes: 'VIP', whatsapp: '' });
+      comp['submitConsolidate']();
+
+      expect(customers.createFromOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          commercialOrderId: 'ord1',
+          name: 'Cliente Aurora',
+          document: '12345678901',
+          notes: 'VIP',
+          whatsapp: null,
+        }),
+      );
+      expect(comp['consolidatedCustomer']()).toEqual(customerSample);
+      expect(comp['customerDialogOpen']()).toBe(false);
+      expect(comp['consolidating']()).toBe(false);
+      expect(messages.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
+    });
+
+    it('renders the consolidated customer panel (DOM)', () => {
+      auth.canCreateCustomer.mockReturnValue(true);
+      const fixture = (() => {
+        configure();
+        const f = TestBed.createComponent(OrderDetailPage);
+        f.componentInstance.ngOnInit();
+        f.componentInstance['openConsolidate']();
+        f.componentInstance['submitConsolidate']();
+        f.detectChanges();
+        return f;
+      })();
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.textContent).toContain('Cliente'); // panel header
+      expect(el.textContent).toContain('Cliente Aurora');
+      expect(el.textContent).toContain('Ativo');
+      expect(el.textContent).toContain('origem comercial preservada');
+    });
+
+    it('surfaces the backend message on error and keeps the dialog open', () => {
+      auth.canCreateCustomer.mockReturnValue(true);
+      customers.createFromOrder.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
+      const comp = build();
+      comp.ngOnInit();
+      comp['openConsolidate']();
+      comp['submitConsolidate']();
+      expect(comp['customerError']()).toContain('não encontrado');
+      expect(comp['customerDialogOpen']()).toBe(true);
+      expect(comp['consolidatedCustomer']()).toBeNull();
+    });
+
+    it('the "k" shortcut opens the consolidate dialog when allowed', () => {
+      auth.canCreateCustomer.mockReturnValue(true);
+      const comp = build();
+      comp.ngOnInit();
+      comp['onShortcut'](new KeyboardEvent('keydown', { key: 'k' }));
+      expect(comp['customerDialogOpen']()).toBe(true);
+    });
+
+    it('reports unsaved changes only when the dialog is open and dirty', () => {
+      auth.canCreateCustomer.mockReturnValue(true);
+      const comp = build();
+      comp.ngOnInit();
+      expect(comp.hasUnsavedChanges()).toBe(false);
+      comp['openConsolidate']();
+      comp['customerForm'].markAsDirty();
+      expect(comp.hasUnsavedChanges()).toBe(true);
     });
   });
 });

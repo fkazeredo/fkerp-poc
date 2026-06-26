@@ -14,6 +14,7 @@ import com.fksoft.erp.domain.sales.model.Proposal;
 import com.fksoft.erp.domain.sales.model.ProposalItemType;
 import com.fksoft.erp.domain.sales.service.data.CreateProposalCommand;
 import com.fksoft.erp.domain.sales.service.data.ProposalItemCommand;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -182,6 +183,20 @@ class CommercialOrderTest {
         order.reflectBookingStatus("PARTIALLY_CONFIRMED");
 
         assertThat(order.bookingStatus()).isEqualTo("PARTIALLY_CONFIRMED");
+    }
+
+    @Test
+    void reportsInactiveWhenCancelled() throws Exception {
+        // The cancel flow is a later slice and the status is private, so CANCELLED is reached via reflection here.
+        // This guards isActive() against the prior bug: a String literal can never equal the enum, so the old
+        // !"CANCELLED".equals(status) always returned true (even for a cancelled order).
+        CommercialOrder order = order(acceptedProposalWith(ProposalItemTypeFixtures.TRAVEL_PACKAGE), 1L);
+        Field statusField = CommercialOrder.class.getDeclaredField("status");
+        statusField.setAccessible(true);
+        statusField.set(order, CommercialOrderStatus.CANCELLED);
+
+        assertThat(order.isActive()).isFalse();
+        assertThat(order.status()).isEqualTo(CommercialOrderStatus.CANCELLED);
     }
 
     private Proposal acceptedProposalWith(ProposalItemType... types) {

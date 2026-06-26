@@ -164,7 +164,7 @@ public class CommercialOrder {
      * @return {@code true} unless the Order is cancelled
      */
     public boolean isActive() {
-        return !"CANCELLED".equals(status);
+        return status.isActive();
     }
 
     /**

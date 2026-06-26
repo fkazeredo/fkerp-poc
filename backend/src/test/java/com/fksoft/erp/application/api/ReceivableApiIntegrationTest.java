@@ -1139,8 +1139,8 @@ class ReceivableApiIntegrationTest extends AbstractIntegrationTest {
     private void insertCustomer(UUID leadId, String name) {
         jdbc.update(
                 """
-                INSERT INTO customers (id, version, lead_id, name, active, created_by, updated_by)
-                VALUES (cast(? as uuid), 0, cast(? as uuid), ?, TRUE, cast(? as uuid), cast(? as uuid))
+                INSERT INTO customers (id, version, lead_id, name, status, created_by, updated_by)
+                VALUES (cast(? as uuid), 0, cast(? as uuid), ?, 'ACTIVE', cast(? as uuid), cast(? as uuid))
                 """,
                 UUID.randomUUID().toString(),
                 leadId.toString(),
