@@ -205,6 +205,11 @@ export class AuthService {
   canPayCommission(): boolean {
     return this.hasScope('commission:pay');
   }
+
+  /** Whether the user may create/consolidate a Customer Profile from a Commercial Order (Customer Management). */
+  canCreateCustomer(): boolean {
+    return this.hasScope('customer:create');
+  }
 }
 
 function decodeJwt(token: string | null): JwtClaims | null {

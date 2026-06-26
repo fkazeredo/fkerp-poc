@@ -157,6 +157,7 @@ export const routes: Routes = [
       {
         path: 'pedidos/:id',
         canActivate: [orderReadGuard],
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/orders/order-detail/order-detail').then((m) => m.OrderDetailPage),
       },

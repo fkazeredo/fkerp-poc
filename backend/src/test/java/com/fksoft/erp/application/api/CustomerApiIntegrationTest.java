@@ -8,13 +8,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fksoft.erp.AbstractIntegrationTest;
 import com.fksoft.erp.domain.crm.model.Customer;
+import com.fksoft.erp.domain.crm.model.CustomerStatus;
 import com.fksoft.erp.domain.crm.repository.CustomerRepository;
 import com.fksoft.erp.domain.crm.repository.LeadRepository;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.crm.repository.OriginRepository;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
-import java.util.Optional;
+import com.jayway.jsonpath.JsonPath;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,12 +25,13 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Verifies that materializing the Customer at deal-close (a Commercial Order created through the real API) is a
- * purely additive reaction: creating the Order still succeeds and wins the Opportunity (Sprint 3 behavior intact),
- * and a Customer (the commercial graduation of the Lead) is now guaranteed to exist for the source Lead. The
- * materialization is idempotent and snapshots the Lead's name and contacts.
+ * API integration tests for creating/consolidating a Customer Profile from a Commercial Order
+ * (Customer Management — Sprint 7 Slice 1). Covers the happy path (the consolidated profile), the authorization
+ * sad paths (401/403), validation (400), the unknown source order (404), and the acceptance criteria that the
+ * action starts the customer Active, preserves the commercial origin and contacts, and creates/alters no
+ * Receivable/Booking/Commission/Customer-Care data.
  */
-class CustomerMaterializationIntegrationTest extends AbstractIntegrationTest {
+class CustomerApiIntegrationTest extends AbstractIntegrationTest {
 
     private static final UUID MANAGER = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
@@ -82,37 +84,134 @@ class CustomerMaterializationIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void creatingAnOrderMaterializesACustomerForTheLeadAndStillWinsTheOpportunity() throws Exception {
+    void consolidatesACustomerProfileFromTheOrderStartingActiveAndPreservingOriginAndContacts() throws Exception {
         String mgr = login("comercial", "comercial123");
         UUID lead = insertLead("Graduate");
-        UUID opp = insertOpportunity("Graduate", lead);
-        UUID proposal = insertProposal(opp, lead);
-        bringToAccepted(mgr, proposal, "TRAVEL_PACKAGE");
+        UUID order = createOrder(mgr, lead);
 
-        // Sanity: no Customer exists before the deal closes.
-        assertThat(customers.findByLeadId(lead)).isEmpty();
-
-        mvc.perform(post("/api/orders")
+        mvc.perform(post("/api/customers")
                         .header("Authorization", "Bearer " + mgr)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"proposalId\":\"%s\"}".formatted(proposal)))
-                .andExpect(status().isCreated());
+                        .content(
+                                """
+                                {"commercialOrderId":"%s","name":"Maria S. Silva","document":"12345678901",
+                                 "documentType":"CPF","email":"maria@example.com","phone":"11999999999",
+                                 "whatsapp":"11888888888","preferredContactMethod":"WHATSAPP","notes":"VIP"}
+                                """
+                                        .formatted(order)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.sourceCommercialOrderId").value(order.toString()))
+                .andExpect(jsonPath("$.sourceProposalId").isNotEmpty())
+                .andExpect(jsonPath("$.sourceOpportunityId").isNotEmpty())
+                .andExpect(jsonPath("$.name").value("Maria S. Silva"))
+                .andExpect(jsonPath("$.document").value("12345678901"))
+                .andExpect(jsonPath("$.email").value("maria@example.com"))
+                .andExpect(jsonPath("$.phone").value("11999999999"))
+                .andExpect(jsonPath("$.whatsapp").value("11888888888"))
+                .andExpect(jsonPath("$.preferredContactMethod").value("WHATSAPP"))
+                .andExpect(jsonPath("$.notes").value("VIP"));
 
-        // The Customer is now materialized, snapshotting the Lead's name; the Opportunity is WON (Sprint 3 intact).
-        Optional<Customer> customer = customers.findByLeadId(lead);
-        assertThat(customer).isPresent();
-        assertThat(customer.get().name()).isEqualTo("Lead Graduate");
-        assertThat(customer.get().status()).isEqualTo(com.fksoft.erp.domain.crm.model.CustomerStatus.ACTIVE);
+        // Idempotent consolidation — the customer materialized at deal-close was enriched in place, not duplicated.
         assertThat(customers.count()).isEqualTo(1);
+        Customer customer = customers.findByLeadId(lead).orElseThrow();
+        assertThat(customer.status()).isEqualTo(CustomerStatus.ACTIVE);
+        assertThat(customer.sourceCommercialOrderId()).isEqualTo(order);
+        // No Customer Care / Receivable / Booking / Commission data was created.
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM receivables", Long.class))
+                .isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM booking_requests", Long.class))
+                .isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM commissions", Long.class))
+                .isZero();
     }
 
-    /** Brings the Proposal to ACCEPTED with an item of the given type. */
-    private void bringToAccepted(String token, UUID proposal, String itemType) throws Exception {
+    @Test
+    void theBackOfficeOperationsUserMayAlsoConsolidate() throws Exception {
+        String mgr = login("comercial", "comercial123");
+        String ops = login("operacoes", "operacoes123");
+        UUID lead = insertLead("Ops");
+        UUID order = createOrder(mgr, lead);
+
+        mvc.perform(post("/api/customers")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"commercialOrderId\":\"%s\"}".formatted(order)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.name").value("Lead Ops"));
+    }
+
+    @Test
+    void requiresAuthentication() throws Exception {
+        mvc.perform(post("/api/customers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"commercialOrderId\":\"%s\"}".formatted(UUID.randomUUID())))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void rejectsACommercialUserWithoutTheCreateScope() throws Exception {
+        String mgr = login("comercial", "comercial123");
+        UUID lead = insertLead("NoScope");
+        UUID order = createOrder(mgr, lead);
+        String seller = login("vendedor", "vendedor123");
+
+        mvc.perform(post("/api/customers")
+                        .header("Authorization", "Bearer " + seller)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"commercialOrderId\":\"%s\"}".formatted(order)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rejectsAMissingSourceOrderWith400() throws Exception {
+        String mgr = login("comercial", "comercial123");
+
+        mvc.perform(post("/api/customers")
+                        .header("Authorization", "Bearer " + mgr)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("validation.failed"))
+                .andExpect(jsonPath("$.fields[?(@.field=='commercialOrderId')]").isNotEmpty());
+    }
+
+    @Test
+    void rejectsAnUnknownSourceOrderWith404() throws Exception {
+        String mgr = login("comercial", "comercial123");
+
+        mvc.perform(post("/api/customers")
+                        .header("Authorization", "Bearer " + mgr)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"commercialOrderId\":\"%s\"}".formatted(UUID.randomUUID())))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("order.not-found"));
+    }
+
+    /** Creates an Accepted Proposal and an Order from it, returning the new order id. */
+    private UUID createOrder(String token, UUID lead) throws Exception {
+        UUID opp = insertOpportunity("Graduate", lead);
+        UUID proposal = insertProposal(opp, lead);
+        bringToAccepted(token, proposal);
+        String body = mvc.perform(post("/api/orders")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"proposalId\":\"%s\"}".formatted(proposal)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return UUID.fromString(JsonPath.read(body, "$.id"));
+    }
+
+    /** Brings the Proposal to ACCEPTED with a travel-package item. */
+    private void bringToAccepted(String token, UUID proposal) throws Exception {
         mvc.perform(post("/api/proposals/" + proposal + "/items")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"typeId\":\"%s\",\"description\":\"x\",\"quantity\":1,\"unitValue\":500.00}"
-                                .formatted(proposalItemTypeId(itemType))))
+                                .formatted(proposalItemTypeId("TRAVEL_PACKAGE"))))
                 .andExpect(status().isOk());
         mvc.perform(put("/api/proposals/" + proposal)
                         .header("Authorization", "Bearer " + token)
@@ -132,8 +231,7 @@ class CustomerMaterializationIntegrationTest extends AbstractIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+                .andExpect(status().isOk());
     }
 
     private UUID insertProposal(UUID opportunityId, UUID leadId) {
@@ -204,6 +302,6 @@ class CustomerMaterializationIntegrationTest extends AbstractIntegrationTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        return com.jayway.jsonpath.JsonPath.read(body, "$.accessToken");
+        return JsonPath.read(body, "$.accessToken");
     }
 }

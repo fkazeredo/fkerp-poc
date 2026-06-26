@@ -1,6 +1,7 @@
 package com.fksoft.erp.domain.sales.service.data;
 
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
+import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -63,7 +64,7 @@ public record CommercialOrderListItem(
                 responsibleName,
                 o.responsiblePersonId() == null,
                 o.total(),
-                "PENDING_BOOKING".equals(o.status().name()),
+                o.status() == CommercialOrderStatus.PENDING_BOOKING,
                 o.bookingStatus(),
                 o.financialStatus(),
                 o.commissionStatus(),

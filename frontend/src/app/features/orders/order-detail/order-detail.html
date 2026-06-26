@@ -48,6 +48,15 @@
           (onClick)="generateCommission()"
         />
       }
+      @if (canConsolidateCustomer()) {
+        <p-button
+          label="Consolidar cliente"
+          icon="pi pi-user-plus"
+          size="small"
+          severity="secondary"
+          (onClick)="openConsolidate()"
+        />
+      }
     </div>
   </header>
 
@@ -86,6 +95,33 @@
       <div class="trace">
         <a class="link" [routerLink]="['/comissoes', c.id]">Ver detalhe da comissão</a>
       </div>
+    </p-card>
+  }
+
+  @if (consolidatedCustomer(); as cust) {
+    <p-card header="Cliente" styleClass="section customer-result">
+      <dl class="data">
+        <dt>Nome</dt>
+        <dd>{{ cust.name }}</dd>
+        <dt>Situação</dt>
+        <dd><p-tag value="Ativo" severity="success" /></dd>
+        <dt>Documento</dt>
+        <dd>{{ cust.document ?? '—' }}</dd>
+        <dt>E-mail</dt>
+        <dd>{{ cust.email ?? '—' }}</dd>
+        <dt>Telefone</dt>
+        <dd>{{ cust.phone ?? '—' }}</dd>
+        <dt>WhatsApp</dt>
+        <dd>{{ cust.whatsapp ?? '—' }}</dd>
+        @if (cust.notes) {
+          <dt>Notas</dt>
+          <dd class="notes">{{ cust.notes }}</dd>
+        }
+      </dl>
+      <p class="hint muted">
+        Cliente consolidado a partir deste pedido (origem comercial preservada). Não cria chamado de atendimento
+        nem altera reserva, financeiro ou comissão.
+      </p>
     </p-card>
   }
 
@@ -232,4 +268,88 @@
   <div class="back">
     <p-button label="Voltar para a proposta" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" />
   </div>
+
+  <p-dialog
+    header="Consolidar cliente"
+    [visible]="customerDialogOpen()"
+    (visibleChange)="$event ? null : closeConsolidate()"
+    [modal]="true"
+    [closeOnEscape]="false"
+    [dismissableMask]="false"
+    [style]="{ width: '34rem' }"
+  >
+    <form class="customer-form" [formGroup]="customerForm" (ngSubmit)="submitConsolidate()">
+      <p class="muted">
+        Cria ou consolida o cliente a partir deste pedido (<strong>{{ orderCode(o.number) }}</strong>),
+        preservando a origem comercial. Não cria chamado de atendimento nem altera reserva, financeiro ou comissão.
+      </p>
+
+      <label class="field">
+        <span>Nome</span>
+        <input pInputText formControlName="name" maxlength="200" placeholder="Nome do cliente" />
+      </label>
+
+      <label class="field">
+        <span>Documento (CPF/CNPJ)</span>
+        <input pInputText formControlName="document" maxlength="30" placeholder="Somente números" />
+      </label>
+
+      <label class="field">
+        <span>E-mail</span>
+        <input pInputText formControlName="email" maxlength="255" placeholder="cliente@exemplo.com" />
+        @if (customerForm.controls.email.invalid && customerForm.controls.email.dirty) {
+          <small class="field-error">E-mail inválido.</small>
+        }
+      </label>
+
+      <label class="field">
+        <span>Telefone</span>
+        <input pInputText formControlName="phone" maxlength="30" placeholder="Somente números" />
+      </label>
+
+      <label class="field">
+        <span>WhatsApp</span>
+        <input pInputText formControlName="whatsapp" maxlength="30" placeholder="Somente números" />
+      </label>
+
+      <label class="field">
+        <span>Canal preferido (opcional)</span>
+        <p-select
+          formControlName="preferredContactMethod"
+          [options]="contactMethodOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Selecione o canal"
+          [showClear]="true"
+          appendTo="body"
+        />
+      </label>
+
+      <label class="field">
+        <span>Notas (opcional)</span>
+        <textarea pTextarea formControlName="notes" rows="2" maxlength="2000" placeholder="Notas"></textarea>
+      </label>
+
+      @if (customerError()) {
+        <p-message severity="error" [text]="customerError()!" />
+      }
+
+      <div class="dialog-actions">
+        <p-button
+          label="Cancelar"
+          severity="secondary"
+          [text]="true"
+          type="button"
+          (onClick)="closeConsolidate()"
+        />
+        <p-button
+          label="Consolidar cliente"
+          icon="pi pi-user-plus"
+          type="submit"
+          [loading]="consolidating()"
+          [disabled]="customerForm.invalid"
+        />
+      </div>
+    </form>
+  </p-dialog>
 }
