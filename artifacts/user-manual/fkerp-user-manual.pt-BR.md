@@ -1239,6 +1239,24 @@ quando** pagou. Pontos importantes:
 - **Fica visível no histórico:** comissões **Pagas** ficam ocultas na lista por padrão, mas aparecem ao escolher a
   situação **Paga** no filtro; o detalhe mostra o valor, a forma, a data e quem registrou o pagamento.
 
+### 11.13 Extrato de comissões por beneficiário (Gestão de Comissão)
+
+O **Extrato de comissões** (em **Comercial → Extrato de comissões**) reúne as comissões de um **beneficiário** com os
+**totais** por situação, para que as expectativas, as elegibilidades, as aprovações e os pagamentos fiquem claros. É
+uma tela **informativa**: ela **não** aprova nem paga nada.
+
+- **Quem vê o quê:** **vendedores** e **representantes** veem **apenas o seu próprio** extrato (o seletor de
+  beneficiário fica fixo no seu nome); o **gerente comercial**, a **diretoria** e o **financeiro** podem escolher
+  **qualquer** beneficiário. O sistema é a única autoridade — você não consegue ver o extrato de outra pessoa sem
+  permissão.
+- **O que aparece:** o **beneficiário**, as **comissões** (pedido de origem, situação, valor, datas de criação,
+  elegibilidade, aprovação e pagamento) e os **totais**: total **previsto**, total **elegível**, total **aprovado** e
+  total **pago**.
+- **Filtros:** um **período** (por data de criação) e a opção **incluir rejeitadas/canceladas**. Por padrão, comissões
+  **rejeitadas** e **canceladas** ficam **fora** do extrato (e nunca entram nos totais); marque a opção para vê-las.
+- **Só dados comerciais:** o extrato mostra apenas dados de comissão — nunca folha, imposto, contabilidade,
+  exportação bancária ou nota fiscal.
+
 ---
 
 ## 13. Mensagens e validação

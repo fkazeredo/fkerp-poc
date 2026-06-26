@@ -78,6 +78,26 @@ describe('CommissionService', () => {
     req.flush({ id: 'c1', status: 'PAID' });
   });
 
+  it('gets the beneficiary statement with the chosen period and includeVoided', () => {
+    service.statement('u1', '2026-06-01', '2026-06-30', true).subscribe();
+    const req = http.expectOne((r) => r.url === '/api/commissions/statement');
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('beneficiary')).toBe('u1');
+    expect(req.request.params.get('from')).toBe('2026-06-01');
+    expect(req.request.params.get('to')).toBe('2026-06-30');
+    expect(req.request.params.get('includeVoided')).toBe('true');
+    req.flush({ beneficiaryId: 'u1', entries: [], totals: {} });
+  });
+
+  it('omits the optional statement params when not given', () => {
+    service.statement('u1', null, null, false).subscribe();
+    const req = http.expectOne((r) => r.url === '/api/commissions/statement');
+    expect(req.request.params.get('beneficiary')).toBe('u1');
+    expect(req.request.params.has('from')).toBe(false);
+    expect(req.request.params.has('includeVoided')).toBe(false);
+    req.flush({ beneficiaryId: 'u1', entries: [], totals: {} });
+  });
+
   it('lists commissions with paging and the chosen filters', () => {
     service
       .list({ status: ['ELIGIBLE', 'APPROVED'], beneficiary: 'u2', orderNumber: 7, amountMin: 10 }, 1, 20)

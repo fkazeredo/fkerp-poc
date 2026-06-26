@@ -1,0 +1,110 @@
+<header class="page-head">
+  <div>
+    <h1>Extrato de comissões</h1>
+    <p class="sub muted">As comissões por beneficiário, com os totais previstos, elegíveis, aprovados e pagos.</p>
+  </div>
+</header>
+
+<div class="filters surface pad">
+  <div class="filter">
+    <label>Beneficiário</label>
+    <p-select
+      [options]="responsibleOptions()"
+      optionLabel="name"
+      optionValue="id"
+      [(ngModel)]="beneficiary"
+      [disabled]="!canChooseBeneficiary()"
+      placeholder="Beneficiário"
+      [filter]="true"
+      styleClass="w-full"
+      appendTo="body"
+    />
+  </div>
+  <div class="filter">
+    <label>Criado de</label>
+    <p-datepicker [(ngModel)]="from" dateFormat="dd/mm/yy" [showButtonBar]="true" styleClass="w-full" appendTo="body" />
+  </div>
+  <div class="filter">
+    <label>Criado até</label>
+    <p-datepicker [(ngModel)]="to" dateFormat="dd/mm/yy" [showButtonBar]="true" styleClass="w-full" appendTo="body" />
+  </div>
+  <div class="filter filter-toggle">
+    <label for="voided">Incluir rejeitadas/canceladas</label>
+    <p-toggleswitch inputId="voided" [(ngModel)]="includeVoided" />
+  </div>
+  <p-button label="Aplicar" icon="pi pi-search" size="small" (onClick)="apply()" />
+</div>
+
+@if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+}
+
+@if (loading()) {
+  <p class="loading muted">Carregando…</p>
+} @else if (statement(); as s) {
+  <p class="who muted">
+    Beneficiário: <strong>{{ s.beneficiaryName ?? '—' }}</strong>
+  </p>
+
+  <div class="totals">
+    <p-card>
+      <span class="t-label muted">Prevista</span>
+      <span class="t-amount">{{ s.totals.totalExpected | currency: 'BRL' }}</span>
+      <span class="t-count muted">{{ s.totals.countExpected }} comissão(ões)</span>
+    </p-card>
+    <p-card>
+      <span class="t-label muted">Pendente de aprovação</span>
+      <span class="t-amount">{{ s.totals.totalEligible | currency: 'BRL' }}</span>
+      <span class="t-count muted">{{ s.totals.countEligible }} comissão(ões)</span>
+    </p-card>
+    <p-card>
+      <span class="t-label muted">Aprovada</span>
+      <span class="t-amount">{{ s.totals.totalApproved | currency: 'BRL' }}</span>
+      <span class="t-count muted">{{ s.totals.countApproved }} comissão(ões)</span>
+    </p-card>
+    <p-card>
+      <span class="t-label muted">Paga</span>
+      <span class="t-amount grand">{{ s.totals.totalPaid | currency: 'BRL' }}</span>
+      <span class="t-count muted">{{ s.totals.countPaid }} comissão(ões)</span>
+    </p-card>
+  </div>
+
+  <div class="surface table-wrap">
+    <p-table [value]="s.entries" styleClass="p-datatable-sm" [tableStyle]="{ 'min-width': '60rem' }">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Pedido</th>
+          <th>Situação</th>
+          <th class="num">Valor</th>
+          <th>Criada em</th>
+          <th>Elegível em</th>
+          <th>Aprovada em</th>
+          <th>Paga em</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-e>
+        <tr>
+          <td>
+            <a class="link" [routerLink]="['/comissoes', e.id]">{{ orderCode(e.orderNumber) }}</a>
+          </td>
+          <td><p-tag [value]="statusLabel(e.status)" [severity]="statusSeverity(e.status)" /></td>
+          <td class="num">{{ e.amount | currency: 'BRL' }}</td>
+          <td>{{ e.createdAt | date: 'short' }}</td>
+          <td>{{ e.eligibleAt ? (e.eligibleAt | date: 'short') : '—' }}</td>
+          <td>{{ e.approvedAt ? (e.approvedAt | date: 'short') : '—' }}</td>
+          <td>{{ e.paidAt ? (e.paidAt | date: 'short') : '—' }}</td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="7" class="muted empty">Nenhuma comissão no período.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+  <p class="hint muted">
+    O extrato é informativo — não aprova nem paga comissões — e mostra apenas dados comerciais (nunca folha, imposto
+    ou contabilidade).
+  </p>
+}

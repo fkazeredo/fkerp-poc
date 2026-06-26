@@ -167,6 +167,14 @@ export const routes: Routes = [
           import('./features/commission/commission-list/commission-list').then((m) => m.CommissionList),
       },
       {
+        path: 'comissoes/extrato',
+        canActivate: [commissionReadGuard],
+        loadComponent: () =>
+          import('./features/commission/commission-statement/commission-statement').then(
+            (m) => m.CommissionStatementPage,
+          ),
+      },
+      {
         path: 'comissoes/:id',
         canActivate: [commissionReadGuard],
         canDeactivate: [unsavedChangesGuard],

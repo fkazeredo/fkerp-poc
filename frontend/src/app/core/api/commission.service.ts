@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { PageResponse } from './lead.service';
+import { PageResponse, Responsible } from './lead.service';
 
 /** The Commission lifecycle status (Commission Management, Sprint 6). */
 export type CommissionStatus = 'EXPECTED' | 'ELIGIBLE' | 'APPROVED' | 'REJECTED' | 'PAID' | 'CANCELLED';
@@ -115,6 +115,28 @@ export interface CommissionCreated {
   id: string;
 }
 
+/** Per-status totals of a commission statement (amount sums + counts for the non-voided lifecycle). */
+export interface CommissionStatementTotals {
+  totalExpected: number;
+  totalEligible: number;
+  totalApproved: number;
+  totalPaid: number;
+  countExpected: number;
+  countEligible: number;
+  countApproved: number;
+  countPaid: number;
+}
+
+/** A simple commission statement for one beneficiary over an optional period: entries + per-status totals. */
+export interface CommissionStatement {
+  beneficiaryId: string;
+  beneficiaryName: string | null;
+  periodFrom: string | null;
+  periodTo: string | null;
+  entries: CommissionListItem[];
+  totals: CommissionStatementTotals;
+}
+
 /** API client for the Commission endpoints (Commission Management). */
 @Injectable({ providedIn: 'root' })
 export class CommissionService {
@@ -161,6 +183,31 @@ export class CommissionService {
    */
   pay(id: string, body: RegisterCommissionPayment): Observable<CommissionDetail> {
     return this.http.post<CommissionDetail>(`/api/commissions/${id}/pay`, body);
+  }
+
+  /**
+   * The simple commission statement for a beneficiary over an optional period. An own-tier caller may only request
+   * their own beneficiary (the backend enforces it); voided (Rejected/Cancelled) commissions are excluded unless
+   * {@code includeVoided} is set.
+   */
+  statement(
+    beneficiaryId: string,
+    from: string | null,
+    to: string | null,
+    includeVoided = false,
+  ): Observable<CommissionStatement> {
+    let params = new HttpParams().set('beneficiary', beneficiaryId);
+    params = setIf(params, 'from', from);
+    params = setIf(params, 'to', to);
+    if (includeVoided) {
+      params = params.set('includeVoided', 'true');
+    }
+    return this.http.get<CommissionStatement>('/api/commissions/statement', { params });
+  }
+
+  /** The responsible-people lookup (to pick a beneficiary for the statement). */
+  responsibles(): Observable<Responsible[]> {
+    return this.http.get<Responsible[]>('/api/crm/responsibles');
   }
 
   /** Operational, paginated Commission list filtered by the given criteria and the caller's visibility. */

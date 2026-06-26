@@ -1,0 +1,102 @@
+.page-head {
+  margin-bottom: 1rem;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 12rem;
+}
+
+.filter label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.filter-toggle {
+  min-width: auto;
+}
+
+.who {
+  margin: 0 0 0.75rem;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.totals p-card .t-label,
+.totals p-card .t-amount,
+.totals p-card .t-count {
+  display: block;
+}
+
+.t-label {
+  font-size: 0.8rem;
+}
+
+.t-amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.t-amount.grand {
+  color: var(--p-primary-color, #2563eb);
+}
+
+.t-count {
+  font-size: 0.78rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.num {
+  text-align: right;
+}
+
+.link {
+  color: var(--p-primary-color, #2563eb);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.empty {
+  text-align: center;
+  padding: 1rem;
+}
+
+.loading {
+  padding: 1rem 0;
+}
+
+.hint {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.muted {
+  color: var(--p-text-muted-color, #6b7280);
+}

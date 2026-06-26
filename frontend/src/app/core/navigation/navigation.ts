@@ -79,6 +79,7 @@ export class NavigationService {
     if (this.auth.canSeeCommissions()) {
       comercial.push(
         link('Comissões', 'pi pi-percentage', '/comissoes', false, 'As comissões dos negócios fechados.', 'sales'),
+        link('Extrato de comissões', 'pi pi-receipt', '/comissoes/extrato', false, 'As comissões por beneficiário, com totais.', 'sales'),
       );
     }
     if (this.auth.canCreateLead()) {

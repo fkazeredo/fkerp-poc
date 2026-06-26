@@ -1020,6 +1020,97 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void aManagerSeesABeneficiaryStatementWithEntriesAndTotals() throws Exception {
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        // One Expected (25.00) and one Paid (25.00), both for the manager beneficiary.
+        UUID expectedOrder = closedOrder("StmtExp", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        generate(manager, expectedOrder);
+        String paidId = approvedCommission("StmtPaid");
+        pay(login("financeiro", "financeiro123"), paidId, "25.00");
+
+        String body = mvc.perform(get("/api/commissions/statement?beneficiary=" + MANAGER)
+                        .header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.beneficiaryId").value(MANAGER.toString()))
+                .andExpect(jsonPath("$.beneficiaryName").value("comercial"))
+                .andExpect(jsonPath("$.entries.length()").value(2))
+                .andExpect(jsonPath("$.totals.totalExpected").value(25.00))
+                .andExpect(jsonPath("$.totals.totalPaid").value(25.00))
+                .andExpect(jsonPath("$.totals.countExpected").value(1))
+                .andExpect(jsonPath("$.totals.countPaid").value(1))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        // Statement carries commission + commercial-origin data only.
+        assertThat(body.toLowerCase()).doesNotContain("payable").doesNotContain("payroll");
+    }
+
+    @Test
+    void aRepresentativeSeesOnlyTheirOwnStatement() throws Exception {
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        UUID repOrder = closedOrder("StmtRep", "PENDING_BOOKING", REPRESENTATIVE, "500.00", "CONFIRMED");
+        generate(manager, repOrder);
+
+        String rep = login("representante", "representante123");
+        // Their own statement: 200 with their entry.
+        mvc.perform(get("/api/commissions/statement?beneficiary=" + REPRESENTATIVE)
+                        .header("Authorization", "Bearer " + rep))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries.length()").value(1))
+                .andExpect(jsonPath("$.entries[0].beneficiaryUserId").value(REPRESENTATIVE.toString()));
+        // Another beneficiary's statement (own-tier caller): 403.
+        mvc.perform(get("/api/commissions/statement?beneficiary=" + MANAGER).header("Authorization", "Bearer " + rep))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("commission.access-denied"));
+    }
+
+    @Test
+    void theStatementExcludesVoidedByDefaultButIncludesThemWhenRequested() throws Exception {
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        UUID expectedOrder = closedOrder("StmtKeep", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        generate(manager, expectedOrder);
+        // A rejected commission (eligible → rejected) for the same beneficiary.
+        UUID rejectedOrder = closedOrder("StmtVoid", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String rejectedId = generate(manager, rejectedOrder);
+        fullyPayReceivableFor(login("financeiro", "financeiro123"), rejectedOrder); // ELIGIBLE
+        mvc.perform(post("/api/commissions/" + rejectedId + "/reject")
+                        .header("Authorization", "Bearer " + login("financeiro", "financeiro123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonId\":\"%s\"}".formatted(resolutionReasonId("OTHER"))))
+                .andExpect(status().isOk());
+
+        // Default: the voided (Rejected) commission is excluded.
+        mvc.perform(get("/api/commissions/statement?beneficiary=" + MANAGER)
+                        .header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries.length()").value(1))
+                .andExpect(jsonPath("$.entries[0].status").value("EXPECTED"));
+        // includeVoided=true surfaces the Rejected one too.
+        mvc.perform(get("/api/commissions/statement?beneficiary=" + MANAGER + "&includeVoided=true")
+                        .header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries.length()").value(2));
+    }
+
+    @Test
+    void rejectsAnUnauthenticatedStatement() throws Exception {
+        mvc.perform(get("/api/commissions/statement?beneficiary=" + MANAGER)).andExpect(status().isUnauthorized());
+    }
+
+    // Registers a full payment for an approved commission.
+    private void pay(String token, String commissionId, String amount) throws Exception {
+        mvc.perform(post("/api/commissions/" + commissionId + "/pay")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":%s,\"paymentDate\":\"2026-06-20\"}"
+                                .formatted(paymentMethodId("PIX"), amount)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void theResolutionReasonCadastroIsReadableAndWriteGuarded() throws Exception {
         // Read: any authenticated user sees the seeded reject/cancel reasons (ordered by sort order).
         mvc.perform(get("/api/commission/resolution-reasons")
