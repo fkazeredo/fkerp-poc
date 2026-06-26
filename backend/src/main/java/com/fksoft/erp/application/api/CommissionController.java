@@ -9,6 +9,7 @@ import com.fksoft.erp.application.api.dto.ResolveCommissionRequest;
 import com.fksoft.erp.domain.commission.service.CommissionService;
 import com.fksoft.erp.domain.commission.service.data.CommissionDetail;
 import com.fksoft.erp.domain.commission.service.data.CommissionListItem;
+import com.fksoft.erp.domain.commission.service.data.CommissionOperationalSummary;
 import com.fksoft.erp.domain.commission.service.data.CommissionSearchCriteria;
 import com.fksoft.erp.domain.commission.service.data.CommissionStatement;
 import com.fksoft.erp.infra.security.UserContextProvider;
@@ -78,24 +79,25 @@ public class CommissionController {
     public PageResponse<CommissionListItem> list(
             CommissionListParams params,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        CommissionSearchCriteria criteria = new CommissionSearchCriteria(
-                params.status(),
-                params.beneficiary(),
-                params.order(),
-                params.orderNumber(),
-                params.rule(),
-                toStartOfDayUtc(params.createdFrom()),
-                toStartOfDayUtc(params.createdTo() != null ? params.createdTo().plusDays(1) : null),
-                toStartOfDayUtc(params.eligibleFrom()),
-                toStartOfDayUtc(
-                        params.eligibleTo() != null ? params.eligibleTo().plusDays(1) : null),
-                toStartOfDayUtc(params.paidFrom()),
-                toStartOfDayUtc(params.paidTo() != null ? params.paidTo().plusDays(1) : null),
-                params.amountMin(),
-                params.amountMax());
         return PageResponse.from(
-                commissionService.list(criteria, pageable, userContext.currentUserId(), canSeeAllCommissions()),
+                commissionService.list(
+                        toCriteria(params), pageable, userContext.currentUserId(), canSeeAllCommissions()),
                 item -> item);
+    }
+
+    /**
+     * Operational grouping of the commissions visible to the caller and matching the same filters as the list: the
+     * count + total amount by status and by beneficiary (and the overall total). It is the aggregate companion of the
+     * operational list — an operational view, not Executive Reporting — gated by the same Commission read tiers and
+     * narrowed by {@link CommissionService}. Carries commission figures only — never payroll, tax, accounting or
+     * accounts-payable data.
+     *
+     * @param params the optional filters (see {@link CommissionListParams}) — the same as the list
+     * @return the per-status and per-beneficiary totals
+     */
+    @GetMapping("/summary")
+    public CommissionOperationalSummary summary(CommissionListParams params) {
+        return commissionService.summary(toCriteria(params), userContext.currentUserId(), canSeeAllCommissions());
     }
 
     /**
@@ -192,6 +194,26 @@ public class CommissionController {
                 request.note(),
                 userContext.currentUserId(),
                 canSeeAllCommissions());
+    }
+
+    // Maps the request filters to the domain criteria, anchoring each calendar-date period at UTC midnight (the upper
+    // bounds are pre-incremented by a day, making each range [from, to) exclusive). Shared by the list and the summary.
+    private CommissionSearchCriteria toCriteria(CommissionListParams params) {
+        return new CommissionSearchCriteria(
+                params.status(),
+                params.beneficiary(),
+                params.order(),
+                params.orderNumber(),
+                params.rule(),
+                toStartOfDayUtc(params.createdFrom()),
+                toStartOfDayUtc(params.createdTo() != null ? params.createdTo().plusDays(1) : null),
+                toStartOfDayUtc(params.eligibleFrom()),
+                toStartOfDayUtc(
+                        params.eligibleTo() != null ? params.eligibleTo().plusDays(1) : null),
+                toStartOfDayUtc(params.paidFrom()),
+                toStartOfDayUtc(params.paidTo() != null ? params.paidTo().plusDays(1) : null),
+                params.amountMin(),
+                params.amountMax());
     }
 
     private boolean canSeeAllCommissions() {

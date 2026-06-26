@@ -175,6 +175,53 @@
   <p-message severity="error" [text]="error()!" styleClass="w-full" />
 }
 
+@if (summary(); as s) {
+  <div class="summary surface pad" data-testid="commission-summary">
+    <div class="summary-head">
+      <h2>Resumo operacional</h2>
+      <span class="summary-total">
+        {{ s.totalCount }} comissão(ões) · <strong>{{ s.totalAmount | currency: 'BRL' }}</strong>
+      </span>
+    </div>
+    <div class="by-status" data-testid="summary-by-status">
+      @for (st of s.byStatus; track st.status) {
+        <div class="stat-card">
+          <p-tag [value]="statusLabel(st.status)" [severity]="statusSeverity(st.status)" />
+          <span class="stat-figures">
+            <span class="stat-count">{{ st.count }}</span>
+            <span class="stat-amount">{{ st.totalAmount | currency: 'BRL' }}</span>
+          </span>
+        </div>
+      } @empty {
+        <span class="muted">Nenhuma comissão no recorte atual.</span>
+      }
+    </div>
+    @if (s.byBeneficiary.length > 0) {
+      <div class="by-beneficiary" data-testid="summary-by-beneficiary">
+        <h3>Por beneficiário</h3>
+        <table class="benef-table">
+          <thead>
+            <tr>
+              <th>Beneficiário</th>
+              <th class="num">Qtd.</th>
+              <th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (b of s.byBeneficiary; track b.beneficiaryUserId) {
+              <tr>
+                <td>{{ b.beneficiaryName ?? '—' }}</td>
+                <td class="num">{{ b.count }}</td>
+                <td class="num">{{ b.totalAmount | currency: 'BRL' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
+
 <div class="surface table-wrap">
   <p-table
     [value]="items()"

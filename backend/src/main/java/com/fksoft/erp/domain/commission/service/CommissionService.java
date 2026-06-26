@@ -23,6 +23,7 @@ import com.fksoft.erp.domain.commission.repository.CommissionResolutionReasonRep
 import com.fksoft.erp.domain.commission.repository.CommissionRuleRepository;
 import com.fksoft.erp.domain.commission.service.data.CommissionDetail;
 import com.fksoft.erp.domain.commission.service.data.CommissionListItem;
+import com.fksoft.erp.domain.commission.service.data.CommissionOperationalSummary;
 import com.fksoft.erp.domain.commission.service.data.CommissionSearchCriteria;
 import com.fksoft.erp.domain.commission.service.data.CommissionStatement;
 import com.fksoft.erp.domain.crm.model.Opportunity;
@@ -336,6 +337,27 @@ public class CommissionService {
                 CommissionSpecifications.matching(criteria).and(accessPolicy.visibleTo(userId, canSeeAll));
         Page<Commission> page = commissions.findAll(spec, pageable);
         return new PageImpl<>(toListItems(page.getContent()), page.getPageable(), page.getTotalElements());
+    }
+
+    /**
+     * Operational grouping of the commissions visible to the caller and matching the same filters as {@link #list}: the
+     * count + total amount <b>by status</b> and <b>by beneficiary</b>, plus the overall total. It is the aggregate
+     * companion of the operational list (an operational view, not Executive Reporting) and carries commission figures
+     * only — never payroll, tax, accounting or accounts-payable data. Visibility is enforced before the grouping, so a
+     * seller/representative groups only their own commissions.
+     *
+     * @param criteria the (optional) filters — same as the list
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every Commission
+     * @return the per-status and per-beneficiary totals
+     */
+    @Transactional(readOnly = true)
+    public CommissionOperationalSummary summary(CommissionSearchCriteria criteria, UUID userId, boolean canSeeAll) {
+        Specification<Commission> spec =
+                CommissionSpecifications.matching(criteria).and(accessPolicy.visibleTo(userId, canSeeAll));
+        List<Commission> rows = commissions.findAll(spec);
+        Map<UUID, String> names = resolveNames(rows.stream().map(Commission::beneficiaryUserId));
+        return CommissionOperationalSummary.of(rows, names);
     }
 
     /**

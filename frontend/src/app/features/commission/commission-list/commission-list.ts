@@ -16,6 +16,7 @@ import {
   CommissionBasis,
   CommissionFilters,
   CommissionListItem,
+  CommissionOperationalSummary,
   CommissionService,
   CommissionStatus,
   ReceivableStatusCode,
@@ -113,6 +114,8 @@ export class CommissionList implements OnInit {
 
   protected readonly items = signal<CommissionListItem[]>([]);
   protected readonly total = signal(0);
+  // The operational grouping (count + total amount by status / by beneficiary) of the same visible+filtered set.
+  protected readonly summary = signal<CommissionOperationalSummary | null>(null);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly rows = 20;
@@ -202,6 +205,11 @@ export class CommissionList implements OnInit {
         this.loading.set(false);
         this.error.set('Não foi possível carregar as comissões.');
       },
+    });
+    // The operational summary mirrors the same filters/visibility; failing it must not break the list.
+    this.commissions.summary(filters).subscribe({
+      next: (summary) => this.summary.set(summary),
+      error: () => this.summary.set(null),
     });
   }
 }

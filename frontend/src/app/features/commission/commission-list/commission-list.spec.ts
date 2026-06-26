@@ -5,7 +5,11 @@ import { providePrimeNG } from 'primeng/config';
 import type { TableLazyLoadEvent } from 'primeng/table';
 import { of, throwError } from 'rxjs';
 import { CommissionList } from './commission-list';
-import { CommissionListItem, CommissionService } from '../../../core/api/commission.service';
+import {
+  CommissionListItem,
+  CommissionOperationalSummary,
+  CommissionService,
+} from '../../../core/api/commission.service';
 import { CommissionRuleService } from '../../../core/api/commission-rule.service';
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
@@ -17,8 +21,21 @@ import { CommissionRuleService } from '../../../core/api/commission-rule.service
 const lazy = (first: number): TableLazyLoadEvent => ({ first });
 
 describe('CommissionList', () => {
-  const commissions = { list: vi.fn() };
+  const commissions = { list: vi.fn(), summary: vi.fn() };
   const rulesApi = { responsibles: vi.fn(), list: vi.fn() };
+
+  const sampleSummary: CommissionOperationalSummary = {
+    totalCount: 3,
+    totalAmount: 300,
+    byStatus: [
+      { status: 'EXPECTED', count: 2, totalAmount: 200 },
+      { status: 'PAID', count: 1, totalAmount: 100 },
+    ],
+    byBeneficiary: [
+      { beneficiaryUserId: 'u1', beneficiaryName: 'vendedor', count: 2, totalAmount: 200 },
+      { beneficiaryUserId: 'u2', beneficiaryName: 'representante', count: 1, totalAmount: 100 },
+    ],
+  };
 
   const item: CommissionListItem = {
     id: 'c1',
@@ -79,6 +96,7 @@ describe('CommissionList', () => {
 
   beforeEach(() => {
     commissions.list.mockReset();
+    commissions.summary.mockReset().mockReturnValue(of(sampleSummary));
     rulesApi.responsibles.mockReset().mockReturnValue(of([]));
     rulesApi.list.mockReset().mockReturnValue(of([]));
     commissions.list.mockReturnValue(of(pageOf([item])));
@@ -165,6 +183,27 @@ describe('CommissionList', () => {
     expect(comp['error']()).toContain('comissões');
   });
 
+  describe('operational summary', () => {
+    it('fetches the operational summary with the same filters on reload', () => {
+      const comp = build();
+      comp['status'] = ['PAID'];
+      comp['beneficiary'] = 'u1';
+      comp['applyFilters']();
+      expect(commissions.summary).toHaveBeenCalledWith(
+        expect.objectContaining({ status: ['PAID'], beneficiary: 'u1' }),
+      );
+      expect(comp['summary']()?.totalCount).toBe(3);
+    });
+
+    it('keeps the list working when the summary call fails (summary cleared)', () => {
+      commissions.summary.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+      const comp = build();
+      comp['onLazyLoad'](lazy(0));
+      expect(comp['summary']()).toBeNull();
+      expect(comp['items']()).toHaveLength(1); // the list still loaded
+    });
+  });
+
   describe('DOM rendering', () => {
     it('renders the required columns and a commission row', () => {
       commissions.list.mockReturnValue(of(pageOf([item])));
@@ -211,6 +250,20 @@ describe('CommissionList', () => {
     it('renders the empty state when there are no commissions', () => {
       commissions.list.mockReturnValue(of(pageOf([])));
       expect(render().textContent).toContain('Nenhuma comissão para acompanhar.');
+    });
+
+    it('renders the operational summary grouped by status and by beneficiary', () => {
+      const el = render();
+      expect(el.textContent).toContain('Resumo operacional');
+      // Per-status grouping with counts + amounts.
+      const byStatus = el.querySelector('[data-testid="summary-by-status"]')!;
+      expect(byStatus.textContent).toContain('Prevista');
+      expect(byStatus.textContent).toContain('Paga');
+      // Per-beneficiary grouping.
+      const byBeneficiary = el.querySelector('[data-testid="summary-by-beneficiary"]')!;
+      expect(byBeneficiary.textContent).toContain('Por beneficiário');
+      expect(byBeneficiary.textContent).toContain('vendedor');
+      expect(byBeneficiary.textContent).toContain('representante');
     });
   });
 });
