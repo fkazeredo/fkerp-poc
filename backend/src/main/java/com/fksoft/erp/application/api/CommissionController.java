@@ -10,6 +10,7 @@ import com.fksoft.erp.domain.commission.service.CommissionService;
 import com.fksoft.erp.domain.commission.service.data.CommissionDetail;
 import com.fksoft.erp.domain.commission.service.data.CommissionListItem;
 import com.fksoft.erp.domain.commission.service.data.CommissionSearchCriteria;
+import com.fksoft.erp.domain.commission.service.data.CommissionStatement;
 import com.fksoft.erp.infra.security.UserContextProvider;
 import com.fksoft.erp.infra.web.PageResponse;
 import jakarta.validation.Valid;
@@ -22,12 +23,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -93,6 +96,27 @@ public class CommissionController {
         return PageResponse.from(
                 commissionService.list(criteria, pageable, userContext.currentUserId(), canSeeAllCommissions()),
                 item -> item);
+    }
+
+    /**
+     * Simple commission statement for one beneficiary over an optional period (entries + per-status totals). Gated by
+     * the Commission read tiers; an own-tier caller (seller/representative) may only request their own statement (403
+     * otherwise). Informational only — approves/pays nothing; carries no payroll/tax/accounting data.
+     *
+     * @param beneficiary the beneficiary user id
+     * @param from the inclusive period start (by creation date), or {@code null}
+     * @param to the inclusive period end (by creation date), or {@code null}
+     * @param includeVoided whether to include the Rejected/Cancelled commissions (default false)
+     * @return the statement
+     */
+    @GetMapping("/statement")
+    public CommissionStatement statement(
+            @RequestParam UUID beneficiary,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false, defaultValue = "false") boolean includeVoided) {
+        return commissionService.statement(
+                beneficiary, from, to, includeVoided, userContext.currentUserId(), canSeeAllCommissions());
     }
 
     /**

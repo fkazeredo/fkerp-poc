@@ -1233,6 +1233,23 @@ when** paid. Key points:
 - **It stays visible in history:** **Paid** commissions are hidden in the list by default but appear when you pick the
   **Paid** status in the filter; the detail shows the amount, method, date and who registered the payment.
 
+### 11.13 Commission statement by beneficiary (Commission Management)
+
+The **Extrato de comissões** (Commission statement, under **Comercial → Extrato de comissões**) groups a
+**beneficiary's** commissions with per-status **totals**, so expectations, eligibility, approvals and payments are
+clear. It is an **informational** screen: it **approves and pays nothing**.
+
+- **Who sees what:** **sellers** and **representatives** see **only their own** statement (the beneficiary selector is
+  locked to them); the **commercial manager**, **board/director** and **finance** can pick **any** beneficiary. The
+  system is the only authority — you cannot see someone else's statement without permission.
+- **What it shows:** the **beneficiary**, the **commission entries** (source order, status, amount, created/eligibility/
+  approval/payment dates) and the **totals**: total **expected**, total **eligible**, total **approved** and total
+  **paid**.
+- **Filters:** a **period** (by creation date) and an **include rejected/cancelled** toggle. By default **rejected**
+  and **cancelled** commissions are **excluded** (and never counted in the totals); turn the toggle on to see them.
+- **Commercial data only:** the statement shows commission data only — never payroll, tax, accounting, bank export or
+  invoice data.
+
 ---
 
 ## 13. Messages and validation

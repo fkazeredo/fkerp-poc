@@ -1119,6 +1119,28 @@ detail exposing `paidAmount`/`paymentDate`/`paymentMethod`/`paymentNote`/`paidBy
 Sprint-6 slices):** partial commission payment, **payment reversal**, **statement**, **order commission-status
 reflection** and **indicators**, plus payroll / accounts payable / bank payment file / tax withholding.
 
+**Commission statement (normative — Commission Management, Sprint 6 Slice 9).** A **simple, informational commission
+statement by beneficiary** — `GET /api/commissions/statement?beneficiary=&from=&to=&includeVoided=` gated by the
+Commission read tiers (no new scope/migration; the existing `/api/commissions/**` GET gate covers it). It groups one
+beneficiary's commission **entries** over an optional **period** (by creation date, anchored UTC) with **per-status
+totals** (amount sums + counts for `EXPECTED`/`ELIGIBLE`/`APPROVED`/`PAID`). **Visibility** is enforced two ways: a
+caller **without `commission:read:all`** (own tier — sellers/representatives) may request **only their own** beneficiary
+(`beneficiaryId == userId`, else **403** `commission.access-denied`), and `CommissionAccessPolicy.visibleTo` narrows the
+query as well; a manager/finance (`commission:read:all`) may request **any** beneficiary. **Voided** commissions
+(`REJECTED`/`CANCELLED`) are **excluded by default** (the entries use `CommissionStatus.active()`), included only with
+`includeVoided=true` (they appear as entries but never in the per-status totals). The statement reuses
+`CommissionSpecifications` + `CommissionAccessPolicy` + the existing `CommissionListItem` entries; the **totals are
+computed in memory** (a per-beneficiary statement is a small set — Rule Zero, no DB aggregation, no new table). It is
+**informational only** — it **approves/pays nothing** — and carries **commission + commercial-origin data only**
+(never payroll, tax or accounting data). **Persona → tiers:** the back-office **Financeiro** (005), the commercial
+**Manager** (001) and the **Board/Director** (004) see any beneficiary (`commission:read:all`); **Sellers** (002) and
+**Representatives** (003) see **only their own** (`commission:read`); operações (006) + HR/IT have **no** commission read
+tier → **403**. In the frontend the statement is the **Extrato de comissões** destination of the **Comercial** module
+(`/comissoes/extrato`, gated by `canSeeCommissions()`): a beneficiary selector (locked to self for own-tier users via
+`canSeeAllCommissions()`), a period + `includeVoided` filter, the four total cards and the entries table (each row
+linking to the commission detail). **Out of scope:** formal payslip, tax report, accounting ledger, bank export,
+payroll integration, invoice generation.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

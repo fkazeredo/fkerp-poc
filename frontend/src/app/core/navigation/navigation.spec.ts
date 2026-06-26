@@ -76,8 +76,12 @@ describe('NavigationService', () => {
     auth.canSeeCommissions.mockReturnValue(true);
     const comercial = build().module('comercial')!;
     expect(comercial.items.map((i) => i.link)).toContain('/comissoes');
-    // It sits after Pedidos in the funnel order.
-    expect(comercial.items.map((i) => i.link)).toEqual(['/pedidos', '/comissoes']);
+    // It sits after Pedidos in the funnel order, with its statement next to it.
+    expect(comercial.items.map((i) => i.link)).toEqual([
+      '/pedidos',
+      '/comissoes',
+      '/comissoes/extrato',
+    ]);
   });
 
   it('exposes "Novo lead" only as an action (home tile), not a sidebar item, and only with create scope', () => {
