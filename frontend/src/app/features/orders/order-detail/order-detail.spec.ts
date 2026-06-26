@@ -57,6 +57,7 @@ describe('OrderDetailPage', () => {
     requiresBooking: true,
     bookingStatus: null,
     financialStatus: null,
+    commissionStatus: null,
     responsibleId: 'u1',
     responsibleName: 'comercial',
     unassigned: false,
@@ -245,6 +246,41 @@ describe('OrderDetailPage', () => {
     it('shows the no-receivable hint when there is no reflected financial status', () => {
       orders.detail.mockReturnValue(of(sample));
       expect(render().textContent).toContain('Sem conta a receber ainda');
+    });
+  });
+
+  describe('commission status reflection', () => {
+    it('maps the reflected commission status labels and severities to pt-BR', () => {
+      const comp = build();
+      expect(comp['orderCommissionLabel']('EXPECTED')).toBe('Prevista');
+      expect(comp['orderCommissionLabel']('ELIGIBLE')).toBe('Pendente de aprovação');
+      expect(comp['orderCommissionLabel']('PAID')).toBe('Paga');
+      expect(comp['orderCommissionLabel']('ISSUE')).toBe('Problema na comissão');
+      expect(comp['orderCommissionSeverity']('PAID')).toBe('success');
+      expect(comp['orderCommissionSeverity']('ISSUE')).toBe('danger');
+      expect(comp['orderCommissionSeverity']('ELIGIBLE')).toBe('warn');
+    });
+
+    it('renders the reflected commission status tag and the cycle-closed hint when PAID (DOM)', () => {
+      orders.detail.mockReturnValue(of({ ...sample, commissionStatus: 'PAID' } satisfies CommercialOrderDetail));
+      const el = render();
+      expect(el.textContent).toContain('Status da comissão');
+      expect(el.textContent).toContain('Comissão: Paga');
+      expect(el.textContent).toContain('ciclo da comissão encerrado');
+    });
+
+    it('renders the voided commission as a problem when ISSUE (DOM)', () => {
+      orders.detail.mockReturnValue(of({ ...sample, commissionStatus: 'ISSUE' } satisfies CommercialOrderDetail));
+      const el = render();
+      expect(el.textContent).toContain('Problema na comissão');
+      expect(el.textContent).toContain('cancelada ou rejeitada');
+    });
+
+    it('shows the no-commission hint when there is no reflected commission status', () => {
+      orders.detail.mockReturnValue(of(sample)); // commissionStatus = null
+      const el = render();
+      expect(el.textContent).toContain('Status da comissão');
+      expect(el.textContent).toContain('Sem comissão ainda');
     });
   });
 

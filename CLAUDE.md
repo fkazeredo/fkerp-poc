@@ -1141,6 +1141,29 @@ tier → **403**. In the frontend the statement is the **Extrato de comissões**
 linking to the commission detail). **Out of scope:** formal payslip, tax report, accounting ledger, bank export,
 payroll integration, invoice generation.
 
+**Reflecting the commission status onto the Commercial Order (normative — Commission Management, Sprint 6 Slice 10).**
+The Commercial Order **shows** a read-only commission-status summary while **staying owned by Sales & Proposals** —
+Commission Management **never** takes ownership of (or writes) the Order. This mirrors the Sprint-4 booking-status and
+Sprint-5 financial-status reflections exactly: Commission publishes a domain event
+(`CommissionStatusChanged{commissionId, commercialOrderId, status}`) whenever the status is established or changes — on
+**generation** (`EXPECTED`, or `ELIGIBLE` when the source Receivable was already paid), on **eligibility** (the
+`CommissionEligibilityListener` publishes `ELIGIBLE`), **approval** (`APPROVED`), **rejection** (`REJECTED`),
+**cancellation** (`CANCELLED`) and **payment** (`PAID`) — and a **Sales-owned** `@EventListener`
+(`CommercialOrderCommissionStatusListener`, synchronous → atomic with the commission change) writes the Order's own
+nullable `commission_status` column via `CommercialOrder.reflectCommissionStatus(...)`. The Sales listener maps the raw
+status to the Order **summary** (`summaryOf`): a **voided** commission (`REJECTED`/`CANCELLED`) reflects the distinct
+**`ISSUE`** ("Problema na comissão" — the commission was voided and needs attention; **owner decision**, not null); the
+active statuses (`EXPECTED`/`ELIGIBLE`/`APPROVED`/`PAID`) reflect as-is. This is a **read-only reflection**: it **never**
+changes the Order's own lifecycle (`status`) and **never** cancels the Order. The Order detail/list expose
+`commissionStatus` (null = no Commission yet): a **`PAID`** commission **closes the commission cycle** for the Order, and
+`ISSUE` is **sticky** until a **new** commission is generated for the Order (then it returns to `EXPECTED` — no
+auto-regeneration). The reflection **must not** create or modify any Receivable, Payment, Commission Payment, payroll,
+tax or accounting data, and the Order stays owned by Sales. The frontend mirrors it (the Order detail "Status da comissão"
+row + header tag, the Order list "Status da comissão" column), but the backend stays the only authority. No new
+scope/endpoint (the existing `sales:order:read*` gate covers the Order reads); migration **V82** adds the nullable
+`commission_status` column (CHECK `EXPECTED`/`ELIGIBLE`/`APPROVED`/`PAID`/`ISSUE`) with a backfill from the active /
+voided commission.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

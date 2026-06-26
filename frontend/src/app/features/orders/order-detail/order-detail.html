@@ -22,6 +22,12 @@
           [severity]="financialStatusSeverity(o.financialStatus)"
         />
       }
+      @if (o.commissionStatus) {
+        <p-tag
+          [value]="'Comissão: ' + orderCommissionLabel(o.commissionStatus)"
+          [severity]="orderCommissionSeverity(o.commissionStatus)"
+        />
+      }
     </div>
     <div class="head-actions">
       @if (canGenerateReceivable()) {
@@ -113,6 +119,16 @@
             />
           }
           <span class="hint muted">{{ financialHint(o.financialStatus) }}</span>
+        </dd>
+        <dt>Status da comissão</dt>
+        <dd class="commission-status">
+          @if (o.commissionStatus) {
+            <p-tag
+              [value]="orderCommissionLabel(o.commissionStatus)"
+              [severity]="orderCommissionSeverity(o.commissionStatus)"
+            />
+          }
+          <span class="hint muted">{{ orderCommissionHint(o.commissionStatus) }}</span>
         </dd>
         <dt>Próximo passo</dt>
         <dd class="next-step">{{ nextStep(o.status) }}</dd>

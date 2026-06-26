@@ -19,7 +19,7 @@ spring:
 
 app:
   name: FKERP
-  version: 0.69.0
+  version: 0.70.0
   commission:
     # Safe business limit for a Commission Rule percentage; above it requires the explicit allow-above-limit flag.
     safe-max-percentage: 50

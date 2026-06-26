@@ -33,6 +33,7 @@ describe('OrderList', () => {
     requiresBooking: true,
     bookingStatus: null,
     financialStatus: null,
+    commissionStatus: null,
     createdAt: '2026-06-20T10:00:00Z',
   };
   const pageOf = (content: CommercialOrderListItem[]) => ({
@@ -144,6 +145,15 @@ describe('OrderList', () => {
     expect(comp['bookingStatusSeverity']('FAILED')).toBe('danger');
   });
 
+  it('maps the reflected commission status label and severity to pt-BR', () => {
+    const comp = build();
+    expect(comp['commissionStatusLabel']('EXPECTED')).toBe('Prevista');
+    expect(comp['commissionStatusLabel']('PAID')).toBe('Paga');
+    expect(comp['commissionStatusLabel']('ISSUE')).toBe('Problema na comissão');
+    expect(comp['commissionStatusSeverity']('PAID')).toBe('success');
+    expect(comp['commissionStatusSeverity']('ISSUE')).toBe('danger');
+  });
+
   it('shows an error message when the load fails', () => {
     orders.list.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
     const comp = build();
@@ -178,6 +188,19 @@ describe('OrderList', () => {
       const el = render();
       expect(el.textContent).toContain('Status financeiro'); // column header
       expect(el.textContent).toContain('Paga'); // financial-status tag
+    });
+
+    it('renders the reflected commission status column header and the empty hint', () => {
+      orders.list.mockReturnValue(of(pageOf([item]))); // commissionStatus null
+      const el = render();
+      expect(el.textContent).toContain('Status da comissão'); // column header
+      expect(el.textContent).toContain('Sem comissão'); // empty hint
+    });
+
+    it('renders the reflected commission status tag when present', () => {
+      orders.list.mockReturnValue(of(pageOf([{ ...item, commissionStatus: 'ISSUE' }])));
+      const el = render();
+      expect(el.textContent).toContain('Problema na comissão');
     });
 
     it('renders the filter controls (status, booking need, responsible, search)', () => {
