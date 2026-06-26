@@ -1162,6 +1162,13 @@ Por padrão a lista mostra as comissões **em acompanhamento** (Prevista / Pende
 **Pagas**, **Rejeitadas** e **Canceladas** aparecem **apenas quando você as escolhe** no filtro de situação. A tela
 mostra **apenas dados da comissão e da origem comercial** — nunca folha, imposto, contabilidade ou contas a pagar.
 
+Acima da tabela, um **Resumo operacional** agrupa as **mesmas comissões que você está vendo** (respeita os filtros
+ativos e a sua visibilidade): a **quantidade e o valor total por situação** (um cartão por situação presente) e um
+detalhamento **por beneficiário** (quem tem quantas e quanto), além da quantidade e do total gerais. Combinado com os
+filtros de situação e período de pagamento, ele responde num relance "quanto está pendente de aprovação", "quanto está
+pendente de pagamento" e "quanto foi pago no período". É uma **visão operacional, não um relatório executivo**, e mostra
+apenas valores de comissão — nunca folha, imposto, contabilidade ou dados bancários.
+
 ### 11.9 Detalhe da comissão (Gestão de Comissão)
 
 Ao clicar no **beneficiário** na lista de comissões (ou em **Ver detalhe da comissão** no detalhe do pedido) você abre

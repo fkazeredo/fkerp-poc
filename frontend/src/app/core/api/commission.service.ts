@@ -115,6 +115,33 @@ export interface CommissionCreated {
   id: string;
 }
 
+/** Per-status total of the operational summary (count + amount). */
+export interface CommissionStatusTotal {
+  status: CommissionStatus;
+  count: number;
+  totalAmount: number;
+}
+
+/** Per-beneficiary total of the operational summary (count + amount). */
+export interface CommissionBeneficiaryTotal {
+  beneficiaryUserId: string;
+  beneficiaryName: string | null;
+  count: number;
+  totalAmount: number;
+}
+
+/**
+ * Operational grouping of the visible (and filtered) commissions: the count + total amount by status and by
+ * beneficiary, plus the overall total. An operational view (not Executive Reporting) — commission figures only,
+ * never payroll, tax, accounting or accounts-payable data.
+ */
+export interface CommissionOperationalSummary {
+  totalCount: number;
+  totalAmount: number;
+  byStatus: CommissionStatusTotal[];
+  byBeneficiary: CommissionBeneficiaryTotal[];
+}
+
 /** Per-status totals of a commission statement (amount sums + counts for the non-voided lifecycle). */
 export interface CommissionStatementTotals {
   totalExpected: number;
@@ -212,23 +239,16 @@ export class CommissionService {
 
   /** Operational, paginated Commission list filtered by the given criteria and the caller's visibility. */
   list(filters: CommissionFilters, page = 0, size = 20): Observable<PageResponse<CommissionListItem>> {
-    let params = new HttpParams().set('page', page).set('size', size);
-    for (const status of filters.status ?? []) {
-      params = params.append('status', status);
-    }
-    params = setIf(params, 'beneficiary', filters.beneficiary);
-    params = setIf(params, 'order', filters.order);
-    params = setIf(params, 'orderNumber', filters.orderNumber);
-    params = setIf(params, 'rule', filters.rule);
-    params = setIf(params, 'createdFrom', filters.createdFrom);
-    params = setIf(params, 'createdTo', filters.createdTo);
-    params = setIf(params, 'eligibleFrom', filters.eligibleFrom);
-    params = setIf(params, 'eligibleTo', filters.eligibleTo);
-    params = setIf(params, 'paidFrom', filters.paidFrom);
-    params = setIf(params, 'paidTo', filters.paidTo);
-    params = setIf(params, 'amountMin', filters.amountMin);
-    params = setIf(params, 'amountMax', filters.amountMax);
+    const params = filterParams(filters).set('page', page).set('size', size);
     return this.http.get<PageResponse<CommissionListItem>>('/api/commissions', { params });
+  }
+
+  /**
+   * Operational grouping (count + total amount by status and by beneficiary) of the commissions visible to the
+   * caller and matching the same filters as the list — the aggregate companion of the operational list.
+   */
+  summary(filters: CommissionFilters): Observable<CommissionOperationalSummary> {
+    return this.http.get<CommissionOperationalSummary>('/api/commissions/summary', { params: filterParams(filters) });
   }
 
   /**
@@ -249,4 +269,25 @@ function setIf(params: HttpParams, key: string, value: string | number | null | 
     return params;
   }
   return params.set(key, value);
+}
+
+/** Builds the shared filter query params (status set + the optional filters), without pagination. */
+function filterParams(filters: CommissionFilters): HttpParams {
+  let params = new HttpParams();
+  for (const status of filters.status ?? []) {
+    params = params.append('status', status);
+  }
+  params = setIf(params, 'beneficiary', filters.beneficiary);
+  params = setIf(params, 'order', filters.order);
+  params = setIf(params, 'orderNumber', filters.orderNumber);
+  params = setIf(params, 'rule', filters.rule);
+  params = setIf(params, 'createdFrom', filters.createdFrom);
+  params = setIf(params, 'createdTo', filters.createdTo);
+  params = setIf(params, 'eligibleFrom', filters.eligibleFrom);
+  params = setIf(params, 'eligibleTo', filters.eligibleTo);
+  params = setIf(params, 'paidFrom', filters.paidFrom);
+  params = setIf(params, 'paidTo', filters.paidTo);
+  params = setIf(params, 'amountMin', filters.amountMin);
+  params = setIf(params, 'amountMax', filters.amountMax);
+  return params;
 }

@@ -1100,6 +1100,102 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(get("/api/commissions/statement?beneficiary=" + MANAGER)).andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void theOperationalSummaryGroupsByStatusAndBeneficiary() throws Exception {
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        // Two EXPECTED for the manager (25.00 each) and one EXPECTED for the representative (25.00).
+        generate(manager, closedOrder("SumA", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED"));
+        generate(manager, closedOrder("SumB", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED"));
+        generate(manager, closedOrder("SumC", "PENDING_BOOKING", REPRESENTATIVE, "500.00", "CONFIRMED"));
+
+        String body = mvc.perform(get("/api/commissions/summary").header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(3))
+                .andExpect(jsonPath("$.totalAmount").value(75.00))
+                // By status: a single EXPECTED group with all three.
+                .andExpect(jsonPath("$.byStatus.length()").value(1))
+                .andExpect(jsonPath("$.byStatus[0].status").value("EXPECTED"))
+                .andExpect(jsonPath("$.byStatus[0].count").value(3))
+                .andExpect(jsonPath("$.byStatus[0].totalAmount").value(75.00))
+                // By beneficiary: two groups (the manager with 2 = 50.00, the representative with 1 = 25.00).
+                .andExpect(jsonPath("$.byBeneficiary.length()").value(2))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        // Operational figures only — never payroll, payable or accounting data.
+        assertThat(body.toLowerCase())
+                .doesNotContain("payroll")
+                .doesNotContain("payable")
+                .doesNotContain("accounting");
+
+        // The manager's beneficiary group carries 2 commissions summing 50.00.
+        java.util.List<java.util.Map<String, Object>> byBeneficiary = JsonPath.read(body, "$.byBeneficiary");
+        java.util.Map<String, Object> managerGroup = byBeneficiary.stream()
+                .filter(g -> MANAGER.toString().equals(g.get("beneficiaryUserId")))
+                .findFirst()
+                .orElseThrow();
+        assertThat(managerGroup.get("count")).isEqualTo(2);
+        assertThat(((Number) managerGroup.get("totalAmount")).doubleValue()).isEqualTo(50.0);
+    }
+
+    @Test
+    void theOperationalSummaryAppliesTheStatusFilter() throws Exception {
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        // One EXPECTED (no receivable) and one PAID (full lifecycle).
+        generate(manager, closedOrder("SumExp", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED"));
+        pay(login("financeiro", "financeiro123"), approvedCommission("SumPaid"), "25.00");
+
+        // Default (operational) summary excludes PAID → one EXPECTED group only.
+        mvc.perform(get("/api/commissions/summary").header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.byStatus.length()").value(1))
+                .andExpect(jsonPath("$.byStatus[0].status").value("EXPECTED"));
+
+        // Filtering status=PAID groups only the paid one.
+        mvc.perform(get("/api/commissions/summary?status=PAID").header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.byStatus[0].status").value("PAID"))
+                .andExpect(jsonPath("$.byStatus[0].totalAmount").value(25.00));
+    }
+
+    @Test
+    void theOperationalSummaryRespectsVisibility() throws Exception {
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        generate(manager, closedOrder("SumOwn", "PENDING_BOOKING", REPRESENTATIVE, "500.00", "CONFIRMED"));
+        generate(manager, closedOrder("SumOther", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED"));
+
+        // The representative (own tier) sees only their own commission in the summary.
+        mvc.perform(get("/api/commissions/summary")
+                        .header("Authorization", "Bearer " + login("representante", "representante123")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.byBeneficiary.length()").value(1))
+                .andExpect(jsonPath("$.byBeneficiary[0].beneficiaryUserId").value(REPRESENTATIVE.toString()));
+
+        // The manager (read-all) sees both.
+        mvc.perform(get("/api/commissions/summary").header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.byBeneficiary.length()").value(2));
+    }
+
+    @Test
+    void aUserWithoutACommissionScopeIsForbiddenOnTheSummary() throws Exception {
+        mvc.perform(get("/api/commissions/summary")
+                        .header("Authorization", "Bearer " + login("operacoes", "operacoes123")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rejectsAnUnauthenticatedSummary() throws Exception {
+        mvc.perform(get("/api/commissions/summary")).andExpect(status().isUnauthorized());
+    }
+
     // Registers a full payment for an approved commission.
     private void pay(String token, String commissionId, String amount) throws Exception {
         mvc.perform(post("/api/commissions/" + commissionId + "/pay")

@@ -35,6 +35,84 @@
   min-width: 8rem;
 }
 
+.summary {
+  margin-bottom: 1.1rem;
+}
+
+.summary-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.summary-head h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.summary-total {
+  font-size: 0.9rem;
+  color: var(--app-muted);
+}
+
+.by-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--p-content-border-color, #e5e7eb);
+  border-radius: 0.5rem;
+}
+
+.stat-figures {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.stat-count {
+  font-weight: 600;
+}
+
+.stat-amount {
+  font-size: 0.85rem;
+  color: var(--app-muted);
+}
+
+.by-beneficiary {
+  margin-top: 1rem;
+}
+
+.by-beneficiary h3 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--app-muted);
+  margin: 0 0 0.4rem;
+}
+
+.benef-table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 32rem;
+  font-size: 0.9rem;
+}
+
+.benef-table th,
+.benef-table td {
+  padding: 0.3rem 0.6rem;
+  border-bottom: 1px solid var(--p-content-border-color, #eee);
+  text-align: left;
+}
+
 .table-wrap {
   overflow: auto;
 }
