@@ -1019,6 +1019,74 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(post("/api/commissions/" + UUID.randomUUID() + "/pay")).andExpect(status().isUnauthorized());
     }
 
+    // --- Sprint 6 end-to-end validation: the void alternative flows cannot be paid, and voiding leaves the source
+    // Commercial Order and Receivable untouched (Commission Management owns neither). ---
+
+    @Test
+    void aRejectedCommissionCannotBePaid() throws Exception {
+        UUID order = closedOrder("RejectThenPay", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        String fin = login("financeiro", "financeiro123");
+        fullyPayReceivableFor(fin, order); // ELIGIBLE
+        mvc.perform(post("/api/commissions/" + commissionId + "/reject")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonId\":\"%s\"}".formatted(resolutionReasonId("OTHER"))))
+                .andExpect(status().isOk()); // REJECTED
+
+        // A rejected (voided) commission is not payable.
+        mvc.perform(post("/api/commissions/" + commissionId + "/pay")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":25.00,\"paymentDate\":\"2026-06-20\"}"
+                                .formatted(paymentMethodId("PIX"))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("commission.not-payable"));
+    }
+
+    @Test
+    void aCancelledCommissionCannotBePaidAndLeavesTheOrderAndReceivableUnchanged() throws Exception {
+        UUID order = closedOrder("CancelThenPay", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        String commissionId = generate(manager, order);
+        String fin = login("financeiro", "financeiro123");
+        fullyPayReceivableFor(fin, order); // ELIGIBLE
+        mvc.perform(post("/api/commissions/" + commissionId + "/approve").header("Authorization", "Bearer " + fin))
+                .andExpect(status().isOk()); // APPROVED (unpaid)
+
+        // Cancel the approved-but-unpaid commission with a reason.
+        mvc.perform(post("/api/commissions/" + commissionId + "/cancel")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonId\":\"%s\"}".formatted(resolutionReasonId("BUSINESS_EXCEPTION"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        // A cancelled (voided) commission is not payable.
+        mvc.perform(post("/api/commissions/" + commissionId + "/pay")
+                        .header("Authorization", "Bearer " + fin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentMethodId\":\"%s\",\"amount\":25.00,\"paymentDate\":\"2026-06-20\"}"
+                                .formatted(paymentMethodId("PIX"))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("commission.not-payable"));
+
+        // The source Commercial Order keeps its own lifecycle and the Receivable stays PAID (Commission owns neither).
+        assertThat(jdbc.queryForObject(
+                        "SELECT status FROM commercial_orders WHERE id = cast(? as uuid)",
+                        String.class,
+                        order.toString()))
+                .isEqualTo("PENDING_BOOKING");
+        assertThat(jdbc.queryForObject(
+                        "SELECT status FROM receivables WHERE commercial_order_id = cast(? as uuid)",
+                        String.class,
+                        order.toString()))
+                .isEqualTo("PAID");
+    }
+
     @Test
     void aManagerSeesABeneficiaryStatementWithEntriesAndTotals() throws Exception {
         String manager = login("comercial", "comercial123");
