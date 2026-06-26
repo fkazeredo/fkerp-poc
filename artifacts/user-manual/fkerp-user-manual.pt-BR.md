@@ -1288,6 +1288,11 @@ financeiro veem todos; vendedores e representantes veem apenas as suas). A tela 
 É uma **visão operacional, não um relatório executivo**, e mostra apenas valores de comissão — nunca folha, imposto,
 contabilidade ou banco.
 
+> **Fim do ciclo comercial-financeiro.** Com a comissão **paga**, o ciclo que começou com um **lead** — oportunidade,
+> proposta, pedido, reserva, conta a receber e comissão — está **completo**, e todos os registros permanecem
+> preservados e rastreáveis. O **atendimento ao cliente e o pós-venda** são um **módulo futuro** que se apoiará neste
+> ciclo encerrado; **não** fazem parte desta versão.
+
 ---
 
 ## 13. Mensagens e validação
