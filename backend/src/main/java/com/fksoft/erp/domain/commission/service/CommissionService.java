@@ -22,6 +22,7 @@ import com.fksoft.erp.domain.commission.repository.CommissionRepository;
 import com.fksoft.erp.domain.commission.repository.CommissionResolutionReasonRepository;
 import com.fksoft.erp.domain.commission.repository.CommissionRuleRepository;
 import com.fksoft.erp.domain.commission.service.data.CommissionDetail;
+import com.fksoft.erp.domain.commission.service.data.CommissionIndicators;
 import com.fksoft.erp.domain.commission.service.data.CommissionListItem;
 import com.fksoft.erp.domain.commission.service.data.CommissionOperationalSummary;
 import com.fksoft.erp.domain.commission.service.data.CommissionSearchCriteria;
@@ -43,6 +44,7 @@ import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import com.fksoft.erp.domain.sales.repository.ProposalRepository;
 import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -358,6 +360,80 @@ public class CommissionService {
         List<Commission> rows = commissions.findAll(spec);
         Map<UUID, String> names = resolveNames(rows.stream().map(Commission::beneficiaryUserId));
         return CommissionOperationalSummary.of(rows, names);
+    }
+
+    /**
+     * Minimum functional Commission Management indicators over the commissions visible to the caller: a current
+     * snapshot (count + amount by status and by beneficiary; the amount pending approval and pending payment) plus the
+     * volume in the selected period (paid in the period; the average eligibility→approval and approval→payment times).
+     * Visibility narrows the set first (a beneficiary sees only their own numbers). Computed in memory over the visible
+     * set (Rule Zero — the commission set is small, like the statement/summary). Operational, not Executive Reporting —
+     * commission figures only, never payroll, tax, accounting or accounts-payable data.
+     *
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every Commission
+     * @param from the inclusive period start (by the relevant date), or {@code null} (all time)
+     * @param to the inclusive period end, or {@code null} (all time)
+     * @return the commission indicators
+     */
+    @Transactional(readOnly = true)
+    public CommissionIndicators indicators(UUID userId, boolean canSeeAll, LocalDate from, LocalDate to) {
+        List<Commission> visible = commissions.findAll(accessPolicy.visibleTo(userId, canSeeAll));
+        Map<UUID, String> names = resolveNames(visible.stream().map(Commission::beneficiaryUserId));
+        CommissionOperationalSummary snapshot = CommissionOperationalSummary.of(visible, names);
+
+        // Current snapshot (period-independent): the working backlog pending each manual step.
+        List<Commission> eligible = withStatus(visible, CommissionStatus.ELIGIBLE);
+        List<Commission> approved = withStatus(visible, CommissionStatus.APPROVED);
+
+        // Volume in the selected period: the commissions paid in the period, by the human payment date (inclusive).
+        List<Commission> paidInPeriod = visible.stream()
+                .filter(c -> c.status() == CommissionStatus.PAID && inPeriod(c.paymentDate(), from, to))
+                .toList();
+
+        // Snapshot health metrics: the average processing latency of each manual step over all the commissions that
+        // crossed it (whole seconds; null when none has yet).
+        Long avgEligibilityToApproval = averageSeconds(visible.stream()
+                .filter(c -> c.eligibleAt() != null && c.approvedAt() != null)
+                .map(c -> Duration.between(c.eligibleAt(), c.approvedAt())));
+        Long avgApprovalToPayment = averageSeconds(visible.stream()
+                .filter(c -> c.approvedAt() != null && c.paidAt() != null)
+                .map(c -> Duration.between(c.approvedAt(), c.paidAt())));
+
+        return new CommissionIndicators(
+                snapshot.byStatus(),
+                snapshot.byBeneficiary(),
+                eligible.size(),
+                sumAmount(eligible),
+                approved.size(),
+                sumAmount(approved),
+                paidInPeriod.size(),
+                sumAmount(paidInPeriod),
+                avgEligibilityToApproval,
+                avgApprovalToPayment);
+    }
+
+    private static List<Commission> withStatus(List<Commission> rows, CommissionStatus status) {
+        return rows.stream().filter(c -> c.status() == status).toList();
+    }
+
+    private static BigDecimal sumAmount(List<Commission> rows) {
+        return rows.stream().map(Commission::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    // True when the calendar date falls in the inclusive [from, to] window; an open bound (null) is unbounded.
+    private static boolean inPeriod(LocalDate date, LocalDate from, LocalDate to) {
+        return date != null && (from == null || !date.isBefore(from)) && (to == null || !date.isAfter(to));
+    }
+
+    // The average of the given durations in whole seconds, or null when there are none.
+    private static Long averageSeconds(Stream<Duration> durations) {
+        List<Duration> list = durations.toList();
+        if (list.isEmpty()) {
+            return null;
+        }
+        long total = list.stream().mapToLong(Duration::getSeconds).sum();
+        return total / list.size();
     }
 
     /**

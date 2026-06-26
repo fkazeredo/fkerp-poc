@@ -20,6 +20,7 @@ describe('IndicadoresHub', () => {
     canSeeOrders: vi.fn(() => false),
     canSeeBookings: vi.fn(() => false),
     canSeeReceivables: vi.fn(() => false),
+    canSeeCommissions: vi.fn(() => false),
   };
 
   function instance(): IndicadoresHub {
@@ -52,6 +53,7 @@ describe('IndicadoresHub', () => {
     auth.canSeeOrders.mockReset().mockReturnValue(false);
     auth.canSeeBookings.mockReset().mockReturnValue(false);
     auth.canSeeReceivables.mockReset().mockReturnValue(false);
+    auth.canSeeCommissions.mockReset().mockReturnValue(false);
   });
 
   it('shows only the tabs the profile can see, in funnel order', () => {
@@ -87,6 +89,19 @@ describe('IndicadoresHub', () => {
     const tabs = instance()['tabs']();
     expect(tabs.map((t) => t.key)).toEqual(['financeiro']);
     expect(tabs[0].label).toBe('Financeiro');
+  });
+
+  it('shows the Comissões tab (after Financeiro) for a profile that can see commissions', () => {
+    auth.canSeeReceivables.mockReturnValue(true);
+    auth.canSeeCommissions.mockReturnValue(true);
+    const tabs = instance()['tabs']();
+    expect(tabs.map((t) => t.key)).toEqual(['financeiro', 'comissoes']);
+    expect(tabs[1].label).toBe('Comissões');
+  });
+
+  it('shows only the Comissões tab for a commission-read-only profile', () => {
+    auth.canSeeCommissions.mockReturnValue(true);
+    expect(instance()['tabs']().map((t) => t.key)).toEqual(['comissoes']);
   });
 
   it('defaults the active tab to the first visible one', () => {

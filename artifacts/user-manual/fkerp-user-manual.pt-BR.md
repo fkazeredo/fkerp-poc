@@ -1271,6 +1271,23 @@ uma tela **informativa**: ela **não** aprova nem paga nada.
 - **Só dados comerciais:** o extrato mostra apenas dados de comissão — nunca folha, imposto, contabilidade,
   exportação bancária ou nota fiscal.
 
+### 11.14 Indicadores de comissões (Gestão de Comissão)
+
+Abra **Acompanhamento → Indicadores** e selecione a aba **Comissões** para a visão mínima das obrigações e dos
+pagamentos de comissão para o gestor. Os números são **limitados às comissões que você pode ver** (gerentes, diretoria e
+financeiro veem todos; vendedores e representantes veem apenas as suas). A tela traz:
+
+- **Volume no período** (por data de pagamento; padrão = mês atual): quantas comissões foram **pagas** no período e o
+  **valor total pago**.
+- **Em aberto** (um retrato de hoje, independe do período): o **valor pendente de aprovação** (elegível) e o **valor
+  pendente de pagamento** (aprovado), além de dois **tempos médios** — de **elegível a aprovada** e de **aprovada a
+  paga** — para enxergar a rapidez com que as comissões avançam na aprovação e no pagamento.
+- **Por situação** e **por beneficiário**: a quantidade e o valor total das comissões em cada situação e de cada
+  beneficiário.
+
+É uma **visão operacional, não um relatório executivo**, e mostra apenas valores de comissão — nunca folha, imposto,
+contabilidade ou banco.
+
 ---
 
 ## 13. Mensagens e validação
