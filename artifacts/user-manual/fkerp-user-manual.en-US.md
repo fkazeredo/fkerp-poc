@@ -1281,10 +1281,29 @@ board/director and finance see everyone; sellers and representatives see only th
 It is an **operational view, not executive reporting**, and shows commission figures only — never payroll, tax,
 accounting or bank data.
 
-> **End of the commercial-financial cycle.** With the commission **paid**, the cycle that began with a **lead** —
-> opportunity, proposal, order, booking, receivable and commission — is **complete**, and every record stays preserved
-> and traceable. **Customer Care and post-sale operations** are a **future module** that will build on this closed
-> cycle; they are **not** part of this version.
+### 11.15 Consolidating the customer from an order (Post-sale)
+
+When a deal is closed, the company's **real customer** is consolidated from the **commercial order**. On an **order's
+detail**, a **Post-sale (Operations)** user or the **commercial manager** sees the **Consolidate customer** action
+(shortcut <kbd>k</kbd>). It opens a dialog prefilled from the source lead, where you can adjust the **name, document
+(CPF/CNPJ), e-mail, phone, WhatsApp, preferred contact channel and notes**.
+
+On confirmation:
+
+- the customer is **created or consolidated** from the order (the operation is **idempotent** — a customer that already
+  exists for that lead is enriched, never duplicated);
+- the customer starts **Active**;
+- the **commercial origin is preserved** (the source order, proposal and opportunity stay traceable);
+- **nothing else changes**: the action **does not open a care ticket** and **does not touch** booking, financial or
+  commission data.
+
+The consolidated customer appears in a panel on the order itself. The **customer list**, the **commercial history** and
+the **care tickets** are the next deliveries of the Post-sale module.
+
+> **End of the commercial-financial cycle — start of Post-sale.** With the commission **paid**, the cycle that began
+> with a **lead** — opportunity, proposal, order, booking, receivable and commission — is **complete**, and every
+> record stays preserved and traceable. From that closed cycle, **Post-sale** begins: the **real customer** can already
+> be **consolidated from the order** (§11.15). **Customer Care tickets** are the next step of the module.
 
 ---
 
@@ -1317,6 +1336,7 @@ is also reachable by keyboard:
   `Esc` back.
 - **On an opportunity:** `a` log activity · `e` edit details · `s` advance stage · `p` mark lost · `Esc` back.
 - **On a proposal:** `i` add item · `e` edit commercial details · `s` submit for review · `Esc` back.
+- **On an order:** `c` generate commission · `k` consolidate customer (each when allowed) · `Esc` back.
 - **On a booking:** `a` register attempt · `Esc` back.
 - **On a receivable:** `p` register payment (first installment with a balance) · `Esc` back / cancel.
 - **On a commission:** `a` approve · `r` reject · `c` cancel · `p` register payment (each when allowed) · `Esc` back /

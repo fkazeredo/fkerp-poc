@@ -4,6 +4,7 @@ import com.fksoft.erp.domain.crm.model.Lead;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.sales.model.CommercialOrder;
 import com.fksoft.erp.domain.sales.model.CommercialOrderItem;
+import com.fksoft.erp.domain.sales.model.CommercialOrderStatus;
 import com.fksoft.erp.domain.sales.model.DiscountType;
 import com.fksoft.erp.domain.sales.model.Proposal;
 import java.math.BigDecimal;
@@ -85,7 +86,7 @@ public record CommercialOrderDetail(
                 o.opportunityId(),
                 o.leadId(),
                 o.status().name(),
-                "PENDING_BOOKING".equals(o.status().name()),
+                o.status() == CommercialOrderStatus.PENDING_BOOKING,
                 o.bookingStatus(),
                 o.financialStatus(),
                 o.commissionStatus(),

@@ -8,6 +8,9 @@
 backend/target/
 *.class
 
+# Spring Modulith generated docs/output
+build/
+
 # Node / Angular
 node_modules/
 frontend/dist/

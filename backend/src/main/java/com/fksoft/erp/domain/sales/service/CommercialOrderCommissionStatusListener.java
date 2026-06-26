@@ -1,5 +1,6 @@
 package com.fksoft.erp.domain.sales.service;
 
+import com.fksoft.erp.domain.commission.model.CommissionStatus;
 import com.fksoft.erp.domain.commission.model.CommissionStatusChanged;
 import com.fksoft.erp.domain.sales.repository.CommercialOrderRepository;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,9 @@ public class CommercialOrderCommissionStatusListener {
      * (Expected/Eligible/Approved/Paid) are reflected as-is.
      */
     private static String summaryOf(String status) {
-        return "REJECTED".equals(status) || "CANCELLED".equals(status) ? "ISSUE" : status;
+        return CommissionStatus.REJECTED.name().equals(status)
+                        || CommissionStatus.CANCELLED.name().equals(status)
+                ? "ISSUE"
+                : status;
     }
 }

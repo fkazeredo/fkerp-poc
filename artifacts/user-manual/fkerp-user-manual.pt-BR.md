@@ -1288,10 +1288,30 @@ financeiro veem todos; vendedores e representantes veem apenas as suas). A tela 
 É uma **visão operacional, não um relatório executivo**, e mostra apenas valores de comissão — nunca folha, imposto,
 contabilidade ou banco.
 
-> **Fim do ciclo comercial-financeiro.** Com a comissão **paga**, o ciclo que começou com um **lead** — oportunidade,
-> proposta, pedido, reserva, conta a receber e comissão — está **completo**, e todos os registros permanecem
-> preservados e rastreáveis. O **atendimento ao cliente e o pós-venda** são um **módulo futuro** que se apoiará neste
-> ciclo encerrado; **não** fazem parte desta versão.
+### 11.15 Consolidando o cliente a partir de um pedido (Pós-venda)
+
+Quando um negócio é fechado, o **cliente real** da empresa é consolidado a partir do **pedido comercial**. No
+**detalhe de um pedido**, um usuário de **Pós-venda (Operações)** ou o **gerente comercial** vê a ação **Consolidar
+cliente** (atalho <kbd>k</kbd>). Ela abre um diálogo já preenchido com os dados do lead de origem, onde você pode
+ajustar **nome, documento (CPF/CNPJ), e-mail, telefone, WhatsApp, canal de contato preferido e notas**.
+
+Ao confirmar:
+
+- o cliente é **criado ou consolidado** a partir do pedido (a operação é **idempotente** — um cliente já existente
+  para aquele lead é enriquecido, nunca duplicado);
+- o cliente nasce **Ativo**;
+- a **origem comercial é preservada** (pedido, proposta e oportunidade de origem ficam rastreáveis);
+- **nada mais é alterado**: a ação **não abre chamado de atendimento** e **não toca** em reserva, financeiro ou
+  comissão.
+
+O cliente consolidado aparece em um painel no próprio pedido. A **lista de clientes**, o **histórico comercial** e os
+**chamados de atendimento** são as próximas entregas do módulo de Pós-venda.
+
+> **Fim do ciclo comercial-financeiro — início do Pós-venda.** Com a comissão **paga**, o ciclo que começou com um
+> **lead** — oportunidade, proposta, pedido, reserva, conta a receber e comissão — está **completo**, e todos os
+> registros permanecem preservados e rastreáveis. A partir desse ciclo encerrado, o **Pós-venda** começa: o **cliente
+> real** já pode ser **consolidado a partir do pedido** (§11.15). Os **chamados de atendimento (Customer Care)** são a
+> próxima etapa do módulo.
 
 ---
 
@@ -1327,6 +1347,7 @@ também é acessível pelo teclado:
   perdida · `Esc` voltar.
 - **Em uma proposta:** `i` adicionar item · `e` editar dados comerciais · `s` enviar para revisão · `Esc`
   voltar.
+- **Em um pedido:** `c` gerar comissão · `k` consolidar cliente (cada um quando permitido) · `Esc` voltar.
 - **Em uma reserva:** `a` registrar tentativa · `Esc` voltar.
 - **Em uma conta a receber:** `p` registrar pagamento (primeira parcela com saldo) · `Esc` voltar / cancelar.
 - **Em uma comissão:** `a` aprovar · `r` rejeitar · `c` cancelar · `p` registrar pagamento (cada um quando permitido) ·
