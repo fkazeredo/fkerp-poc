@@ -68,6 +68,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
 /** Unit tests of the Commission generation Application Service with the repositories and policy mocked. */
@@ -659,6 +660,44 @@ class CommissionServiceTest {
         assertThatThrownBy(() -> service.pay(
                         id, new BigDecimal("50.00"), LocalDate.now(), UUID.randomUUID(), null, userId, true))
                 .isInstanceOf(CommissionNotFoundException.class);
+    }
+
+    @Test
+    void statementDeniesAnotherBeneficiaryForAnOwnTierCaller() {
+        // An own-tier caller (canSeeAll = false) may only request their own statement.
+        assertThatThrownBy(() -> service.statement(beneficiary, null, null, false, userId, false))
+                .isInstanceOf(CommissionAccessDeniedException.class);
+    }
+
+    @Test
+    void statementForOwnBeneficiaryReturnsAStatementWithTotals() {
+        Specification<Commission> visible = (root, q, cb) -> cb.conjunction();
+        when(accessPolicy.visibleTo(userId, false)).thenReturn(visible);
+        when(commissions.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of());
+        User user = mock(User.class);
+        lenient().when(user.username()).thenReturn("vendedor");
+        when(users.findById(userId)).thenReturn(Optional.of(user));
+
+        var statement = service.statement(userId, null, null, false, userId, false);
+
+        assertThat(statement.beneficiaryId()).isEqualTo(userId);
+        assertThat(statement.beneficiaryName()).isEqualTo("vendedor");
+        assertThat(statement.entries()).isEmpty();
+        assertThat(statement.totals().totalPaid()).isEqualByComparingTo("0");
+        assertThat(statement.totals().countExpected()).isZero();
+    }
+
+    @Test
+    void statementAllowsAManagerForAnyBeneficiary() {
+        Specification<Commission> visible = (root, q, cb) -> cb.conjunction();
+        when(accessPolicy.visibleTo(userId, true)).thenReturn(visible);
+        when(commissions.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of());
+        when(users.findById(beneficiary)).thenReturn(Optional.empty());
+
+        // A manager (canSeeAll = true) may request any beneficiary's statement (no self-restriction).
+        var statement = service.statement(beneficiary, null, null, true, userId, true);
+        assertThat(statement.beneficiaryId()).isEqualTo(beneficiary);
+        assertThat(statement.entries()).isEmpty();
     }
 
     @Test

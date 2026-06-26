@@ -125,6 +125,15 @@ describe('AuthService', () => {
     expect(service.canSeeCommissions()).toBe(false);
   });
 
+  it('distinguishes the all-tier from the own-tier for commissions', () => {
+    service.accessToken.set(jwt({ sub: 'u', scope: 'commission:read:all' }));
+    expect(service.canSeeAllCommissions()).toBe(true);
+
+    // Own-tier read does not grant the all-tier.
+    service.accessToken.set(jwt({ sub: 'u', scope: 'commission:read' }));
+    expect(service.canSeeAllCommissions()).toBe(false);
+  });
+
   it('grants approving a commission only with the commission:approve scope', () => {
     service.accessToken.set(jwt({ sub: 'u', scope: 'commission:approve commission:read:all' }));
     expect(service.canApproveCommission()).toBe(true);

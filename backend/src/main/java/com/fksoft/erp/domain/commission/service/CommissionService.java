@@ -23,6 +23,7 @@ import com.fksoft.erp.domain.commission.repository.CommissionRuleRepository;
 import com.fksoft.erp.domain.commission.service.data.CommissionDetail;
 import com.fksoft.erp.domain.commission.service.data.CommissionListItem;
 import com.fksoft.erp.domain.commission.service.data.CommissionSearchCriteria;
+import com.fksoft.erp.domain.commission.service.data.CommissionStatement;
 import com.fksoft.erp.domain.crm.model.Opportunity;
 import com.fksoft.erp.domain.crm.repository.OpportunityRepository;
 import com.fksoft.erp.domain.financial.exception.PaymentMethodNotAvailableException;
@@ -42,6 +43,8 @@ import com.fksoft.erp.domain.sales.service.OrderAccessPolicy;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,7 +54,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -313,8 +318,63 @@ public class CommissionService {
         Specification<Commission> spec =
                 CommissionSpecifications.matching(criteria).and(accessPolicy.visibleTo(userId, canSeeAll));
         Page<Commission> page = commissions.findAll(spec, pageable);
-        List<Commission> rows = page.getContent();
+        return new PageImpl<>(toListItems(page.getContent()), page.getPageable(), page.getTotalElements());
+    }
 
+    /**
+     * Simple commission statement for one beneficiary over an optional period (by creation date): the visible
+     * commission entries plus the per-status totals (expected / eligible / approved / paid). Respects visibility — a
+     * caller without {@code commission:read:all} may only request <b>their own</b> statement (else
+     * {@code CommissionAccessDeniedException}); the access policy also narrows the query. By default the voided
+     * commissions (Rejected / Cancelled) are excluded; pass {@code includeVoided} to add them. Informational only — it
+     * approves/pays nothing and carries commission + commercial-origin data only (no payroll, tax or accounting data).
+     *
+     * @param beneficiaryId the beneficiary whose statement is requested
+     * @param from the inclusive period start (by creation date), or {@code null} (all time)
+     * @param to the inclusive period end (by creation date), or {@code null} (all time)
+     * @param includeVoided whether to include the Rejected/Cancelled commissions
+     * @param userId the calling user
+     * @param canSeeAll whether the caller may see every Commission
+     * @return the statement (entries + totals)
+     * @throws CommissionAccessDeniedException if an own-tier caller requests another beneficiary's statement
+     */
+    @Transactional(readOnly = true)
+    public CommissionStatement statement(
+            UUID beneficiaryId, LocalDate from, LocalDate to, boolean includeVoided, UUID userId, boolean canSeeAll) {
+        if (!canSeeAll && !beneficiaryId.equals(userId)) {
+            throw new CommissionAccessDeniedException();
+        }
+        Set<String> statuses = (includeVoided ? EnumSet.allOf(CommissionStatus.class) : CommissionStatus.active())
+                .stream().map(Enum::name).collect(Collectors.toSet());
+        CommissionSearchCriteria criteria = new CommissionSearchCriteria(
+                statuses,
+                beneficiaryId,
+                null,
+                null,
+                null,
+                toStartOfDayUtc(from),
+                to == null ? null : toStartOfDayUtc(to.plusDays(1)),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+        Specification<Commission> spec =
+                CommissionSpecifications.matching(criteria).and(accessPolicy.visibleTo(userId, canSeeAll));
+        List<Commission> rows = commissions.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"));
+        String beneficiaryName =
+                users.findById(beneficiaryId).map(User::username).orElse(null);
+        return CommissionStatement.of(beneficiaryId, beneficiaryName, from, to, toListItems(rows));
+    }
+
+    private static Instant toStartOfDayUtc(LocalDate date) {
+        return date == null ? null : date.atStartOfDay(ZoneOffset.UTC).toInstant();
+    }
+
+    // Builds the list-item read models for a batch of commissions, resolving the cross-aggregate names/references and
+    // the source order's Receivable status once per batch (no N+1). Shared by the list and the statement.
+    private List<CommissionListItem> toListItems(List<Commission> rows) {
         Map<UUID, Long> orderNumbers = resolveOrderNumbers(rows.stream().map(Commission::commercialOrderId));
         Map<UUID, String> names = resolveNames(rows.stream().map(Commission::beneficiaryUserId));
         Map<UUID, String> ruleNames = resolveRuleNames(rows.stream().map(Commission::ruleId));
@@ -322,15 +382,16 @@ public class CommissionService {
         Map<UUID, String> opportunityRefs = resolveOpportunityRefs(rows.stream().map(Commission::opportunityId));
         Map<UUID, String> receivableStatuses =
                 resolveReceivableStatuses(rows.stream().map(Commission::commercialOrderId));
-
-        return page.map(c -> CommissionListItem.from(
-                c,
-                orderNumbers.getOrDefault(c.commercialOrderId(), 0L),
-                names.get(c.beneficiaryUserId()),
-                ruleNames.get(c.ruleId()),
-                proposalRefs.get(c.proposalId()),
-                opportunityRefs.get(c.opportunityId()),
-                receivableStatuses.get(c.commercialOrderId())));
+        return rows.stream()
+                .map(c -> CommissionListItem.from(
+                        c,
+                        orderNumbers.getOrDefault(c.commercialOrderId(), 0L),
+                        names.get(c.beneficiaryUserId()),
+                        ruleNames.get(c.ruleId()),
+                        proposalRefs.get(c.proposalId()),
+                        opportunityRefs.get(c.opportunityId()),
+                        receivableStatuses.get(c.commercialOrderId())))
+                .toList();
     }
 
     // Assembles the detail read model: resolves the source order number, the beneficiary / rule / creator names, the

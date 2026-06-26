@@ -181,6 +181,11 @@ export class AuthService {
     return this.hasScope('commission:read') || this.hasScope('commission:read:all');
   }
 
+  /** Whether the user may see every commission (all-tier) — vs only their own (own-tier). */
+  canSeeAllCommissions(): boolean {
+    return this.hasScope('commission:read:all');
+  }
+
   /** Whether the user may approve an Eligible Commission (a commercial/financial manager — Commission Management). */
   canApproveCommission(): boolean {
     return this.hasScope('commission:approve');
