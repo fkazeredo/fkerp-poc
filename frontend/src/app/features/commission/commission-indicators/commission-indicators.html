@@ -1,0 +1,121 @@
+<header class="page-head">
+  <div>
+    <h1>Indicadores de comissões</h1>
+    <p class="sub muted">
+      Visão mínima das obrigações e pagamentos de comissão — o que está pendente hoje, o que foi pago no período e o
+      tempo médio de cada etapa. Apenas valores de comissão; nunca folha, imposto, contabilidade ou banco.
+    </p>
+  </div>
+</header>
+
+<div class="surface filters">
+  <div class="field">
+    <label for="from">Pago de</label>
+    <p-datepicker
+      inputId="from"
+      [(ngModel)]="from"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      [maxDate]="to ?? undefined"
+      (onSelect)="applyPeriod()"
+      (onClear)="applyPeriod()"
+    />
+  </div>
+  <div class="field">
+    <label for="to">até</label>
+    <p-datepicker
+      inputId="to"
+      [(ngModel)]="to"
+      dateFormat="dd/mm/yy"
+      [showButtonBar]="true"
+      [minDate]="from ?? undefined"
+      (onSelect)="applyPeriod()"
+      (onClear)="applyPeriod()"
+    />
+  </div>
+  <p-button
+    label="Todo o período"
+    severity="secondary"
+    [text]="true"
+    icon="pi pi-times"
+    (onClick)="clearPeriod()"
+  />
+</div>
+
+@if (error()) {
+  <p-message severity="error" [text]="error()!" styleClass="w-full" />
+}
+
+@if (loading() && !data()) {
+  <p class="muted state">Carregando indicadores…</p>
+} @else if (data(); as d) {
+  <section class="group">
+    <h2 class="group-title">Volume no período <span class="muted">— por data de pagamento</span></h2>
+    <div class="kpis">
+      @for (kpi of periodKpis(); track kpi.key) {
+        <div class="kpi surface" [class]="kpi.accent">
+          <span class="kpi-value">
+            @if (kpi.currency) {
+              {{ kpi.value | currency: 'BRL' }}
+            } @else {
+              {{ kpi.value }}
+            }
+          </span>
+          <span class="kpi-label muted">{{ kpi.label }}</span>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section class="group">
+    <h2 class="group-title">
+      Em aberto <span class="muted">— retrato de hoje, independe do período</span>
+    </h2>
+    <div class="kpis">
+      @for (kpi of snapshotKpis(); track kpi.key) {
+        <div class="kpi surface" [class]="kpi.accent">
+          <span class="kpi-value">{{ kpi.value | currency: 'BRL' }}</span>
+          <span class="kpi-label muted">{{ kpi.label }}</span>
+        </div>
+      }
+      <div class="kpi surface latency">
+        <span class="kpi-value">{{ avgEligibilityToApproval() }}</span>
+        <span class="kpi-label muted">Tempo médio elegível → aprovada</span>
+      </div>
+      <div class="kpi surface latency">
+        <span class="kpi-value">{{ avgApprovalToPayment() }}</span>
+        <span class="kpi-label muted">Tempo médio aprovada → paga</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="breakdowns">
+    <section class="surface breakdown">
+      <h2>Por situação</h2>
+      @for (bar of byStatus(); track bar.status) {
+        <div class="bar-row">
+          <span class="bar-label">
+            <p-tag [value]="bar.label" [severity]="statusSeverity(bar.status)" />
+          </span>
+          <span class="bar-track"><span class="bar-fill" [style.width.%]="bar.ratio * 100"></span></span>
+          <span class="bar-count">{{ bar.count }} · {{ bar.amount | currency: 'BRL' }}</span>
+        </div>
+      } @empty {
+        <p class="muted">Sem comissões.</p>
+      }
+    </section>
+
+    <section class="surface breakdown">
+      <h2>Por beneficiário</h2>
+      @for (bar of byBeneficiary(); track bar.label) {
+        <div class="bar-row">
+          <span class="bar-label">{{ bar.label }}</span>
+          <span class="bar-track"><span class="bar-fill" [style.width.%]="bar.ratio * 100"></span></span>
+          <span class="bar-count">{{ bar.count }} · {{ bar.amount | currency: 'BRL' }}</span>
+        </div>
+      } @empty {
+        <p class="muted">Sem comissões.</p>
+      }
+    </section>
+  </div>
+}

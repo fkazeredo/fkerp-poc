@@ -8,6 +8,7 @@ import com.fksoft.erp.application.api.dto.RegisterCommissionPaymentRequest;
 import com.fksoft.erp.application.api.dto.ResolveCommissionRequest;
 import com.fksoft.erp.domain.commission.service.CommissionService;
 import com.fksoft.erp.domain.commission.service.data.CommissionDetail;
+import com.fksoft.erp.domain.commission.service.data.CommissionIndicators;
 import com.fksoft.erp.domain.commission.service.data.CommissionListItem;
 import com.fksoft.erp.domain.commission.service.data.CommissionOperationalSummary;
 import com.fksoft.erp.domain.commission.service.data.CommissionSearchCriteria;
@@ -98,6 +99,25 @@ public class CommissionController {
     @GetMapping("/summary")
     public CommissionOperationalSummary summary(CommissionListParams params) {
         return commissionService.summary(toCriteria(params), userContext.currentUserId(), canSeeAllCommissions());
+    }
+
+    /**
+     * Minimum functional Commission Management indicators over the commissions visible to the caller — a manager's
+     * minimal view of commission obligations and payments. Two scopes: a current snapshot (count + amount by status
+     * and by beneficiary; the amount pending approval and pending payment) and the volume in the selected period
+     * (paid in the period; the average eligibility→approval and approval→payment times). Gated by the same Commission
+     * read tiers and narrowed by {@link CommissionService} (a beneficiary sees only their own numbers). Carries
+     * commission figures only — never payroll, tax, accounting or accounts-payable data.
+     *
+     * @param from the inclusive period start (by the relevant date), or {@code null} (all time)
+     * @param to the inclusive period end, or {@code null} (all time)
+     * @return the commission indicators
+     */
+    @GetMapping("/indicators")
+    public CommissionIndicators indicators(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return commissionService.indicators(userContext.currentUserId(), canSeeAllCommissions(), from, to);
     }
 
     /**

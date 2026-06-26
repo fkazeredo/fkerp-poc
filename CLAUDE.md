@@ -1182,6 +1182,28 @@ on the **Comissões** list page (`/comissoes`) — the per-status cards (count +
 fetched with the same filters as the table on every reload (a summary failure never breaks the list). The minimum
 **indicators** (period-scoped figures + the eligibility→approval / approval→payment averages) are the **next slice**.
 
+**Commission Management indicators (normative — Commission Management, Sprint 6 Slice 12).** The minimum functional
+commission indicators — `GET /api/commissions/indicators?from=&to=` — are a manager's minimal view of commission
+obligations and payments, **gated by the same Commission read tiers** (the existing `/api/commissions/**` GET gate;
+**no new scope/migration**) and **narrowed by `CommissionAccessPolicy`** (a beneficiary sees only their own numbers).
+They carry **two scopes** like the other indicator views: a **current snapshot** (independent of the period) — `byStatus`
+(count + total amount per status) and `byBeneficiary` (count + total amount per beneficiary, reusing the Slice-11
+grouped shapes), plus the **amount + count pending approval** (`ELIGIBLE`) and **pending payment** (`APPROVED`); and the
+**volume in the selected period** — the commissions **paid** in the period (`paidInPeriodCount`/`paidInPeriodAmount`, by
+the human **payment date**, inclusive). Two **snapshot health averages** — `avgEligibilityToApprovalSeconds` and
+`avgApprovalToPaymentSeconds` (whole seconds, `null` when none has crossed that step) — are computed over **all** the
+visible commissions that crossed the step (period-independent processing-latency metrics). Everything is computed **in
+memory** over the visible set (`CommissionService.indicators`, reusing `CommissionOperationalSummary.of` for the two
+breakdowns — Rule Zero, the commission set is small, like the statement/summary; **no Criteria query class**). They are
+**operational, not Executive Reporting**, and expose **commission figures only — never** payroll, tax, accounting,
+accounts-payable or bank-reconciliation data. **Persona → tiers:** the commercial **Manager** (001), **Board/Director**
+(004) and **Financeiro** (005) hold `commission:read:all` → global numbers; **Sellers** (002) and **Representatives**
+(003) hold the own-only `commission:read` → only their own numbers; **operações** (006) + HR/IT have **no** commission
+read tier → **403**. In the frontend it is the **Comissões** tab of the **Acompanhamento → Indicadores** hub
+(`CommissionIndicatorsPage`, gated by `canSeeCommissions()`): the paid-in-period KPIs, the pending-approval/pending-payment
+snapshot, the two latency averages, and the by-status / by-beneficiary breakdown bars. The backend stays the only
+authority.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST
