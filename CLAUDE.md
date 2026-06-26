@@ -1204,6 +1204,24 @@ read tier → **403**. In the frontend it is the **Comissões** tab of the **Aco
 snapshot, the two latency averages, and the by-status / by-beneficiary breakdown bars. The backend stays the only
 authority.
 
+**Handoff to Customer Care / post-sale operations (Sprint 7) (normative — Sprint 6 is closed).** Once the commercial,
+booking, financial and commission cycle is complete, the ERP can move toward **Customer Care and post-sale operations
+in Sprint 7** — but Sprint 6 implements **none** of it: **no** Customer Care, post-sale ticket, post-sale cancellation,
+refund/chargeback, payroll, generic Accounts Payable, Tax, Accounting, bank integration, advanced commission split,
+margin-based or target-based commission. A **completed commission preserves the full record so Sprint 7 (and any
+post-sale review) starts without recapturing data**, split across the **separated** aggregates/contexts that own each
+piece (`CommercialOrder` ⟂ `BookingRequest` ⟂ `Receivable`/`ReceivablePayment` ⟂ `Commission` — distinct aggregates;
+Commission references the Order/Receivable read-only and **owns neither**): the **Commission** keeps the source
+**Order / Proposal / Opportunity / Lead** references, the **commission beneficiary** (= the commercial responsible
+snapshot), the applied **rule + percentage snapshot**, the **calculated amount + basis**, the **eligibility date**, the
+**approval** info (who/when/notes), the **rejection/cancellation** info (reason/note/who/when), the **payment** info
+(amount/date/method/note/who) and the **final commission status**; the **Commercial Order** (owned by Sales) keeps its
+read-only **`commission_status` summary** (the Slice-10 reflection) alongside its `booking_status` and `financial_status`,
+the **commercial total**, the items and the **customer**; the **Receivable** (owned by Financial) keeps the payment
+evidence (the closed **commercial-financial cycle reference** — `financial_status = PAID` + the Receivable's payments).
+Sprint 7 will **read** these; **no write crosses the boundary** in the handoff. Adding Customer Care / post-sale is
+**Sprint 7** and MUST NOT be started here.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST

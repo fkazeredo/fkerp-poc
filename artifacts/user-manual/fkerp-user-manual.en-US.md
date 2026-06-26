@@ -1281,6 +1281,11 @@ board/director and finance see everyone; sellers and representatives see only th
 It is an **operational view, not executive reporting**, and shows commission figures only — never payroll, tax,
 accounting or bank data.
 
+> **End of the commercial-financial cycle.** With the commission **paid**, the cycle that began with a **lead** —
+> opportunity, proposal, order, booking, receivable and commission — is **complete**, and every record stays preserved
+> and traceable. **Customer Care and post-sale operations** are a **future module** that will build on this closed
+> cycle; they are **not** part of this version.
+
 ---
 
 ## 13. Messages and validation
