@@ -6,8 +6,16 @@ import { ProposalIndicatorsPage } from '../../proposals/proposal-indicators/prop
 import { OrderIndicatorsPage } from '../../orders/order-indicators/order-indicators';
 import { BookingIndicatorsPage } from '../../bookings/booking-indicators/booking-indicators';
 import { ReceivableIndicatorsPage } from '../../financial/receivable-indicators/receivable-indicators';
+import { CommissionIndicatorsPage } from '../../commission/commission-indicators/commission-indicators';
 
-type IndicadoresTab = 'leads' | 'oportunidades' | 'propostas' | 'pedidos' | 'reservas' | 'financeiro';
+type IndicadoresTab =
+  | 'leads'
+  | 'oportunidades'
+  | 'propostas'
+  | 'pedidos'
+  | 'reservas'
+  | 'financeiro'
+  | 'comissoes';
 
 interface TabDef {
   key: IndicadoresTab;
@@ -16,10 +24,10 @@ interface TabDef {
 
 /**
  * Indicators hub — "one place" for every funnel indicator. Renders the existing area indicator screens
- * (Leads / Oportunidades / Propostas / Pedidos / Reservas / Financeiro) under a single tab bar, showing only the
- * tabs the profile may see. The area components are reused verbatim (each keeps its own header and data loading);
- * the hub only picks which one is shown. The Financeiro tab is the operational received-payments & collection view
- * — operational figures only, never Commission, Accounts Payable or bank-reconciliation data.
+ * (Leads / Oportunidades / Propostas / Pedidos / Reservas / Financeiro / Comissões) under a single tab bar, showing
+ * only the tabs the profile may see. The area components are reused verbatim (each keeps its own header and data
+ * loading); the hub only picks which one is shown. The Comissões tab is the minimum commission-management view —
+ * commission figures only, never payroll, tax, accounting or bank data.
  */
 @Component({
   selector: 'app-indicadores-hub',
@@ -30,6 +38,7 @@ interface TabDef {
     OrderIndicatorsPage,
     BookingIndicatorsPage,
     ReceivableIndicatorsPage,
+    CommissionIndicatorsPage,
   ],
   templateUrl: './indicadores-hub.html',
   styleUrl: './indicadores-hub.css',
@@ -46,6 +55,7 @@ export class IndicadoresHub {
     if (this.auth.canSeeOrders()) tabs.push({ key: 'pedidos', label: 'Pedidos' });
     if (this.auth.canSeeBookings()) tabs.push({ key: 'reservas', label: 'Reservas' });
     if (this.auth.canSeeReceivables()) tabs.push({ key: 'financeiro', label: 'Financeiro' });
+    if (this.auth.canSeeCommissions()) tabs.push({ key: 'comissoes', label: 'Comissões' });
     return tabs;
   });
 

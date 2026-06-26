@@ -142,6 +142,25 @@ export interface CommissionOperationalSummary {
   byBeneficiary: CommissionBeneficiaryTotal[];
 }
 
+/**
+ * Minimum functional Commission Management indicators: a current snapshot (count + amount by status and by
+ * beneficiary; the amount pending approval and pending payment) plus the volume in the selected period (paid in
+ * the period) and the snapshot health averages (eligibility→approval and approval→payment, in seconds; null when
+ * none). Commission figures only — never payroll, tax, accounting or bank data.
+ */
+export interface CommissionIndicators {
+  byStatus: CommissionStatusTotal[];
+  byBeneficiary: CommissionBeneficiaryTotal[];
+  pendingApprovalCount: number;
+  pendingApprovalAmount: number;
+  pendingPaymentCount: number;
+  pendingPaymentAmount: number;
+  paidInPeriodCount: number;
+  paidInPeriodAmount: number;
+  avgEligibilityToApprovalSeconds: number | null;
+  avgApprovalToPaymentSeconds: number | null;
+}
+
 /** Per-status totals of a commission statement (amount sums + counts for the non-voided lifecycle). */
 export interface CommissionStatementTotals {
   totalExpected: number;
@@ -249,6 +268,17 @@ export class CommissionService {
    */
   summary(filters: CommissionFilters): Observable<CommissionOperationalSummary> {
     return this.http.get<CommissionOperationalSummary>('/api/commissions/summary', { params: filterParams(filters) });
+  }
+
+  /**
+   * The minimum Commission Management indicators over the commissions visible to the caller, optionally scoped to a
+   * period (ISO dates) for the "paid in the period" figures; absent dates = all-time.
+   */
+  indicators(from: string | null = null, to: string | null = null): Observable<CommissionIndicators> {
+    let params = new HttpParams();
+    params = setIf(params, 'from', from);
+    params = setIf(params, 'to', to);
+    return this.http.get<CommissionIndicators>('/api/commissions/indicators', { params });
   }
 
   /**

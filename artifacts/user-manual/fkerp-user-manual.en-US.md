@@ -1264,6 +1264,23 @@ clear. It is an **informational** screen: it **approves and pays nothing**.
 - **Commercial data only:** the statement shows commission data only — never payroll, tax, accounting, bank export or
   invoice data.
 
+### 11.14 Commission indicators (Commission Management)
+
+Open **Acompanhamento → Indicadores** (Monitoring → Indicators) and pick the **Comissões** tab for a manager's minimal
+view of commission obligations and payments. The numbers are **scoped to the commissions you can see** (managers,
+board/director and finance see everyone; sellers and representatives see only their own). The screen has:
+
+- **Volume in the period** (by payment date; default = current month): how many commissions were **paid** in the period
+  and the **total amount paid**.
+- **Currently open** (a snapshot, independent of the period): the **amount pending approval** (eligible) and the **amount
+  pending payment** (approved), plus two **average times** — from becoming **eligible to approved** and from **approved to
+  paid** — so you can see how quickly commissions move through approval and payment.
+- **By status** and **by beneficiary** breakdowns: the count and total amount of commissions in each status and for each
+  beneficiary.
+
+It is an **operational view, not executive reporting**, and shows commission figures only — never payroll, tax,
+accounting or bank data.
+
 ---
 
 ## 13. Messages and validation

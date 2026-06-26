@@ -1196,6 +1196,87 @@ class CommissionApiIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(get("/api/commissions/summary")).andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void theIndicatorsExposeTheSnapshotAndPaidInPeriodScopes() throws Exception {
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        // One EXPECTED (no receivable), one ELIGIBLE (receivable paid), one PAID (full lifecycle, amount 25.00).
+        generate(manager, closedOrder("IndExp", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED"));
+        UUID eligibleOrder = closedOrder("IndElig", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED");
+        generate(manager, eligibleOrder);
+        fullyPayReceivableFor(login("financeiro", "financeiro123"), eligibleOrder); // ELIGIBLE
+        pay(
+                login("financeiro", "financeiro123"),
+                approvedCommission("IndPaid"),
+                "25.00"); // PAID, paymentDate 2026-06-20
+
+        String body = mvc.perform(get("/api/commissions/indicators").header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                // Snapshot: pending approval = the ELIGIBLE one (25.00); pending payment = none (approved became paid).
+                .andExpect(jsonPath("$.pendingApprovalCount").value(1))
+                .andExpect(jsonPath("$.pendingApprovalAmount").value(25.00))
+                .andExpect(jsonPath("$.pendingPaymentCount").value(0))
+                .andExpect(jsonPath("$.pendingPaymentAmount").value(0))
+                // By status / by beneficiary snapshots are present.
+                .andExpect(jsonPath("$.byStatus").isArray())
+                .andExpect(jsonPath("$.byBeneficiary").isArray())
+                // Health averages: a paid commission crossed both steps → non-null (≥ 0 whole seconds).
+                .andExpect(jsonPath("$.avgEligibilityToApprovalSeconds").value(org.hamcrest.Matchers.notNullValue()))
+                .andExpect(jsonPath("$.avgApprovalToPaymentSeconds").value(org.hamcrest.Matchers.notNullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        // Commission figures only — never payroll, payable or accounting data.
+        assertThat(body.toLowerCase())
+                .doesNotContain("payroll")
+                .doesNotContain("payable")
+                .doesNotContain("accounting");
+
+        // Paid-in-period: the payment date is 2026-06-20 → inside June, outside July.
+        mvc.perform(get("/api/commissions/indicators?from=2026-06-01&to=2026-06-30")
+                        .header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paidInPeriodCount").value(1))
+                .andExpect(jsonPath("$.paidInPeriodAmount").value(25.00));
+        mvc.perform(get("/api/commissions/indicators?from=2026-07-01&to=2026-07-31")
+                        .header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paidInPeriodCount").value(0))
+                .andExpect(jsonPath("$.paidInPeriodAmount").value(0));
+    }
+
+    @Test
+    void theIndicatorsRespectVisibility() throws Exception {
+        String manager = login("comercial", "comercial123");
+        activeResponsibleRule(manager, "5");
+        generate(manager, closedOrder("IndOwn", "PENDING_BOOKING", REPRESENTATIVE, "500.00", "CONFIRMED"));
+        generate(manager, closedOrder("IndOther", "PENDING_BOOKING", MANAGER, "500.00", "CONFIRMED"));
+
+        // The representative (own tier) sees only their own commission in the indicators.
+        mvc.perform(get("/api/commissions/indicators")
+                        .header("Authorization", "Bearer " + login("representante", "representante123")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.byBeneficiary.length()").value(1))
+                .andExpect(jsonPath("$.byBeneficiary[0].beneficiaryUserId").value(REPRESENTATIVE.toString()));
+
+        // The manager (read-all) sees both beneficiaries.
+        mvc.perform(get("/api/commissions/indicators").header("Authorization", "Bearer " + manager))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.byBeneficiary.length()").value(2));
+    }
+
+    @Test
+    void aUserWithoutACommissionScopeIsForbiddenOnTheIndicators() throws Exception {
+        mvc.perform(get("/api/commissions/indicators")
+                        .header("Authorization", "Bearer " + login("operacoes", "operacoes123")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rejectsAnUnauthenticatedIndicators() throws Exception {
+        mvc.perform(get("/api/commissions/indicators")).andExpect(status().isUnauthorized());
+    }
+
     // Registers a full payment for an approved commission.
     private void pay(String token, String commissionId, String amount) throws Exception {
         mvc.perform(post("/api/commissions/" + commissionId + "/pay")
