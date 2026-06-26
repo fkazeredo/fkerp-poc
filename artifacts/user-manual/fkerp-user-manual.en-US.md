@@ -1158,6 +1158,13 @@ By default the list shows the **in-progress** commissions (Expected / Pending ap
 **Rejected** and **Cancelled** appear **only when you select them** in the status filter. The screen shows **only
 commission and commercial-origin data** — never payroll, tax, accounting or accounts-payable data.
 
+Above the table, an **Operational summary** (Resumo operacional) groups the **same commissions you are seeing** (it
+honours the active filters and your visibility): the **count and total amount by status** (one card per status present)
+and a **per-beneficiary** breakdown (who has how many and how much), plus the overall count and total. Combined with the
+status + payment-period filters, it answers "how much is pending approval", "how much is pending payment" and "how much
+was paid in the period" at a glance. It is an **operational view, not executive reporting**, and shows commission figures
+only — never payroll, tax, accounting or bank data.
+
 ### 11.9 Commission detail (Commission Management)
 
 Clicking the **beneficiary** in the commission list (or **Ver detalhe da comissão** on the order detail) opens the

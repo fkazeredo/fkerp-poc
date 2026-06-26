@@ -1164,6 +1164,24 @@ scope/endpoint (the existing `sales:order:read*` gate covers the Order reads); m
 `commission_status` column (CHECK `EXPECTED`/`ELIGIBLE`/`APPROVED`/`PAID`/`ISSUE`) with a backfill from the active /
 voided commission.
 
+**Operational Commission view (normative — Commission Management, Sprint 6 Slice 11).** The operational commission
+**summary** — `GET /api/commissions/summary` — is the aggregate companion of the operational list (Slice 4): it groups
+the commissions **visible to the caller and matching the same filters** by **status** and by **beneficiary**, returning
+`CommissionOperationalSummary{totalCount, totalAmount, byStatus[{status,count,totalAmount}],
+byBeneficiary[{beneficiaryUserId,beneficiaryName,count,totalAmount}]}`. It is **gated by the same Commission read tiers**
+(`commission:read` own / `commission:read:all` all — the existing `/api/commissions/**` GET gate; **no new scope/
+migration**) and narrowed by **`CommissionAccessPolicy`** *before* the grouping, so a seller/representative only ever
+groups **their own** commissions. It accepts the **same `CommissionListParams`** as the list (status, beneficiary, order,
+rule, creation/eligibility/payment periods, amount range — empty status ⇒ the operational set `EXPECTED`/`ELIGIBLE`/
+`APPROVED`), so `status=PAID` + a payment period yields the "paid in the selected period" grouping. The grouping is
+computed **in memory** over the visible+filtered set (`CommissionOperationalSummary.of` — a manager's operational set is
+small, Rule Zero, no DB aggregation, mirroring the statement); statuses are emitted in lifecycle order (absent ones
+skipped), beneficiaries ordered by name. It is **operational, not Executive Reporting**, and carries **commission figures
+only — never payroll, tax, accounting or accounts-payable data**. In the frontend it is a **"Resumo operacional"** block
+on the **Comissões** list page (`/comissoes`) — the per-status cards (count + total) and a per-beneficiary table —
+fetched with the same filters as the table on every reload (a summary failure never breaks the list). The minimum
+**indicators** (period-scoped figures + the eligibility→approval / approval→payment averages) are the **next slice**.
+
 ## 11. Observability & performance
 
 Observability is architecture. Logs are structured (JSON), contextual and safe; a log MUST
